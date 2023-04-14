@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
@@ -57,7 +57,7 @@ public class CCICorrectionStrategy {
 
         CCIIndicator longCci = new CCIIndicator(series, 200);
         CCIIndicator shortCci = new CCIIndicator(series, 5);
-        Num plus100 = series.numOf(100);
+        Num plus100 = series.hundred();
         Num minus100 = series.numOf(-100);
 
         Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
@@ -67,7 +67,7 @@ public class CCICorrectionStrategy {
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
 
         Strategy strategy = new BaseStrategy(entryRule, exitRule);
-        strategy.setUnstablePeriod(5);
+        strategy.setUnstableBars(5);
         return strategy;
     }
 
@@ -85,7 +85,6 @@ public class CCICorrectionStrategy {
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+        System.out.println("Total return for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
     }
 }

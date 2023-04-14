@@ -24,15 +24,16 @@
 package ta4jexamples;
 
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
-import org.ta4j.core.criteria.VersusBuyAndHoldCriterion;
-import org.ta4j.core.criteria.WinningPositionsRatioCriterion;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -98,14 +99,14 @@ public class Quickstart {
         // Analysis
 
         // Getting the winning positions ratio
-        AnalysisCriterion winningPositionsRatio = new WinningPositionsRatioCriterion();
+        AnalysisCriterion winningPositionsRatio = new PositionsRatioCriterion(PositionFilter.PROFIT);
         System.out.println("Winning positions ratio: " + winningPositionsRatio.calculate(series, tradingRecord));
         // Getting a risk-reward ratio
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
         // Total return of our strategy vs total return of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new GrossReturnCriterion());
+        AnalysisCriterion vsBuyAndHold = new VersusEnterAndHoldCriterion(new ReturnCriterion());
         System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!

@@ -81,4 +81,9 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
         return rsi.getValue(index).minus(minRsiValue).dividedBy(maxRsi.getValue(index).minus(minRsiValue));
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
 }

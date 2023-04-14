@@ -43,14 +43,42 @@ public interface Indicator<T> {
     T getValue(int index);
 
     /**
+     * @return the number of bars up to which the indicator calculates wrong values
+     */
+    int getUnstableBars();
+
+    /**
      * @return the related bar series
      */
     BarSeries getBarSeries();
 
     /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return getBarSeries().zero();
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return getBarSeries().one();
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return getBarSeries().hundred();
+    }
+
+    /**
      * @return the {@link Num Num extending class} for the given {@link Number}
      */
-    Num numOf(Number number);
+    default Num numOf(Number number) {
+        return getBarSeries().numOf(number);
+    }
 
     /**
      * Returns all values from an {@link Indicator} as an array of Doubles. The

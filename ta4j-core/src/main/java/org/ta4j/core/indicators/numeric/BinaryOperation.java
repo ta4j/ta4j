@@ -78,13 +78,13 @@ class BinaryOperation implements Indicator<Num> {
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return left.getBarSeries();
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override
-    public Num numOf(Number number) {
-        return left.numOf(number);
+    public BarSeries getBarSeries() {
+        return left.getBarSeries();
     }
 
 }

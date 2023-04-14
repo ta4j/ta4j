@@ -35,7 +35,7 @@ public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return position.hasLoss() ? series.numOf(1) : series.numOf(0);
+        return position.hasLoss() ? series.one() : series.zero();
     }
 
     @Override

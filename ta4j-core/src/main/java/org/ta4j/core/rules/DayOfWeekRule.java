@@ -30,7 +30,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.DateTimeIndicator;
+import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
  * Day of the week rule.

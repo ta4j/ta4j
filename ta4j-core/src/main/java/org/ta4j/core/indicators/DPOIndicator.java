@@ -84,6 +84,11 @@ public class DPOIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
+    @Override
     public String toString() {
         return name;
     }

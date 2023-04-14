@@ -91,7 +91,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         emptySeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
-        strategy.setUnstablePeriod(2); // Strategy would need a real test class
+        strategy.setUnstableBars(2); // Strategy would need a real test class
 
     }
 
@@ -103,7 +103,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction), true);
         assertEquals(1, series.getBarCount());
-        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.one());
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d, numFunction), false);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d, numFunction), false);
         assertEquals(3, series.getBarCount());

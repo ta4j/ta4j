@@ -55,6 +55,11 @@ public class MockIndicator implements Indicator<Num> {
         return values.get(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * Gets the Indicator TimeSeries.
      * 

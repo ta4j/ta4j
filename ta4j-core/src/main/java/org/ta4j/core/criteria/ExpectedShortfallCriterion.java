@@ -62,7 +62,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
             return calculateES(returns, confidence);
         }
-        return series.numOf(0);
+        return series.zero();
     }
 
     @Override
@@ -81,7 +81,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     private static Num calculateES(Returns returns, double confidence) {
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-        Num zero = returns.numOf(0);
+        Num zero = returns.zero();
         Num expectedShortfall = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)

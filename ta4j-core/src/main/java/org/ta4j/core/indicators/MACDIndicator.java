@@ -86,4 +86,9 @@ public class MACDIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

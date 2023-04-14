@@ -49,4 +49,9 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return awesome.getValue(index).minus(sma.getValue(index));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

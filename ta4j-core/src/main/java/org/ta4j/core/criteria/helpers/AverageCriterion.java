@@ -35,7 +35,8 @@ import org.ta4j.core.num.Num;
  * Average criterion.
  * 
  * <p>
- * Calculates the average of a Criterion.
+ * Calculates the average of a Criterion by dividing it by the number of
+ * positions.
  */
 public class AverageCriterion extends AbstractAnalysisCriterion {
 
@@ -60,7 +61,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);

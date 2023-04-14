@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     private final int n;
-    private Indicator<Num> indicator;
+    private final Indicator<Num> indicator;
 
     /**
      * Constructor.
@@ -64,6 +64,11 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         int previousValue = Math.max(0, (index - n));
         return this.indicator.getValue(previousValue);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override

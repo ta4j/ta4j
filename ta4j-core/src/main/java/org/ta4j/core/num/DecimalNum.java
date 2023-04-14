@@ -74,7 +74,7 @@ public final class DecimalNum implements Num {
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
 
-    private static final DecimalNum ZERO = DecimalNum.valueOf(0);
+    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
     private static final DecimalNum ONE = DecimalNum.valueOf(1);
     private static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
 
@@ -136,17 +136,17 @@ public final class DecimalNum implements Num {
 
     @Override
     public Num zero() {
-        return ZERO;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? ZERO : function().apply(0);
     }
 
     @Override
     public Num one() {
-        return ONE;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? ONE : function().apply(1);
     }
 
     @Override
     public Num hundred() {
-        return HUNDRED;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? HUNDRED : function().apply(100);
     }
 
     /**
@@ -163,9 +163,9 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Returns a {@code Num) version of the given {@code String} with a precision.
+     * Returns a {@code Num} version of the given {@code String} with a precision.
      *
-     * @param val the number
+     * @param val       the number
      * 
      * @param precision the precision
      * @return the {@code Num}
@@ -616,7 +616,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is equal to another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     @Override
     public boolean isEqual(Num other) {
@@ -628,7 +628,7 @@ public final class DecimalNum implements Num {
      *
      * @param other     the other value, not null
      * @param precision the int precision
-     * @return true is this matches the specified value to a precision, false
+     * @return true if this matches the specified value to a precision, false
      *         otherwise
      */
     public boolean matches(Num other, int precision) {
@@ -649,7 +649,7 @@ public final class DecimalNum implements Num {
      *
      * @param other the other value, not null
      * @param delta the {@link Num} offset
-     * @return true is this matches the specified value within an offset, false
+     * @return true if this matches the specified value within an offset, false
      *         otherwise
      */
     public boolean matches(Num other, Num delta) {
@@ -668,7 +668,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is greater than another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     @Override
     public boolean isGreaterThan(Num other) {
@@ -679,7 +679,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is greater than or equal to another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
+     * @return true if this is greater than or equal to the specified value, false
      *         otherwise
      */
     @Override
@@ -691,7 +691,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is less than another.
      *
      * @param other the other value, not null
-     * @return true is this is less than the specified value, false otherwise
+     * @return true if this is less than the specified value, false otherwise
      */
     @Override
     public boolean isLessThan(Num other) {
@@ -768,7 +768,7 @@ public final class DecimalNum implements Num {
         // a is a whole number (make sure it doesn't overflow int)
         // remainder 0 <= b < 1
         // So:
-        // x^a uses PrecisionNum ((PrecisionNum) x).pow(int a) cannot overflow Num
+        // x^a uses DecimalNum ((DecimalNum) x).pow(int a) cannot overflow Num
         // x^b uses double Math.pow(double x, double b) cannot overflow double because b
         // < 1.
         // As suggested: https://stackoverflow.com/a/3590314

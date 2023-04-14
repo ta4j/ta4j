@@ -31,6 +31,7 @@ import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -39,10 +40,10 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
+public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
-    public WinningPositionsRatioCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new WinningPositionsRatioCriterion(), numFunction);
+    public PositionsRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new PositionsRatioCriterion((PositionFilter) params[0]), numFunction);
     }
 
     @Test
@@ -51,9 +52,14 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion average = getCriterion();
+        // there are 3 positions with 2 winning positions
+        AnalysisCriterion winningPositionsRatio = getCriterion(PositionFilter.PROFIT);
+        assertNumEquals(2d / 3, winningPositionsRatio.calculate(series, tradingRecord));
 
-        assertNumEquals(2d / 3, average.calculate(series, tradingRecord));
+        // there are 3 positions with 1 losing positions
+        AnalysisCriterion losingPositionsRatio = getCriterion(PositionFilter.LOSS);
+        assertNumEquals(1d / 3, losingPositionsRatio.calculate(series, tradingRecord));
+
     }
 
     @Test
@@ -62,9 +68,13 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series), Trade.buyAt(4, series));
 
-        AnalysisCriterion average = getCriterion();
+        // there are 3 positions with 1 winning positions
+        AnalysisCriterion winningPositionsRatio = getCriterion(PositionFilter.PROFIT);
+        assertNumEquals(0.5, winningPositionsRatio.calculate(series, tradingRecord));
 
-        assertNumEquals(0.5, average.calculate(series, tradingRecord));
+        // there are 3 positions with 1 losing positions
+        AnalysisCriterion losingPositionsRatio = getCriterion(PositionFilter.LOSS);
+        assertNumEquals(0.5, losingPositionsRatio.calculate(series, tradingRecord));
     }
 
     @Test
@@ -72,22 +82,42 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        AnalysisCriterion average = getCriterion();
-        assertNumEquals(numOf(0), average.calculate(series, position));
+        // 0 winning position
+        AnalysisCriterion winningPositionsRatio = getCriterion(PositionFilter.PROFIT);
+        assertNumEquals(numOf(0), winningPositionsRatio.calculate(series, position));
 
+        // 1 winning position
         position = new Position(Trade.buyAt(1, series), Trade.sellAt(2, series));
-        assertNumEquals(1, average.calculate(series, position));
+        assertNumEquals(1, winningPositionsRatio.calculate(series, position));
+
+        // 1 losing position
+        position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        AnalysisCriterion losingPositionsRatio = getCriterion(PositionFilter.LOSS);
+        assertNumEquals(numOf(1), losingPositionsRatio.calculate(series, position));
+
+        // 0 losing position
+        position = new Position(Trade.buyAt(1, series), Trade.sellAt(2, series));
+        assertNumEquals(0, losingPositionsRatio.calculate(series, position));
+
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(12), numOf(8)));
-        assertFalse(criterion.betterThan(numOf(8), numOf(12)));
+        AnalysisCriterion winningPositionsRatio = getCriterion(PositionFilter.PROFIT);
+        assertTrue(winningPositionsRatio.betterThan(numOf(12), numOf(8)));
+        assertFalse(winningPositionsRatio.betterThan(numOf(8), numOf(12)));
+
+        AnalysisCriterion losingPositionsRatio = getCriterion(PositionFilter.LOSS);
+        assertTrue(losingPositionsRatio.betterThan(numOf(8), numOf(12)));
+        assertFalse(losingPositionsRatio.betterThan(numOf(12), numOf(8)));
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+                getCriterion(PositionFilter.PROFIT), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+                getCriterion(PositionFilter.LOSS), 0);
     }
+
 }

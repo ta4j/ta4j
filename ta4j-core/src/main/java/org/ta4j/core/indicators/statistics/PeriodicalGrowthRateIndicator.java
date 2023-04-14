@@ -73,7 +73,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        one = numOf(1);
+        one = one();
     }
 
     /**
@@ -131,6 +131,10 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         }
 
         return timeframedReturn;
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 }

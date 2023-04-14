@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -54,8 +53,8 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.zero = numOf(0);
-        this.hundred = numOf(100);
+        this.zero = zero();
+        this.hundred = hundred();
     }
 
     @Override
@@ -74,6 +73,11 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         }
         squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
         return squaredAverage.sqrt();
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

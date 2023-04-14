@@ -36,7 +36,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.aroon.AroonDownIndicator;
 import org.ta4j.core.num.Num;
 
 public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {

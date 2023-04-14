@@ -21,45 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertEquals;
+
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+
+import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * Net profit criterion (excludes trading costs).
- *
- * <p>
- * The net profit of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
- */
-public class NetProfitCriterion extends AbstractAnalysisCriterion {
+public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num profit = position.getProfit();
-            return profit.isPositive() ? profit : series.numOf(0);
-        }
-        return series.numOf(0);
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_ZONED_DATE_TIME;
 
+    public DateTimeIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    @Test
+    public void test() {
+        ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
+        List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
+        BarSeries series = new MockBarSeries(bars);
+        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
+        assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
     }
 }

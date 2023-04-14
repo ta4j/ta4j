@@ -46,7 +46,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isConsecutive(position) ? series.numOf(1) : series.numOf(0);
+        return isConsecutive(position) ? series.one() : series.zero();
     }
 
     @Override

@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,12 +38,12 @@ import org.ta4j.core.num.Num;
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
-    private double initialAmount;
+    private final double initialAmount;
 
-    private double a;
-    private double b;
+    private final double a;
+    private final double b;
 
-    private GrossReturnCriterion grossReturn;
+    private ReturnCriterion grossReturn;
 
     /**
      * Constructor. (a * x)
@@ -69,7 +69,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        grossReturn = new GrossReturnCriterion();
+        grossReturn = new ReturnCriterion();
     }
 
     @Override
@@ -79,7 +79,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num totalCosts = series.numOf(0);
+        Num totalCosts = series.zero();
         Num tradedAmount = series.numOf(initialAmount);
 
         for (Position position : tradingRecord.getPositions()) {
@@ -115,7 +115,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute trade cost
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
-        Num tradeCost = tradedAmount.numOf(0);
+        Num tradeCost = tradedAmount.zero();
         if (trade != null) {
             return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
         }
@@ -129,7 +129,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all trades in the position
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
-        Num totalTradeCost = series.numOf(0);
+        Num totalTradeCost = series.zero();
         if (position != null) {
             if (position.getEntry() != null) {
                 totalTradeCost = getTradeCost(position.getEntry(), initialAmount);

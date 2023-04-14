@@ -60,7 +60,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.typicalPrice = new TypicalPriceIndicator(series);
         this.volume = new VolumeIndicator(series);
-        this.zero = numOf(0);
+        this.zero = zero();
     }
 
     @Override
@@ -77,6 +77,11 @@ public class VWAPIndicator extends CachedIndicator<Num> {
             cumulativeVolume = cumulativeVolume.plus(currentVolume);
         }
         return cumulativeTPV.dividedBy(cumulativeVolume);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

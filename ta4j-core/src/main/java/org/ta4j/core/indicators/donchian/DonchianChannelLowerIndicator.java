@@ -21,45 +21,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.indicators.donchian;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
-/**
- * Gross profit criterion (includes trading costs).
- *
- * <p>
- * The gross profit of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+/***
+ * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
-public class GrossProfitCriterion extends AbstractAnalysisCriterion {
+public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num profit = position.getGrossProfit();
-            return profit.isPositive() ? profit : series.numOf(0);
-        }
-        return series.numOf(0);
+    private final LowestValueIndicator lowestPrice;
+    private final LowPriceIndicator lowPrice;
+    private final int barCount;
+
+    public DonchianChannelLowerIndicator(BarSeries series, int barCount) {
+        super(series);
+
+        this.barCount = barCount;
+        this.lowPrice = new LowPriceIndicator(series);
+        this.lowestPrice = new LowestValueIndicator(this.lowPrice, barCount);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+    protected Num calculate(int index) {
+        return this.lowestPrice.getValue(index);
     }
 
-    /** The higher the criterion value, the better. */
     @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    public int getUnstableBars() {
+        return barCount;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "barCount: " + barCount;
+    }
 }

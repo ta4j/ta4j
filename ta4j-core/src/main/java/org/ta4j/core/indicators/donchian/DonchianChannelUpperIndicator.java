@@ -21,33 +21,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.donchian;
 
-import java.time.ZonedDateTime;
-import java.util.function.Function;
-
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.num.Num;
 
 /**
- * DateTime indicator.
+ * * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
-public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
+public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
 
-    private final Function<Bar, ZonedDateTime> action;
+    private final HighestValueIndicator highestPrice;
+    private final HighPriceIndicator highPrice;
+    private final int barCount;
 
-    public DateTimeIndicator(BarSeries barSeries) {
-        this(barSeries, Bar::getBeginTime);
-    }
+    public DonchianChannelUpperIndicator(BarSeries series, int barCount) {
+        super(series);
 
-    public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
-        super(barSeries);
-        this.action = action;
+        this.barCount = barCount;
+        this.highPrice = new HighPriceIndicator(series);
+        this.highestPrice = new HighestValueIndicator(this.highPrice, barCount);
     }
 
     @Override
-    protected ZonedDateTime calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        return this.action.apply(bar);
+    protected Num calculate(int index) {
+        return this.highestPrice.getValue(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 }

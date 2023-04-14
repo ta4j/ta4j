@@ -68,4 +68,9 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

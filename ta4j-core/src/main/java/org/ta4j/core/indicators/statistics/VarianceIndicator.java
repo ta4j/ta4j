@@ -54,7 +54,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num variance = numOf(0);
+        Num variance = zero();
         Num average = sma.getValue(index);
         for (int i = startIndex; i <= index; i++) {
             Num pow = indicator.getValue(i).minus(average).pow(2);
@@ -62,6 +62,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         }
         variance = variance.dividedBy(numOf(numberOfObservations));
         return variance;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

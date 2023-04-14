@@ -33,7 +33,7 @@ public class LinearTransactionCostModel implements CostModel {
     /**
      * Slope of the linear model - fee per position
      */
-    private double feePerPosition;
+    private final double feePerPosition;
 
     /**
      * Constructor. (feePerPosition * x)

@@ -79,4 +79,9 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
         }
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
 }

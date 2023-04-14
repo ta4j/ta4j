@@ -57,7 +57,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == getBarSeries().getBeginIndex()) {
-            return numOf(0);
+            return zero();
         }
         final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
         final Num high = highPriceIndicator.getValue(index);
@@ -67,5 +67,10 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
         return doubledClosePrice.minus(highPlusLow)
                 .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

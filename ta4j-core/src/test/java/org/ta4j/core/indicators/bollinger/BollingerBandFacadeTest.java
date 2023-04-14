@@ -23,6 +23,11 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -35,11 +40,6 @@ import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
-
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public BollingerBandFacadeTest(Function<Number, Num> numFunction) {
@@ -49,7 +49,6 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void testCreation() {
         final BarSeries data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
-        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
         final int barCount = 3;
 
         final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);

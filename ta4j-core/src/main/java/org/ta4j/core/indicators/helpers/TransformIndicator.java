@@ -61,6 +61,11 @@ public class TransformIndicator extends CachedIndicator<Num> {
         return transformationFunction.apply(indicator.getValue(index));
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * Transforms the input indicator by indicator.plus(coefficient).
      */
@@ -114,6 +119,14 @@ public class TransformIndicator extends CachedIndicator<Num> {
      */
     public static TransformIndicator abs(Indicator<Num> indicator) {
         return new TransformIndicator(indicator, Num::abs);
+    }
+
+    /**
+     * Transforms the input indicator by indicator.pow(coefficient).
+     */
+    public static TransformIndicator pow(Indicator<Num> indicator, Number coefficient) {
+        Num numCoefficient = indicator.numOf(coefficient);
+        return new TransformIndicator(indicator, val -> val.pow(numCoefficient));
     }
 
     /**

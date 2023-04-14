@@ -87,14 +87,14 @@ public class Returns implements Indicator<Num> {
      * @param position  a single position
      */
     public Returns(BarSeries barSeries, Position position, ReturnType type) {
-        one = barSeries.numOf(1);
+        one = barSeries.one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        calculate(position);
+        calculate(position, barSeries.getEndIndex());
 
-        fillToTheEnd();
+        fillToTheEnd(barSeries.getEndIndex());
     }
 
     /**
@@ -104,14 +104,14 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
-        one = barSeries.numOf(1);
+        one = barSeries.one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
         calculate(tradingRecord);
 
-        fillToTheEnd();
+        fillToTheEnd(tradingRecord.getEndIndex(barSeries));
     }
 
     public List<Num> getValues() {
@@ -125,6 +125,11 @@ public class Returns implements Indicator<Num> {
     @Override
     public Num getValue(int index) {
         return values.get(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override
@@ -144,10 +149,6 @@ public class Returns implements Indicator<Num> {
         return barSeries.getBarCount() - 1;
     }
 
-    public void calculate(Position position) {
-        calculate(position, barSeries.getEndIndex());
-    }
-
     /**
      * Calculates the cash flow for a single position (including accrued cashflow
      * for open positions).
@@ -162,7 +163,7 @@ public class Returns implements Indicator<Num> {
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            values.addAll(Collections.nCopies(begin - values.size(), barSeries.numOf(0)));
+            values.addAll(Collections.nCopies(begin - values.size(), barSeries.zero()));
         }
 
         int startingIndex = Math.max(begin, 1);
@@ -212,16 +213,17 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
+        int endIndex = tradingRecord.getEndIndex(getBarSeries());
         // For each position...
-        tradingRecord.getPositions().forEach(this::calculate);
+        tradingRecord.getPositions().forEach(p -> calculate(p, endIndex));
     }
 
     /**
-     * Fills with zeroes until the end of the series.
+     * Fills with zeroes until the endIndex.
      */
-    private void fillToTheEnd() {
-        if (barSeries.getEndIndex() >= values.size()) {
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numOf(0)));
+    private void fillToTheEnd(int endIndex) {
+        if (endIndex >= values.size()) {
+            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.zero()));
         }
     }
 }

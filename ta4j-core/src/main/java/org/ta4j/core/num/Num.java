@@ -220,7 +220,7 @@ public interface Num extends Comparable<Num> {
      * Checks if this value is equal to another.
      * 
      * @param other the other value, not null
-     * @return true if this is greater than the specified value, false otherwise
+     * @return true if this is equal to the specified value, false otherwise
      */
     boolean isEqual(Num other);
 
@@ -327,14 +327,29 @@ public interface Num extends Comparable<Num> {
         return getDelegate().doubleValue();
     }
 
+    /**
+     * Converts this {@code num} to an {@code integer}.
+     * 
+     * @return this {@code num} converted to an {@code integer}
+     */
     default int intValue() {
         return getDelegate().intValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code long}.
+     * 
+     * @return this {@code num} converted to a {@code loong}
+     */
     default long longValue() {
         return getDelegate().longValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code float}.
+     * 
+     * @return this {@code num} converted to a {@code float}
+     */
     default float floatValue() {
         return getDelegate().floatValue();
     }

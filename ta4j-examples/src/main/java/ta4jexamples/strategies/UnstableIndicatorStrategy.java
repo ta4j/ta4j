@@ -59,7 +59,7 @@ public class UnstableIndicatorStrategy {
         Rule exitRule = new CrossedDownIndicatorRule(close, sma);
 
         BaseStrategy strategy = new BaseStrategy(entryRule, exitRule);
-        strategy.setUnstablePeriod(3);
+        strategy.setUnstableBars(3);
         return strategy;
     }
 

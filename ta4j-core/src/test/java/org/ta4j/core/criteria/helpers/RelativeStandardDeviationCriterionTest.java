@@ -49,9 +49,9 @@ public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTes
     @Test
     public void calculateStandardDeviationPnL() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numOf(1)),
-                Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
-                Trade.sellAt(5, series, series.numOf(1)));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.one()),
+                Trade.sellAt(2, series, series.one()), Trade.buyAt(3, series, series.one()),
+                Trade.sellAt(5, series, series.one()));
 
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
         assertNumEquals(0.3333333333333333, criterion.calculate(series, tradingRecord));

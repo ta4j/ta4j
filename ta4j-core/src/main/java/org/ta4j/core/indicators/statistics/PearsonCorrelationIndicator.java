@@ -61,11 +61,12 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
         Num n = numOf(barCount);
 
-        Num Sx = numOf(0);
-        Num Sy = numOf(0);
-        Num Sxx = numOf(0);
-        Num Syy = numOf(0);
-        Num Sxy = numOf(0);
+        Num zero = zero();
+        Num Sx = zero;
+        Num Sy = zero;
+        Num Sxx = zero;
+        Num Syy = zero;
+        Num Sxy = zero;
 
         for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
 
@@ -90,5 +91,10 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         return NaN;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 }

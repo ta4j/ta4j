@@ -45,8 +45,8 @@ public class BarSeriesManager {
     private final BarSeries barSeries;
 
     /** The trading cost models */
-    private CostModel transactionCostModel;
-    private CostModel holdingCostModel;
+    private final CostModel transactionCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -100,7 +100,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, TradeType.BUY, barSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, TradeType.BUY, barSeries.one(), startIndex, finishIndex);
     }
 
     /**
@@ -113,7 +113,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType) {
-        return run(strategy, tradeType, barSeries.numOf(1));
+        return run(strategy, tradeType, barSeries.one());
     }
 
     /**
@@ -129,7 +129,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, int startIndex, int finishIndex) {
-        return run(strategy, tradeType, barSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, tradeType, barSeries.one(), startIndex, finishIndex);
     }
 
     /**
@@ -164,7 +164,10 @@ public class BarSeriesManager {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
                     strategy, tradeType);
         }
-        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
+
+        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
+                holdingCostModel);
+
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
@@ -172,10 +175,10 @@ public class BarSeriesManager {
             }
         }
 
-        if (!tradingRecord.isClosed()) {
-            // If the last position is still opened, we search out of the run end index.
-            // May works if the end index for this run was inferior to the actual number of
-            // bars
+        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+            // If the last position is still open and there are still bars after the
+            // endIndex of the barSeries, then we execute the strategy on these bars
+            // to give an opportunity to close this position.
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...

@@ -47,7 +47,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.hundred = numOf(100);
+        this.hundred = hundred();
     }
 
     @Override
@@ -56,6 +56,11 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
         Num currentValue = getBarSeries().getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

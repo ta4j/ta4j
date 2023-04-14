@@ -231,13 +231,13 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return delegate.getBarSeries();
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override
-    public Num numOf(Number number) {
-        return delegate.numOf(number);
+    public BarSeries getBarSeries() {
+        return delegate.getBarSeries();
     }
 
     @Override

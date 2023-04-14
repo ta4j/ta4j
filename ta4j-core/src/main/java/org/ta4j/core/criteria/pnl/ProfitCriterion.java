@@ -21,36 +21,64 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria;
+package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of positions which are profitable.
+ * Profit criterion with trading costs (= Gross profit) or without ( = Net
+ * profit).
  *
- * Defined as <code># of winning positions / total # of positions</code>.
+ * <p>
+ * The profit of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
+public class ProfitCriterion extends AbstractAnalysisCriterion {
 
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final boolean excludeCosts;
+
+    /**
+     * Constructor for GrossProfit (includes trading costs)
+     */
+    public ProfitCriterion() {
+        this(false);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param excludeTradingCosts set to true to exclude trading costs
+     */
+    public ProfitCriterion(boolean excludeCosts) {
+        this.excludeCosts = excludeCosts;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return numberOfWinningPositionsCriterion.calculate(series, position);
+        if (position.isClosed()) {
+            Num profit = excludeCosts ? position.getProfit() : position.getGrossProfit();
+            return profit.isPositive() ? profit : series.zero();
+        }
+        return series.zero();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
-        return numberOfWinningPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
+        return tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(position -> calculate(series, position))
+                .reduce(series.zero(), Num::plus);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The higher the criterion value (= the higher the profit), the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
+
 }

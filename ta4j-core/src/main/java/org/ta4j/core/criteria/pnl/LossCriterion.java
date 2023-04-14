@@ -30,21 +30,39 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net loss criterion (excludes trading costs).
+ * Loss criterion with trading costs (= Gross loss) or without ( = Net loss).
  *
  * <p>
- * The net loss of the provided {@link Position position(s)} over the provided
+ * The loss of the provided {@link Position position(s)} over the provided
  * {@link BarSeries series}.
  */
-public class NetLossCriterion extends AbstractAnalysisCriterion {
+public class LossCriterion extends AbstractAnalysisCriterion {
+
+    private final boolean excludeCosts;
+
+    /**
+     * Constructor for GrossLoss (includes trading costs)
+     */
+    public LossCriterion() {
+        this(false);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param excludeCosts set to true to exclude trading costs
+     */
+    public LossCriterion(boolean excludeCosts) {
+        this.excludeCosts = excludeCosts;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num loss = position.getProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+            Num loss = excludeCosts ? position.getProfit() : position.getGrossProfit();
+            return loss.isNegative() ? loss : series.zero();
         }
-        return series.numOf(0);
+        return series.zero();
 
     }
 
@@ -54,10 +72,10 @@ public class NetLossCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The higher the criterion value (= the less the loss), the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

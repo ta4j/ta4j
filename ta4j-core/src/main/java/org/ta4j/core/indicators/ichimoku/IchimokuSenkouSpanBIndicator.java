@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     // ichimoku avg line indicator
-    IchimokuLineIndicator lineIndicator;
+    private final IchimokuLineIndicator lineIndicator;
 
     /**
      * Displacement on the chart (usually 26)
@@ -88,5 +88,10 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
         } else {
             return NaN.NaN;
         }
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

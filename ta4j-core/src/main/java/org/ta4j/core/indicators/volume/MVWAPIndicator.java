@@ -55,4 +55,9 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
         return sma.getValue(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
 }

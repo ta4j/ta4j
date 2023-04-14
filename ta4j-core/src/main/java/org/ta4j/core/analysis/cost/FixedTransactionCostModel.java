@@ -58,7 +58,7 @@ public class FixedTransactionCostModel implements CostModel {
      */
     public Num calculate(Position position, int currentIndex) {
         Num pricePerAsset = position.getEntry().getPricePerAsset();
-        Num multiplier = pricePerAsset.numOf(1);
+        Num multiplier = pricePerAsset.one();
         if (position.isClosed()) {
             multiplier = pricePerAsset.numOf(2);
         }

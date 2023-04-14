@@ -67,4 +67,9 @@ public class PercentBIndicator extends CachedIndicator<Num> {
         Num lowValue = bbl.getValue(index);
         return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

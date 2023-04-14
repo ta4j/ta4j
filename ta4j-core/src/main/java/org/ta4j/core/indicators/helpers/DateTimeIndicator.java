@@ -21,22 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
 import java.util.function.Function;
 
-import org.junit.Test;
-import org.ta4j.core.criteria.AbstractCriterionTest;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
-public class GrossProfitCriterionTest extends AbstractCriterionTest {
+/**
+ * DateTime indicator.
+ */
+public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
-    public GrossProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new GrossProfitCriterion(), numFunction);
+    private final Function<Bar, ZonedDateTime> action;
+
+    public DateTimeIndicator(BarSeries barSeries) {
+        this(barSeries, Bar::getBeginTime);
     }
 
-    @Test
-    public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
+        super(barSeries);
+        this.action = action;
+    }
+
+    @Override
+    protected ZonedDateTime calculate(int index) {
+        Bar bar = getBarSeries().getBar(index);
+        return this.action.apply(bar);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

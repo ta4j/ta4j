@@ -78,6 +78,11 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
                 && isWhiteSoldier(index - 1) && isWhiteSoldier(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * @param index the bar/candle index
      * @return true if the bar/candle has a very short upper shadow, false otherwise

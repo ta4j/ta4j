@@ -175,10 +175,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void leaveLastBarUncached() {
         BarSeries barSeries = new MockBarSeries(numFunction);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertNumEquals(5000, closePrice.getValue(barSeries.getEndIndex()));
+        SMAIndicator smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
+        assertNumEquals(4998.0, smaIndicator.getValue(barSeries.getEndIndex()));
         barSeries.getLastBar().addTrade(numOf(10), numOf(5));
-        assertNumEquals(5, closePrice.getValue(barSeries.getEndIndex()));
+
+        // (4996 + 4997 + 4998 + 4999 + 5) / 5
+        assertNumEquals(3999, smaIndicator.getValue(barSeries.getEndIndex()));
+
     }
 
 }

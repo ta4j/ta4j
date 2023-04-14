@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -45,39 +46,49 @@ public class BaseTradingRecord implements TradingRecord {
     private String name;
 
     /**
+     * The start of the recording (included)
+     */
+    private final Integer startIndex;
+
+    /**
+     * The end of the recording (included)
+     */
+    private final Integer endIndex;
+
+    /**
      * The recorded trades
      */
-    private List<Trade> trades = new ArrayList<>();
+    private final List<Trade> trades = new ArrayList<>();
 
     /**
      * The recorded BUY trades
      */
-    private List<Trade> buyTrades = new ArrayList<>();
+    private final List<Trade> buyTrades = new ArrayList<>();
 
     /**
      * The recorded SELL trades
      */
-    private List<Trade> sellTrades = new ArrayList<>();
+    private final List<Trade> sellTrades = new ArrayList<>();
 
     /**
      * The recorded entry trades
      */
-    private List<Trade> entryTrades = new ArrayList<>();
+    private final List<Trade> entryTrades = new ArrayList<>();
 
     /**
      * The recorded exit trades
      */
-    private List<Trade> exitTrades = new ArrayList<>();
+    private final List<Trade> exitTrades = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
      */
-    private TradeType startingType;
+    private final TradeType startingType;
 
     /**
      * The recorded positions
      */
-    private List<Position> positions = new ArrayList<>();
+    private final List<Position> positions = new ArrayList<>();
 
     /**
      * The current non-closed position (there's always one)
@@ -87,8 +98,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Trading cost models
      */
-    private CostModel transactionCostModel;
-    private CostModel holdingCostModel;
+    private final CostModel transactionCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -110,9 +121,9 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param name           the name of the trading record
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param name      the name of the trading record
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -122,8 +133,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -138,10 +149,27 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (entryTradeType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
+        this(entryTradeType, null, null, transactionCostModel, holdingCostModel);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryTradeType       the {@link TradeType trade type} of entries in
+     *                             the trading session
+     * @param startIndex           the start of the recording (included)
+     * @param endIndex             the end of the recording (included)
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @throws NullPointerException if entryTradeType is null
+     */
+    public BaseTradingRecord(TradeType entryTradeType, Integer startIndex, Integer endIndex,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        Objects.requireNonNull(entryTradeType, "Starting type must not be null");
+
         this.startingType = entryTradeType;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
@@ -263,16 +291,25 @@ public class BaseTradingRecord implements TradingRecord {
         return null;
     }
 
+    @Override
+    public Integer getStartIndex() {
+        return startIndex;
+    }
+
+    @Override
+    public Integer getEndIndex() {
+        return endIndex;
+    }
+
     /**
      * Records a trade and the corresponding position (if closed).
      *
      * @param trade   the trade to be recorded
      * @param isEntry true if the trade is an entry, false otherwise (exit)
+     * @throws NullPointerException if trade is null
      */
     private void recordTrade(Trade trade, boolean isEntry) {
-        if (trade == null) {
-            throw new IllegalArgumentException("Trade should not be null");
-        }
+        Objects.requireNonNull(trade, "Trade should not be null");
 
         // Storing the new trade in entries/exits lists
         if (isEntry) {
@@ -300,9 +337,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + (name == null ? "" : name));
-        sb.append(System.lineSeparator());
+        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
+                .append(name == null ? "" : name)
+                .append(System.lineSeparator());
         for (Trade trade : trades) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }

@@ -39,10 +39,15 @@ public class TRIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num ts = getBarSeries().getBar(index).getHighPrice().minus(getBarSeries().getBar(index).getLowPrice());
-        Num ys = index == 0 ? numOf(0)
+        Num ys = index == 0 ? zero()
                 : getBarSeries().getBar(index).getHighPrice().minus(getBarSeries().getBar(index - 1).getClosePrice());
-        Num yst = index == 0 ? numOf(0)
+        Num yst = index == 0 ? zero()
                 : getBarSeries().getBar(index - 1).getClosePrice().minus(getBarSeries().getBar(index).getLowPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

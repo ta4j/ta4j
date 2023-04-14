@@ -50,6 +50,11 @@ public class ATRIndicator extends AbstractIndicator<Num> {
         return averageTrueRangeIndicator.getValue(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return getBarCount();
+    }
+
     public TRIndicator getTRIndicator() {
         return trIndicator;
     }

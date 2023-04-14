@@ -21,44 +21,34 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria;
+package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Versus "buy and hold" criterion.
+ * Return (in percentage) criterion (includes trading costs).
  *
- * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a "buy and hold".
+ * <p>
+ * The return of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
-
-    private final AnalysisCriterion criterion;
-
-    /**
-     * Constructor.
-     * 
-     * @param criterion an analysis criterion to be compared
-     */
-    public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
-        this.criterion = criterion;
-    }
+public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
-        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
+        return calculateProfit(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
-        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
+        return tradingRecord.getPositions()
+                .stream()
+                .map(position -> calculateProfit(series, position))
+                .reduce(series.one(), Num::multipliedBy);
     }
 
     /** The higher the criterion value, the better. */
@@ -67,14 +57,17 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series) {
-        return createBuyAndHoldTradingRecord(series, series.getBeginIndex(), series.getEndIndex());
-    }
-
-    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        TradingRecord fakeRecord = new BaseTradingRecord();
-        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
-        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
-        return fakeRecord;
+    /**
+     * Calculates the gross return of a position (Buy and sell).
+     *
+     * @param series   a bar series
+     * @param position a position
+     * @return the gross return of the position
+     */
+    private Num calculateProfit(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            return position.getGrossReturn(series);
+        }
+        return series.one();
     }
 }

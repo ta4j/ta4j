@@ -59,14 +59,13 @@ class UnaryOperation implements Indicator<Num> {
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return operand.getBarSeries();
+    public int getUnstableBars() {
+        return 0;
     }
 
-    // make this a default method in the Indicator interface...
     @Override
-    public Num numOf(Number number) {
-        return operand.numOf(number);
+    public BarSeries getBarSeries() {
+        return operand.getBarSeries();
     }
 
 }
