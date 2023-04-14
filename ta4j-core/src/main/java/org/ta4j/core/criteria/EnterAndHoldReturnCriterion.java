@@ -30,7 +30,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Enter and hold criterion.
+ * Enter and hold criterion, returned in decimal format.
  *
  * Calculates the gross return (in percent) of an enter-and-hold strategy:
  * 
