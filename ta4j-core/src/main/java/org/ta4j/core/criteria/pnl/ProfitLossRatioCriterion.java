@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ratio gross profit and loss criterion = Average gross profit (includes
- * trading costs) / Average gross loss (includes trading costs), presented in
+ * trading costs) / Average gross loss (includes trading costs), returned in
  * decimal format.
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {

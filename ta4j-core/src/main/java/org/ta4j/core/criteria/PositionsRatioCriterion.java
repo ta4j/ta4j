@@ -30,8 +30,8 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of losing or winning positions, presented in
- * decimal format.
+ * Calculates the percentage of losing or winning positions, returned in decimal
+ * format.
  * 
  * <ul>
  * <li>For {@link #positionFilter} = {@link PositionFilter#PROFIT}:

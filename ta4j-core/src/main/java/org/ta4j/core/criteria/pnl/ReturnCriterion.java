@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Return (in percentage) criterion (includes trading costs), presented in
+ * Return (in percentage) criterion (includes trading costs), returned in
  * decimal format.
  *
  * <p>
