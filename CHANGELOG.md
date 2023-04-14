@@ -31,6 +31,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added **Donchian Channel indicators (Upper, Lower, and Middle)**
 - added `Indicator.getUnstableBars()`
 - added `TransformIndicator.pow()`
+- added javadoc improvements for percentage criteria
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
