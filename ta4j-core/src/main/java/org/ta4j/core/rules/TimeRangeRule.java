@@ -28,7 +28,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.DateTimeIndicator;
+import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
  * Time range rule.
