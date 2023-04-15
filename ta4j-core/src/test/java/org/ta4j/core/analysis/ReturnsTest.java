@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -125,15 +125,14 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         TradingRecord fullRecordDouble = new BaseTradingRecord();
         fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(),
-                doubleSeries.numOf(1));
-        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).getClosePrice(),
-                doubleSeries.numOf(1));
+                doubleSeries.one());
+        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).getClosePrice(), doubleSeries.one());
 
         TradingRecord fullRecordPrecision = new BaseTradingRecord();
         fullRecordPrecision.enter(precisionSeries.getBeginIndex(), precisionSeries.getBar(0).getClosePrice(),
-                precisionSeries.numOf(1));
+                precisionSeries.one());
         fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).getClosePrice(),
-                precisionSeries.numOf(1));
+                precisionSeries.one());
 
         // Return calculation DoubleNum vs PrecisionNum
         Num arithDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.ARITHMETIC).getValue(1);

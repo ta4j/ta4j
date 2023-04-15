@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 
 public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private int unstablePeriod;
+    private int unstableBars;
     private UnstableIndicator unstableIndicator;
 
     public UnstableIndicatorTest(Function<Number, Num> numFunction) {
@@ -47,21 +47,21 @@ public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Before
     public void setUp() {
-        unstablePeriod = 5;
+        unstableBars = 5;
         unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(new MockBarSeries(numFunction)),
-                unstablePeriod);
+                unstableBars);
     }
 
     @Test
-    public void indicatorReturnsNanBeforeUnstablePeriod() {
-        for (int i = 0; i < unstablePeriod; i++) {
+    public void indicatorReturnsNanBeforeUnstableBars() {
+        for (int i = 0; i < unstableBars; i++) {
             assertEquals(unstableIndicator.getValue(i), NaN.NaN);
         }
     }
 
     @Test
-    public void indicatorNotReturnsNanAfterUnstablePeriod() {
-        for (int i = unstablePeriod; i < 10; i++) {
+    public void indicatorNotReturnsNanAfterUnstableBars() {
+        for (int i = unstableBars; i < 10; i++) {
             assertNotEquals(unstableIndicator.getValue(i), NaN.NaN);
         }
     }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -156,7 +156,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
             @Override
             protected Num calculate(int index) {
                 if (index <= 0) {
-                    return numOf(0);
+                    return zero();
                 }
 
                 // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
@@ -169,13 +169,18 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
                 return term3.dividedBy(FisherIndicator.this.densityFactor);
             }
+
+            @Override
+            public int getUnstableBars() {
+                return 0;
+            }
         };
     }
 
     @Override
     protected Num calculate(int index) {
         if (index <= 0) {
-            return numOf(0);
+            return zero();
         }
 
         Num value = intermediateValue.getValue(index);
@@ -190,6 +195,11 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
         Num term2 = getValue(index - 1);
         return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -116,7 +116,7 @@ public class Trade implements Serializable {
      * @param type   the trade type
      */
     protected Trade(int index, BarSeries series, TradeType type) {
-        this(index, series, type, series.numOf(1));
+        this(index, series, type, series.one());
     }
 
     /**
@@ -155,7 +155,7 @@ public class Trade implements Serializable {
      * @param pricePerAsset the trade price per asset
      */
     protected Trade(int index, TradeType type, Num pricePerAsset) {
-        this(index, type, pricePerAsset, pricePerAsset.numOf(1));
+        this(index, type, pricePerAsset, pricePerAsset.one());
     }
 
     /**

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,7 +49,7 @@ public class CashFlow implements Indicator<Num> {
     /**
      * The (accrued) cash flow sequence (without trading costs).
      */
-    private List<Num> values;
+    private final List<Num> values;
 
     /**
      * Constructor for cash flows of a closed position.
@@ -85,7 +85,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(numOf(1)));
+        values = new ArrayList<>(Collections.singletonList(one()));
 
         calculate(tradingRecord, finalIndex);
         fillToTheEnd(finalIndex);
@@ -98,6 +98,11 @@ public class CashFlow implements Indicator<Num> {
     @Override
     public Num getValue(int index) {
         return values.get(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override

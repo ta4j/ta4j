@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,7 +35,7 @@ import java.util.function.Function;
  */
 public class DoubleNum implements Num {
 
-    private static final DoubleNum ZERO = DoubleNum.valueOf(0);
+    public static final DoubleNum ZERO = DoubleNum.valueOf(0);
     private static final DoubleNum ONE = DoubleNum.valueOf(1);
     private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
 
@@ -213,7 +213,7 @@ public class DoubleNum implements Num {
      * Checks if this value is greater than another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     public boolean isGreaterThan(Num other) {
         return !other.isNaN() && compareTo(other) > 0;
@@ -223,7 +223,7 @@ public class DoubleNum implements Num {
      * Checks if this value is greater than or equal to another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
+     * @return true if this is greater than or equal to the specified value, false
      *         otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
@@ -234,7 +234,7 @@ public class DoubleNum implements Num {
      * Checks if this value is less than another.
      *
      * @param other the other value, not null
-     * @return true is this is less than the specified value, false otherwise
+     * @return true if this is less than the specified value, false otherwise
      */
     public boolean isLessThan(Num other) {
         return !other.isNaN() && compareTo(other) < 0;

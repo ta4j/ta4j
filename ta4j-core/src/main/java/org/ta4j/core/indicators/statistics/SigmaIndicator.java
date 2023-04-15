@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,11 +35,11 @@ import org.ta4j.core.num.Num;
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> ref;
-    private int barCount;
+    private final Indicator<Num> ref;
+    private final int barCount;
 
-    private SMAIndicator mean;
-    private StandardDeviationIndicator sd;
+    private final SMAIndicator mean;
+    private final StandardDeviationIndicator sd;
 
     /**
      * Constructor.
@@ -59,6 +59,11 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         // z-score = (ref - mean) / sd
         return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

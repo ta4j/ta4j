@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,17 +36,17 @@ import org.ta4j.core.num.Num;
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
-    private final GrossProfitCriterion grossProfitCriterion = new GrossProfitCriterion();
+    private final ProfitCriterion grossProfitCriterion = new ProfitCriterion(false);
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
         if (numberOfWinningPositions.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num grossProfit = grossProfitCriterion.calculate(series, position);
         if (grossProfit.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         return grossProfit.dividedBy(numberOfWinningPositions);
     }
@@ -55,11 +55,11 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfWinningPositions.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
         if (grossProfit.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         return grossProfit.dividedBy(numberOfWinningPositions);
     }

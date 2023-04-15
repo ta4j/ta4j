@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -81,5 +81,10 @@ public class ChopIndicator extends CachedIndicator<Num> {
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
         return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return timeFrame;
     }
 }

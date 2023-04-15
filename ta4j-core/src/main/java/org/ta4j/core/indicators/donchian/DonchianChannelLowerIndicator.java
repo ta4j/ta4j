@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,36 +21,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria;
+package org.ta4j.core.indicators.donchian;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
-/**
- * Calculates the percentage of positions which are profitable.
- *
- * Defined as <code># of winning positions / total # of positions</code>.
+/***
+ * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
-public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
+public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final LowestValueIndicator lowestPrice;
+    private final LowPriceIndicator lowPrice;
+    private final int barCount;
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return numberOfWinningPositionsCriterion.calculate(series, position);
+    public DonchianChannelLowerIndicator(BarSeries series, int barCount) {
+        super(series);
+
+        this.barCount = barCount;
+        this.lowPrice = new LowPriceIndicator(series);
+        this.lowestPrice = new LowestValueIndicator(this.lowPrice, barCount);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
-        return numberOfWinningPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
+    protected Num calculate(int index) {
+        return this.lowestPrice.getValue(index);
     }
 
-    /** The higher the criterion value, the better. */
     @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    public int getUnstableBars() {
+        return barCount;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 }

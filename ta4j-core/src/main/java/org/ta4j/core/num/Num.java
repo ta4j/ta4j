@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -327,14 +327,29 @@ public interface Num extends Comparable<Num> {
         return getDelegate().doubleValue();
     }
 
+    /**
+     * Converts this {@code num} to an {@code integer}.
+     * 
+     * @return this {@code num} converted to an {@code integer}
+     */
     default int intValue() {
         return getDelegate().intValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code long}.
+     * 
+     * @return this {@code num} converted to a {@code loong}
+     */
     default long longValue() {
         return getDelegate().longValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code float}.
+     * 
+     * @return this {@code num} converted to a {@code float}
+     */
     default float floatValue() {
         return getDelegate().floatValue();
     }

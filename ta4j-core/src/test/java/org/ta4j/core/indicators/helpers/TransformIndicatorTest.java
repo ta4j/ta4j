@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,6 +45,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     private TransformIndicator transMin;
 
     private TransformIndicator transAbs;
+    private TransformIndicator transPow;
     private TransformIndicator transSqrt;
     private TransformIndicator transLog;
 
@@ -65,6 +66,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         transMin = TransformIndicator.min(constantIndicator, 10);
 
         transAbs = TransformIndicator.abs(new ConstantIndicator<Num>(series, numOf(-4)));
+        transPow = TransformIndicator.pow(constantIndicator, 2);
         transSqrt = TransformIndicator.sqrt(constantIndicator);
         transLog = TransformIndicator.log(constantIndicator);
     }
@@ -79,6 +81,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         assertNumEquals(4, transMin.getValue(0));
 
         assertNumEquals(4, transAbs.getValue(0));
+        assertNumEquals(16, transPow.getValue(0));
         assertNumEquals(2, transSqrt.getValue(0));
         assertNumEquals(1.3862943611198906, transLog.getValue(0));
     }

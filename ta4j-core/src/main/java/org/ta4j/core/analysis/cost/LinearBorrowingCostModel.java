@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,7 +33,7 @@ public class LinearBorrowingCostModel implements CostModel {
     /**
      * Slope of the linear model - fee per period
      */
-    private double feePerPeriod;
+    private final double feePerPeriod;
 
     /**
      * Constructor. (feePerPeriod * nPeriod)
@@ -46,7 +46,7 @@ public class LinearBorrowingCostModel implements CostModel {
 
     public Num calculate(Num price, Num amount) {
         // borrowing costs depend on borrowed period
-        return price.numOf(0);
+        return price.zero();
     }
 
     /**
@@ -73,7 +73,7 @@ public class LinearBorrowingCostModel implements CostModel {
     public Num calculate(Position position, int currentIndex) {
         Trade entryTrade = position.getEntry();
         Trade exitTrade = position.getExit();
-        Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
+        Num borrowingCost = position.getEntry().getNetPrice().zero();
 
         // borrowing costs apply for short positions only
         if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -39,10 +39,15 @@ public class TRIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num ts = getBarSeries().getBar(index).getHighPrice().minus(getBarSeries().getBar(index).getLowPrice());
-        Num ys = index == 0 ? numOf(0)
+        Num ys = index == 0 ? zero()
                 : getBarSeries().getBar(index).getHighPrice().minus(getBarSeries().getBar(index - 1).getClosePrice());
-        Num yst = index == 0 ? numOf(0)
+        Num yst = index == 0 ? zero()
                 : getBarSeries().getBar(index - 1).getClosePrice().minus(getBarSeries().getBar(index).getLowPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

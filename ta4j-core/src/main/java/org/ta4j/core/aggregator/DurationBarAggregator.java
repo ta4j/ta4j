@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -89,7 +89,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().numOf(0);
+        final Num zero = firstBar.getOpenPrice().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();

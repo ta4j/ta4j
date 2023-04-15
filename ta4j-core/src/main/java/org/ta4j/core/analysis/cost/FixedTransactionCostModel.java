@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -58,7 +58,7 @@ public class FixedTransactionCostModel implements CostModel {
      */
     public Num calculate(Position position, int currentIndex) {
         Num pricePerAsset = position.getEntry().getPricePerAsset();
-        Num multiplier = pricePerAsset.numOf(1);
+        Num multiplier = pricePerAsset.one();
         if (position.isClosed()) {
             multiplier = pricePerAsset.numOf(2);
         }

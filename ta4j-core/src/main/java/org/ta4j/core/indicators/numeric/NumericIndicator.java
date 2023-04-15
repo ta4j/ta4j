@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -231,13 +231,13 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return delegate.getBarSeries();
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override
-    public Num numOf(Number number) {
-        return delegate.numOf(number);
+    public BarSeries getBarSeries() {
+        return delegate.getBarSeries();
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * %B indicator.
  * 
- * @see <a
- *      href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce</a>
  */
 public class PercentBIndicator extends CachedIndicator<Num> {
@@ -66,5 +66,10 @@ public class PercentBIndicator extends CachedIndicator<Num> {
         Num upValue = bbu.getValue(index);
         Num lowValue = bbl.getValue(index);
         return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

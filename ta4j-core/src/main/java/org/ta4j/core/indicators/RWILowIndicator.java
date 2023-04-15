@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -55,12 +55,17 @@ public class RWILowIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num minRWIL = numOf(0);
+        Num minRWIL = zero();
         for (int n = 2; n <= barCount; n++) {
             minRWIL = minRWIL.max(calcRWIHFor(index, n));
         }
 
         return minRWIL;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     private Num calcRWIHFor(final int index, final int n) {

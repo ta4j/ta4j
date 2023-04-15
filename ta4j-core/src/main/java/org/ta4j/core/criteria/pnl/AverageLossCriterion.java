@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,17 +36,17 @@ import org.ta4j.core.num.Num;
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
     private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
-    private final GrossLossCriterion grossLossCriterion = new GrossLossCriterion();
+    private final LossCriterion grossLossCriterion = new LossCriterion(false);
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
         if (numberOfLosingPositions.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num grossLoss = grossLossCriterion.calculate(series, position);
         if (grossLoss.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         return grossLoss.dividedBy(numberOfLosingPositions);
     }
@@ -55,11 +55,11 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfLosingPositions.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
         if (grossLoss.isZero()) {
-            return series.numOf(0);
+            return series.zero();
         }
         return grossLoss.dividedBy(numberOfLosingPositions);
     }

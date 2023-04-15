@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -56,7 +56,7 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         Num criterionValue = criterion.calculate(series, position);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
 
-        Num variance = series.numOf(0);
+        Num variance = series.zero();
         Num average = criterionValue.dividedBy(numberOfPositions);
         Num pow = criterion.calculate(series, position).minus(average).pow(2);
         variance = variance.plus(pow);
@@ -67,12 +67,12 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num criterionValue = criterion.calculate(series, tradingRecord);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
 
-        Num variance = series.numOf(0);
+        Num variance = series.zero();
         Num average = criterionValue.dividedBy(numberOfPositions);
 
         for (Position position : tradingRecord.getPositions()) {

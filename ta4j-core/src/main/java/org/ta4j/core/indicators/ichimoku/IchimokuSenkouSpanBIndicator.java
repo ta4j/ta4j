@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     // ichimoku avg line indicator
-    IchimokuLineIndicator lineIndicator;
+    private final IchimokuLineIndicator lineIndicator;
 
     /**
      * Displacement on the chart (usually 26)
@@ -88,5 +88,10 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
         } else {
             return NaN.NaN;
         }
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

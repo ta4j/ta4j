@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -135,7 +135,7 @@ public class LinearTransactionCostModelTest {
     public void testBacktesting() {
         BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test").build();
         ZonedDateTime now = ZonedDateTime.now();
-        Num one = series.numOf(1);
+        Num one = series.one();
         Num two = series.numOf(2);
         Num three = series.numOf(3);
         Num four = series.numOf(4);

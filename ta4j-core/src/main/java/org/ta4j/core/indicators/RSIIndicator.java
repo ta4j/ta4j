@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -51,13 +51,18 @@ public class RSIIndicator extends CachedIndicator<Num> {
         Num averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
             if (averageGain.isZero()) {
-                return numOf(0);
+                return zero();
             } else {
-                return numOf(100);
+                return hundred();
             }
         }
         Num relativeStrength = averageGain.dividedBy(averageLoss);
         // compute relative strength index
-        return numOf(100).minus(numOf(100).dividedBy(numOf(1).plus(relativeStrength)));
+        return hundred().minus(hundred().dividedBy(one().plus(relativeStrength)));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

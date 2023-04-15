@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -76,6 +76,11 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         whiteCandleIndex = index - 3;
         return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
                 && isBlackCrow(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     /**

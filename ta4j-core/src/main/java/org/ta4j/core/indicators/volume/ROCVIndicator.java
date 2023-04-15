@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -47,7 +47,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.hundred = numOf(100);
+        this.hundred = hundred();
     }
 
     @Override
@@ -56,6 +56,11 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
         Num currentValue = getBarSeries().getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

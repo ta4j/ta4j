@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -51,6 +51,53 @@ public interface BarSeries extends Serializable {
      * @return the name of the series
      */
     String getName();
+
+    /**
+     * @return any instance of Num to determine its Num type and function.
+     */
+    Num num();
+
+    /**
+     * Returns the underlying function to transform a Number into the Num
+     * implementation used by this bar series
+     *
+     * @return a function Number -> Num
+     */
+    default Function<Number, Num> function() {
+        return num().function();
+    }
+
+    /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return num().zero();
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return num().one();
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return num().hundred();
+    }
+
+    /**
+     * Transforms a {@link Number} into the {@link Num implementation} used by this
+     * bar series
+     *
+     * @param number a {@link Number} implementing object.
+     * @return the corresponding value as a Num implementing object
+     */
+    default Num numOf(Number number) {
+        return num().function().apply(number);
+    }
 
     /**
      * @param i an index
@@ -187,8 +234,7 @@ public interface BarSeries extends Serializable {
     void addBar(Duration timePeriod, ZonedDateTime endTime);
 
     default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice) {
-        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(0),
-                numOf(0));
+        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), zero(), zero());
     }
 
     default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
@@ -205,7 +251,7 @@ public interface BarSeries extends Serializable {
     default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
             Number closePrice, Number volume) {
         this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), numOf(0));
+                numOf(volume), zero());
     }
 
     default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
@@ -216,14 +262,14 @@ public interface BarSeries extends Serializable {
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice) {
         this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(0), numOf(0));
+                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), zero(), zero());
     }
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
             String volume) {
         this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
                 numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                numOf(0));
+                zero());
     }
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
@@ -234,7 +280,7 @@ public interface BarSeries extends Serializable {
     }
 
     default void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0));
+        this.addBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero());
     }
 
     /**
@@ -340,20 +386,4 @@ public interface BarSeries extends Serializable {
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
 
-    /**
-     * Transforms a {@link Number} into the {@link Num implementation} used by this
-     * bar series
-     *
-     * @param number a {@link Number} implementing object.
-     * @return the corresponding value as a Num implementing object
-     */
-    Num numOf(Number number);
-
-    /**
-     * Returns the underlying function to transform a Number into the Num
-     * implementation used by this bar series
-     *
-     * @return a function Number -> Num
-     */
-    Function<Number, Num> function();
 }

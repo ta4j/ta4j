@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,12 +42,17 @@ public class GainIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(0);
+            return zero();
         }
         if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
             return indicator.getValue(index).minus(indicator.getValue(index - 1));
         } else {
-            return numOf(0);
+            return zero();
         }
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,30 +30,26 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross profit criterion (includes trading costs).
+ * Return (in percentage) criterion (includes trading costs), returned in
+ * decimal format.
  *
  * <p>
- * The gross profit of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * The return of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class GrossProfitCriterion extends AbstractAnalysisCriterion {
+public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num profit = position.getGrossProfit();
-            return profit.isPositive() ? profit : series.numOf(0);
-        }
-        return series.numOf(0);
+        return calculateProfit(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .map(position -> calculateProfit(series, position))
+                .reduce(series.one(), Num::multipliedBy);
     }
 
     /** The higher the criterion value, the better. */
@@ -62,4 +58,17 @@ public class GrossProfitCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
+    /**
+     * Calculates the gross return of a position (Buy and sell).
+     *
+     * @param series   a bar series
+     * @param position a position
+     * @return the gross return of the position
+     */
+    private Num calculateProfit(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            return position.getGrossReturn(series);
+        }
+        return series.one();
+    }
 }

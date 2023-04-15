@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -59,7 +59,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num covariance = numOf(0);
+        Num covariance = zero();
         Num average1 = sma1.getValue(index);
         Num average2 = sma2.getValue(index);
         for (int i = startIndex; i <= index; i++) {
@@ -68,6 +68,11 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         }
         covariance = covariance.dividedBy(numOf(numberOfObservations));
         return covariance;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

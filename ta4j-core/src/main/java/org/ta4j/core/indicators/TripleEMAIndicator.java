@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -64,6 +64,11 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         // trix = 3 * ( ema - emaEma ) + emaEmaEma
         return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

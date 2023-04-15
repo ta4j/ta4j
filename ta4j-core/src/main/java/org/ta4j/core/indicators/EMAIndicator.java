@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,5 +42,10 @@ public class EMAIndicator extends AbstractEMAIndicator {
      */
     public EMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator, barCount, (2.0 / (barCount + 1)));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return getBarCount();
     }
 }

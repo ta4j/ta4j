@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,39 +26,39 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the average return per bar criterion.
+ * Calculates the average return per bar criterion, returned in decimal format.
  *
  * <p>
- * The {@link GrossReturnCriterion gross return} raised to the power of 1
- * divided by {@link NumberOfBarsCriterion number of bars}.
+ * The {@link ReturnCriterion gross return} raised to the power of 1 divided by
+ * {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private final GrossReturnCriterion grossReturn = new GrossReturnCriterion();
+    private final ReturnCriterion grossReturn = new ReturnCriterion();
     private final NumberOfBarsCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num bars = numberOfBars.calculate(series, position);
-        if (bars.isEqual(series.numOf(0))) {
-            return series.numOf(1);
+        if (bars.isEqual(series.zero())) {
+            return series.one();
         }
 
-        return grossReturn.calculate(series, position).pow(series.numOf(1).dividedBy(bars));
+        return grossReturn.calculate(series, position).pow(series.one().dividedBy(bars));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num bars = numberOfBars.calculate(series, tradingRecord);
-        if (bars.isEqual(series.numOf(0))) {
-            return series.numOf(1);
+        if (bars.isEqual(series.zero())) {
+            return series.one();
         }
 
-        return grossReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
+        return grossReturn.calculate(series, tradingRecord).pow(series.one().dividedBy(bars));
     }
 
     /** The higher the criterion value, the better. */

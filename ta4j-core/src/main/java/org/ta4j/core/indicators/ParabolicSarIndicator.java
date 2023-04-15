@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,15 +25,15 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Parabolic SAR indicator.
@@ -99,7 +99,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index == getBarSeries().getBeginIndex()) {
             lastExtreme.put(0, getBarSeries().getBar(index).getClosePrice());
-            lastAf.put(0, sar.numOf(0));
+            lastAf.put(0, zero());
             isUpTrendMap.put(0, false);
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
@@ -179,6 +179,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         }
         isUpTrendMap.put(index, is_up_trend);
         return sar;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     /**

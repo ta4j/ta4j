@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,7 +30,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Enter and hold criterion.
+ * Enter and hold criterion, returned in decimal format.
  *
  * Calculates the gross return (in percent) of an enter-and-hold strategy:
  * 
@@ -89,8 +89,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
         Position position = new Position(this.tradeType);
-        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
-        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
+        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.one());
+        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.one());
         return position;
     }
 }

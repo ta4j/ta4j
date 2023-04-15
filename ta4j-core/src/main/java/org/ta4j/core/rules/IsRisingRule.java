@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -40,7 +40,7 @@ public class IsRisingRule extends AbstractRule {
     /** The barCount */
     private final int barCount;
     /** The minimum required strenght of the rising */
-    private double minStrenght;
+    private final double minStrength;
 
     /**
      * Constructor for strict rising.
@@ -63,16 +63,12 @@ public class IsRisingRule extends AbstractRule {
     public IsRisingRule(Indicator<Num> ref, int barCount, double minStrenght) {
         this.ref = ref;
         this.barCount = barCount;
-        this.minStrenght = minStrenght;
+        this.minStrength = minStrenght >= 1 ? 0.99 : minStrenght;
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (minStrenght >= 1) {
-            minStrenght = 0.99;
-        }
-
         int count = 0;
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
@@ -82,7 +78,7 @@ public class IsRisingRule extends AbstractRule {
 
         double ratio = count / (double) barCount;
 
-        final boolean satisfied = ratio >= minStrenght;
+        final boolean satisfied = ratio >= minStrength;
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

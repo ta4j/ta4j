@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,7 +31,8 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ratio gross profit and loss criterion = Average gross profit (includes
- * trading costs) / Average gross loss (includes trading costs).
+ * trading costs) / Average gross loss (includes trading costs), returned in
+ * decimal format.
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
@@ -43,12 +44,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, position);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
-            return series.numOf(0);
+            return series.zero();
         }
         Num averageLoss = averageLossCriterion.calculate(series, position);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
-            return series.numOf(1);
+            return series.one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
     }
@@ -58,12 +59,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
-            return series.numOf(0);
+            return series.zero();
         }
         Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
-            return series.numOf(1);
+            return series.one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
     }

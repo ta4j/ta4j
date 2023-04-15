@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -60,7 +60,12 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num zlemaPrev = getValue(index - 1);
         return k.multipliedBy(numOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
-                .plus(numOf(1).minus(k).multipliedBy(zlemaPrev));
+                .plus(one().minus(k).multipliedBy(zlemaPrev));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

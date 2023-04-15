@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -73,7 +73,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        one = numOf(1);
+        one = one();
     }
 
     /**
@@ -131,6 +131,10 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         }
 
         return timeframedReturn;
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 }

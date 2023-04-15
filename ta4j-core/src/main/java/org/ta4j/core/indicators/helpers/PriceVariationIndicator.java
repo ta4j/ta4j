@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,5 +41,10 @@ public class PriceVariationIndicator extends CachedIndicator<Num> {
         Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
         Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
         return currentBarClosePrice.dividedBy(previousBarClosePrice);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

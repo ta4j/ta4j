@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -83,7 +83,7 @@ public class KSTIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num RCMA1Multiplier = numOf(1);
+        Num RCMA1Multiplier = one();
         Num RCMA2Multiplier = numOf(2);
         Num RCMA3Multiplier = numOf(3);
         Num RCMA4Multiplier = numOf(4);
@@ -92,5 +92,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
                 .plus(RCMA2.getValue(index).multipliedBy(RCMA2Multiplier))
                 .plus(RCMA3.getValue(index).multipliedBy(RCMA3Multiplier))
                 .plus(RCMA4.getValue(index).multipliedBy(RCMA4Multiplier)));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

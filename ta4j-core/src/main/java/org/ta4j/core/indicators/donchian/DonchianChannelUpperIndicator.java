@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,22 +21,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.indicators.donchian;
 
-import java.util.function.Function;
-
-import org.junit.Test;
-import org.ta4j.core.criteria.AbstractCriterionTest;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
-public class GrossProfitCriterionTest extends AbstractCriterionTest {
+/**
+ * * https://www.investopedia.com/terms/d/donchianchannels.asp
+ */
+public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
 
-    public GrossProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new GrossProfitCriterion(), numFunction);
+    private final HighestValueIndicator highestPrice;
+    private final HighPriceIndicator highPrice;
+    private final int barCount;
+
+    public DonchianChannelUpperIndicator(BarSeries series, int barCount) {
+        super(series);
+
+        this.barCount = barCount;
+        this.highPrice = new HighPriceIndicator(series);
+        this.highestPrice = new HighestValueIndicator(this.highPrice, barCount);
     }
 
-    @Test
-    public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    @Override
+    protected Num calculate(int index) {
+        return this.highestPrice.getValue(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -232,7 +232,7 @@ public class Position implements Serializable {
      */
     public Num getProfit() {
         if (isOpened()) {
-            return numOf(0);
+            return zero();
         } else {
             return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
         }
@@ -261,7 +261,7 @@ public class Position implements Serializable {
      */
     public Num getGrossProfit() {
         if (isOpened()) {
-            return numOf(0);
+            return zero();
         } else {
             return getGrossProfit(exit.getPricePerAsset());
         }
@@ -296,7 +296,7 @@ public class Position implements Serializable {
      */
     public Num getGrossReturn() {
         if (isOpened()) {
-            return numOf(0);
+            return zero();
         } else {
             return getGrossReturn(exit.getPricePerAsset());
         }
@@ -406,11 +406,10 @@ public class Position implements Serializable {
     }
 
     /**
-     * @param num the Number to be converted to a Num
-     * @return the Num of num
+     * @return the Num of 0
      */
-    private Num numOf(Number num) {
-        return entry.getNetPrice().numOf(num);
+    private Num zero() {
+        return entry.getNetPrice().zero();
     }
 
     @Override

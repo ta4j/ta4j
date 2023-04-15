@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -53,6 +53,11 @@ public class RAVIIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num shortMA = shortSma.getValue(index);
         Num longMA = longSma.getValue(index);
-        return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(numOf(100));
+        return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(hundred());
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

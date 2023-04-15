@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -81,6 +81,11 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {

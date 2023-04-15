@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -40,7 +40,7 @@ public class OpenedPositionUtils {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         Position trade = new Position(Trade.TradeType.BUY);
-        trade.operate(0, series.numOf(2.5), series.numOf(1));
+        trade.operate(0, series.numOf(2.5), series.one());
 
         final Num value = criterion.calculate(series, trade);
 

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net profit and loss in percentage criterion (relative PnL, excludes trading
- * costs).
+ * costs), returned in decimal format.
  * 
  * <p>
  * Defined as the position profit over the purchase price. The profit or loss in
@@ -44,10 +44,10 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
+            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
             return pnl;
         }
-        return series.numOf(0);
+        return series.zero();
     }
 
     @Override
@@ -56,7 +56,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */

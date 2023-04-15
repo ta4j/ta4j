@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,17 +27,18 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion gross
- * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
+ * Reward risk ratio criterion, defined as the {@link ReturnCriterion gross
+ * return} over the {@link MaximumDrawdownCriterion maximum drawdown}, returned
+ * in decimal format.
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion grossReturnCriterion = new GrossReturnCriterion();
+    private final AnalysisCriterion grossReturnCriterion = new ReturnCriterion();
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override

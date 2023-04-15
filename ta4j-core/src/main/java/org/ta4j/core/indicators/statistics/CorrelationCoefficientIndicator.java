@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -61,6 +61,10 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
         Num var2 = variance2.getValue(index);
         Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(multipliedSqrt);
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

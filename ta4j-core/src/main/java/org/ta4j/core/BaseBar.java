@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,11 +41,11 @@ public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
     /** Time period (e.g. 1 day, 15 min, etc.) of the bar */
-    private Duration timePeriod;
+    private final Duration timePeriod;
     /** End time of the bar */
-    private ZonedDateTime endTime;
+    private final ZonedDateTime endTime;
     /** Begin time of the bar */
-    private ZonedDateTime beginTime;
+    private final ZonedDateTime beginTime;
     /** Open price of the period */
     private Num openPrice = null;
     /** Close price of the period */
@@ -238,7 +238,7 @@ public class BaseBar implements Bar {
         this(timePeriod, endTime, numFunction.apply(new BigDecimal(openPrice)),
                 numFunction.apply(new BigDecimal(highPrice)), numFunction.apply(new BigDecimal(lowPrice)),
                 numFunction.apply(new BigDecimal(closePrice)), numFunction.apply(new BigDecimal(volume)),
-                numFunction.apply(new BigDecimal(amount)), Integer.valueOf(trades));
+                numFunction.apply(new BigDecimal(amount)), Integer.parseInt(trades));
     }
 
     /**
@@ -296,8 +296,26 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * Returns BaseBarBuilder
+     * Returns BaseBarBuilder.
      * 
+     * @param <T>   the type of the clazz
+     * @param num   any instance of Num to determine its Num function; with this, we
+     *              can convert a {@link Number} to a {@link Num Num implementation}
+     * @param clazz any type convertable to Num
+     * @return builder of class BaseBarBuilder
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> ConvertibleBaseBarBuilder<T> builder(Num num, Class<T> clazz) {
+        return new ConvertibleBaseBarBuilder<>((Function<T, Num>) num.function());
+    }
+
+    /**
+     * Returns BaseBarBuilder.
+     * 
+     * @param <T>   the type of the clazz
+     * @param num   any Num function; with this, we can convert a {@link Number} to
+     *              a {@link Num Num implementation}
+     * @param clazz any type convertable to Num
      * @return builder of class BaseBarBuilder
      */
     public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {

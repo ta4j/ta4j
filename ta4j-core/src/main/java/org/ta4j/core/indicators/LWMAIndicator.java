@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -37,7 +37,7 @@ public class LWMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num zero = numOf(0);
+    private final Num zero = zero();
 
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -62,6 +62,11 @@ public class LWMAIndicator extends CachedIndicator<Num> {
             sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
         }
         return sum.dividedBy(denominator);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     @Override

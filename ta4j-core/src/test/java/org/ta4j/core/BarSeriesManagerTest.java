@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -71,7 +71,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         manager = new BarSeriesManager(seriesForRun);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
-        strategy.setUnstablePeriod(2); // Strategy would need a real test class
+        strategy.setUnstableBars(2); // Strategy would need a real test class
     }
 
     @Test

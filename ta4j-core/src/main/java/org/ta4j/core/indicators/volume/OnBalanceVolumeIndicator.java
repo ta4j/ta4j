@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,7 +42,7 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(0);
+            return zero();
         }
         final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
         final Num currentClose = getBarSeries().getBar(index).getClosePrice();
@@ -55,5 +55,10 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
         } else {
             return obvPrev;
         }
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

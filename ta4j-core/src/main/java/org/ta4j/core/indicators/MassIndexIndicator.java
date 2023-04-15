@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -62,11 +62,16 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
-        Num massIndex = numOf(0);
+        Num massIndex = zero();
         for (int i = startIndex; i <= index; i++) {
             Num emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));
             massIndex = massIndex.plus(emaRatio);
         }
         return massIndex;
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

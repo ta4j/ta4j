@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,10 +38,10 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NetLossCriterionTest extends AbstractCriterionTest {
+public class ProfitCriterionTest extends AbstractCriterionTest {
 
-    public NetLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetLossCriterion(), numFunction);
+    public ProfitCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new ProfitCriterion((boolean) params[0]), numFunction);
     }
 
     @Test
@@ -50,18 +50,18 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(0, loss.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion(false);
+        assertNumEquals(15, profit.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateOnlyWithLossPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+    public void calculateOnlyWithProfitPositions2() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion(false);
+        assertNumEquals(25, profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -70,19 +70,19 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion(false);
+        assertNumEquals(0, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        AnalysisCriterion criterion = getCriterion(false);
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(false), 0);
     }
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -47,10 +47,15 @@ public class DXIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num pdiValue = plusDIIndicator.getValue(index);
         Num mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
-            return numOf(0);
+        if (pdiValue.plus(mdiValue).equals(zero())) {
+            return zero();
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(hundred());
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,7 @@
  */
 package ta4jexamples.analysis;
 
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
@@ -35,8 +36,8 @@ import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
-import org.ta4j.core.criteria.WinningPositionsRatioCriterion;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.PositionsRatioCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
@@ -62,7 +63,7 @@ public class StrategyAnalysis {
          */
 
         // Total profit
-        GrossReturnCriterion totalReturn = new GrossReturnCriterion();
+        ReturnCriterion totalReturn = new ReturnCriterion();
         System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
@@ -72,8 +73,8 @@ public class StrategyAnalysis {
         // Number of positions
         System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
-        System.out.println(
-                "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
+        System.out.println("Winning positions ratio: "
+                + new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio

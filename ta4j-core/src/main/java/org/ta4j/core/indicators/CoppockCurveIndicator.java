@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -68,5 +68,10 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         return wma.getValue(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

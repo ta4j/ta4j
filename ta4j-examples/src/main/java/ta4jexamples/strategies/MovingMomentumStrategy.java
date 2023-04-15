@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.StochasticOscillatorKIndicator;
@@ -100,7 +100,6 @@ public class MovingMomentumStrategy {
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println(
-                "Total profit for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+        System.out.println("Total profit for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
     }
 }

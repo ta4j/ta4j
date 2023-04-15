@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,7 +33,7 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 
 /**
- * Value at Risk criterion.
+ * Value at Risk criterion, returned in decimal format.
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>

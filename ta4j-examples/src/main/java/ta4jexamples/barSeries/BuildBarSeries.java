@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,7 +49,7 @@ public class BuildBarSeries {
     public static void main(String[] args) {
         BarSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-        BaseBarSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        BaseBarSeriesBuilder.setDefaultNum(DoubleNum::valueOf);
         a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         BarSeries b = buildWithDouble();
@@ -60,7 +60,7 @@ public class BuildBarSeries {
         BarSeries g = buildAndAddBarsFromList();
         // Fix: Reset default function, such that this test case does not influence the
         // following test cases in a combined test run
-        BaseBarSeriesBuilder.setDefaultFunction(DecimalNum::valueOf);
+        BaseBarSeriesBuilder.setDefaultNum(DecimalNum::valueOf);
     }
 
     private static BarSeries buildAndAddData() {
@@ -114,7 +114,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyDoubleNum() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum.ZERO); // uses DoubleNum
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
         series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
@@ -125,7 +125,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyAndAddBarManually() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum.ZERO); // uses DoubleNum
 
         // create bars and add them to the series. The bars must have the same Num type
         // as the series
