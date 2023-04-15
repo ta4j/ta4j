@@ -70,6 +70,11 @@ public interface Bar extends Serializable {
     long getTrades();
 
     /**
+     * @return the spread size
+     */
+    Num getSpread();
+
+    /**
      * @return the whole traded amount of the period
      */
     Num getAmount();
@@ -171,4 +176,6 @@ public interface Bar extends Serializable {
     }
 
     void addPrice(Num price);
+
+    void addPrice(Num price, Num spread);
 }

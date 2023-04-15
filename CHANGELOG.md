@@ -20,6 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
+- **Extends Bar with spread**
 
 ### Removed/Deprecated
 

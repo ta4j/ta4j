@@ -39,6 +39,7 @@ public class BaseBarBuilder {
     private Num amount;
     private Num volume;
     private long trades;
+    private Num spread;
 
     BaseBarBuilder() {
     }
@@ -88,7 +89,12 @@ public class BaseBarBuilder {
         return this;
     }
 
+    public BaseBarBuilder spread(Num spread) {
+        this.spread = spread;
+        return this;
+    }
+
     public BaseBar build() {
-        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades, spread);
     }
 }

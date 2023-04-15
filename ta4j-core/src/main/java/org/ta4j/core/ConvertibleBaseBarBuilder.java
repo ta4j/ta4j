@@ -55,6 +55,12 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
         return this;
     }
 
+    @Override
+    public ConvertibleBaseBarBuilder<T> spread(Num spread) {
+        super.spread(spread);
+        return this;
+    }
+
     public ConvertibleBaseBarBuilder<T> openPrice(T openPrice) {
         super.openPrice(conversionFunction.apply(openPrice));
         return this;

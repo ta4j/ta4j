@@ -60,6 +60,8 @@ public class BaseBar implements Bar {
     private Num volume;
     /** Trade count */
     private long trades = 0;
+    /** Spread size */
+    private Num spread = null;
 
     /**
      * Constructor.
@@ -287,6 +289,36 @@ public class BaseBar implements Bar {
     }
 
     /**
+     * Constructor.
+     *
+     * @param timePeriod the time period
+     * @param endTime    the end time of the bar period
+     * @param openPrice  the open price of the bar period
+     * @param highPrice  the highest price of the bar period
+     * @param lowPrice   the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume     the volume of the bar period
+     * @param amount     the amount of the bar period
+     * @param trades     the trades count of the bar period
+     * @param spread     the actual spread size
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
+                   Num closePrice, Num volume, Num amount, long trades, Num spread) {
+        checkTimeArguments(timePeriod, endTime);
+        this.timePeriod = timePeriod;
+        this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
+        this.spread = spread;
+    }
+
+    /**
      * Returns BaseBarBuilder
      * 
      * @return builder of class BaseBarBuilder
@@ -365,6 +397,13 @@ public class BaseBar implements Bar {
     }
 
     /**
+     * @return the actual size of a spread
+     */
+    public Num getSpread() {
+        return spread;
+    }
+
+    /**
      * @return the whole traded amount (tradePrice x tradeVolume) of the period
      */
     public Num getAmount() {
@@ -420,6 +459,17 @@ public class BaseBar implements Bar {
         }
     }
 
+    /**
+     * Adds the actual price to the last bar and also the actual spread
+     * @param price - actual closing price
+     * @param spread - actual spread (have to be calculated out of bid/offer price before passing to this method)
+     */
+    @Override
+    public void addPrice(Num price, Num spread) {
+        addPrice(price);
+        this.spread = spread;
+    }
+
     @Override
     public String toString() {
         return String.format(
@@ -441,7 +491,7 @@ public class BaseBar implements Bar {
     @Override
     public int hashCode() {
         return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount,
-                trades);
+                trades, spread);
     }
 
     @Override
@@ -455,6 +505,7 @@ public class BaseBar implements Bar {
                 && Objects.equals(timePeriod, other.timePeriod) && Objects.equals(openPrice, other.openPrice)
                 && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)
                 && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
-                && Objects.equals(amount, other.amount) && trades == other.trades;
+                && Objects.equals(amount, other.amount) && trades == other.trades
+                && Objects.equals(spread, other.spread);
     }
 }
