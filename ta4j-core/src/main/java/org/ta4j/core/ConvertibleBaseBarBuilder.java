@@ -55,9 +55,8 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
         return this;
     }
 
-    @Override
-    public ConvertibleBaseBarBuilder<T> spread(Num spread) {
-        super.spread(spread);
+    public ConvertibleBaseBarBuilder<T> spread(T spread) {
+        super.spread(conversionFunction.apply(spread));
         return this;
     }
 
