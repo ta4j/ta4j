@@ -3,7 +3,7 @@ name: Deploy Snapshot
 on:
   push:
     branches:
-      - 'develop'
+      - 'master'
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: 'develop'
+          ref: 'master'
           fetch-depth: 0
 
       - name: Setup Java
