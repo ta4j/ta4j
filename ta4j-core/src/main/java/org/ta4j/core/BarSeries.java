@@ -360,12 +360,18 @@ public interface BarSeries extends Serializable {
      */
     void addPrice(Num price);
 
+    void addPrice(Num price, Num spread);
+
     default void addPrice(String price) {
         addPrice(new BigDecimal(price));
     }
 
     default void addPrice(Number price) {
         addPrice(numOf(price));
+    }
+
+    default void addPrice(Number price, Number spread) {
+        addPrice(numOf(price), numOf(price));
     }
 
     /**

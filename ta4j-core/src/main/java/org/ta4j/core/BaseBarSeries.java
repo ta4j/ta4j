@@ -470,6 +470,11 @@ public class BaseBarSeries implements BarSeries {
         getLastBar().addPrice(price);
     }
 
+    @Override
+    public void addPrice(Num price, Num spread) {
+        getLastBar().addPrice(price, spread);
+    }
+
     /**
      * Removes the N first bars which exceed the maximum bar count.
      */
