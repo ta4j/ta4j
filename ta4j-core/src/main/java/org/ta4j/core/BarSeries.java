@@ -371,7 +371,7 @@ public interface BarSeries extends Serializable {
     }
 
     default void addPrice(Number price, Number spread) {
-        addPrice(numOf(price), numOf(price));
+        addPrice(numOf(price), numOf(spread));
     }
 
     /**
