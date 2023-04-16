@@ -95,6 +95,7 @@ public class BaseBarBuilder {
     }
 
     public BaseBar build() {
-        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades, spread);
+        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades,
+                spread);
     }
 }

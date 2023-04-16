@@ -303,7 +303,7 @@ public class BaseBar implements Bar {
      * @param spread     the actual spread size
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-                   Num closePrice, Num volume, Num amount, long trades, Num spread) {
+            Num closePrice, Num volume, Num amount, long trades, Num spread) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -461,8 +461,10 @@ public class BaseBar implements Bar {
 
     /**
      * Adds the actual price to the last bar and also the actual spread
-     * @param price - actual closing price
-     * @param spread - actual spread (have to be calculated out of bid/offer price before passing to this method)
+     * 
+     * @param price  - actual closing price
+     * @param spread - actual spread (have to be calculated out of bid/offer price
+     *               before passing to this method)
      */
     @Override
     public void addPrice(Num price, Num spread) {
