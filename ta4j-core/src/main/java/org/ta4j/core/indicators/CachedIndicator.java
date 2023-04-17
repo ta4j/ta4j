@@ -81,7 +81,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected abstract T calculate(int index);
 
     @Override
-    public T getValue(int index) {
+    public synchronized T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
