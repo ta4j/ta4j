@@ -76,6 +76,20 @@ public class BarSeriesManager {
     public BarSeries getBarSeries() {
         return barSeries;
     }
+    
+    /**
+     * @return the transaction cost model
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;   
+    }
+    
+    /**
+     * @return the holding cost model
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;   
+    }
 
     /**
      * Runs the provided strategy over the managed series.
