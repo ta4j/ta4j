@@ -41,7 +41,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Abstract base implementation of a {@link BarSeries}.
  * </p>
  */
-public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSeries<T> {
+public abstract class BarSeriesAbstract<T extends Bar> implements BarSeries<T> {
 
     /**
      * The logger
@@ -91,7 +91,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
     /**
      * Constructor of an unnamed series.
      */
-    public BaseBarSeriesAbstract() {
+    public BarSeriesAbstract() {
         this(UNNAMED_SERIES_NAME);
     }
 
@@ -100,7 +100,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      *
      * @param name the name of the series
      */
-    public BaseBarSeriesAbstract(String name) {
+    public BarSeriesAbstract(String name) {
         this(name, new ArrayList<>());
     }
 
@@ -109,7 +109,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      *
      * @param bars the list of bars of the series
      */
-    public BaseBarSeriesAbstract(List<T> bars) {
+    public BarSeriesAbstract(List<T> bars) {
         this(UNNAMED_SERIES_NAME, bars);
     }
 
@@ -119,7 +119,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @param name the name of the series
      * @param bars the list of bars of the series
      */
-    public BaseBarSeriesAbstract(String name, List<T> bars) {
+    public BarSeriesAbstract(String name, List<T> bars) {
         this(name, bars, 0, bars.size() - 1, false);
     }
 
@@ -130,7 +130,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @param num  any instance of Num to determine its Num function; with this, we
      *             can convert a {@link Number} to a {@link Num Num implementation}
      */
-    public BaseBarSeriesAbstract(String name, Num num) {
+    public BarSeriesAbstract(String name, Num num) {
         this(name, new ArrayList<>(), num);
     }
 
@@ -142,7 +142,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @param num  any instance of Num to determine its Num function; with this, we
      *             can convert a {@link Number} to a {@link Num Num implementation}
      */
-    public BaseBarSeriesAbstract(String name, List<T> bars, Num num) {
+    public BarSeriesAbstract(String name, List<T> bars, Num num) {
         this(name, bars, 0, bars.size() - 1, false, num);
     }
 
@@ -159,7 +159,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
      *                         change), false otherwise
      */
-    private BaseBarSeriesAbstract(String name, List<T> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+    private BarSeriesAbstract(String name, List<T> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
         this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum.ZERO);
     }
 
@@ -176,7 +176,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      *                         with this, we can convert a {@link Number} to a
      *                         {@link Num Num implementation}
      */
-    BaseBarSeriesAbstract(String name, List<T> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
+    BarSeriesAbstract(String name, List<T> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
         this.name = name;
 
         this.bars = bars;
@@ -217,7 +217,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @return a new list of bars with tick from startIndex (inclusive) to endIndex
      *         (exclusive)
      */
-    protected static <T extends BaseBar> List<T> cut(List<T> bars, final int startIndex, final int endIndex) {
+    protected static <T extends Bar> List<T> cut(List<T> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
 
@@ -226,7 +226,7 @@ public abstract class BaseBarSeriesAbstract<T extends BaseBar> implements BarSer
      * @param index  an out of bounds bar index
      * @return a message for an OutOfBoundsException
      */
-    private static <T extends BaseBar> String buildOutOfBoundsMessage(BaseBarSeriesAbstract<T> series, int index) {
+    private static <T extends Bar> String buildOutOfBoundsMessage(BarSeriesAbstract<T> series, int index) {
         return String.format("Size of series: %s bars, %s bars removed, index = %s", series.bars.size(),
                 series.removedBarsCount, index);
     }

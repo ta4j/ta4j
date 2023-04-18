@@ -34,7 +34,7 @@ import java.util.List;
  * Base implementation of a {@link BarSeries}.
  * </p>
  */
-public class BaseBarSeries extends BaseBarSeriesAbstract<BaseBar> {
+public class BaseBarSeries extends BarSeriesAbstract<BaseBar> {
 
     private static final long serialVersionUID = -1878027009398790126L;
 
