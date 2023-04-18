@@ -38,22 +38,22 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * the criterion value the better. This property is only used for
      * {@link #betterThan(Num, Num)}.
      */
-    private final boolean lessBetter;
+    private final boolean lessIsBetter;
 
     /**
-     * Constructor with {@link #lessBetter} == true.
+     * Constructor with {@link #lessIsBetter} == true.
      */
     public NumberOfPositionsCriterion() {
-        this.lessBetter = true;
+        this.lessIsBetter = true;
     }
 
     /**
      * Constructor.
      * 
-     * @param lessBetter the {@link #lessBetter}
+     * @param lessIsBetter the {@link #lessIsBetter}
      */
-    public NumberOfPositionsCriterion(boolean lessBetter) {
-        this.lessBetter = lessBetter;
+    public NumberOfPositionsCriterion(boolean lessIsBetter) {
+        this.lessIsBetter = lessIsBetter;
     }
 
     @Override
@@ -67,12 +67,12 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * If {@link #lessBetter} == false, then the lower the criterion value, the
+     * If {@link #lessIsBetter} == false, then the lower the criterion value, the
      * better, otherwise the higher the criterion value the better.
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return lessBetter ? criterionValue1.isLessThan(criterionValue2)
+        return lessIsBetter ? criterionValue1.isLessThan(criterionValue2)
                 : criterionValue1.isGreaterThan(criterionValue2);
     }
 }

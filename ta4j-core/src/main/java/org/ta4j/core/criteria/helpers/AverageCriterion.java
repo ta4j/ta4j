@@ -45,30 +45,30 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
      * the criterion value the better. This property is only used for
      * {@link #betterThan(Num, Num)}.
      */
-    private final boolean lessBetter;
+    private final boolean lessIsBetter;
 
     private final AnalysisCriterion criterion;
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor with {@link #lessBetter} == false.
+     * Constructor with {@link #lessIsBetter} == false.
      * 
      * @param criterion the criterion from which the "average" is calculated
      */
     public AverageCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;
-        this.lessBetter = false;
+        this.lessIsBetter = false;
     }
 
     /**
      * Constructor.
      * 
-     * @param criterion  the criterion from which the "average" is calculated
-     * @param lessBetter the {@link #lessBetter}
+     * @param criterion    the criterion from which the "average" is calculated
+     * @param lessIsBetter the {@link #lessIsBetter}
      */
-    public AverageCriterion(AnalysisCriterion criterion, boolean lessBetter) {
+    public AverageCriterion(AnalysisCriterion criterion, boolean lessIsBetter) {
         this.criterion = criterion;
-        this.lessBetter = lessBetter;
+        this.lessIsBetter = lessIsBetter;
     }
 
     @Override
@@ -87,12 +87,12 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * If {@link #lessBetter} == false, then the lower the criterion value, the
+     * If {@link #lessIsBetter} == false, then the lower the criterion value, the
      * better, otherwise the higher the criterion value the better.
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return lessBetter ? criterionValue1.isLessThan(criterionValue2)
+        return lessIsBetter ? criterionValue1.isLessThan(criterionValue2)
                 : criterionValue1.isGreaterThan(criterionValue2);
     }
 

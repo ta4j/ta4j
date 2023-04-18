@@ -47,13 +47,13 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
      * the criterion value the better. This property is only used for
      * {@link #betterThan(Num, Num)}.
      */
-    private final boolean lessBetter;
+    private final boolean lessIsBetter;
 
     private final StandardDeviationCriterion standardDeviationCriterion;
     private final AverageCriterion averageCriterion;
 
     /**
-     * Constructor with {@link #lessBetter} == false.
+     * Constructor with {@link #lessIsBetter} == false.
      * 
      * @param criterion the criterion from which the "relative standard deviation"
      *                  is calculated
@@ -61,20 +61,20 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
     public RelativeStandardDeviationCriterion(AnalysisCriterion criterion) {
         this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
         this.averageCriterion = new AverageCriterion(criterion);
-        this.lessBetter = false;
+        this.lessIsBetter = false;
     }
 
     /**
      * Constructor.
      * 
-     * @param criterion  the criterion from which the "relative standard deviation"
-     *                   is calculated
-     * @param lessBetter the {@link #lessBetter}
+     * @param criterion    the criterion from which the "relative standard
+     *                     deviation" is calculated
+     * @param lessIsBetter the {@link #lessIsBetter}
      */
-    public RelativeStandardDeviationCriterion(AnalysisCriterion criterion, boolean lessBetter) {
+    public RelativeStandardDeviationCriterion(AnalysisCriterion criterion, boolean lessIsBetter) {
         this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
         this.averageCriterion = new AverageCriterion(criterion);
-        this.lessBetter = lessBetter;
+        this.lessIsBetter = lessIsBetter;
     }
 
     @Override
@@ -93,12 +93,12 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
     }
 
     /**
-     * If {@link #lessBetter} == false, then the lower the criterion value, the
+     * If {@link #lessIsBetter} == false, then the lower the criterion value, the
      * better, otherwise the higher the criterion value the better.
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return lessBetter ? criterionValue1.isLessThan(criterionValue2)
+        return lessIsBetter ? criterionValue1.isLessThan(criterionValue2)
                 : criterionValue1.isGreaterThan(criterionValue2);
     }
 
