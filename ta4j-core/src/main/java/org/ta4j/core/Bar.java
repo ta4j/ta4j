@@ -175,6 +175,10 @@ public interface Bar extends Serializable {
         addPrice(numFunction.apply(price));
     }
 
+    default void addPrice(Number price, Number spread, Function<Number, Num> numFunction) {
+        addPrice(numFunction.apply(price), numFunction.apply(spread));
+    }
+
     void addPrice(Num price);
 
     void addPrice(Num price, Num spread);

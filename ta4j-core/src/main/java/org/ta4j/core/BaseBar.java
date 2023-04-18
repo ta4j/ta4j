@@ -135,6 +135,28 @@ public class BaseBar implements Bar {
 
     /**
      * Constructor.
+     *
+     * @param timePeriod  the time period
+     * @param endTime     the end time of the bar period
+     * @param openPrice   the open price of the bar period
+     * @param highPrice   the highest price of the bar period
+     * @param lowPrice    the lowest price of the bar period
+     * @param closePrice  the close price of the bar period
+     * @param volume      the volume of the bar period
+     * @param amount      the amount of the bar period
+     * @param trades      the trades count of the bar period
+     * @param numFunction the numbers precision
+     * @param spread      the spread size
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice,
+                   double closePrice, double volume, double amount, long trades, double spread, Function<Number, Num> numFunction) {
+        this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
+                numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
+                numFunction.apply(amount), trades, numFunction.apply(spread));
+    }
+
+    /**
+     * Constructor.
      * 
      * @param timePeriod the time period
      * @param endTime    the end time of the bar period
@@ -345,7 +367,7 @@ public class BaseBar implements Bar {
      * Returns BaseBarBuilder.
      * 
      * @param <T>   the type of the clazz
-     * @param num   any Num function; with this, we can convert a {@link Number} to
+     * @param conversionFunction   any Num function; with this, we can convert a {@link Number} to
      *              a {@link Num Num implementation}
      * @param clazz any type convertable to Num
      * @return builder of class BaseBarBuilder

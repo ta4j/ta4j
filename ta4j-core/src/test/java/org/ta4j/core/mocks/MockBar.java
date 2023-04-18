@@ -73,6 +73,12 @@ public class MockBar extends BaseBar {
         this.trades = trades;
     }
 
+    public MockBar(ZonedDateTime endTime, double openPrice, double closePrice, double highPrice, double lowPrice,
+                   double amount, double volume, long trades, double spread, Function<Number, Num> numFunction) {
+        super(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, spread, numFunction);
+        this.trades = trades;
+    }
+
     @Override
     public long getTrades() {
         return trades;

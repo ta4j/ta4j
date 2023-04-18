@@ -55,6 +55,7 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(4)
                 .volume(numOf(40))
                 .amount(numOf(4020))
+                .spread(numOf(1.2))
                 .build();
 
         assertEquals(duration, bar.getTimePeriod());
@@ -67,5 +68,6 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(4, bar.getTrades());
         assertEquals(numOf(40), bar.getVolume());
         assertEquals(numOf(4020), bar.getAmount());
+        assertEquals(numOf(1.2), bar.getSpread());
     }
 }

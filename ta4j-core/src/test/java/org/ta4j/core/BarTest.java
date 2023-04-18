@@ -31,6 +31,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalUnit;
 import java.util.function.Function;
 
 import org.junit.Before;
@@ -72,6 +73,39 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(198, bar.getLowPrice());
         assertNumEquals(201, bar.getHighPrice());
         assertNumEquals(9, bar.getVolume());
+    }
+
+    @Test
+    public void addPrice() {
+        bar.addPrice(3.0, 2.1, numFunction);
+
+        assertNumEquals(3.0, bar.getClosePrice());
+        assertNumEquals(2.1, bar.getSpread());
+
+
+        // BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
+        //            Num closePrice, Num volume, Num amount, long trades, Num spread)
+        Bar bar2 = new BaseBar(
+                Duration.ZERO.plusMinutes(15),
+                endTime,
+                numFunction.apply(3.0),
+                numFunction.apply(4.0),
+                numFunction.apply(2.0),
+                numFunction.apply(3.0),
+                numFunction.apply(100),
+                numFunction.apply(12.3),
+                3,
+                numFunction.apply(1.2));
+
+        assertNumEquals(3.0, bar2.getOpenPrice());
+        assertNumEquals(4.0, bar2.getHighPrice());
+        assertNumEquals(2.0, bar2.getLowPrice());
+        assertNumEquals(3.0, bar2.getClosePrice());
+        assertNumEquals(100, bar2.getVolume());
+        assertNumEquals(12.3, bar2.getAmount());
+        assertEquals(3, bar2.getTrades());
+        assertNumEquals(1.2, bar2.getSpread());
+
     }
 
     @Test

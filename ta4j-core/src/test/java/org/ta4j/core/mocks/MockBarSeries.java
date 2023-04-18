@@ -103,7 +103,7 @@ public class MockBarSeries extends BaseBarSeries {
         ArrayList<Bar> bars = new ArrayList<>();
         for (double i = 0d; i < 5000; i++) {
             bars.add(new MockBar(ZonedDateTime.now().minusMinutes((long) (5001 - i)), i, i + 1, i + 2, i + 3, i + 4,
-                    i + 5, (int) (i + 6), nf));
+                    i + 5, (int) (i + 6), i, nf));
         }
         return bars;
     }
