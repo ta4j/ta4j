@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
 /**
  * Bar aggregator basing on duration.
  */
-public class DurationBarAggregator implements BarAggregator {
+public class DurationBarAggregator implements BarAggregator<BaseBar> {
 
     /**
      * Target time period to aggregate
@@ -73,8 +73,8 @@ public class DurationBarAggregator implements BarAggregator {
      * @return the aggregated bars with new <code>timePeriod</code>
      */
     @Override
-    public List<Bar> aggregate(List<Bar> bars) {
-        final List<Bar> aggregated = new ArrayList<>();
+    public List<BaseBar> aggregate(List<BaseBar> bars) {
+        final List<BaseBar> aggregated = new ArrayList<>();
         if (bars.isEmpty()) {
             return aggregated;
         }
@@ -133,7 +133,7 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
+                final BaseBar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
                         volume, amount, trades);
                 aggregated.add(aggregatedBar);
             }

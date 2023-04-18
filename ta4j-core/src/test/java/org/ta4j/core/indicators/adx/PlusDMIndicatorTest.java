@@ -23,19 +23,19 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -47,7 +47,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void zeroDirectionalMovement() {
         MockBar yesterdayBar = new MockBar(0, 0, 10, 2, numFunction);
         MockBar todayBar = new MockBar(0, 0, 6, 6, numFunction);
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
@@ -59,7 +59,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void zeroDirectionalMovement2() {
         MockBar yesterdayBar = new MockBar(0, 0, 6, 12, numFunction);
         MockBar todayBar = new MockBar(0, 0, 12, 6, numFunction);
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
@@ -71,7 +71,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void zeroDirectionalMovement3() {
         MockBar yesterdayBar = new MockBar(0, 0, 6, 20, numFunction);
         MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
@@ -83,7 +83,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void positiveDirectionalMovement() {
         MockBar yesterdayBar = new MockBar(0, 0, 6, 6, numFunction);
         MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);

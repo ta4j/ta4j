@@ -47,7 +47,7 @@ public class BuildBarSeries {
      */
     @SuppressWarnings("unused")
     public static void main(String[] args) {
-        BarSeries a = buildAndAddData();
+        BarSeries<Bar> a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         BaseBarSeriesBuilder.setDefaultNum(DoubleNum::valueOf);
         a = buildAndAddData();
@@ -167,7 +167,7 @@ public class BuildBarSeries {
         // Store Bars in a list and add them later. The bars must have the same Num type
         // as the series
         ZonedDateTime endTime = ZonedDateTime.now();
-        Bar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1))
+        BaseBar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
                 .openPrice("105.42")
                 .highPrice("112.99")
@@ -175,7 +175,7 @@ public class BuildBarSeries {
                 .closePrice("111.42")
                 .volume("1337")
                 .build();
-        Bar b2 = barBuilderFromString().timePeriod(Duration.ofDays(1))
+        BaseBar b2 = barBuilderFromString().timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(1))
                 .openPrice("111.43")
                 .highPrice("112.83")
@@ -183,7 +183,7 @@ public class BuildBarSeries {
                 .closePrice("107.99")
                 .volume("1234")
                 .build();
-        Bar b3 = barBuilderFromString().timePeriod(Duration.ofDays(1))
+        BaseBar b3 = barBuilderFromString().timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(2))
                 .openPrice("107.90")
                 .highPrice("117.50")
@@ -191,7 +191,7 @@ public class BuildBarSeries {
                 .closePrice("115.42")
                 .volume("4242")
                 .build();
-        List<Bar> bars = Arrays.asList(b1, b2, b3);
+        List<BaseBar> bars = Arrays.asList(b1, b2, b3);
 
         return new BaseBarSeriesBuilder().withName("mySeries")
                 .withNumTypeOf(DoubleNum::valueOf)

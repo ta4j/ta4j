@@ -23,21 +23,21 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -49,7 +49,7 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(1355.69, 1000, numFunction));
         bars.add(new MockBar(1325.51, 3000, numFunction));
         bars.add(new MockBar(1335.02, 3500, numFunction));

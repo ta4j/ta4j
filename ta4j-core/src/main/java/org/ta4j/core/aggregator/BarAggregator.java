@@ -25,12 +25,10 @@ package org.ta4j.core.aggregator;
 
 import java.util.List;
 
-import org.ta4j.core.Bar;
-
 /**
  * Bar aggregator interface to aggregate list of bars into another list of bars.
  */
-public interface BarAggregator {
+public interface BarAggregator<T> {
 
     /**
      * Aggregate bars.
@@ -38,5 +36,5 @@ public interface BarAggregator {
      * @param bars bars to aggregate bars
      * @return aggregated bars
      */
-    List<Bar> aggregate(List<Bar> bars);
+    List<T> aggregate(List<T> bars);
 }

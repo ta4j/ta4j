@@ -31,13 +31,13 @@ import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
-public class BaseBarSeriesBuilder implements BarSeriesBuilder {
+public class BaseBarSeriesBuilder implements BarSeriesBuilder<BaseBar> {
 
     /**
      * Default instance of Num to determine its Num type and function.
      **/
     private static Num defaultNum = DecimalNum.ZERO;
-    private List<Bar> bars;
+    private List<BaseBar> bars;
     private String name;
     private Num num;
     private boolean constrained;
@@ -109,7 +109,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
      * @param bars to set {@link BaseBarSeries#getBarData()}
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder withBars(List<Bar> bars) {
+    public BaseBarSeriesBuilder withBars(List<BaseBar> bars) {
         this.bars = bars;
         return this;
     }

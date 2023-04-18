@@ -31,8 +31,8 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -48,7 +48,7 @@ public class RealBodyIndicatorTest extends AbstractIndicatorTest<BarSeries, Num>
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         // open, close, high, low
         bars.add(new MockBar(10, 18, 20, 10, numFunction));
         bars.add(new MockBar(17, 20, 21, 17, numFunction));

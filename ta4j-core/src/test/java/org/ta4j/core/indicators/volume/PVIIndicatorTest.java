@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -47,7 +47,7 @@ public class PVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void getValue() {
 
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(1355.69, 2739.55, numFunction));
         bars.add(new MockBar(1325.51, 3119.46, numFunction));
         bars.add(new MockBar(1335.02, 3466.88, numFunction));

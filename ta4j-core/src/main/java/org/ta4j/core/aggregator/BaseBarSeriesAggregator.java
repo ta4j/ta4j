@@ -25,14 +25,14 @@ package org.ta4j.core.aggregator;
 
 import java.util.List;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 
 /**
  * Bar series aggregator based on provided bar aggregator.
  */
-public class BaseBarSeriesAggregator implements BarSeriesAggregator {
+public class BaseBarSeriesAggregator implements BarSeriesAggregator<BaseBar> {
 
     private final BarAggregator barAggregator;
 
@@ -41,8 +41,8 @@ public class BaseBarSeriesAggregator implements BarSeriesAggregator {
     }
 
     @Override
-    public BarSeries aggregate(BarSeries series, String aggregatedSeriesName) {
-        final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
+    public BarSeries<BaseBar> aggregate(BarSeries<BaseBar> series, String aggregatedSeriesName) {
+        final List<BaseBar> aggregatedBars = barAggregator.aggregate(series.getBarData());
         return new BaseBarSeries(aggregatedSeriesName, aggregatedBars);
     }
 }

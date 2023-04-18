@@ -31,10 +31,7 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -51,7 +48,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
         bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
         bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));

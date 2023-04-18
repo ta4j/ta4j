@@ -31,8 +31,8 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -50,7 +50,7 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
 
         bars.add(new MockBar(23.17, 21.48, 23.39, 21.35, numFunction));
         bars.add(new MockBar(21.25, 19.94, 21.29, 20.07, numFunction));

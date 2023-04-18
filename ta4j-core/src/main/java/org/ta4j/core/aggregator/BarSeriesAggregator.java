@@ -23,12 +23,13 @@
  */
 package org.ta4j.core.aggregator;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 
 /**
  * Bar aggregator interface to aggregate list of bars into another list of bars.
  */
-public interface BarSeriesAggregator {
+public interface BarSeriesAggregator<T extends Bar> {
 
     /**
      * Aggregates bar series.
@@ -36,7 +37,7 @@ public interface BarSeriesAggregator {
      * @param series series to aggregate
      * @return aggregated series
      */
-    default BarSeries aggregate(BarSeries series) {
+    default BarSeries<T> aggregate(BarSeries<T> series) {
         return aggregate(series, series.getName());
     }
 
@@ -47,5 +48,5 @@ public interface BarSeriesAggregator {
      * @param aggregatedSeriesName name for aggregated series
      * @return aggregated series with specified name
      */
-    BarSeries aggregate(BarSeries series, String aggregatedSeriesName);
+    BarSeries<T> aggregate(BarSeries<T> series, String aggregatedSeriesName);
 }

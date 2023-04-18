@@ -26,15 +26,11 @@ package org.ta4j.core.utils;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.*;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
@@ -151,15 +147,15 @@ public final class BarSeriesUtils {
      *                  implementation}
      * @return new cloned BarSeries with bars converted by the Num function of num
      */
-    public static BarSeries convertBarSeries(BarSeries barSeries, Num num) {
-        List<Bar> bars = barSeries.getBarData();
+    public static BarSeries<BaseBar> convertBarSeries(BarSeries<BaseBar> barSeries, Num num) {
+        List<BaseBar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return barSeries;
-        List<Bar> convertedBars = new ArrayList<>();
+        List<BaseBar> convertedBars = new ArrayList<>();
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
             Function<Number, Num> conversionFunction = num.function();
-            Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
+            BaseBar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
@@ -172,7 +168,7 @@ public final class BarSeriesUtils {
                     .build();
             convertedBars.add(convertedBar);
         }
-        BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, num);
+        BarSeries<BaseBar> convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, num);
         if (barSeries.getMaximumBarCount() > 0) {
             convertedBarSeries.setMaximumBarCount(barSeries.getMaximumBarCount());
         }
@@ -211,10 +207,10 @@ public final class BarSeriesUtils {
      * @param barSeries the BarSeries
      * @param newBars   the new bars to be added
      */
-    public static void addBars(BarSeries barSeries, List<Bar> newBars) {
+    public static <T extends Bar> void addBars(BarSeries<T> barSeries, List<T> newBars) {
         if (newBars != null && !newBars.isEmpty()) {
             sortBars(newBars);
-            for (Bar bar : newBars) {
+            for (T bar : newBars) {
                 if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
                     barSeries.addBar(bar);
                 }
@@ -229,9 +225,9 @@ public final class BarSeriesUtils {
      * @param bars the bars
      * @return the sorted bars
      */
-    public static List<Bar> sortBars(List<Bar> bars) {
+    public static <T extends Bar> List<T> sortBars(List<T> bars) {
         if (!bars.isEmpty()) {
-            Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
+            bars.sort(BarSeriesUtils.sortBarsByTime);
         }
         return bars;
     }

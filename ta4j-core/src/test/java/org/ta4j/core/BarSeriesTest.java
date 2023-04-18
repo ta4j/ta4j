@@ -62,7 +62,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries emptySeries;
 
-    private List<Bar> bars;
+    private List<BaseBar> bars;
 
     private String defaultName;
 

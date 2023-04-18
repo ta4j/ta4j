@@ -26,11 +26,11 @@ package org.ta4j.core;
 /**
  * Interface to build a bar series
  */
-public interface BarSeriesBuilder {
+public interface BarSeriesBuilder<T extends Bar> {
     /**
      * Builds the bar series with corresponding parameters
      *
      * @return bar series
      */
-    BarSeries build();
+    BarSeries<T> build();
 }

@@ -45,7 +45,7 @@ import org.ta4j.core.num.Num;
  * <li>limited to a fixed number of bars (e.g. for actual trading)
  * </ul>
  */
-public interface BarSeries extends Serializable {
+public interface BarSeries<T extends Bar> extends Serializable {
 
     /**
      * @return the name of the series
@@ -103,19 +103,19 @@ public interface BarSeries extends Serializable {
      * @param i an index
      * @return the bar at the i-th position
      */
-    Bar getBar(int i);
+    T getBar(int i);
 
     /**
      * @return the first bar of the series
      */
-    default Bar getFirstBar() {
+    default T getFirstBar() {
         return getBar(getBeginIndex());
     }
 
     /**
      * @return the last bar of the series
      */
-    default Bar getLastBar() {
+    default T getLastBar() {
         return getBar(getEndIndex());
     }
 
@@ -141,7 +141,7 @@ public interface BarSeries extends Serializable {
      *
      * @return the raw bar data
      */
-    List<Bar> getBarData();
+    List<T> getBarData();
 
     /**
      * @return the begin index of the series
@@ -160,8 +160,8 @@ public interface BarSeries extends Serializable {
     default String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
         if (!getBarData().isEmpty()) {
-            Bar firstBar = getFirstBar();
-            Bar lastBar = getLastBar();
+            T firstBar = getFirstBar();
+            T lastBar = getLastBar();
             sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
                     .append(" - ")
                     .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
@@ -203,7 +203,7 @@ public interface BarSeries extends Serializable {
      *          bar data directly
      * @see BarSeries#setMaximumBarCount(int)
      */
-    default void addBar(Bar bar) {
+    default void addBar(T bar) {
         addBar(bar, false);
     }
 
@@ -223,7 +223,7 @@ public interface BarSeries extends Serializable {
      *          bar data directly
      * @see BarSeries#setMaximumBarCount(int)
      */
-    void addBar(Bar bar, boolean replace);
+    void addBar(T bar, boolean replace);
 
     /**
      * Adds a bar at the end of the series.
@@ -384,6 +384,6 @@ public interface BarSeries extends Serializable {
      * @return a new BarSeries with Bars from startIndex to endIndex-1
      * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
      */
-    BarSeries getSubSeries(int startIndex, int endIndex);
+    BarSeries<T> getSubSeries(int startIndex, int endIndex);
 
 }

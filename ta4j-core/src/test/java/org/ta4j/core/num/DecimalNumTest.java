@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -124,14 +123,14 @@ public class DecimalNumTest {
     }
 
     private void init() {
-        List<Bar> superPrecisionBarList = new ArrayList<>();
-        List<Bar> precisionBarList = new ArrayList<>();
-        List<Bar> precision32BarList = new ArrayList<>();
-        List<Bar> doubleBarList = new ArrayList<>();
-        List<Bar> lowPrecisionBarList = new ArrayList<>();
+        List<BaseBar> superPrecisionBarList = new ArrayList<>();
+        List<BaseBar> precisionBarList = new ArrayList<>();
+        List<BaseBar> precision32BarList = new ArrayList<>();
+        List<BaseBar> doubleBarList = new ArrayList<>();
+        List<BaseBar> lowPrecisionBarList = new ArrayList<>();
         Duration timePeriod = Duration.ofDays(1);
         ZonedDateTime endTime = ZonedDateTime.now();
-        Bar bar;
+        BaseBar bar;
         double[] deltas = { 20.8, 30.1, -15.3, 10.2, -16.7, -9.8 };
         Num superPrecisionNum = FIRST_SUPER_PRECISION_NUM;
         for (int i = 0; i < NUMBARS; i++) {

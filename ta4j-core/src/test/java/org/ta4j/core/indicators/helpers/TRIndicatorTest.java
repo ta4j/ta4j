@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -45,7 +45,7 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
 
     @Test
     public void getValue() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(0, 12, 15, 8, numFunction));
         bars.add(new MockBar(0, 8, 11, 6, numFunction));
         bars.add(new MockBar(0, 15, 17, 14, numFunction));

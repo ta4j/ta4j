@@ -31,10 +31,7 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.*;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
@@ -49,7 +46,7 @@ public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<In
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(44.98, 119.13, 119.50, 116.00, numFunction));
         bars.add(new MockBar(45.05, 116.75, 119.94, 116.00, numFunction));
         bars.add(new MockBar(45.11, 113.50, 118.44, 111.63, numFunction));

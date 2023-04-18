@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -46,7 +46,7 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Test
     public void getValue() {
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(12.915, 13.600, 12.890, 13.550, 264266, numFunction));
         bars.add(new MockBar(13.550, 13.770, 13.310, 13.505, 305427, numFunction));
         bars.add(new MockBar(13.510, 13.590, 13.425, 13.490, 104077, numFunction));

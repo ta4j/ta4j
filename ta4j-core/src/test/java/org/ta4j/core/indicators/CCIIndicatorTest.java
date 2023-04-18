@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -55,7 +55,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Before
     public void setUp() {
-        ArrayList<Bar> bars = new ArrayList<Bar>();
+        ArrayList<BaseBar> bars = new ArrayList<>();
         for (Double price : typicalPrices) {
             bars.add(new MockBar(price, price, price, price, numFunction));
         }

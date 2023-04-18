@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -51,12 +51,12 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void testAggregateWithNewName() {
-        final List<Bar> bars = new LinkedList<>();
+        final List<BaseBar> bars = new LinkedList<>();
         final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 6d, 7, numFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 2d, 3d, 3d, 4d, 5d, 6d, 7, numFunction);
-        final Bar bar2 = new MockBar(time.plusDays(2), 3d, 4d, 4d, 5d, 6d, 7d, 7, numFunction);
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 6d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time.plusDays(1), 2d, 3d, 3d, 4d, 5d, 6d, 7, numFunction);
+        final BaseBar bar2 = new MockBar(time.plusDays(2), 3d, 4d, 4d, 5d, 6d, 7d, 7, numFunction);
         bars.add(bar0);
         bars.add(bar1);
         bars.add(bar2);
@@ -73,12 +73,12 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void testAggregateWithTheSameName() {
-        final List<Bar> bars = new LinkedList<>();
+        final List<BaseBar> bars = new LinkedList<>();
         final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 6d, 7, numFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 2d, 3d, 3d, 4d, 5d, 6d, 7, numFunction);
-        final Bar bar2 = new MockBar(time.plusDays(2), 3d, 4d, 4d, 5d, 6d, 7d, 7, numFunction);
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 6d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time.plusDays(1), 2d, 3d, 3d, 4d, 5d, 6d, 7, numFunction);
+        final BaseBar bar2 = new MockBar(time.plusDays(2), 3d, 4d, 4d, 5d, 6d, 7d, 7, numFunction);
         bars.add(bar0);
         bars.add(bar1);
         bars.add(bar2);
@@ -97,10 +97,10 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
      * This bar aggregator created only for test purposes is returning first and
      * last bar.
      */
-    private static class BarAggregatorForTest implements BarAggregator {
+    private static class BarAggregatorForTest implements BarAggregator<BaseBar> {
         @Override
-        public List<Bar> aggregate(List<Bar> bars) {
-            final List<Bar> aggregated = new ArrayList<>();
+        public List<BaseBar> aggregate(List<BaseBar> bars) {
+            final List<BaseBar> aggregated = new ArrayList<>();
             if (bars.isEmpty()) {
                 return aggregated;
             }

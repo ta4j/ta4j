@@ -31,8 +31,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -47,7 +47,7 @@ public class IIIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void intradayIntensityIndex() {
         ZonedDateTime now = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(now, 0d, 10d, 12d, 8d, 0d, 200d, 0, numFunction));// 2-2 * 200 / 4
         bars.add(new MockBar(now, 0d, 8d, 10d, 7d, 0d, 100d, 0, numFunction));// 1-2 *100 / 3
         bars.add(new MockBar(now, 0d, 9d, 15d, 6d, 0d, 300d, 0, numFunction));// 3-6 *300 /9

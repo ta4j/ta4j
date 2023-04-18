@@ -36,19 +36,20 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
-public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries<BaseBar>, Num> {
 
     public DurationBarAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
-    private List<Bar> getOneDayBars() {
-        final List<Bar> bars = new LinkedList<>();
+    private List<BaseBar> getOneDayBars() {
+        final List<BaseBar> bars = new LinkedList<>();
         final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
 
         // days 1 - 5
@@ -84,7 +85,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
     public void upscaledTo5DayBars() {
         final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(5), true);
 
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+        final List<BaseBar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 3 bars
         assertEquals(3, bars.size());
@@ -123,7 +124,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
     @Test
     public void upscaledTo10DayBars() {
         final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), true);
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+        final List<BaseBar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 1 bars
         assertEquals(1, bars.size());
@@ -145,7 +146,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
     @Test
     public void upscaledTo10DayBarsNotOnlyFinalBars() {
         final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), false);
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+        final List<BaseBar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 2 bars
         assertEquals(2, bars.size());

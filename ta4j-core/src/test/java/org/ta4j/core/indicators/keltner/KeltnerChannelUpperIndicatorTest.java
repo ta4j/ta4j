@@ -31,8 +31,8 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -51,7 +51,7 @@ public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Indi
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(11577.43, 11670.75, 11711.47, 11577.35, numFunction));
         bars.add(new MockBar(11670.90, 11691.18, 11698.22, 11635.74, numFunction));
         bars.add(new MockBar(11688.61, 11722.89, 11742.68, 11652.89, numFunction));

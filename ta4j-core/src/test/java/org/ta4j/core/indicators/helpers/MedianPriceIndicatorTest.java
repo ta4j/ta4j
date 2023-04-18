@@ -31,8 +31,8 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -50,7 +50,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<BaseBar> bars = new ArrayList<>();
 
         bars.add(new MockBar(0, 0, 16, 8, numFunction));
         bars.add(new MockBar(0, 0, 12, 6, numFunction));

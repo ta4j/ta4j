@@ -62,16 +62,16 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void replaceBarIfChangedTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final List<BaseBar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
-        final Bar bar2 = new MockBar(time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, numFunction);
-        final Bar bar3 = new MockBar(time.plusDays(3), 3d, 3d, 3d, 3d, 3d, 3d, 3, numFunction);
-        final Bar bar4 = new MockBar(time.plusDays(4), 3d, 4d, 4d, 5d, 6d, 4d, 4, numFunction);
-        final Bar bar5 = new MockBar(time.plusDays(5), 5d, 5d, 5d, 5d, 5d, 5d, 5, numFunction);
-        final Bar bar6 = new MockBar(time.plusDays(6), 6d, 6d, 6d, 6d, 6d, 6d, 6, numFunction);
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final BaseBar bar2 = new MockBar(time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, numFunction);
+        final BaseBar bar3 = new MockBar(time.plusDays(3), 3d, 3d, 3d, 3d, 3d, 3d, 3, numFunction);
+        final BaseBar bar4 = new MockBar(time.plusDays(4), 3d, 4d, 4d, 5d, 6d, 4d, 4, numFunction);
+        final BaseBar bar5 = new MockBar(time.plusDays(5), 5d, 5d, 5d, 5d, 5d, 5d, 5, numFunction);
+        final BaseBar bar6 = new MockBar(time.plusDays(6), 6d, 6d, 6d, 6d, 6d, 6d, 6, numFunction);
 
         bars.add(bar0);
         bars.add(bar1);
@@ -113,15 +113,15 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void findMissingBarsTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final List<BaseBar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
-        final Bar bar4 = new MockBar(time.plusDays(4), 3d, 4d, 4d, 5d, 6d, 4d, 4, numFunction);
-        final Bar bar5 = new MockBar(time.plusDays(5), 5d, 5d, 5d, 5d, 5d, 5d, 5, numFunction);
-        final Bar bar7 = new MockBar(time.plusDays(7), 0, 0, 0, 0, 0, 0, 0, numFunction);
-        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final BaseBar bar4 = new MockBar(time.plusDays(4), 3d, 4d, 4d, 5d, 6d, 4d, 4, numFunction);
+        final BaseBar bar5 = new MockBar(time.plusDays(5), 5d, 5d, 5d, 5d, 5d, 5d, 5, numFunction);
+        final BaseBar bar7 = new MockBar(time.plusDays(7), 0, 0, 0, 0, 0, 0, 0, numFunction);
+        BaseBar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
                 .timePeriod(Duration.ofDays(1))
                 .endTime(time.plusDays(8))
                 .openPrice(NaN.NaN)
@@ -159,7 +159,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Num doubleNum = DoubleNum.ZERO;
         final Num nanNum = NaN.NaN;
 
-        final List<Bar> bars = new ArrayList<>();
+        final List<BaseBar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
         bars.add(new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, decimalNumFunction));
         bars.add(new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction));
@@ -189,12 +189,12 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void findOverlappingBarsTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final List<BaseBar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
-        final Bar bar1 = new MockBar(time, 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
-        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time, 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        BaseBar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
                 .timePeriod(Duration.ofDays(1))
                 .endTime(time.plusDays(8))
                 .openPrice(NaN.NaN)
@@ -219,11 +219,11 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void addBars() {
         BarSeries barSeries = new BaseBarSeries("1day", numFunction.apply(0));
 
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
-        final Bar bar2 = new MockBar(time.plusDays(2), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final BaseBar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+        final BaseBar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final BaseBar bar2 = new MockBar(time.plusDays(2), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
         bars.add(bar2);
         bars.add(bar0);
         bars.add(bar1);
@@ -234,7 +234,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
         assertEquals(bar2.getEndTime(), barSeries.getLastBar().getEndTime());
 
-        final Bar bar3 = new MockBar(time.plusDays(3), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final BaseBar bar3 = new MockBar(time.plusDays(3), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
         bars.add(bar3);
 
         // add 1 bar to non empty barSeries

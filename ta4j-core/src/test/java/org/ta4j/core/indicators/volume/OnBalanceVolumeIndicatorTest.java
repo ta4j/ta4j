@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -47,7 +47,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void getValue() {
         ZonedDateTime now = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0, numFunction));
         bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0, numFunction));
         bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0, numFunction));
@@ -66,7 +66,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void stackOverflowError() {
-        List<Bar> bigListOfBars = new ArrayList<Bar>();
+        List<BaseBar> bigListOfBars = new ArrayList<>();
         for (int i = 0; i < 10000; i++) {
             bigListOfBars.add(new MockBar(i, numFunction));
         }

@@ -31,8 +31,8 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -45,12 +45,12 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
         super(numFunction);
     }
 
-    private Bar bar(int i) {
+    private BaseBar bar(int i) {
         return new MockBar(i, this::numOf);
     }
 
     private BarSeries barSeries(int count) {
-        final List<Bar> bars = IntStream.range(0, count).boxed().map(this::bar).collect(toList());
+        final List<BaseBar> bars = IntStream.range(0, count).boxed().map(this::bar).collect(toList());
         return new BaseBarSeries(bars);
     }
 

@@ -33,11 +33,7 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -76,7 +72,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void stackOverflowError() throws Exception {
-        List<Bar> bigListOfBars = new ArrayList<Bar>();
+        List<BaseBar> bigListOfBars = new ArrayList<>();
         for (int i = 0; i < 10000; i++) {
             bigListOfBars.add(new MockBar(i, numFunction));
         }

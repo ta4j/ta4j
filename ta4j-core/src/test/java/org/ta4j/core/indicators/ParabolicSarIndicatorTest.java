@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -47,7 +47,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startUpAndDownTrendTest() {
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
 
         bars.add(new MockBar(74.5, 75.1, 75.11, 74.06, numFunction));
         bars.add(new MockBar(75.09, 75.9, 76.030000, 74.640000, numFunction));
@@ -98,7 +98,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startWithDownAndUpTrendTest() {
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction)); // The first daily candle of BTCUSDT in
                                                                                 // the Binance cryptocurrency exchange.
                                                                                 // 17 Aug 2017
@@ -128,7 +128,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testSameValueForSameIndex() {
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
         bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction));
         bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction));
         bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction));

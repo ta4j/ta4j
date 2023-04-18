@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  * Base implementation of a {@link BarSeries}.
  * </p>
  */
-public class BaseBarSeries implements BarSeries {
+public class BaseBarSeries implements BarSeries<BaseBar> {
 
     private static final long serialVersionUID = -1878027009398790126L;
 
@@ -67,7 +67,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * List of bars
      */
-    private final List<Bar> bars;
+    private final List<BaseBar> bars;
     /**
      * Begin index of the bar series
      */
@@ -111,7 +111,7 @@ public class BaseBarSeries implements BarSeries {
      *
      * @param bars the list of bars of the series
      */
-    public BaseBarSeries(List<Bar> bars) {
+    public BaseBarSeries(List<BaseBar> bars) {
         this(UNNAMED_SERIES_NAME, bars);
     }
 
@@ -121,7 +121,7 @@ public class BaseBarSeries implements BarSeries {
      * @param name the name of the series
      * @param bars the list of bars of the series
      */
-    public BaseBarSeries(String name, List<Bar> bars) {
+    public BaseBarSeries(String name, List<BaseBar> bars) {
         this(name, bars, 0, bars.size() - 1, false);
     }
 
@@ -144,7 +144,7 @@ public class BaseBarSeries implements BarSeries {
      * @param num  any instance of Num to determine its Num function; with this, we
      *             can convert a {@link Number} to a {@link Num Num implementation}
      */
-    public BaseBarSeries(String name, List<Bar> bars, Num num) {
+    public BaseBarSeries(String name, List<BaseBar> bars, Num num) {
         this(name, bars, 0, bars.size() - 1, false, num);
     }
 
@@ -161,7 +161,7 @@ public class BaseBarSeries implements BarSeries {
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
      *                         change), false otherwise
      */
-    private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+    private BaseBarSeries(String name, List<BaseBar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
         this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum.ZERO);
     }
 
@@ -178,7 +178,7 @@ public class BaseBarSeries implements BarSeries {
      *                         with this, we can convert a {@link Number} to a
      *                         {@link Num Num implementation}
      */
-    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
+    BaseBarSeries(String name, List<BaseBar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
         this.name = name;
 
         this.bars = bars;
@@ -219,7 +219,7 @@ public class BaseBarSeries implements BarSeries {
      * @return a new list of bars with tick from startIndex (inclusive) to endIndex
      *         (exclusive)
      */
-    private static List<Bar> cut(List<Bar> bars, final int startIndex, final int endIndex) {
+    private static List<BaseBar> cut(List<BaseBar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
 
@@ -280,7 +280,7 @@ public class BaseBarSeries implements BarSeries {
      * @param bars a List of Bar objects.
      * @return false if a Num implementation of at least one Bar does not fit.
      */
-    private boolean checkBars(List<Bar> bars) {
+    private boolean checkBars(List<BaseBar> bars) {
         for (Bar bar : bars) {
             if (!checkBar(bar)) {
                 return false;
@@ -315,7 +315,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public Bar getBar(int i) {
+    public BaseBar getBar(int i) {
         int innerIndex = i - removedBarsCount;
         if (innerIndex < 0) {
             if (i < 0) {
@@ -347,7 +347,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public List<Bar> getBarData() {
+    public List<BaseBar> getBarData() {
         return bars;
     }
 
@@ -390,7 +390,7 @@ public class BaseBarSeries implements BarSeries {
      * @throws NullPointerException if bar is null
      */
     @Override
-    public void addBar(Bar bar, boolean replace) {
+    public void addBar(BaseBar bar, boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!checkBar(bar)) {
             throw new IllegalArgumentException(

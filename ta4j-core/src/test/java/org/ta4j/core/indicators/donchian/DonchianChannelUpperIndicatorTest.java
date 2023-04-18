@@ -23,7 +23,14 @@
  */
 package org.ta4j.core.indicators.donchian;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.Num;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -31,15 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertEquals;
 
 public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -52,7 +51,7 @@ public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<Bar
     @Before
     public void setUp() {
         ZonedDateTime startDateTime = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
+        List<BaseBar> bars = new ArrayList<>();
 
         bars.add(new BaseBar(Duration.ofHours(1), startDateTime, 100d, 105d, 95d, 100d, 0d, 0, 0, this::numOf));
         bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(1), 105, 110, 100, 105, 0d, 0, 0,

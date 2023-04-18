@@ -34,6 +34,7 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -51,7 +52,7 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     @Test
     public void test() {
         ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
-        List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
+        List<BaseBar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
         BarSeries series = new MockBarSeries(bars);
         DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
         assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
