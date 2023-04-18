@@ -20,6 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
+- **BarSeriesManager** add `holdingTransaction
 
 ### Removed/Deprecated
 
@@ -31,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added **Donchian Channel indicators (Upper, Lower, and Middle)**
 - added `Indicator.getUnstableBars()`
 - added `TransformIndicator.pow()`
+- added `BarSeriesManager.getHoldingCostModel()` and `BarSeriesManager.getTransactionCostModel()`  to allow extending BarSeriesManager and reimplementing `run()`
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
