@@ -67,7 +67,7 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
      */
     public StandardDeviationCriterion(AnalysisCriterion criterion, boolean lessIsBetter) {
         this.varianceCriterion = new VarianceCriterion(criterion);
-        this.lessIsBetter = false;
+        this.lessIsBetter = lessIsBetter;
     }
 
     @Override
