@@ -76,19 +76,19 @@ public class BarSeriesManager {
     public BarSeries getBarSeries() {
         return barSeries;
     }
-    
+
     /**
      * @return the transaction cost model
      */
     public CostModel getTransactionCostModel() {
-        return transactionCostModel;   
+        return transactionCostModel;
     }
-    
+
     /**
      * @return the holding cost model
      */
     public CostModel getHoldingCostModel() {
-        return holdingCostModel;   
+        return holdingCostModel;
     }
 
     /**
