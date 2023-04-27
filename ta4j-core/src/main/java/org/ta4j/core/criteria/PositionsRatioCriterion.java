@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,7 +30,8 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of losing or winning positions:
+ * Calculates the percentage of losing or winning positions, returned in decimal
+ * format.
  * 
  * <ul>
  * <li>For {@link #positionFilter} = {@link PositionFilter#PROFIT}:
