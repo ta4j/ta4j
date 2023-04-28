@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
@@ -40,16 +39,16 @@ import static org.ta4j.core.num.NaN.NaN;
 public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
     private final PreviousValueIndicator previousTypicalPrice;
-    private final TypicalPriceIndicator typicalPriceIndicator;
-    private final VolumeIndicator volumeIndicator;
+    private final TypicalPriceIndicator typicalPrice;
+    private final VolumeIndicator volume;
     private final int barCount;
 
     public MoneyFlowIndexIndicator(BarSeries series, int barCount) {
         super(series);
 
-        this.typicalPriceIndicator = new TypicalPriceIndicator(series);
-        this.previousTypicalPrice = new PreviousValueIndicator(this.typicalPriceIndicator);
-        this.volumeIndicator = new VolumeIndicator(series, barCount);
+        this.typicalPrice = new TypicalPriceIndicator(series);
+        this.previousTypicalPrice = new PreviousValueIndicator(this.typicalPrice);
+        this.volume = new VolumeIndicator(series);
         this.barCount = barCount;
     }
 
@@ -64,9 +63,9 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
         int startIndex = Math.max(0, index - barCount + 1);
         for (int i = startIndex; i <= index; i++) {
-            Num currentTypicalPriceValue = typicalPriceIndicator.getValue(i);
+            Num currentTypicalPriceValue = typicalPrice.getValue(i);
             Num previousTypicalPriceValue = previousTypicalPrice.getValue(i);
-            Num currentVolume = getBarSeries().getBar(i).getVolume();
+            Num currentVolume = volume.getValue(i);
 
             Num rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
 
