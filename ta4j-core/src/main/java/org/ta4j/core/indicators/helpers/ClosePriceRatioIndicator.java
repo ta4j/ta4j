@@ -28,11 +28,11 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Price variation indicator.
+ * Close Price Ratio indicator.
  */
-public class PriceVariationIndicator extends CachedIndicator<Num> {
+public class ClosePriceRatioIndicator extends CachedIndicator<Num> {
 
-    public PriceVariationIndicator(BarSeries series) {
+    public ClosePriceRatioIndicator(BarSeries series) {
         super(series);
     }
 

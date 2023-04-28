@@ -39,7 +39,7 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.WilliamsRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceRatioIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 
@@ -65,7 +65,7 @@ public class IndicatorsToCsv {
         // Typical price
         TypicalPriceIndicator typicalPrice = new TypicalPriceIndicator(series);
         // Price variation
-        PriceVariationIndicator priceVariation = new PriceVariationIndicator(series);
+        ClosePriceRatioIndicator priceVariation = new ClosePriceRatioIndicator(series);
         // Simple moving averages
         SMAIndicator shortSma = new SMAIndicator(closePrice, 8);
         SMAIndicator longSma = new SMAIndicator(closePrice, 20);
