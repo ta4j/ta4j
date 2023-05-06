@@ -42,6 +42,7 @@ import org.ta4j.core.num.Num;
  *
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
+
     /**
      * Confidence level as absolute value (e.g. 0.95)
      */

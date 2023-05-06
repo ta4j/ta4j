@@ -38,6 +38,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `BarSeriesManager.getHoldingCostModel()` and `BarSeriesManager.getTransactionCostModel()`  to allow extending BarSeriesManager and reimplementing `run()`
 - added `MovingAverageCrossOverRangeBacktest.java` and `ETH-USD-PT5M-2023-3-13_2023-3-15.json` test data file to demonstrate parallel strategy evaluation
 - added javadoc improvements for percentage criteria
+- added "lessIsBetter"-property for **AverageCriterion**
+- added "lessIsBetter"-property for **RelativeStandardDeviation**
+- added "lessIsBetter"-property for **StandardDeviationCriterion**
+- added "lessIsBetter"-property for **StandardErrorCriterion**
+- added "lessIsBetter"-property for **VarianceCriterion**
+- added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
