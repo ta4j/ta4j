@@ -56,10 +56,10 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         ZonedDateTime now = ZonedDateTime.now();
         mockBarSeries.addBar(new MockBar(now, 4069.13, 4016.00, 4119.62, 3911.79, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(1),4016.00, 4040.00, 4104.82,3400.00, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(2),4040.00, 4114.01, 4265.80,4013.89, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(3),4147.00, 4316.01, 4371.68,4085.01, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(4),4316.01, 4280.68, 4453.91,4247.48, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(1), 4016.00, 4040.00, 4104.82, 3400.00, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(2), 4040.00, 4114.01, 4265.80, 4013.89, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(3), 4147.00, 4316.01, 4371.68, 4085.01, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(4), 4316.01, 4280.68, 4453.91, 4247.48, 0, 0, 0, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
 

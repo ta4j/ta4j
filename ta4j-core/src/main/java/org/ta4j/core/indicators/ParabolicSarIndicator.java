@@ -106,20 +106,20 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
 
-            is_up_trend = getBarSeries().getBar(index - 1)
-                    .getClosePrice()
-                    .isLessThan(currentBar.getClosePrice());
+            is_up_trend = getBarSeries().getBar(index - 1).getClosePrice().isLessThan(currentBar.getClosePrice());
 
             lastAf.put(currentBar.getEndTime(), accelerationStart);
             isUpTrendMap.put(currentBar.getEndTime(), is_up_trend);
             if (is_up_trend) { // up trend
                 sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1); // put the lowest low value of
                                                                                           // two
-                lastExtreme.put(currentBar.getEndTime(), new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1));
+                lastExtreme.put(currentBar.getEndTime(),
+                        new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1));
             } else { // down trend
                 sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1); // put the highest high
                                                                                             // value of
-                lastExtreme.put(currentBar.getEndTime(), new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1));
+                lastExtreme.put(currentBar.getEndTime(),
+                        new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1));
             }
             return sar;
         }
