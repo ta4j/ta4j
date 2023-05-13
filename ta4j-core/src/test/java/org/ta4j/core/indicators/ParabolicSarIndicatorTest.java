@@ -26,6 +26,7 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -43,6 +44,29 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     public ParabolicSarIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
+    }
+
+    @Test
+    public void growingBarSeriesTest() {
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(4120.98, 4086.29, 4211.08, 4032.62, numFunction));
+
+        MockBarSeries mockBarSeries = new MockBarSeries(bars);
+        mockBarSeries.setMaximumBarCount(4);
+
+        ZonedDateTime now = ZonedDateTime.now();
+        mockBarSeries.addBar(new MockBar(now, 4069.13, 4016.00, 4119.62, 3911.79, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(1),4016.00, 4040.00, 4104.82,3400.00, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(2),4040.00, 4114.01, 4265.80,4013.89, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(3),4147.00, 4316.01, 4371.68,4085.01, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(4),4316.01, 4280.68, 4453.91,4247.48, 0, 0, 0, numFunction));
+
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
+
+        sar.getValue(0);
+        sar.getValue(1);
+        sar.getValue(2);
+        sar.getValue(3);
     }
 
     @Test
