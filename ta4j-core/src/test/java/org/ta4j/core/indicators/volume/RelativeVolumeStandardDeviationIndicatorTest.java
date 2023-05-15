@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- * <p>
+ *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- * <p>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * <p>
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * <p>
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -70,7 +70,8 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 5);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                5);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());
@@ -82,7 +83,8 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf2_whenGetValue_thenReturnCorrectValue() {
-        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 2);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                2);
 
         assertTrue(subject.getValue(0).isNaN());
         assertNumEquals(NaN, subject.getValue(1));
@@ -97,7 +99,8 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 3);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                3);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());

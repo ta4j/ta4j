@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- * <p>
+ *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- * <p>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * <p>
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * <p>
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -33,16 +33,20 @@ import org.ta4j.core.num.Num;
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
- * Relative Volume Standard Deviation Indicator.
- * This class is an indicator that calculates the standard deviation of the relative volume.
+ * Relative Volume Standard Deviation Indicator. This class is an indicator that
+ * calculates the standard deviation of the relative volume.
  * <p>
  * Relative Volume (often times called RVOL) is an indicator that tells traders
- * how current trading volume is compared to past trading volume over a given period.
+ * how current trading volume is compared to past trading volume over a given
+ * period.
  * <p>
- * It is calculated as the ratio of the current volume to the average volume for the same period.
- * The standard deviation of the relative volume is then calculated to understand volatility.
+ * It is calculated as the ratio of the current volume to the average volume for
+ * the same period. The standard deviation of the relative volume is then
+ * calculated to understand volatility.
  *
- * @see <a href="https://www.tradingview.com/script/Eize4T9L-Relative-Volume-Standard-Deviation/">Relative Volume Standard Deviation</a>
+ * @see <a href=
+ *      "https://www.tradingview.com/script/Eize4T9L-Relative-Volume-Standard-Deviation/">Relative
+ *      Volume Standard Deviation</a>
  */
 public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Num> {
 
@@ -54,7 +58,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
     /**
      * Constructor.
      *
-     * @param series the bar series
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public RelativeVolumeStandardDeviationIndicator(BarSeries series, int barCount) {
