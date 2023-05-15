@@ -29,8 +29,14 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
-/***
+/**
+ * STARC Bands Upper Indicator.
+ * <p>
+ * The Upper STARC Band is calculated by adding a multiple of the Average True
+ * Range (ATR) to the middle STARC band (which is a Simple Moving Average).
  *
+ * @see <a href="https://www.stockmaniacs.net/starc-bands-indicator/">STARC
+ *      Bands Indicator</a>
  */
 public class StarcBandsUpperIndicator extends CachedIndicator<Num> {
 
@@ -42,6 +48,13 @@ public class StarcBandsUpperIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
 
+    /**
+     * Constructor.
+     *
+     * @param middle        the middle STARC Band indicator
+     * @param barCount      the bar count for the ATR calculation
+     * @param atrMultiplier the multiplier for the ATR value
+     */
     public StarcBandsUpperIndicator(StarcBandsMiddleIndicator middle, int barCount, Number atrMultiplier) {
         super(middle.getBarSeries());
         this.starcBandsMiddleIndicator = middle;
@@ -62,6 +75,6 @@ public class StarcBandsUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + "ATR multiplier: " + this.atrMultiplier;
     }
 }

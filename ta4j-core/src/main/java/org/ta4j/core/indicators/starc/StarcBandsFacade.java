@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators.starc;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -33,8 +32,17 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * A facade to create the 3 STARC Bands indicators. A simple moving average of
- * close price is used as the middle channel.
+ * A facade for creating the three STARC Bands indicators. A simple moving
+ * average of the close price is used as the middle channel.
+ *
+ * <p>
+ * The STARC Bands (or Stoller Average Range Channels) are a type of technical
+ * indicator that consist of three bands. The middle band is a simple moving
+ * average, while the upper and lower bands are calculated based on the value of
+ * the Average True Range (ATR).
+ *
+ * @see <a href="https://www.stockmaniacs.net/starc-bands-indicator/">STARC
+ *      Bands Indicator</a>
  */
 public class StarcBandsFacade {
 
@@ -42,22 +50,39 @@ public class StarcBandsFacade {
     private final StarcBandsUpperIndicator upper;
     private final StarcBandsLowerIndicator lower;
 
+    /**
+     * Constructor.
+     *
+     * @param series        the bar series
+     * @param smaBarCount   the bar count for the SMA calculation
+     * @param atrBarCount   the bar count for the ATR calculation
+     * @param atrMultiplier the multiplier for the ATR value used to calculate the
+     *                      upper and lower bands
+     */
     public StarcBandsFacade(BarSeries series, int smaBarCount, int atrBarCount, Number atrMultiplier) {
         this.middle = new StarcBandsMiddleIndicator(series, smaBarCount);
         this.upper = new StarcBandsUpperIndicator(this.middle, atrBarCount, atrMultiplier);
         this.lower = new StarcBandsLowerIndicator(this.middle, atrBarCount, atrMultiplier);
     }
 
+    /**
+     * @return the middle STARC Band
+     */
     public StarcBandsMiddleIndicator middle() {
         return middle;
     }
 
+    /**
+     * @return the upper STARC Band
+     */
     public StarcBandsUpperIndicator upper() {
         return upper;
     }
 
+    /**
+     * @return the lower STARC Band
+     */
     public StarcBandsLowerIndicator lower() {
         return lower;
     }
-
 }

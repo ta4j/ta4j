@@ -32,18 +32,38 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.num.Num;
 
-/***
- * STARC Bands Middle Indicator
+/**
+ * STARC Bands Middle Indicator.
+ * <p>
+ * The middle STARC band is a Simple Moving Average.
+ *
+ * @see <a href="https://www.stockmaniacs.net/starc-bands-indicator/">STARC
+ *      Bands Indicator</a>
  */
 public class StarcBandsMiddleIndicator extends AbstractIndicator<Num> {
 
     private final SMAIndicator sma;
     private final int barCount;
 
+    /**
+     * Constructor.
+     *
+     * @param series   the bar series containing the close prices that will be used
+     *                 for the simple moving average calculation
+     * @param barCount the bar count for the simple moving average calculation
+     */
     public StarcBandsMiddleIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
     }
 
+    /**
+     * Constructor.
+     *
+     * @param indicator a custom signal indicator (instead of the default close
+     *                  price) that will be used for the simple moving average
+     *                  calculation
+     * @param barCount  the bar count for the simple moving average calculation
+     */
     public StarcBandsMiddleIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator.getBarSeries());
         sma = new SMAIndicator(indicator, barCount);

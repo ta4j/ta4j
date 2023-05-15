@@ -37,7 +37,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * MFI is a volume-weighted version of RSI that shows shifts in buying and
  * selling pressure. It uses both price and volume to measure buying and selling
- * pressure. For more information, check: <a href=
+ * pressure. For more information, @see: <a href=
  * "https://school.stockcharts.com/doku.php?id=technical_indicators:money_flow_index_mfi"></a>
  * </p>
  */

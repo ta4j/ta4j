@@ -29,19 +29,30 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
-/***
+/**
+ * STARC Bands Lower Indicator.
+ * <p>
+ * The Lower STARC Band is calculated by subtracting a multiple of the Average
+ * True Range (ATR) from the middle STARC band (which is a Simple Moving
+ * Average).
  *
+ * @see <a href="https://www.stockmaniacs.net/starc-bands-indicator/">STARC
+ *      Bands Indicator</a>
  */
 public class StarcBandsLowerIndicator extends CachedIndicator<Num> {
 
     private final StarcBandsMiddleIndicator starcBandsMiddleIndicator;
-
     private final Indicator<Num> atr;
-
     private final Num atrMultiplier;
-
     private final int barCount;
 
+    /**
+     * Constructor.
+     *
+     * @param middle        the middle STARC Band indicator
+     * @param barCount      the bar count for the ATR calculation
+     * @param atrMultiplier the multiplier for the ATR value
+     */
     public StarcBandsLowerIndicator(StarcBandsMiddleIndicator middle, int barCount, Number atrMultiplier) {
         super(middle.getBarSeries());
         this.starcBandsMiddleIndicator = middle;
@@ -52,6 +63,7 @@ public class StarcBandsLowerIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // The lower band is the middle band minus a multiple of the ATR
         return starcBandsMiddleIndicator.getValue(index).minus(atr.getValue(index));
     }
 
