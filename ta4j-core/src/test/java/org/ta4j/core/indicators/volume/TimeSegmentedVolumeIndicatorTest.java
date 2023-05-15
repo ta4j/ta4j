@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- *
+ * <p>
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -42,22 +43,27 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TimeSegmentedVolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
+    private BarSeries series;
+
     public TimeSegmentedVolumeIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
-    @Test
-    public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
+    @Before
+    public void setUp() {
         List<Bar> bars = new ArrayList<>();
         bars.add(new MockBar(10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
         bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
         bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        BarSeries series = new MockBarSeries(bars);
+        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        series = new MockBarSeries(bars);
+    }
 
+    @Test
+    public void whenIndexIsLessThanBarCount_returnNaN() {
         TimeSegmentedVolumeIndicator tsv = new TimeSegmentedVolumeIndicator(series, 5);
 
         assertTrue(tsv.getValue(0).isNaN());
@@ -69,17 +75,7 @@ public class TimeSegmentedVolumeIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void givenBarCountOf1_whenGetValue_thenReturnEdgeCaseCorrectedValue() {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        BarSeries series = new MockBarSeries(bars);
-
+    public void whenBarCountIsOne_returnCorrectValue() {
         TimeSegmentedVolumeIndicator tsv = new TimeSegmentedVolumeIndicator(series, 1);
 
         assertTrue(tsv.getValue(0).isNaN());
@@ -91,18 +87,7 @@ public class TimeSegmentedVolumeIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
-        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
-        BarSeries series = new MockBarSeries(bars);
-
+    public void whenBarCountIsThree_returnCorrectValue() {
         TimeSegmentedVolumeIndicator tsv = new TimeSegmentedVolumeIndicator(series, 3);
 
         assertTrue(tsv.getValue(0).isNaN());
@@ -111,7 +96,6 @@ public class TimeSegmentedVolumeIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(10, tsv.getValue(3));
         assertNumEquals(30, tsv.getValue(4));
         assertNumEquals(10, tsv.getValue(5));
-        assertNumEquals(10, tsv.getValue(6));
-        assertNumEquals(-30, tsv.getValue(7));
+        assertNumEquals(0, tsv.getValue(6));
     }
 }
