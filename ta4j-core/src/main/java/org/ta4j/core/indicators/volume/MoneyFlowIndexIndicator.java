@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- *
+ * <p>
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -34,7 +34,12 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Money Flow Index (MFI) indicator.
- * https://school.stockcharts.com/doku.php?id=technical_indicators:money_flow_index_mfi
+ * <p>
+ * MFI is a volume-weighted version of RSI that shows shifts in buying and selling pressure.
+ * It uses both price and volume to measure buying and selling pressure.
+ * For more information, check:
+ * <a href="https://school.stockcharts.com/doku.php?id=technical_indicators:money_flow_index_mfi"></a>
+ * </p>
  */
 public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
@@ -43,9 +48,16 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
     private final VolumeIndicator volume;
     private final int barCount;
 
+    /**
+     * Constructor.
+     *
+     * @param series the bar series
+     * @param barCount the time frame
+     */
     public MoneyFlowIndexIndicator(BarSeries series, int barCount) {
         super(series);
 
+        // Calculating typical price and volume for the series
         this.typicalPrice = new TypicalPriceIndicator(series);
         this.previousTypicalPrice = new PreviousValueIndicator(this.typicalPrice);
         this.volume = new VolumeIndicator(series);
@@ -54,6 +66,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // Return NaN for unstable bars
         if (index < this.getUnstableBars()) {
             return NaN;
         }
@@ -61,6 +74,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         Num sumOfPositiveMoneyFlowVolume = zero();
         Num sumOfNegativeMoneyFlowVolume = zero();
 
+        // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
         for (int i = startIndex; i <= index; i++) {
             Num currentTypicalPriceValue = typicalPrice.getValue(i);
@@ -69,17 +83,21 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
             Num rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
 
+            // If the typical price is increasing, we add to the positive flow
             if (currentTypicalPriceValue.isGreaterThan(previousTypicalPriceValue)) {
                 sumOfPositiveMoneyFlowVolume = sumOfPositiveMoneyFlowVolume.plus(rawMoneyFlowValue);
-            } else if (currentTypicalPriceValue.isLessThan(previousTypicalPriceValue)) {
+            }
+            // If the typical price is decreasing, we add to the negative flow
+            else if (currentTypicalPriceValue.isLessThan(previousTypicalPriceValue)) {
                 sumOfNegativeMoneyFlowVolume = sumOfNegativeMoneyFlowVolume.plus(rawMoneyFlowValue);
             }
         }
 
+        // Calculate money flow ratio and index
         Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(one()).dividedBy(sumOfNegativeMoneyFlowVolume.max(one()));
-        Num moneyFlowIndex = hundred().minus((hundred().dividedBy((one().plus(moneyFlowRatio)))));
 
-        return moneyFlowIndex;
+        // Calculate MFI. max function is used to prevent division by zero.
+        return hundred().minus((hundred().dividedBy((one().plus(moneyFlowRatio)))));
     }
 
     @Override

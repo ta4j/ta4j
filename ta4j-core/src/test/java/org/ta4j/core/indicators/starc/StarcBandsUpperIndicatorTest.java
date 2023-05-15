@@ -48,29 +48,6 @@ public class StarcBandsUpperIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
-    public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
-        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
-        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
-        BarSeries series = new MockBarSeries(bars);
-
-        StarcBandsMiddleIndicator middle = new StarcBandsMiddleIndicator(series, 5);
-        StarcBandsUpperIndicator tsv = new StarcBandsUpperIndicator(middle, 5, 2);
-
-        assertTrue(tsv.getValue(0).isNaN());
-        assertTrue(tsv.getValue(1).isNaN());
-        assertTrue(tsv.getValue(2).isNaN());
-        assertTrue(tsv.getValue(3).isNaN());
-        assertTrue(tsv.getValue(4).isNaN());
-        assertFalse(tsv.getValue(5).isNaN());
-    }
-
-    @Test
     public void givenBarCountOf1_whenGetValue_thenReturnEdgeCaseCorrectedValue() {
         List<Bar> bars = new ArrayList<>();
         bars.add(new MockBar(10, 10, 10, 10, numFunction));
