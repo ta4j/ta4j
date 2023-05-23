@@ -123,8 +123,7 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
         VWAPIndicator vwapIndicator = new VWAPIndicator(series, barCount);
 
         BollingerBandsMiddleIndicator middleBB = new BollingerBandsMiddleIndicator(vwapIndicator);
-        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(vwapIndicator,
-                barCount);
+        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(vwapIndicator, barCount);
         BollingerBandsLowerIndicator lowerBB = new BollingerBandsLowerIndicator(middleBB, standardDeviation);
         BollingerBandsUpperIndicator upperBB = new BollingerBandsUpperIndicator(middleBB, standardDeviation);
         PercentBIndicator pcb = new PercentBIndicator(new ClosePriceIndicator(series), barCount, 2);
