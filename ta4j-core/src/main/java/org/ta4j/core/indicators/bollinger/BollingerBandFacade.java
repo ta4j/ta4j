@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- *
+ * <p>
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -27,13 +27,14 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.volume.VWAPIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * A facade to create the 3 Bollinger Band indicators. A simple moving average
  * of close price is used as the middle band. The BB bandwidth and %B indicators
  * can also be created on demand.
- * 
+ *
  * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
  * not cached, although they may be wrapped around cached objects. Overall there
@@ -48,7 +49,7 @@ public class BollingerBandFacade {
 
     /**
      * Create the BollingerBands facade based on the close price of a bar series
-     * 
+     *
      * @param barSeries a bar series
      * @param barCount  the number of periods used for the indicators
      * @param k         the multiplier used to calculate the upper and lower bands
@@ -77,10 +78,25 @@ public class BollingerBandFacade {
     }
 
     /**
+     * Create the BollingerBands facade based on the VWAP
+     *
+     * @param vwap     the volume weighted average price indicator
+     * @param barCount the number of periods used for the indicators
+     * @param k        the multiplier used to calculate the upper and lower bands
+     */
+    public BollingerBandFacade(VWAPIndicator vwap, int barCount, Number k) {
+        this.price = NumericIndicator.of(vwap);
+        this.middle = NumericIndicator.of(vwap);
+        final NumericIndicator stdev = price.stddev(barCount);
+        this.upper = middle.plus(stdev.multipliedBy(k));
+        this.lower = middle.minus(stdev.multipliedBy(k));
+    }
+
+    /**
      * A fluent BB middle band
-     * 
+     *
      * @return a NumericIndicator wrapped around a cached SMAIndicator of close
-     *         price.
+     * price.
      */
     public NumericIndicator middle() {
         return middle;
@@ -88,9 +104,9 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB upper band
-     * 
+     *
      * @return an object that calculates the sum of BB middle and a multiple of
-     *         standard deviation.
+     * standard deviation.
      */
     public NumericIndicator upper() {
         return upper;
@@ -98,9 +114,9 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB lower band
-     * 
+     *
      * @return an object that calculates the difference between BB middle and a
-     *         multiple of standard deviation.
+     * multiple of standard deviation.
      */
     public NumericIndicator lower() {
         return lower;
@@ -108,9 +124,9 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB Bandwidth indicator
-     * 
+     *
      * @return an object that calculates BB bandwidth from BB upper, lower and
-     *         middle
+     * middle
      */
     public NumericIndicator bandwidth() {
         return upper.minus(lower).dividedBy(middle).multipliedBy(100);
@@ -118,7 +134,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent %B indicator
-     * 
+     *
      * @return an object that calculates %B from close price, BB upper and lower
      */
     public NumericIndicator percentB() {
