@@ -78,6 +78,20 @@ public class BarSeriesManager {
     }
 
     /**
+     * @return the transaction cost model
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    /**
+     * @return the holding cost model
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
+    }
+
+    /**
      * Runs the provided strategy over the managed series.
      *
      * Opens the position with a {@link TradeType} BUY trade.

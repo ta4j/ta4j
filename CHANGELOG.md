@@ -20,10 +20,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
+- **BarSeriesManager** add **`holdingTransaction`**
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
 - **BollingerBandFacade** new convenience constructor for use with VWAPIndicator
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
+- **BaseBar** defaults to **`DecimalNum`** type in all constructors
 
 ### Removed/Deprecated
 
@@ -35,6 +37,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added **Donchian Channel indicators (Upper, Lower, and Middle)**
 - added `Indicator.getUnstableBars()`
 - added `TransformIndicator.pow()`
+- added `BarSeriesManager.getHoldingCostModel()` and `BarSeriesManager.getTransactionCostModel()`  to allow extending BarSeriesManager and reimplementing `run()`
 - added `MovingAverageCrossOverRangeBacktest.java` and `ETH-USD-PT5M-2023-3-13_2023-3-15.json` test data file to demonstrate parallel strategy evaluation
 - added javadoc improvements for percentage criteria
 - added **RelativeVolumeStandardDeviationIndicator**
@@ -44,6 +47,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added **MoneyFlowIndexIndicator**
 - added **TrailingATRStopLossRule**
 - added **StarcBandsFacade**, **StarcBandsLowerIndicator**, **StarcBandsUpperIndicator**, **StarcBandsMiddleIndicator**
+- added "lessIsBetter"-property for **AverageCriterion**
+- added "lessIsBetter"-property for **RelativeStandardDeviation**
+- added "lessIsBetter"-property for **StandardDeviationCriterion**
+- added "lessIsBetter"-property for **StandardErrorCriterion**
+- added "lessIsBetter"-property for **VarianceCriterion**
+- added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
