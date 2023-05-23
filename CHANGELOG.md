@@ -22,7 +22,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BarSeriesManager** consider finishIndex when running backtest
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
-
+- **BollingerBandFacade** new convenience constructor for use with VWAPIndicator
+- **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
 
@@ -36,6 +37,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `TransformIndicator.pow()`
 - added `MovingAverageCrossOverRangeBacktest.java` and `ETH-USD-PT5M-2023-3-13_2023-3-15.json` test data file to demonstrate parallel strategy evaluation
 - added javadoc improvements for percentage criteria
+- added **RelativeVolumeStandardDeviationIndicator**
+- added **IntraDayMomentumIndexIndicator**
+- added **ClosePriceDifferenceIndicator**
+- added **TimeSegmentedVolumeIndicator**
+- added **MoneyFlowIndexIndicator**
+- added **TrailingATRStopLossRule**
+- added **StarcBandsFacade**, **StarcBandsLowerIndicator**, **StarcBandsUpperIndicator**, **StarcBandsMiddleIndicator**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
