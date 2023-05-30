@@ -52,7 +52,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1.10 * 1.05, ret.calculate(series, tradingRecord));
+        assertNumEquals((1.10 * 1.05) - 1.0, ret.calculate(series, tradingRecord));
     }
 
     @Test
@@ -62,7 +62,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals(0.95 * 0.7, ret.calculate(series, tradingRecord));
+        assertNumEquals((0.95 * 0.7) - 1.0, ret.calculate(series, tradingRecord));
     }
 
     @Test
@@ -72,7 +72,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1.05 * 1.30, ret.calculate(series, tradingRecord));
+        assertNumEquals((1.05 * 1.30) - 1.0, ret.calculate(series, tradingRecord));
     }
 
     @Test
@@ -82,25 +82,25 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals(0.95 * 0.70, ret.calculate(series, tradingRecord));
+        assertNumEquals((0.95 * 0.70) - 1.0, ret.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithNoPositionsShouldReturn1() {
+    public void calculateWithNoPositionsShouldReturnZero() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1d, ret.calculate(series, new BaseTradingRecord()));
+        assertNumEquals(0.0, ret.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
-    public void calculateWithOpenedPositionShouldReturn1() {
+    public void calculateWithOpenedPositionShouldReturnZero() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion ret = getCriterion();
         Position position = new Position();
-        assertNumEquals(1d, ret.calculate(series, position));
+        assertNumEquals(0, ret.calculate(series, position));
         position.operate(0);
-        assertNumEquals(1d, ret.calculate(series, position));
+        assertNumEquals(0, ret.calculate(series, position));
     }
 
     @Test
@@ -111,7 +111,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenPositionShouldReturnOne() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }
