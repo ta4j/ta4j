@@ -56,7 +56,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion retWithBase = getCriterion();
         assertNumEquals(1.10 * 1.05, retWithBase.calculate(series, tradingRecord));
 
-        // exluce base percentage
+        // exclude base percentage
         AnalysisCriterion retWithoutBase = getCriterion(false);
         assertNumEquals(1.10 * 1.05 - 1, retWithoutBase.calculate(series, tradingRecord));
     }
