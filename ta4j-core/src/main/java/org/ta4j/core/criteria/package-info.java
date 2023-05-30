@@ -27,7 +27,7 @@
  * Analysis criteria can be used to compare two trading
  * {@link org.ta4j.core.Strategy strategy}.<br>
  * The most common criterion is the
- * {@link org.ta4j.core.criteria.pnl.ReturnCriterion total return criterion}. It
+ * {@link org.ta4j.core.criteria.pnl.ReturnMultiplierCriterion total return criterion}. It
  * measures how much is profitable a strategy.
  */
 package org.ta4j.core.criteria;

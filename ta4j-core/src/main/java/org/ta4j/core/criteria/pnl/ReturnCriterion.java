@@ -30,8 +30,11 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Return (in percentage) criterion (includes trading costs), returned in
- * decimal format.
+ * Return (excluding the initial cost) in decimal format.
+ * 
+ * For example:
+ * A 4% return will return 0.04
+ * A 4% loss will return -0.04
  *
  * <p>
  * The return of the provided {@link Position position(s)} over the provided
@@ -49,7 +52,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
         return tradingRecord.getPositions()
                 .stream()
                 .map(position -> calculateProfit(series, position))
-                .reduce(series.one(), Num::multipliedBy);
+                .reduce(series.one(), Num::multipliedBy).minus(series.one());
     }
 
     /** The higher the criterion value, the better. */
@@ -69,6 +72,6 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             return position.getGrossReturn(series);
         }
-        return series.one();
+        return series.zero();
     }
 }

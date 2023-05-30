@@ -36,7 +36,7 @@ import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnMultiplierCriterion;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -63,7 +63,7 @@ public class StrategyAnalysis {
          */
 
         // Total profit
-        ReturnCriterion totalReturn = new ReturnCriterion();
+        ReturnMultiplierCriterion totalReturn = new ReturnMultiplierCriterion();
         System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
