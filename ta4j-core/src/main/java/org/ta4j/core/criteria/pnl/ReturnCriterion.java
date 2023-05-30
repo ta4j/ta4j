@@ -41,7 +41,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * If true, then the base percentage of {@code 1} (equivalent to 100%) is added
-     * to the criteria value.
+     * to the criterion value.
      */
     private final boolean addBase;
 
