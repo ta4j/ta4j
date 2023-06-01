@@ -286,6 +286,34 @@ public class BaseBar implements Bar {
     }
 
     /**
+     * Constructor.
+     * 
+     * @param timePeriod the time period
+     * @param beginTime  the begin time of the bar period
+     * @param endTime    the end time of the bar period
+     * @param openPrice  the open price of the bar period
+     * @param highPrice  the highest price of the bar period
+     * @param lowPrice   the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume     the volume of the bar period
+     * @param amount     the amount of the bar period
+     * @param trades     the trades count of the bar period
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime beginTime, ZonedDateTime endTime, Num openPrice, Num highPrice,
+            Num lowPrice, Num closePrice, Num volume, Num amount, long trades) {
+        this.timePeriod = timePeriod;
+        this.beginTime = beginTime;
+        this.endTime = endTime;
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
+    }
+
+    /**
      * Returns BaseBarBuilder
      * 
      * @return builder of class BaseBarBuilder

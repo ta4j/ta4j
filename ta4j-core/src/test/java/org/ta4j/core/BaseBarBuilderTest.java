@@ -68,4 +68,34 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numOf(40), bar.getVolume());
         assertEquals(numOf(4020), bar.getAmount());
     }
+
+    @Test
+    public void testBuildBarWithBeginTime() {
+        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
+        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 23, 59, 59, 999999999, ZoneId.systemDefault());
+        final Duration duration = Duration.between(beginTime, endTime);
+
+        final BaseBar bar = new BaseBarBuilder().timePeriod(duration)
+                .beginTime(beginTime)
+                .endTime(endTime)
+                .openPrice(numOf(101))
+                .highPrice(numOf(103))
+                .lowPrice(numOf(100))
+                .closePrice(numOf(102))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .build();
+
+        assertEquals(duration, bar.getTimePeriod());
+        assertEquals(beginTime, bar.getBeginTime());
+        assertEquals(endTime, bar.getEndTime());
+        assertEquals(numOf(101), bar.getOpenPrice());
+        assertEquals(numOf(103), bar.getHighPrice());
+        assertEquals(numOf(100), bar.getLowPrice());
+        assertEquals(numOf(102), bar.getClosePrice());
+        assertEquals(4, bar.getTrades());
+        assertEquals(numOf(40), bar.getVolume());
+        assertEquals(numOf(4020), bar.getAmount());
+    }
 }

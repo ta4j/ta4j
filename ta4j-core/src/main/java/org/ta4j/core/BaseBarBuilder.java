@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 public class BaseBarBuilder {
 
     private Duration timePeriod;
+    private ZonedDateTime beginTime;
     private ZonedDateTime endTime;
     private Num openPrice;
     private Num closePrice;
@@ -45,6 +46,11 @@ public class BaseBarBuilder {
 
     public BaseBarBuilder timePeriod(Duration timePeriod) {
         this.timePeriod = timePeriod;
+        return this;
+    }
+
+    public BaseBarBuilder beginTime(ZonedDateTime beginTime) {
+        this.beginTime = beginTime;
         return this;
     }
 
@@ -89,6 +95,11 @@ public class BaseBarBuilder {
     }
 
     public BaseBar build() {
-        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+        if (beginTime != null) {
+            return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume,
+                    amount, trades);
+        } else {
+            return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+        }
     }
 }
