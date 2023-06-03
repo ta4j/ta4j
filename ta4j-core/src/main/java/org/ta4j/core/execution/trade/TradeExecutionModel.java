@@ -38,7 +38,7 @@ public interface TradeExecutionModel {
     void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount);
 
     public static TradeExecutionModel getDefault() {
-        return new ExecuteOnNextBarOpenPrice();
+        return new ExecuteOnNextBarOpenPriceModel();
     }
 
 }

@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  *
  * Executes trades on the next bar using the opening price
  */
-public class ExecuteOnNextBarOpenPrice implements TradeExecutionModel {
+public class ExecuteOnNextBarOpenPriceModel implements TradeExecutionModel {
 
     @Override
     public void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
