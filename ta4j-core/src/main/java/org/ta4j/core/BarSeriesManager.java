@@ -49,7 +49,7 @@ public class BarSeriesManager {
     private final CostModel transactionCostModel;
     private final CostModel holdingCostModel;
 
-    /** The trade exeuction policy to use */
+    /** The trade execution model to use */
     private final TradeExecutionModel tradeExecutionModel;
 
     /**
@@ -65,10 +65,10 @@ public class BarSeriesManager {
      * Constructor.
      * 
      * @param barSeries            the bar series to be managed
-     * @param tradeExecutionPolicy the trade execution policy to use
+     * @param tradeExecutionModel the trade execution model to use
      */
-    public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionPolicy) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionPolicy);
+    public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionModel) {
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionModel);
     }
 
     /**
@@ -91,14 +91,14 @@ public class BarSeriesManager {
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
-     * @param tradeExeuctionPolicy the trade execution policy to use
+     * @param tradeExecutionModel  the trade execution model to use
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
-            TradeExecutionModel tradeExecutionPolicy) {
+            TradeExecutionModel tradeExecutionModel) {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionModel = tradeExecutionPolicy;
+        this.tradeExecutionModel = tradeExecutionModel;
     }
 
     /**
