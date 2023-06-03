@@ -48,13 +48,26 @@ public class BarSeriesManager {
     private final CostModel transactionCostModel;
     private final CostModel holdingCostModel;
 
+    private final boolean executeTradesOnNextBar;
+
+    private final static boolean DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR = true;
+
     /**
      * Constructor.
      * 
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel());
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param barSeries the bar series to be managed
+     */
+    public BarSeriesManager(BarSeries barSeries, boolean executeTradesOnNextBar) {
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), executeTradesOnNextBar);
     }
 
     /**
@@ -68,6 +81,22 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
+        this.executeTradesOnNextBar = DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param barSeries              the bar series to be managed
+     * @param transactionCostModel   the cost model for transactions of the asset
+     * @param holdingCostModel       the cost model for holding asset (e.g. borrowing)
+     * @param executeTradesOnNextBar the behaviour of whether to execute the trade the open of the next bar, default true
+     */
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel, boolean executeTradesOnNextBar) {
+        this.barSeries = barSeries;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+        this.executeTradesOnNextBar = executeTradesOnNextBar;
     }
 
     /**
@@ -185,7 +214,7 @@ public class BarSeriesManager {
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+                performOperation(strategy, tradingRecord, i, runEndIndex, amount);
             }
         }
 
@@ -198,12 +227,25 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+                    performOperation(strategy, tradingRecord, i, runEndIndex, amount);
                     break;
                 }
             }
         }
         return tradingRecord;
+    }
+
+    private void performOperation(Strategy strategy, TradingRecord tradingRecord, int i, int runEndIndex, Num amount) {
+        if (strategy.shouldOperate(i, tradingRecord)) {
+            if(executeTradesOnNextBar) {
+                int indexOfNextBar = i+1;
+                if(indexOfNextBar <= runEndIndex) {
+                    tradingRecord.operate(indexOfNextBar, barSeries.getBar(indexOfNextBar).getOpenPrice(), amount);
+                }
+            } else {
+                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+            }
+        }
     }
 
 }
