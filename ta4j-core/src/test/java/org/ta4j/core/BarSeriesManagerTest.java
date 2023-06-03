@@ -26,6 +26,7 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,10 +36,12 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.execution.trade.ExecuteOnClosingPrice;
+import org.ta4j.core.execution.trade.ExecuteOnClosingPriceModel;
+import org.ta4j.core.execution.trade.ExecuteOnNextBarOpenPriceModel;
 import org.ta4j.core.execution.trade.TradeExecutionModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
 
@@ -52,7 +55,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    private final TradeExecutionModel tradeExecutionPolicy = new ExecuteOnClosingPrice();
+    private final TradeExecutionModel tradeExecutionPolicy = new ExecuteOnClosingPriceModel();
 
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -203,5 +206,43 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         // no trade happened within [9-9]
         positions = manager.run(aStrategy, 9, 9).getPositions();
         assertTrue(positions.isEmpty());
+    }
+
+    @Test
+    public void runOnSeriesSlicesUsingExecuteOnNextBarOpenPriceModel() {
+        ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
+        BarSeries series = new BaseBarSeries();
+        BaseBarBuilder builder = new BaseBarBuilder();
+        Duration duration = Duration.ofDays(1);
+        Num one = DecimalNum.valueOf(1);
+        Num two = DecimalNum.valueOf(2);
+        Num three = DecimalNum.valueOf(3);
+        Num four = DecimalNum.valueOf(4);
+        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2000)).openPrice(one).highPrice(one)
+                .lowPrice(one).closePrice(one).build());
+        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2001)).openPrice(two).highPrice(two)
+                .lowPrice(two).closePrice(two).build());
+        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2002)).openPrice(three).highPrice(three)
+                .lowPrice(three).closePrice(three).build());
+        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2003)).openPrice(four).highPrice(four)
+                .lowPrice(four).closePrice(four).build());
+        manager = new BarSeriesManager(series, new ExecuteOnNextBarOpenPriceModel());
+
+        Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
+
+        // there are 0 entries within [0-1], the entry was analysed during bar 0, but
+        // executed at the open of bar 1
+        TradingRecord tradingRecord = manager.run(aStrategy, 0, 1);
+        List<Position> positions = tradingRecord.getPositions();
+        assertEquals(0, positions.size());
+
+        // only 1 entry happened within [0-2]
+        tradingRecord = manager.run(aStrategy, 0, 3);
+        positions = tradingRecord.getPositions();
+        assertEquals(1, positions.size());
+        assertEquals(1, positions.get(0).getEntry().getIndex());
+        // Entry price should be 2 as we open on the open of the next bar that produced
+        // the entry signal
+        assertEquals(two, positions.get(0).getEntry().getNetPrice());
     }
 }
