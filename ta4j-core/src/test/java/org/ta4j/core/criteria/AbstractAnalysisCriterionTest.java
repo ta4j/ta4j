@@ -36,7 +36,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.execution.trade.ExecuteOnClosingPrice;
+import org.ta4j.core.execution.trade.ExecuteOnClosingPriceModel;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.BooleanRule;
@@ -74,7 +74,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
         MockBarSeries series = new MockBarSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
-        BarSeriesManager manager = new BarSeriesManager(series, new ExecuteOnClosingPrice());
+        BarSeriesManager manager = new BarSeriesManager(series, new ExecuteOnClosingPriceModel());
         Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }
