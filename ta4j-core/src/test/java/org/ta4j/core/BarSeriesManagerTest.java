@@ -36,8 +36,8 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.execution.trade.ExecuteOnClosingPriceModel;
-import org.ta4j.core.execution.trade.ExecuteOnNextBarOpenPriceModel;
+import org.ta4j.core.execution.trade.ExecuteOnCloseModel;
+import org.ta4j.core.execution.trade.ExecuteOnOpenModel;
 import org.ta4j.core.execution.trade.TradeExecutionModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -55,7 +55,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    private final TradeExecutionModel tradeExecutionPolicy = new ExecuteOnClosingPriceModel();
+    private final TradeExecutionModel tradeExecutionModel = new ExecuteOnCloseModel();
 
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -76,7 +76,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
-        manager = new BarSeriesManager(seriesForRun, tradeExecutionPolicy);
+        manager = new BarSeriesManager(seriesForRun, tradeExecutionModel);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstableBars(2); // Strategy would need a real test class
@@ -171,7 +171,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager = new BarSeriesManager(series, tradeExecutionPolicy);
+        manager = new BarSeriesManager(series, tradeExecutionModel);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
@@ -246,7 +246,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 .lowPrice(four)
                 .closePrice(four)
                 .build());
-        manager = new BarSeriesManager(series, new ExecuteOnNextBarOpenPriceModel());
+        manager = new BarSeriesManager(series, new ExecuteOnOpenModel());
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 

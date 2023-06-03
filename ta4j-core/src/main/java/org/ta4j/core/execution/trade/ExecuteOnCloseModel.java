@@ -30,16 +30,16 @@ import org.ta4j.core.num.Num;
 /**
  * An execution model for {@link BarSeriesManager} objects.
  *
- * Executes trades on the next bar using the opening price
+ * Executes trades on the current bar being considered using the closing price
+ * 
+ * This is used for strategies that explicitly trade just before the bar closes, in order to
+ * execute new or close existing trades as close to the closing price as possible.
  */
-public class ExecuteOnNextBarOpenPriceModel implements TradeExecutionModel {
+public class ExecuteOnCloseModel implements TradeExecutionModel {
 
     @Override
     public void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        int indexOfExecutedBar = index + 1;
-        if (indexOfExecutedBar <= barSeries.getEndIndex()) {
-            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
-        }
+        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
     }
 
 }

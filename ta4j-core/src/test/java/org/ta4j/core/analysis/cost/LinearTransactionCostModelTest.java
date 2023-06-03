@@ -43,7 +43,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
-import org.ta4j.core.execution.trade.ExecuteOnClosingPriceModel;
+import org.ta4j.core.execution.trade.ExecuteOnCloseModel;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
@@ -152,7 +152,7 @@ public class LinearTransactionCostModelTest {
 
         Num orderFee = series.numOf(new BigDecimal("0.0026"));
         BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()),
-                new ZeroCostModel(), new ExecuteOnClosingPriceModel());
+                new ZeroCostModel(), new ExecuteOnCloseModel());
 
         Num amount = series.numOf(25);
         TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
