@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.execution.trade.TradeExecutionModel;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.policy.TradeExecutionPolicy;
 
 /**
  * A manager for {@link BarSeries} objects.
@@ -50,7 +50,7 @@ public class BarSeriesManager {
     private final CostModel holdingCostModel;
 
     /** The trade exeuction policy to use */
-    private final TradeExecutionPolicy tradeExecutionPolicy;
+    private final TradeExecutionModel tradeExecutionModel;
 
     /**
      * Constructor.
@@ -58,7 +58,7 @@ public class BarSeriesManager {
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), TradeExecutionPolicy.getDefault());
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), TradeExecutionModel.getDefault());
     }
 
     /**
@@ -67,7 +67,7 @@ public class BarSeriesManager {
      * @param barSeries            the bar series to be managed
      * @param tradeExecutionPolicy the trade execution policy to use
      */
-    public BarSeriesManager(BarSeries barSeries, TradeExecutionPolicy tradeExecutionPolicy) {
+    public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionPolicy) {
         this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionPolicy);
     }
 
@@ -82,22 +82,23 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionPolicy = TradeExecutionPolicy.getDefault();
+        this.tradeExecutionModel = TradeExecutionModel.getDefault();
     }
 
     /**
      * Constructor.
      * 
-     * @param barSeries              the bar series to be managed
-     * @param transactionCostModel   the cost model for transactions of the asset
-     * @param holdingCostModel       the cost model for holding asset (e.g. borrowing)
-     * @param tradeExeuctionPolicy   the trade execution policy to use
+     * @param barSeries            the bar series to be managed
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param tradeExeuctionPolicy the trade execution policy to use
      */
-    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionPolicy tradeExecutionPolicy) {
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
+            TradeExecutionModel tradeExecutionPolicy) {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionPolicy = tradeExecutionPolicy;
+        this.tradeExecutionModel = tradeExecutionPolicy;
     }
 
     /**
@@ -215,7 +216,7 @@ public class BarSeriesManager {
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradeExecutionPolicy.apply(i, tradingRecord, barSeries, amount);
+                tradeExecutionModel.apply(i, tradingRecord, barSeries, amount);
             }
         }
 
@@ -228,7 +229,7 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionPolicy.apply(i, tradingRecord, barSeries, amount);
+                    tradeExecutionModel.apply(i, tradingRecord, barSeries, amount);
                     break;
                 }
             }

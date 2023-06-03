@@ -35,11 +35,11 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.execution.trade.ExecuteOnClosingPrice;
+import org.ta4j.core.execution.trade.TradeExecutionModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.policy.TradeExecutionPolicy;
-import org.ta4j.core.policy.trade.ExecuteOnClosingPrice;
 import org.ta4j.core.rules.FixedRule;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
@@ -52,7 +52,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    private final TradeExecutionPolicy tradeExecutionPolicy = new ExecuteOnClosingPrice();
+    private final TradeExecutionModel tradeExecutionPolicy = new ExecuteOnClosingPrice();
 
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -62,7 +62,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-        
+
         seriesForRun = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
                 new ZonedDateTime[] { ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),

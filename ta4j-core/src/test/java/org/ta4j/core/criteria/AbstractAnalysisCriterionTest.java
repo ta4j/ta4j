@@ -36,9 +36,9 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.execution.trade.ExecuteOnClosingPrice;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.policy.trade.ExecuteOnClosingPrice;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
 
