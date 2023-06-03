@@ -218,14 +218,34 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         Num two = DecimalNum.valueOf(2);
         Num three = DecimalNum.valueOf(3);
         Num four = DecimalNum.valueOf(4);
-        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2000)).openPrice(one).highPrice(one)
-                .lowPrice(one).closePrice(one).build());
-        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2001)).openPrice(two).highPrice(two)
-                .lowPrice(two).closePrice(two).build());
-        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2002)).openPrice(three).highPrice(three)
-                .lowPrice(three).closePrice(three).build());
-        series.addBar(builder.timePeriod(duration).endTime(dateTime.withYear(2003)).openPrice(four).highPrice(four)
-                .lowPrice(four).closePrice(four).build());
+        series.addBar(builder.timePeriod(duration)
+                .endTime(dateTime.withYear(2000))
+                .openPrice(one)
+                .highPrice(one)
+                .lowPrice(one)
+                .closePrice(one)
+                .build());
+        series.addBar(builder.timePeriod(duration)
+                .endTime(dateTime.withYear(2001))
+                .openPrice(two)
+                .highPrice(two)
+                .lowPrice(two)
+                .closePrice(two)
+                .build());
+        series.addBar(builder.timePeriod(duration)
+                .endTime(dateTime.withYear(2002))
+                .openPrice(three)
+                .highPrice(three)
+                .lowPrice(three)
+                .closePrice(three)
+                .build());
+        series.addBar(builder.timePeriod(duration)
+                .endTime(dateTime.withYear(2003))
+                .openPrice(four)
+                .highPrice(four)
+                .lowPrice(four)
+                .closePrice(four)
+                .build());
         manager = new BarSeriesManager(series, new ExecuteOnNextBarOpenPriceModel());
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
