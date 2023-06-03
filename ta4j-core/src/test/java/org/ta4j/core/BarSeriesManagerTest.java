@@ -50,6 +50,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
+    private final boolean executeTradesOnNextBar = false;
+
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
@@ -58,6 +60,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        
         seriesForRun = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
                 new ZonedDateTime[] { ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
@@ -68,7 +71,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
-        manager = new BarSeriesManager(seriesForRun);
+        manager = new BarSeriesManager(seriesForRun, executeTradesOnNextBar);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstableBars(2); // Strategy would need a real test class
@@ -163,7 +166,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager = new BarSeriesManager(series);
+        manager = new BarSeriesManager(series, executeTradesOnNextBar);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
