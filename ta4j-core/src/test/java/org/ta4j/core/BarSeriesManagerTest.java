@@ -36,8 +36,8 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.execution.trade.ExecuteOnCloseModel;
-import org.ta4j.core.execution.trade.ExecuteOnOpenModel;
+import org.ta4j.core.execution.trade.TradeOnCloseModel;
+import org.ta4j.core.execution.trade.TradeOnOpenModel;
 import org.ta4j.core.execution.trade.TradeExecutionModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -55,7 +55,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    private final TradeExecutionModel tradeExecutionModel = new ExecuteOnCloseModel();
+    private final TradeExecutionModel tradeExecutionModel = new TradeOnCloseModel();
 
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -246,7 +246,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 .lowPrice(four)
                 .closePrice(four)
                 .build());
-        manager = new BarSeriesManager(series, new ExecuteOnOpenModel());
+        manager = new BarSeriesManager(series, new TradeOnOpenModel());
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 

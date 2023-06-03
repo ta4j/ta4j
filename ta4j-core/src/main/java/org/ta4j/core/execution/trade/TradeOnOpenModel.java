@@ -30,9 +30,13 @@ import org.ta4j.core.num.Num;
 /**
  * An execution model for {@link BarSeriesManager} objects.
  *
- * Executes trades on the next unfinished bar using the opening price
+ * Executes trades on the next bar at the open price.
+ * 
+ * This is used for strategies that explicitly trade just after a new bar opens
+ * at bar index `t + 1`, in order to execute new or close existing trades as
+ * close as possible to the opening price.
  */
-public class ExecuteOnOpenModel implements TradeExecutionModel {
+public class TradeOnOpenModel implements TradeExecutionModel {
 
     @Override
     public void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
