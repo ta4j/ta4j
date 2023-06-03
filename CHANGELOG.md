@@ -13,7 +13,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
-- **BarSeriesManager** to use **`ExecuteOnOpenModel`** by default
+- **BarSeriesManager** updated to use **`TradeOnOpenModel`** by default, which opens new trades at index `t + 1` at the open price.
+  - For strategies require the previous behaviour, i.e. trades seconds or minutes before the closing prices, **`TradeOnCloseModel`** can be passed to **BarSeriesManager**
+    - For example:
+      - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCloseModel())`
+      - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
