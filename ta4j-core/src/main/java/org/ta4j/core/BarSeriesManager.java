@@ -29,6 +29,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.policy.TradeExecutionPolicy;
 
 /**
  * A manager for {@link BarSeries} objects.
@@ -48,9 +49,8 @@ public class BarSeriesManager {
     private final CostModel transactionCostModel;
     private final CostModel holdingCostModel;
 
-    private final boolean executeTradesOnNextBar;
-
-    private final static boolean DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR = true;
+    /** The trade exeuction policy to use */
+    private final TradeExecutionPolicy tradeExecutionPolicy;
 
     /**
      * Constructor.
@@ -58,16 +58,17 @@ public class BarSeriesManager {
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR);
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), TradeExecutionPolicy.getDefault());
     }
 
     /**
      * Constructor.
      * 
-     * @param barSeries the bar series to be managed
+     * @param barSeries            the bar series to be managed
+     * @param tradeExecutionPolicy the trade execution policy to use
      */
-    public BarSeriesManager(BarSeries barSeries, boolean executeTradesOnNextBar) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), executeTradesOnNextBar);
+    public BarSeriesManager(BarSeries barSeries, TradeExecutionPolicy tradeExecutionPolicy) {
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionPolicy);
     }
 
     /**
@@ -81,7 +82,7 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.executeTradesOnNextBar = DEFAULT_EXECUTE_TRADES_ON_NEXT_BAR_BEHAVIOUR;
+        this.tradeExecutionPolicy = TradeExecutionPolicy.getDefault();
     }
 
     /**
@@ -90,13 +91,13 @@ public class BarSeriesManager {
      * @param barSeries              the bar series to be managed
      * @param transactionCostModel   the cost model for transactions of the asset
      * @param holdingCostModel       the cost model for holding asset (e.g. borrowing)
-     * @param executeTradesOnNextBar the behaviour of whether to execute the trade the open of the next bar, default true
+     * @param tradeExeuctionPolicy   the trade execution policy to use
      */
-    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel, boolean executeTradesOnNextBar) {
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionPolicy tradeExecutionPolicy) {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.executeTradesOnNextBar = executeTradesOnNextBar;
+        this.tradeExecutionPolicy = tradeExecutionPolicy;
     }
 
     /**
@@ -214,7 +215,7 @@ public class BarSeriesManager {
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                performOperation(strategy, tradingRecord, i, runEndIndex, amount);
+                tradeExecutionPolicy.apply(i, tradingRecord, barSeries, amount);
             }
         }
 
@@ -227,25 +228,12 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    performOperation(strategy, tradingRecord, i, runEndIndex, amount);
+                    tradeExecutionPolicy.apply(i, tradingRecord, barSeries, amount);
                     break;
                 }
             }
         }
         return tradingRecord;
-    }
-
-    private void performOperation(Strategy strategy, TradingRecord tradingRecord, int i, int runEndIndex, Num amount) {
-        if (strategy.shouldOperate(i, tradingRecord)) {
-            if(executeTradesOnNextBar) {
-                int indexOfNextBar = i+1;
-                if(indexOfNextBar <= runEndIndex) {
-                    tradingRecord.operate(indexOfNextBar, barSeries.getBar(indexOfNextBar).getOpenPrice(), amount);
-                }
-            } else {
-                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
-            }
-        }
     }
 
 }

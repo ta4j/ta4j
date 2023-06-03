@@ -38,6 +38,8 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.policy.TradeExecutionPolicy;
+import org.ta4j.core.policy.trade.ExecuteOnClosingPrice;
 import org.ta4j.core.rules.FixedRule;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
@@ -50,7 +52,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    private final boolean executeTradesOnNextBar = false;
+    private final TradeExecutionPolicy tradeExecutionPolicy = new ExecuteOnClosingPrice();
 
     public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -71,7 +73,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
-        manager = new BarSeriesManager(seriesForRun, executeTradesOnNextBar);
+        manager = new BarSeriesManager(seriesForRun, tradeExecutionPolicy);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstableBars(2); // Strategy would need a real test class
@@ -166,7 +168,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager = new BarSeriesManager(series, executeTradesOnNextBar);
+        manager = new BarSeriesManager(series, tradeExecutionPolicy);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 

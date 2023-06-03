@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.policy.TradeExecutionPolicy;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 
@@ -45,17 +46,17 @@ public class BacktestExecutor {
         this(series, new TradingStatementGenerator());
     }
 
-    public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel);
+    public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionPolicy tradeExecutionPolicy) {
+        this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel, tradeExecutionPolicy);
     }
 
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
-        this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel());
+        this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel(), TradeExecutionPolicy.getDefault());
     }
 
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
-        this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel);
+            CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionPolicy tradeExecutionPolicy) {
+        this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionPolicy);
         this.tradingStatementGenerator = tradingStatementGenerator;
     }
 
