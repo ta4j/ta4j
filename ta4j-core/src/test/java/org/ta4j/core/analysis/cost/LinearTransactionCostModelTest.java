@@ -43,7 +43,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
-import org.ta4j.core.execution.trade.TradeOnCloseModel;
+import org.ta4j.core.backtest.trade.TradeOnCloseModel;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;

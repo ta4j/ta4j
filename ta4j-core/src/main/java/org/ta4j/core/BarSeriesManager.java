@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.execution.trade.TradeExecutionModel;
+import org.ta4j.core.backtest.trade.TradeExecutionModel;
 import org.ta4j.core.num.Num;
 
 /**
