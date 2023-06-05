@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -35,11 +35,15 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Position;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.backtest.TradeExecutionModel;
-import org.ta4j.core.backtest.TradeOnCloseModel;
-import org.ta4j.core.backtest.TradeOnOpenModel;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DecimalNum;
