@@ -40,7 +40,7 @@ public class BaseBarBuilder {
     private Num volume;
     private long trades;
 
-    BaseBarBuilder() {
+    public BaseBarBuilder() {
     }
 
     public BaseBarBuilder timePeriod(Duration timePeriod) {
