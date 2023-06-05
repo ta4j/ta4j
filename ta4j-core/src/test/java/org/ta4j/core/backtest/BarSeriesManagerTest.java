@@ -35,8 +35,9 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
@@ -217,7 +218,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void runOnSeriesSlicesUsingExecuteOnNextBarOpenPriceModel() {
         ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
         BarSeries series = new BaseBarSeries();
-        BaseBarBuilder builder = new BaseBarBuilder();
+        BaseBarBuilder builder = BaseBar.builder();
         Duration duration = Duration.ofDays(1);
         Num one = DecimalNum.valueOf(1);
         Num two = DecimalNum.valueOf(2);
