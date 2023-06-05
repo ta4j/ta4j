@@ -229,13 +229,7 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    // if this is the very last bar in the series
-                    if(i == barSeries.getEndIndex()) {
-                        // close it at the last available price
-                        tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
-                    } else {
-                        tradeExecutionModel.apply(i, tradingRecord, barSeries, amount);
-                    }
+                    tradeExecutionModel.apply(i, tradingRecord, barSeries, amount);
                     break;
                 }
             }
