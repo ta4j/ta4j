@@ -35,7 +35,6 @@ import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BacktestExecutor;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
@@ -43,7 +42,8 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
-import org.ta4j.core.backtest.trade.TradeOnCloseModel;
+import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.TradeOnCloseModel;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;

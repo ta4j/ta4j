@@ -31,11 +31,11 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.backtest.trade.TradeOnCloseModel;
+import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeOnCloseModel;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;

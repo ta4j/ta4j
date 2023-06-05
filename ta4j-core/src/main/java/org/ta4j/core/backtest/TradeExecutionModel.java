@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.backtest.trade;
+package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
@@ -30,17 +30,17 @@ import org.ta4j.core.num.Num;
 /**
  * An execution model for {@link BarSeriesManager} objects.
  *
- * Executes trades on the current bar being considered using the closing price.
+ * Used for backtesting. Instructs {@link BarSeriesManager} on how to execute
+ * trades.
  * 
- * This is used for strategies that explicitly trade just before the bar closes
- * at index `t`, in order to execute new or close existing trades as close as
- * possible to the closing price.
+ * Constructor with {@link TradeExecutionModel} == {@link TradeExecutionModel#getDefault()}.
  */
-public class TradeOnCloseModel implements TradeExecutionModel {
+public interface TradeExecutionModel {
 
-    @Override
-    public void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
+    void apply(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount);
+
+    public static TradeExecutionModel getDefault() {
+        return new TradeOnOpenModel();
     }
 
 }

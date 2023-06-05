@@ -26,6 +26,7 @@ package org.ta4j.core;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.num.Num;
 
 /**
