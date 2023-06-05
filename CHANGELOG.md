@@ -18,7 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
     - For example:
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
-- **BarSeriesManager** moved **BackTestExecutor** to packge **`backtest`**
+- **BarSeriesManager** moved **BacktestExecutor** to packge **`backtest`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
