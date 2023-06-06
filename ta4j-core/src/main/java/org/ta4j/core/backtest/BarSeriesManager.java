@@ -56,8 +56,8 @@ public class BarSeriesManager {
     private final TradeExecutionModel tradeExecutionModel;
 
     /**
-     * Constructor.
-     * 
+     * Constructor with {@link #tradeExecutionModel} = {@link TradeOnOpenModel}.
+     *
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
