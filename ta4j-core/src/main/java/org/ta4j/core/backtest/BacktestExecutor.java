@@ -56,7 +56,7 @@ public class BacktestExecutor {
 
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
         this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel(),
-                TradeExecutionModel.getDefault());
+                new TradeOnOpenModel());
     }
 
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,

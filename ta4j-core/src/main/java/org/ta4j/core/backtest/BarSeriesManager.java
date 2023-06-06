@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -61,7 +61,7 @@ public class BarSeriesManager {
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), TradeExecutionModel.getDefault());
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), new TradeOnOpenModel());
     }
 
     /**
@@ -85,7 +85,7 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionModel = TradeExecutionModel.getDefault();
+        this.tradeExecutionModel = new TradeOnOpenModel();
     }
 
     /**
