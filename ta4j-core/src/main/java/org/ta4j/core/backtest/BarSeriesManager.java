@@ -75,7 +75,7 @@ public class BarSeriesManager {
     }
 
     /**
-     * Constructor.
+     * Constructor with {@link #tradeExecutionModel} = {@link TradeOnOpenModel}.
      * 
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
