@@ -33,7 +33,6 @@ import org.ta4j.core.num.Num;
  * Used for backtesting. Instructs {@link BarSeriesManager} on how to execute
  * trades.
  * 
- * Constructor with {@link TradeExecutionModel} == {@link TradeExecutionModel#getDefault()}.
  */
 public interface TradeExecutionModel {
 
