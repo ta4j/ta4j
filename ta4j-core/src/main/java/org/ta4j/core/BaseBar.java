@@ -45,22 +45,33 @@ public class BaseBar implements Bar {
      * bars within the same {@code BarSeries}.
      */
     private final Duration timePeriod;
+
     /** End time of the bar */
     private final ZonedDateTime endTime;
-    /** Begin time of the bar (derived by {@link #endTime} - {@link #duration}). */
+
+    /**
+     * Begin time of the bar (derived by {@link #endTime} - {@link #timePeriod}).
+     */
     private final ZonedDateTime beginTime;
+
     /** Open price of the period */
     private Num openPrice = null;
+
     /** Close price of the period */
     private Num closePrice = null;
+
     /** High price of the period */
     private Num highPrice = null;
+
     /** Low price of the period */
     private Num lowPrice = null;
+
     /** Traded amount during the period */
     private Num amount;
+
     /** Volume of the period */
     private Num volume;
+
     /** Trade count */
     private long trades = 0;
 
