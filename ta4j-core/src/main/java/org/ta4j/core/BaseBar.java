@@ -40,18 +40,13 @@ public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
 
-    /**
-     * Time period (e.g. 1 day, 15 min, etc.) of the bar. Must be the same for all
-     * bars within the same {@code BarSeries}.
-     */
+    /** Time period (e.g. 1 day, 15 min, etc.) of the bar */
     private final Duration timePeriod;
 
     /** End time of the bar */
     private final ZonedDateTime endTime;
 
-    /**
-     * Begin time of the bar (derived by {@link #endTime} - {@link #timePeriod}).
-     */
+    /** Begin time of the bar. */
     private final ZonedDateTime beginTime;
 
     /** Open price of the period */
@@ -386,14 +381,16 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * @return the time period of the bar
+     * @return the time period of the bar (must be the same for all bars within the
+     *         same {@code BarSeries})
      */
     public Duration getTimePeriod() {
         return timePeriod;
     }
 
     /**
-     * @return the begin timestamp of the bar period
+     * @return the begin timestamp of the bar period (derived by {@link #endTime} -
+     *         {@link #timePeriod})
      */
     public ZonedDateTime getBeginTime() {
         return beginTime;
