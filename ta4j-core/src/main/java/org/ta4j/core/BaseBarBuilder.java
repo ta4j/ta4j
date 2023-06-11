@@ -40,49 +40,86 @@ public class BaseBarBuilder {
     private Num volume;
     private long trades;
 
+    /** Constructor to build a {@code Bar}. */
     BaseBarBuilder() {
     }
 
+    /**
+     * @param timePeriod the time period
+     * @return {@code this}
+     */
     public BaseBarBuilder timePeriod(Duration timePeriod) {
         this.timePeriod = timePeriod;
         return this;
     }
 
+    /**
+     * @param endTime the end time of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder endTime(ZonedDateTime endTime) {
         this.endTime = endTime;
         return this;
     }
 
+    /**
+     * @param openPrice the open price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder openPrice(Num openPrice) {
         this.openPrice = openPrice;
         return this;
     }
 
+    /**
+     * @param closePrice the close price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder closePrice(Num closePrice) {
         this.closePrice = closePrice;
         return this;
     }
 
+    /**
+     * @param highPrice the highest price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder highPrice(Num highPrice) {
         this.highPrice = highPrice;
         return this;
     }
 
+    /**
+     * @param lowPrice the lowest price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder lowPrice(Num lowPrice) {
         this.lowPrice = lowPrice;
         return this;
     }
 
+    /**
+     * @param amount the amount of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder amount(Num amount) {
         this.amount = amount;
         return this;
     }
 
+    /**
+     * @param volume the volume of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder volume(Num volume) {
         this.volume = volume;
         return this;
     }
 
+    /**
+     * @param trades the trades count of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder trades(long trades) {
         this.trades = trades;
         return this;
