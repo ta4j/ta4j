@@ -99,7 +99,7 @@ public class BaseBarBuilder {
     }
 
     /**
-     * @param volume the whole traded volume of the bar period
+     * @param volume the total traded volume of the bar period
      * @return {@code this}
      */
     public BaseBarBuilder volume(Num volume) {
@@ -108,7 +108,7 @@ public class BaseBarBuilder {
     }
 
     /**
-     * @param amount the whole traded amount of the bar period
+     * @param amount the total traded amount of the bar period
      * @return {@code this}
      */
     public BaseBarBuilder amount(Num amount) {

@@ -61,10 +61,10 @@ public class BaseBar implements Bar {
     /** The close price of the bar period. */
     private Num closePrice = null;
 
-    /** The whole traded volume of the bar period. */
+    /** The total traded volume of the bar period. */
     private Num volume;
 
-    /** The whole traded amount of the bar period. */
+    /** The total traded amount of the bar period. */
     private Num amount;
 
     /** The number of trades of the bar period. */
@@ -95,7 +95,7 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
+     * @param volume     the total traded volume of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice,
             double closePrice, double volume) {
@@ -111,8 +111,8 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
-     * @param amount     the whole traded amount of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice,
             double closePrice, double volume, double amount) {
@@ -128,8 +128,8 @@ public class BaseBar implements Bar {
      * @param highPrice   the highest price of the bar period
      * @param lowPrice    the lowest price of the bar period
      * @param closePrice  the close price of the bar period
-     * @param volume      the whole traded volume of the bar period
-     * @param amount      the whole traded amount of the bar period
+     * @param volume      the total traded volume of the bar period
+     * @param amount      the total traded amount of the bar period
      * @param trades      the number of trades of the bar period
      * @param numFunction the numbers precision
      */
@@ -149,7 +149,7 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
+     * @param volume     the total traded volume of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
             BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume) {
@@ -165,8 +165,8 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
-     * @param amount     the whole traded amount of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
             BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
@@ -182,8 +182,8 @@ public class BaseBar implements Bar {
      * @param highPrice   the highest price of the bar period
      * @param lowPrice    the lowest price of the bar period
      * @param closePrice  the close price of the bar period
-     * @param volume      the whole traded volume of the bar period
-     * @param amount      the whole traded amount of the bar period
+     * @param volume      the total traded volume of the bar period
+     * @param amount      the total traded amount of the bar period
      * @param trades      the number of trades of the bar period
      * @param numFunction the numbers precision
      */
@@ -204,7 +204,7 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
+     * @param volume     the total traded volume of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
             String closePrice, String volume) {
@@ -220,8 +220,8 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
-     * @param amount     the whole traded amount of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
             String closePrice, String volume, String amount) {
@@ -237,8 +237,8 @@ public class BaseBar implements Bar {
      * @param highPrice   the highest price of the bar period
      * @param lowPrice    the lowest price of the bar period
      * @param closePrice  the close price of the bar period
-     * @param volume      the whole traded volume of the bar period
-     * @param amount      the whole traded amount of the bar period
+     * @param volume      the total traded volume of the bar period
+     * @param amount      the total traded amount of the bar period
      * @param trades      the number of trades of the bar period
      * @param numFunction the numbers precision
      */
@@ -259,8 +259,8 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
-     * @param amount     the whole traded amount of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount) {
@@ -276,8 +276,8 @@ public class BaseBar implements Bar {
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
      * @param closePrice the close price of the bar period
-     * @param volume     the whole traded volume of the bar period
-     * @param amount     the whole traded amount of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
@@ -383,14 +383,14 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * @return the whole traded volume of the bar period
+     * @return the total traded volume of the bar period
      */
     public Num getVolume() {
         return volume;
     }
 
     /**
-     * @return the whole traded amount (tradePrice x tradeVolume) of the bar period
+     * @return the total traded amount (tradePrice x tradeVolume) of the bar period
      */
     public Num getAmount() {
         return amount;
