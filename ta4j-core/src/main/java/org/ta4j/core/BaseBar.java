@@ -39,11 +39,15 @@ import org.ta4j.core.num.Num;
 public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
-    /** Time period (e.g. 1 day, 15 min, etc.) of the bar */
+
+    /**
+     * Time period (e.g. 1 day, 15 min, etc.) of the bar. Must be the same for all
+     * bars within the same {@code BarSeries}.
+     */
     private final Duration timePeriod;
     /** End time of the bar */
     private final ZonedDateTime endTime;
-    /** Begin time of the bar */
+    /** Begin time of the bar (derived by {@link #endTime} - {@link #duration}). */
     private final ZonedDateTime beginTime;
     /** Open price of the period */
     private Num openPrice = null;
