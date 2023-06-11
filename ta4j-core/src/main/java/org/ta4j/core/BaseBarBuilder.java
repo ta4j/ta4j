@@ -72,15 +72,6 @@ public class BaseBarBuilder {
     }
 
     /**
-     * @param closePrice the close price of the bar period
-     * @return {@code this}
-     */
-    public BaseBarBuilder closePrice(Num closePrice) {
-        this.closePrice = closePrice;
-        return this;
-    }
-
-    /**
      * @param highPrice the highest price of the bar period
      * @return {@code this}
      */
@@ -99,16 +90,16 @@ public class BaseBarBuilder {
     }
 
     /**
-     * @param amount the amount of the bar period
+     * @param closePrice the close price of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder amount(Num amount) {
-        this.amount = amount;
+    public BaseBarBuilder closePrice(Num closePrice) {
+        this.closePrice = closePrice;
         return this;
     }
 
     /**
-     * @param volume the volume of the bar period
+     * @param volume the whole traded volume of the bar period
      * @return {@code this}
      */
     public BaseBarBuilder volume(Num volume) {
@@ -117,7 +108,16 @@ public class BaseBarBuilder {
     }
 
     /**
-     * @param trades the trades count of the bar period
+     * @param amount the whole traded amount of the bar period
+     * @return {@code this}
+     */
+    public BaseBarBuilder amount(Num amount) {
+        this.amount = amount;
+        return this;
+    }
+
+    /**
+     * @param trades the number of trades of the bar period
      * @return {@code this}
      */
     public BaseBarBuilder trades(long trades) {
