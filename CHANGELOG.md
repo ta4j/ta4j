@@ -24,7 +24,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
-
+- **BaseBar** improved javadoc
+- **BaseBarBuilder** improved javadoc
+- **ConvertibleBaseBarBuilder** improved javadoc
+- **BaseBarSeries** improved javadoc
+- **BaseBarSeriesBuilder** improved javadoc
+- **BaseTradingRecord** improved javadoc
 
 ### Removed/Deprecated
 

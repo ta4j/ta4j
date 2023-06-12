@@ -33,6 +33,12 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
 
     private final Function<T, Num> conversionFunction;
 
+    /**
+     * Constructor to build a {@code BaseBar}.
+     * 
+     * @param conversionFunction the Num function to convert a {@link Number} to a
+     *                           {@link Num Num implementation}
+     */
     public ConvertibleBaseBarBuilder(Function<T, Num> conversionFunction) {
         this.conversionFunction = conversionFunction;
     }
@@ -55,33 +61,57 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
         return this;
     }
 
+    /**
+     * @param openPrice the open price of the bar period
+     * @return {@code this}
+     */
     public ConvertibleBaseBarBuilder<T> openPrice(T openPrice) {
         super.openPrice(conversionFunction.apply(openPrice));
         return this;
     }
 
+    /**
+     * @param highPrice the highest price of the bar period
+     * @return {@code this}
+     */
     public ConvertibleBaseBarBuilder<T> highPrice(T highPrice) {
         super.highPrice(conversionFunction.apply(highPrice));
         return this;
     }
 
+    /**
+     * @param lowPrice the lowest price of the bar period
+     * @return {@code this}
+     */
     public ConvertibleBaseBarBuilder<T> lowPrice(T lowPrice) {
         super.lowPrice(conversionFunction.apply(lowPrice));
         return this;
     }
 
+    /**
+     * @param closePrice the close price of the bar period
+     * @return {@code this}
+     */
     public ConvertibleBaseBarBuilder<T> closePrice(T closePrice) {
         super.closePrice(conversionFunction.apply(closePrice));
         return this;
     }
 
-    public ConvertibleBaseBarBuilder<T> amount(T amount) {
-        super.amount(conversionFunction.apply(amount));
+    /**
+     * @param volume the total traded volume of the bar period
+     * @return {@code this}
+     */
+    public ConvertibleBaseBarBuilder<T> volume(T volume) {
+        super.volume(conversionFunction.apply(volume));
         return this;
     }
 
-    public ConvertibleBaseBarBuilder<T> volume(T volume) {
-        super.volume(conversionFunction.apply(volume));
+    /**
+     * @param amount the total traded amount of the bar period
+     * @return {@code this}
+     */
+    public ConvertibleBaseBarBuilder<T> amount(T amount) {
+        super.amount(conversionFunction.apply(amount));
         return this;
     }
 }
