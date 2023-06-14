@@ -28,11 +28,11 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Price variation indicator.
+ * Close Price Difference indicator.
  */
-public class PriceVariationIndicator extends CachedIndicator<Num> {
+public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
 
-    public PriceVariationIndicator(BarSeries series) {
+    public ClosePriceDifferenceIndicator(BarSeries series) {
         super(series);
     }
 
@@ -40,7 +40,7 @@ public class PriceVariationIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
         Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
-        return currentBarClosePrice.dividedBy(previousBarClosePrice);
+        return currentBarClosePrice.minus(previousBarClosePrice);
     }
 
     @Override

@@ -23,11 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,29 +31,34 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+import java.util.function.Function;
 
-    private PriceVariationIndicator variationIndicator;
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class ClosePriceDifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private ClosePriceDifferenceIndicator closePriceDifference;
 
     private BarSeries barSeries;
 
-    public PriceVariationIndicatorTest(Function<Number, Num> numFunction) {
+    public ClosePriceDifferenceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
         barSeries = new MockBarSeries(numFunction);
-        variationIndicator = new PriceVariationIndicator(barSeries);
+        closePriceDifference = new ClosePriceDifferenceIndicator(barSeries);
     }
 
     @Test
-    public void indicatorShouldRetrieveBarVariation() {
-        assertNumEquals(1, variationIndicator.getValue(0));
+    public void indicatorShouldRetrieveBarDifference() {
+        assertNumEquals(0, closePriceDifference.getValue(0));
         for (int i = 1; i < 10; i++) {
             Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
             Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
-            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
+            assertEquals(closePriceDifference.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
         }
     }
 }
