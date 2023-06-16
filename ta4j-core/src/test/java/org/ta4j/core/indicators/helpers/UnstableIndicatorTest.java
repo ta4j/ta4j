@@ -21,42 +21,49 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
+import java.util.function.Function;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
-/**
- * Indicator that returns NaN in unstable bars
- */
-public class UnstableIndicator extends CachedIndicator<Num> {
+public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final int unstableBars;
-    private final Indicator<Num> indicator;
+    private int unstableBars;
+    private UnstableIndicator unstableIndicator;
 
-    /**
-     * Constructor.
-     * 
-     * @param indicator    the indicator
-     * @param unstableBars the number of first bars of the barSeries to be unstable
-     */
-    public UnstableIndicator(Indicator<Num> indicator, int unstableBars) {
-        super(indicator);
-        this.indicator = indicator;
-        this.unstableBars = unstableBars;
+    public UnstableIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (index < unstableBars) {
-            return NaN.NaN;
+    @Before
+    public void setUp() {
+        unstableBars = 5;
+        unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(new MockBarSeries(numFunction)),
+                unstableBars);
+    }
+
+    @Test
+    public void indicatorReturnsNanBeforeUnstableBars() {
+        for (int i = 0; i < unstableBars; i++) {
+            assertEquals(unstableIndicator.getValue(i), NaN.NaN);
         }
-        return indicator.getValue(index);
     }
 
-    @Override
-    public int getUnstableBars() {
-        return unstableBars;
+    @Test
+    public void indicatorNotReturnsNanAfterUnstableBars() {
+        for (int i = unstableBars; i < 10; i++) {
+            assertNotEquals(unstableIndicator.getValue(i), NaN.NaN);
+        }
     }
+
 }
