@@ -308,11 +308,11 @@ public class BaseBar implements Bar {
      *              can convert a {@link Number} of type {@code T} to a {@link Num
      *              Num implementation}
      * @param clazz any type convertable to Num
-     * @return the {@link ConvertibleBaseBarBuilder} to build a new {@code BaseBar}
+     * @return the {@link BaseBarConvertibleBuilder} to build a new {@code BaseBar}
      */
     @SuppressWarnings("unchecked")
-    public static <T> ConvertibleBaseBarBuilder<T> builder(Num num, Class<T> clazz) {
-        return new ConvertibleBaseBarBuilder<>((Function<T, Num>) num.function());
+    public static <T> BaseBarConvertibleBuilder<T> builder(Num num, Class<T> clazz) {
+        return new BaseBarConvertibleBuilder<>((Function<T, Num>) num.function());
     }
 
     /**
@@ -321,10 +321,10 @@ public class BaseBar implements Bar {
      *                           {@link Number} of type {@code T} to a {@link Num
      *                           Num implementation}
      * @param clazz              any type convertable to Num
-     * @return the {@link ConvertibleBaseBarBuilder} to build a new {@code BaseBar}
+     * @return the {@link BaseBarConvertibleBuilder} to build a new {@code BaseBar}
      */
-    public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
-        return new ConvertibleBaseBarBuilder<>(conversionFunction);
+    public static <T> BaseBarConvertibleBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
+        return new BaseBarConvertibleBuilder<>(conversionFunction);
     }
 
     /**
