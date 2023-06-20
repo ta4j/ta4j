@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostModel implements CostModel {
 
-    private static final long serialVersionUID = -8808559507754156097L;
     /**
      * Slope of the linear model - fee per position
      */

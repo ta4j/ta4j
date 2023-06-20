@@ -23,12 +23,10 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import java.io.Serializable;
-
 import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
-public interface CostModel extends Serializable {
+public interface CostModel {
 
     /**
      * @param position   the position
