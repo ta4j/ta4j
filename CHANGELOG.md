@@ -13,6 +13,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
+- **UnstableIndicator** moved to package **`indicators/helpers`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -46,7 +47,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **StandardErrorCriterion**
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
--  added **ClosePriceDifferenceIndicator**
+- added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **ClosePriceDifferenceIndicator**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
