@@ -49,6 +49,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
 - added **ClosePriceDifferenceIndicator**
+- added **TimeSegmentedVolumeIndicator**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
