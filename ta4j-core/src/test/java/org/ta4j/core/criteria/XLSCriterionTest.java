@@ -33,10 +33,10 @@ import org.ta4j.core.num.Num;
 
 public class XLSCriterionTest implements ExternalCriterionTest {
 
-    private Class<?> clazz;
-    private String fileName;
-    private int criterionColumn;
-    private int statesColumn;
+    private final Class<?> clazz;
+    private final String fileName;
+    private final int criterionColumn;
+    private final int statesColumn;
     private BarSeries cachedSeries = null;
     private final Function<Number, Num> numFunction;
 

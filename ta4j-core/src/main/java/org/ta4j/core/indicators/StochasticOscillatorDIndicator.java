@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  */
 public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator;
+    private final Indicator<Num> indicator;
 
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
         this(new SMAIndicator(k, 3));

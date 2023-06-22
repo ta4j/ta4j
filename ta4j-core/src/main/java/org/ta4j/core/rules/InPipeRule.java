@@ -37,11 +37,11 @@ import org.ta4j.core.num.Num;
 public class InPipeRule extends AbstractRule {
 
     /** The upper indicator */
-    private Indicator<Num> upper;
+    private final Indicator<Num> upper;
     /** The lower indicator */
-    private Indicator<Num> lower;
+    private final Indicator<Num> lower;
     /** The evaluated indicator */
-    private Indicator<Num> ref;
+    private final Indicator<Num> ref;
 
     /**
      * Constructor.

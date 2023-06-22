@@ -43,7 +43,8 @@ import org.ta4j.core.num.Num;
 
 public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private BaseBarSeriesAggregator baseBarSeriesAggregator = new BaseBarSeriesAggregator(new BarAggregatorForTest());
+    private final BaseBarSeriesAggregator baseBarSeriesAggregator = new BaseBarSeriesAggregator(
+            new BarAggregatorForTest());
 
     public BaseBarSeriesAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);

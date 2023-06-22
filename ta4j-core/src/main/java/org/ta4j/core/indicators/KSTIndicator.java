@@ -38,10 +38,10 @@ import org.ta4j.core.num.Num;
  *      </a>
  */
 public class KSTIndicator extends CachedIndicator<Num> {
-    private SMAIndicator RCMA1;
-    private SMAIndicator RCMA2;
-    private SMAIndicator RCMA3;
-    private SMAIndicator RCMA4;
+    private final SMAIndicator RCMA1;
+    private final SMAIndicator RCMA2;
+    private final SMAIndicator RCMA3;
+    private final SMAIndicator RCMA4;
 
     /**
      *

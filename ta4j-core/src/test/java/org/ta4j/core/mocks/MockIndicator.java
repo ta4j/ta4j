@@ -31,8 +31,8 @@ import org.ta4j.core.num.Num;
 
 public class MockIndicator implements Indicator<Num> {
 
-    private BarSeries series;
-    private List<Num> values;
+    private final BarSeries series;
+    private final List<Num> values;
 
     /**
      * Constructor.

@@ -45,9 +45,9 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
 
-    private HighPriceIndicator highPriceIndicator;
+    private final HighPriceIndicator highPriceIndicator;
 
-    private LowPriceIndicator lowPriceIndicator;
+    private final LowPriceIndicator lowPriceIndicator;
 
     public StochasticOscillatorKIndicator(BarSeries barSeries, int barCount) {
         this(new ClosePriceIndicator(barSeries), barCount, new HighPriceIndicator(barSeries),

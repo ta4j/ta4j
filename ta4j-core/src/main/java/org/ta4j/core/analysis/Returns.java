@@ -73,7 +73,7 @@ public class Returns implements Indicator<Num> {
     /**
      * The return rates
      */
-    private List<Num> values;
+    private final List<Num> values;
 
     /**
      * Unit element for efficient arithmetic return computation

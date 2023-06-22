@@ -33,9 +33,9 @@ import org.ta4j.core.num.Num;
 
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 
-    private Class<?> clazz;
-    private String fileName;
-    private int column;
+    private final Class<?> clazz;
+    private final String fileName;
+    private final int column;
     private BarSeries cachedSeries = null;
     private final Function<Number, Num> numFunction;
 
