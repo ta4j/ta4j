@@ -244,16 +244,6 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Returns a {@code Num} version of the given {@code Num}.
-     *
-     * @param val the number
-     * @return the {@code Num}
-     */
-    public static DecimalNum valueOf(DecimalNum val) {
-        return val;
-    }
-
-    /**
      * Returns a {@code Num} version of the given {@code Number}. Warning: This
      * method turns the number into a string first
      *

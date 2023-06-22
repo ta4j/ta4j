@@ -28,6 +28,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Removed/Deprecated
+- remove method `DecimalNum.valueOf(DecimalNum val)`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
