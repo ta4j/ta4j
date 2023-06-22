@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class ProfitCriterionTest extends AbstractCriterionTest {
 
     public ProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ProfitCriterion((boolean) params[0]), numFunction);
+        super(params -> new ProfitCriterion((boolean) params[0]), numFunction);
     }
 
     @Test

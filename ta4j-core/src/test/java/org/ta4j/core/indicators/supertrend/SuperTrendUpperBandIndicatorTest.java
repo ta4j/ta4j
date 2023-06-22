@@ -45,7 +45,7 @@ public class SuperTrendUpperBandIndicatorTest extends AbstractIndicatorTest<Indi
     BarSeries data;
 
     public SuperTrendUpperBandIndicatorTest(Function<Number, DoubleNum> numFunction) {
-        super((d) -> DoubleNum.valueOf(d));
+        super(DoubleNum::valueOf);
     }
 
     @Before

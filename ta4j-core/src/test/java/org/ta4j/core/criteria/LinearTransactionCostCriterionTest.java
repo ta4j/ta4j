@@ -44,8 +44,8 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
     private ExternalCriterionTest xls;
 
     public LinearTransactionCostCriterionTest(Function<Number, Num> numFunction) throws Exception {
-        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1],
-                (double) params[2]), numFunction);
+        super(params -> new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]),
+                numFunction);
         xls = new XLSCriterionTest(this.getClass(), "LTC.xls", 16, 6, numFunction);
     }
 
