@@ -76,7 +76,7 @@ public class ChainRule extends AbstractRule {
 
                 satisfiedWithinThreshold = link.getRule().isSatisfied(resultingIndex, tradingRecord);
 
-                if (satisfiedWithinThreshold == true) {
+                if (satisfiedWithinThreshold) {
                     break;
                 }
 

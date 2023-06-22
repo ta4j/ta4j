@@ -44,7 +44,6 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
 
     public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
             PositionStatsReportGenerator positionStatsReportGenerator) {
-        super();
         this.performanceReportGenerator = performanceReportGenerator;
         this.positionStatsReportGenerator = positionStatsReportGenerator;
     }
