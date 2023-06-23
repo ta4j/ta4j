@@ -25,6 +25,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
+- updated pom.xml: slf4j-api to 2.0.7
+- updated pom.xml: org.apache.poi to 5.2.3
+- updated pom.xml: maven-jar-plugin to 3.3.0
 
 
 ### Removed/Deprecated
