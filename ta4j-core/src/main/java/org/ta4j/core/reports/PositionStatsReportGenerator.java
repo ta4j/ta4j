@@ -32,10 +32,8 @@ import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates PositionStatsReport based on provided trading record and
+ * Generates a {@link PositionStatsReport} based on provided trading record and
  * bar series.
- *
- * @see PositionStatsReport
  */
 public class PositionStatsReportGenerator implements ReportGenerator<PositionStatsReport> {
 

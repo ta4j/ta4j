@@ -28,9 +28,17 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Trade count indicator.
+ * 
+ * <p>
+ * Returns the number of trades of a bar.
  */
 public class TradeCountIndicator extends CachedIndicator<Long> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public TradeCountIndicator(BarSeries series) {
         super(series);
     }

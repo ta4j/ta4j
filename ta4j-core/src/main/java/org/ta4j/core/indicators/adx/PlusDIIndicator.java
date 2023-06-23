@@ -30,7 +30,10 @@ import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * +DI indicator. Part of the Directional Movement System
+ * +DI indicator.
+ * 
+ * <p>
+ * Part of the Directional Movement System.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
@@ -40,15 +43,22 @@ import org.ta4j.core.num.Num;
  */
 public class PlusDIIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator avgPlusDMIndicator;
-    private final ATRIndicator atrIndicator;
     private final int barCount;
+    private final ATRIndicator atrIndicator;
+    private final MMAIndicator avgPlusDMIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #atrIndicator} and
+     *                 {@link #avgPlusDMIndicator}
+     */
     public PlusDIIndicator(BarSeries series, int barCount) {
         super(series);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
-        this.atrIndicator = new ATRIndicator(series, barCount);
         this.barCount = barCount;
+        this.atrIndicator = new ATRIndicator(series, barCount);
+        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
     }
 
     @Override

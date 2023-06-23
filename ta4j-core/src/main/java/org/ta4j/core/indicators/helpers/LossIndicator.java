@@ -28,12 +28,22 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Gain indicator.
+ * Loss indicator.
+ * 
+ * <p>
+ * Returns the difference of the indicator value of a bar and its previous bar
+ * if the indicator value of the current bar is less than the indicator value of
+ * the previous bar (otherwise, {@link Num#zero()} is returned).
  */
 public class LossIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     */
     public LossIndicator(Indicator<Num> indicator) {
         super(indicator);
         this.indicator = indicator;

@@ -22,6 +22,11 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of different 'Pivot Points'.
+ * Aggregator.
+ *
+ * <p>
+ * This package can be used to aggregate {@link org.ta4j.core.Bar bars} by
+ * various conditions, e.g. by
+ * {@link org.ta4j.core.aggregator.DurationBarAggregator duration}.
  */
-package org.ta4j.core.indicators.pivotpoints;
+package org.ta4j.core.aggregator;

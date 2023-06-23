@@ -29,9 +29,17 @@ import org.ta4j.core.num.Num;
 
 /**
  * Open price indicator.
+ * 
+ * <p>
+ * Returns the open price of a bar.
  */
 public class OpenPriceIndicator extends AbstractIndicator<Num> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public OpenPriceIndicator(BarSeries series) {
         super(series);
     }

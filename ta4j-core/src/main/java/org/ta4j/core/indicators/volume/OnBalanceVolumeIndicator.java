@@ -35,6 +35,11 @@ import org.ta4j.core.num.Num;
  */
 public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public OnBalanceVolumeIndicator(BarSeries series) {
         super(series);
     }

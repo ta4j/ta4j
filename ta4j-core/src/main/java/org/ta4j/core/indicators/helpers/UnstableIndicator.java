@@ -29,7 +29,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator that returns {@link NaN} in unstable bars.
+ * Indicator that returns {@link NaN#NaN NaN} in unstable bars.
  */
 public class UnstableIndicator extends CachedIndicator<Num> {
 
@@ -38,7 +38,7 @@ public class UnstableIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator    the indicator
      * @param unstableBars the number of first bars of the barSeries to be unstable
      */

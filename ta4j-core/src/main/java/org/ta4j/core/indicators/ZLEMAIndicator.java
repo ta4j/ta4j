@@ -40,12 +40,18 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
     private final Num k;
     private final int lag;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        k = numOf(2).dividedBy(numOf(barCount + 1));
-        lag = (barCount - 1) / 2;
+        this.k = numOf(2).dividedBy(numOf(barCount + 1));
+        this.lag = (barCount - 1) / 2;
     }
 
     @Override

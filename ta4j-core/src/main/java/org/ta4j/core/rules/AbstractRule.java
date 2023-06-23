@@ -39,8 +39,8 @@ public abstract class AbstractRule implements Rule {
     private final String className = getClass().getSimpleName();
 
     /**
-     * Traces the isSatisfied() method calls.
-     * 
+     * Traces the {@code isSatisfied()} method calls.
+     *
      * @param index       the bar index
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */

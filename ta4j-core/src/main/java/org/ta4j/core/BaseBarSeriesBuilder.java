@@ -31,11 +31,12 @@ import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
+/**
+ * A builder to build a new {@link BaseBarSeries}.
+ */
 public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
-    /**
-     * Default instance of Num to determine its Num type and function.
-     **/
+    /** Default instance of Num to determine its Num type and function. */
     private static Num defaultNum = DecimalNum.ZERO;
     private List<Bar> bars;
     private String name;
@@ -43,6 +44,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private boolean constrained;
     private int maxBarCount;
 
+    /** Constructor to build a {@code BaseBarSeries}. */
     public BaseBarSeriesBuilder() {
         initValues();
     }
@@ -88,7 +90,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param name to set {@link BaseBarSeries#constrained}
+     * @param constrained to set {@link BaseBarSeries#constrained}
      * @return {@code this}
      */
     public BaseBarSeriesBuilder setConstrained(boolean constrained) {

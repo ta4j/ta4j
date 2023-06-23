@@ -32,8 +32,11 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * A fixed indicator.
+ *
+ * <p>
+ * Returns constant values for a bar.
  * 
- * @param <T> the type of returned value (Double, Boolean, etc.)
+ * @param <T> the type of returned constant values (Double, Boolean, etc.)
  */
 public class FixedIndicator<T> extends AbstractIndicator<T> {
 
@@ -41,7 +44,8 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
-     * 
+     *
+     * @param series the bar series
      * @param values the values to be returned by this indicator
      */
     @SafeVarargs
@@ -50,6 +54,11 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
         this.values.addAll(Arrays.asList(values));
     }
 
+    /**
+     * Adds the {@code value} to {@link #values}.
+     * 
+     * @param value the value to add
+     */
     public void addValue(T value) {
         this.values.add(value);
     }

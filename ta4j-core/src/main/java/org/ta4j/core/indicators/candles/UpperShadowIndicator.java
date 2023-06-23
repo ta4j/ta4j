@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Upper shadow height indicator.
  *
+ * <p>
  * Provides the (absolute) difference between the high price and the highest
  * price of the candle body. I.e.: high price - max(open price, close price)
  *
