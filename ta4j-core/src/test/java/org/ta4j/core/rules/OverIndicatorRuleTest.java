@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
 
 public class OverIndicatorRuleTest {
@@ -41,7 +41,7 @@ public class OverIndicatorRuleTest {
     @Before
     public void setUp() {
         BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
+        Indicator<Num> indicator = new FixedNumIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
         rule = new OverIndicatorRule(indicator, series.numOf(5));
     }
 

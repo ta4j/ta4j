@@ -30,7 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
 
 public class CrossedUpIndicatorRuleTest {
@@ -39,8 +39,8 @@ public class CrossedUpIndicatorRuleTest {
 
     @Before
     public void setUp() {
-        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(new BaseBarSeries(), 8d, 9d, 10d, 12d, 9d, 11d,
-                12d, 13d);
+        Indicator<Num> evaluatedIndicator = new FixedNumIndicator(new BaseBarSeries(), 8d, 9d, 10d, 12d, 9d, 11d, 12d,
+                13d);
         rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
     }
 

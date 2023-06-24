@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
 
 public class IsHighestRuleTest {
@@ -41,7 +41,7 @@ public class IsHighestRuleTest {
     @Before
     public void setUp() {
         BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 1, 5, 3, 6, 5, 7, 0, -1, 2, 3);
+        Indicator<Num> indicator = new FixedNumIndicator(series, 1, 5, 3, 6, 5, 7, 0, -1, 2, 3);
         rule = new IsHighestRule(indicator, 3);
     }
 

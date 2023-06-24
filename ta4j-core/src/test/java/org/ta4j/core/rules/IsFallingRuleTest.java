@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
 
 public class IsFallingRuleTest {
@@ -41,7 +41,7 @@ public class IsFallingRuleTest {
     @Before
     public void setUp() {
         BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 6, 5, 4, 3, 2, 1, 0, -1, 2, 3);
+        Indicator<Num> indicator = new FixedNumIndicator(series, 6, 5, 4, 3, 2, 1, 0, -1, 2, 3);
         rule = new IsFallingRule(indicator, 3);
     }
 
