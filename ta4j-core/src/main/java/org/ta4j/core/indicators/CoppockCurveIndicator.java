@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.average.WMAIndicator;
 import org.ta4j.core.indicators.helpers.SumIndicator;
 import org.ta4j.core.num.Num;
 

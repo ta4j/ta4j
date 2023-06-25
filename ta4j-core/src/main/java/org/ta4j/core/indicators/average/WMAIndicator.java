@@ -21,32 +21,30 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Base class for Exponential Moving Average implementations.
+ * WMA indicator.
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class WMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num multiplier;
+    private final Indicator<Num> indicator;
 
     /**
      * Constructor.
      * 
-     * @param indicator  the {@link Indicator}
-     * @param barCount   the time frame
-     * @param multiplier the multiplier
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
      */
-    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
+    public WMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.multiplier = numOf(multiplier);
     }
 
     @Override
@@ -54,16 +52,25 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         if (index == 0) {
             return indicator.getValue(0);
         }
-        Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+
+        Num value = numOf(0);
+        int loopLength = (index - barCount < 0) ? index + 1 : barCount;
+        int actualIndex = index;
+        for (int i = loopLength; i > 0; i--) {
+            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            actualIndex--;
+        }
+
+        return value.dividedBy(numOf((loopLength * (loopLength + 1)) / 2));
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
-    }
-
-    public int getBarCount() {
-        return barCount;
     }
 }

@@ -21,53 +21,59 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Triple exponential moving average indicator (also called "TRIX").
- *
- * <p>
- * TEMA needs "3 * period - 2" of data to start producing values in contrast to
- * the period samples needed by a regular EMA.
+ * Linearly Weighted Moving Average (LWMA) indicator.
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
- * @see <a href=
- *      "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
+ *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
+ *      https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp</a>
  */
-public class TripleEMAIndicator extends CachedIndicator<Num> {
+public class LWMAIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
-    private final EMAIndicator emaEmaEma;
+    private final Num zero = zero();
 
     /**
      * Constructor.
-     *
-     * @param indicator the indicator
+     * 
+     * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
+    public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.indicator = indicator;
         this.barCount = barCount;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
-        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        // trix = 3 * ( ema - emaEma ) + emaEmaEma
-        return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+        Num sum = zero;
+        Num denominator = zero;
+        int count = 0;
+
+        if ((index + 1) < barCount) {
+            return zero;
+        }
+
+        int startIndex = (index - barCount) + 1;
+        for (int i = startIndex; i <= index; i++) {
+            count++;
+            denominator = denominator.plus(numOf(count));
+            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
+        }
+        return sum.dividedBy(denominator);
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return 0;
     }
 
     @Override

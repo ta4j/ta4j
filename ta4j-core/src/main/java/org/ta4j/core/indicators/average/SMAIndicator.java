@@ -21,31 +21,54 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Exponential moving average indicator.
+ * Simple moving average (SMA) indicator.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
+ *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
  */
-public class EMAIndicator extends AbstractEMAIndicator {
+public class SMAIndicator extends CachedIndicator<Num> {
+
+    private final Indicator<Num> indicator;
+    private final int barCount;
 
     /**
      * Constructor.
-     *
-     * @param indicator an indicator
-     * @param barCount  the EMA time frame
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
      */
-    public EMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, barCount, (2.0 / (barCount + 1)));
+    public SMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        Num sum = zero();
+        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
+            sum = sum.plus(indicator.getValue(i));
+        }
+
+        final int realBarCount = Math.min(barCount, index + 1);
+        return sum.dividedBy(numOf(realBarCount));
     }
 
     @Override
     public int getUnstableBars() {
-        return getBarCount();
+        return barCount;
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
 }

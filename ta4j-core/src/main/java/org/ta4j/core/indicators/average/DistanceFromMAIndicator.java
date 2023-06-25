@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -30,14 +30,11 @@ import java.util.Set;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Distance From Moving Average
- * 
- * <pre>
- * (close - MA) / MA
- * </pre>
+ * Distance From Moving Average (close - MA)/MA
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma">
@@ -53,9 +50,9 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     *
-     * @param series        the bar series
-     * @param movingAverage the moving average
+     * 
+     * @param series        the bar series {@link BarSeries}.
+     * @param movingAverage the moving average.
      */
     public DistanceFromMAIndicator(BarSeries series, Indicator<Num> movingAverage) {
         super(series);

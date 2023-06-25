@@ -21,8 +21,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
+import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
@@ -31,40 +32,52 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public HMAIndicatorTest(Function<Number, Num> numFunction) {
+    public ZLEMAIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10,
-                83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
+        data = new MockBarSeries(numFunction, 10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2);
     }
 
     @Test
-    public void hmaUsingBarCount9UsingClosePrice() {
-        // Example from
-        // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
-        assertNumEquals(86.3204, hma.getValue(10));
-        assertNumEquals(85.3705, hma.getValue(11));
-        assertNumEquals(84.1044, hma.getValue(12));
-        assertNumEquals(83.0197, hma.getValue(13));
-        assertNumEquals(81.3913, hma.getValue(14));
-        assertNumEquals(79.6511, hma.getValue(15));
-        assertNumEquals(78.0443, hma.getValue(16));
-        assertNumEquals(76.8832, hma.getValue(17));
-        assertNumEquals(75.5363, hma.getValue(18));
-        assertNumEquals(75.1713, hma.getValue(19));
-        assertNumEquals(75.3597, hma.getValue(20));
+    public void ZLEMAUsingBarCount10UsingClosePrice() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+
+        assertNumEquals(11.9091, zlema.getValue(9));
+        assertNumEquals(8.8347, zlema.getValue(10));
+        assertNumEquals(5.7739, zlema.getValue(11));
     }
 
+    @Test
+    public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        assertNumEquals(10, zlema.getValue(0));
+    }
+
+    @Test
+    public void valuesLessThanBarCountMustBeEqualsToSMAValues() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
+
+        for (int i = 0; i < 9; i++) {
+            assertEquals(sma.getValue(i), zlema.getValue(i));
+        }
+    }
+
+    @Test
+    public void smallBarCount() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
+        assertNumEquals(10, zlema.getValue(0));
+    }
 }

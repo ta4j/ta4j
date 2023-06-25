@@ -21,62 +21,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Linearly Weighted Moving Average (LWMA) indicator.
+ * Modified moving average indicator.
  *
- * @see <a href=
- *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
- *      https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp</a>
+ * <p>
+ * It is similar to exponential moving average but smooths more slowly. Used in
+ * Welles Wilder's indicators like ADX, RSI.
  */
-public class LWMAIndicator extends CachedIndicator<Num> {
-
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final Num zero = zero();
+public class MMAIndicator extends AbstractEMAIndicator {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param barCount  the MMA time frame
      */
-    public LWMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-    }
-
-    @Override
-    protected Num calculate(int index) {
-        Num sum = zero;
-        Num denominator = zero;
-        int count = 0;
-
-        if ((index + 1) < barCount) {
-            return zero;
-        }
-
-        int startIndex = (index - barCount) + 1;
-        for (int i = startIndex; i <= index; i++) {
-            count++;
-            denominator = denominator.plus(numOf(count));
-            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
-        }
-        return sum.dividedBy(denominator);
+    public MMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator, barCount, 1.0 / barCount);
     }
 
     @Override
     public int getUnstableBars() {
-        return 0;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getBarCount();
     }
 }

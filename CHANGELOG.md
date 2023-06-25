@@ -14,6 +14,19 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
 - **UnstableIndicator** moved to package **`indicators/helpers`**
+- **AbstractEMAIndicator** moved to package **`indicators/average`**
+- **DistanceFromMAIndicator** moved to package **`indicators/average`**
+- **DoubleEMAIndicator** moved to package **`indicators/average`**
+- **EMAIndicator** moved to package **`indicators/average`**
+- **HMAIndicator** moved to package **`indicators/average`**
+- **KAMAIndicator** moved to package **`indicators/average`**
+- **LWMAIndicator** moved to package **`indicators/average`**
+- **MACDIndicator** moved to package **`indicators/average`**
+- **MMAIndicator** moved to package **`indicators/average`**
+- **SMAIndicator** moved to package **`indicators/average`**
+- **TripleEMAIndicator** moved to package **`indicators/average`**
+- **WMAIndicator** moved to package **`indicators/average`**
+- **ZLEMAIndicator** moved to package **`indicators/average`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices

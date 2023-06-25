@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.average.EMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**

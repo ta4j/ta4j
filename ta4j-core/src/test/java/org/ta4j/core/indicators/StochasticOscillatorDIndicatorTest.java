@@ -35,6 +35,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 

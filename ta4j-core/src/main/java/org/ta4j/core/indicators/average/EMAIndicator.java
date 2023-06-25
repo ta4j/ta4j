@@ -21,55 +21,31 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * WMA indicator.
+ * Exponential moving average indicator.
+ *
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
  */
-public class WMAIndicator extends CachedIndicator<Num> {
-
-    private final int barCount;
-    private final Indicator<Num> indicator;
+public class EMAIndicator extends AbstractEMAIndicator {
 
     /**
      * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     *
+     * @param indicator an indicator
+     * @param barCount  the EMA time frame
      */
-    public WMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-    }
-
-    @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
-        }
-
-        Num value = numOf(0);
-        int loopLength = (index - barCount < 0) ? index + 1 : barCount;
-        int actualIndex = index;
-        for (int i = loopLength; i > 0; i--) {
-            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
-            actualIndex--;
-        }
-
-        return value.dividedBy(numOf((loopLength * (loopLength + 1)) / 2));
+    public EMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator, barCount, (2.0 / (barCount + 1)));
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getBarCount();
     }
 }

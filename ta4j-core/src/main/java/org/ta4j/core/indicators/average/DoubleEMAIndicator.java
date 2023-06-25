@@ -21,43 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Simple moving average (SMA) indicator.
+ * Double exponential moving average indicator.
+ * </p/>
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
+ *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
+ *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
  */
-public class SMAIndicator extends CachedIndicator<Num> {
+public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private final EMAIndicator ema;
+    private final EMAIndicator emaEma;
 
     /**
      * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
+     *
+     * @param indicator the indicator
      * @param barCount  the time frame
      */
-    public SMAIndicator(Indicator<Num> indicator, int barCount) {
+    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.indicator = indicator;
         this.barCount = barCount;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num sum = zero();
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            sum = sum.plus(indicator.getValue(i));
-        }
-
-        final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(numOf(realBarCount));
+        return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
     }
 
     @Override
@@ -69,5 +68,4 @@ public class SMAIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
-
 }

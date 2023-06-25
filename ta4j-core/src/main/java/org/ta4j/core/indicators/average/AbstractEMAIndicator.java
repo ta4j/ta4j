@@ -21,56 +21,50 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.statistics;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Variance indicator.
+ * Base class for Exponential Moving Average implementations.
  */
-public class VarianceIndicator extends CachedIndicator<Num> {
+public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
+    private final Num multiplier;
 
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator  the {@link Indicator}
+     * @param barCount   the time frame
+     * @param multiplier the multiplier
      */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
+    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+        this.multiplier = numOf(multiplier);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        Num variance = zero();
-        Num average = sma.getValue(index);
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
+        if (index == 0) {
+            return indicator.getValue(0);
         }
-        variance = variance.dividedBy(numOf(numberOfObservations));
-        return variance;
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return barCount;
+        Num prevValue = getValue(index - 1);
+        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
+    public int getBarCount() {
+        return barCount;
     }
 }

@@ -33,7 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.average.EMAIndicator;
 
 public class PreviousValueIndicatorTest {
 

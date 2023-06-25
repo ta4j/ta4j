@@ -21,52 +21,49 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Zero-lag exponential moving average indicator.
+ * Triple exponential moving average indicator (also called "TRIX").
+ *
+ * <p>
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to
+ * the period samples needed by a regular EMA.
  *
  * @see <a href=
- *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
- *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
+ *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
  */
-public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class TripleEMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num k;
-    private final int lag;
+    private final EMAIndicator ema;
+    private final EMAIndicator emaEma;
+    private final EMAIndicator emaEmaEma;
 
     /**
      * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
+     *
+     * @param indicator the indicator
      * @param barCount  the time frame
      */
-    public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
+    public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.indicator = indicator;
         this.barCount = barCount;
-        this.k = numOf(2).dividedBy(numOf(barCount + 1));
-        this.lag = (barCount - 1) / 2;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
+        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index + 1 < barCount) {
-            // Starting point of the ZLEMA
-            return new SMAIndicator(indicator, barCount).getValue(index);
-        }
-        if (index == 0) {
-            // If the barCount is bigger than the indicator's value count
-            return indicator.getValue(0);
-        }
-        Num zlemaPrev = getValue(index - 1);
-        return k.multipliedBy(numOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
-                .plus(one().minus(k).multipliedBy(zlemaPrev));
+        // trix = 3 * ( ema - emaEma ) + emaEmaEma
+        return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }
 
     @Override

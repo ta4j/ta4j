@@ -21,9 +21,10 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -56,7 +57,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator     the {@link Indicator}
+     * @param indicator     the indicator
      * @param shortBarCount the short time frame (normally 12)
      * @param longBarCount  the long time frame (normally 26)
      */
@@ -69,16 +70,12 @@ public class MACDIndicator extends CachedIndicator<Num> {
         this.longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
-    /**
-     * @return the Short term EMA indicator
-     */
+    /** @return the short term EMA indicator */
     public EMAIndicator getShortTermEma() {
         return shortTermEma;
     }
 
-    /**
-     * @return the Long term EMA indicator
-     */
+    /** @return the long term EMA indicator */
     public EMAIndicator getLongTermEma() {
         return longTermEma;
     }

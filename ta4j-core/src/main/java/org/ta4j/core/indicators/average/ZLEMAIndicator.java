@@ -21,40 +21,53 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Double exponential moving average indicator.
+ * Zero-lag exponential moving average indicator.
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
- *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
+ *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
+ *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
-public class DoubleEMAIndicator extends CachedIndicator<Num> {
+public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
+    private final Num k;
+    private final int lag;
 
     /**
      * Constructor.
-     *
-     * @param indicator the indicator
+     * 
+     * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
+    public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.indicator = indicator;
         this.barCount = barCount;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
+        this.k = numOf(2).dividedBy(numOf(barCount + 1));
+        this.lag = (barCount - 1) / 2;
     }
 
     @Override
     protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
+        if (index + 1 < barCount) {
+            // Starting point of the ZLEMA
+            return new SMAIndicator(indicator, barCount).getValue(index);
+        }
+        if (index == 0) {
+            // If the barCount is bigger than the indicator's value count
+            return indicator.getValue(0);
+        }
+        Num zlemaPrev = getValue(index - 1);
+        return k.multipliedBy(numOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
+                .plus(one().minus(k).multipliedBy(zlemaPrev));
     }
 
     @Override

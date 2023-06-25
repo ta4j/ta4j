@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
@@ -38,6 +38,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -45,7 +47,7 @@ import org.ta4j.core.num.Num;
 
 public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final ExternalIndicatorTest xls;
+    private ExternalIndicatorTest xls;
 
     public EMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
         super((data, params) -> new EMAIndicator(data, (int) params[0]), numFunction);
