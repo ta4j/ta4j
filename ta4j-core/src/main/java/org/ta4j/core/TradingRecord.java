@@ -59,8 +59,8 @@ public interface TradingRecord extends Serializable {
      * 
      * @param index the index to place the trade
      */
-    default void operate(int index) {
-        operate(index, NaN, NaN);
+    default void trade(int index) {
+        trade(index, NaN, NaN);
     }
 
     /**
@@ -70,7 +70,7 @@ public interface TradingRecord extends Serializable {
      * @param price  the trade price
      * @param amount the trade amount
      */
-    void operate(int index, Num price, Num amount);
+    void trade(int index, Num price, Num amount);
 
     /**
      * Places an entry trade in the trading record.

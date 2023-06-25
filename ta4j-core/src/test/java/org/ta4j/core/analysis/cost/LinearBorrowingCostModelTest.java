@@ -91,7 +91,7 @@ public class LinearBorrowingCostModelTest {
         // for until current index
         int currentIndex = 4;
         Position position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
-        position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        position.trade(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num costsFromPosition = position.getHoldingCost(currentIndex);
         Num costsFromModel = borrowingModel.calculate(position, currentIndex);

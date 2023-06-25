@@ -57,20 +57,20 @@ public class PositionTest {
         this.uncoveredPosition = new Position(TradeType.SELL);
 
         posEquals1 = new Position();
-        posEquals1.operate(1);
-        posEquals1.operate(2);
+        posEquals1.trade(1);
+        posEquals1.trade(2);
 
         posEquals2 = new Position();
-        posEquals2.operate(1);
-        posEquals2.operate(2);
+        posEquals2.trade(1);
+        posEquals2.trade(2);
 
         posNotEquals1 = new Position(TradeType.SELL);
-        posNotEquals1.operate(1);
-        posNotEquals1.operate(2);
+        posNotEquals1.trade(1);
+        posNotEquals1.trade(2);
 
         posNotEquals2 = new Position(TradeType.SELL);
-        posNotEquals2.operate(1);
-        posNotEquals2.operate(2);
+        posNotEquals2.trade(1);
+        posNotEquals2.trade(2);
 
         transactionModel = new LinearTransactionCostModel(0.01);
         holdingModel = new LinearBorrowingCostModel(0.001);
@@ -82,7 +82,7 @@ public class PositionTest {
 
     @Test
     public void whenNewShouldCreateBuyOrderWhenEntering() {
-        newPosition.operate(0);
+        newPosition.trade(0);
         assertEquals(Trade.buyAt(0, NaN, NaN), newPosition.getEntry());
     }
 
@@ -93,30 +93,30 @@ public class PositionTest {
 
     @Test
     public void whenOpenedShouldCreateSellOrderWhenExiting() {
-        newPosition.operate(0);
-        newPosition.operate(1);
+        newPosition.trade(0);
+        newPosition.trade(1);
         assertEquals(Trade.sellAt(1, NaN, NaN), newPosition.getExit());
     }
 
     @Test
     public void whenClosedShouldNotEnter() {
-        newPosition.operate(0);
-        newPosition.operate(1);
+        newPosition.trade(0);
+        newPosition.trade(1);
         assertTrue(newPosition.isClosed());
-        newPosition.operate(2);
+        newPosition.trade(2);
         assertTrue(newPosition.isClosed());
     }
 
     @Test(expected = IllegalStateException.class)
     public void whenExitIndexIsLessThanEntryIndexShouldThrowException() {
-        newPosition.operate(3);
-        newPosition.operate(1);
+        newPosition.trade(3);
+        newPosition.trade(1);
     }
 
     @Test
     public void shouldClosePositionOnSameIndex() {
-        newPosition.operate(3);
-        newPosition.operate(3);
+        newPosition.trade(3);
+        newPosition.trade(3);
         assertTrue(newPosition.isClosed());
     }
 
@@ -132,14 +132,14 @@ public class PositionTest {
 
     @Test
     public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
-        uncoveredPosition.operate(0);
+        uncoveredPosition.trade(0);
         assertEquals(Trade.sellAt(0, NaN, NaN), uncoveredPosition.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
-        uncoveredPosition.operate(0);
-        uncoveredPosition.operate(1);
+        uncoveredPosition.trade(0);
+        uncoveredPosition.trade(1);
         assertEquals(Trade.buyAt(1, NaN, NaN), uncoveredPosition.getExit());
     }
 
@@ -163,11 +163,11 @@ public class PositionTest {
         Position trRightEquals = new Position();
         Position trRightNotEquals = new Position();
 
-        assertEquals(TradeType.BUY, trRightNotEquals.operate(2).getType());
+        assertEquals(TradeType.BUY, trRightNotEquals.trade(2).getType());
         assertNotEquals(trLeft, trRightNotEquals);
 
-        assertEquals(TradeType.BUY, trLeft.operate(1).getType());
-        assertEquals(TradeType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(TradeType.BUY, trLeft.trade(1).getType());
+        assertEquals(TradeType.BUY, trRightEquals.trade(1).getType());
         assertEquals(trLeft, trRightEquals);
 
         assertNotEquals(trLeft, trRightNotEquals);
@@ -179,15 +179,15 @@ public class PositionTest {
         Position trRightEquals = new Position();
         Position trRightNotEquals = new Position();
 
-        assertEquals(TradeType.BUY, trLeft.operate(1).getType());
-        assertEquals(TradeType.BUY, trRightEquals.operate(1).getType());
-        assertEquals(TradeType.BUY, trRightNotEquals.operate(1).getType());
+        assertEquals(TradeType.BUY, trLeft.trade(1).getType());
+        assertEquals(TradeType.BUY, trRightEquals.trade(1).getType());
+        assertEquals(TradeType.BUY, trRightNotEquals.trade(1).getType());
 
-        assertEquals(TradeType.SELL, trRightNotEquals.operate(3).getType());
+        assertEquals(TradeType.SELL, trRightNotEquals.trade(3).getType());
         assertNotEquals(trLeft, trRightNotEquals);
 
-        assertEquals(TradeType.SELL, trLeft.operate(2).getType());
-        assertEquals(TradeType.SELL, trRightEquals.operate(2).getType());
+        assertEquals(TradeType.SELL, trLeft.trade(2).getType());
+        assertEquals(TradeType.SELL, trRightEquals.trade(2).getType());
         assertEquals(trLeft, trRightEquals);
 
         assertNotEquals(trLeft, trRightNotEquals);
@@ -197,8 +197,8 @@ public class PositionTest {
     public void testGetProfitForLongPositions() {
         Position position = new Position(TradeType.BUY);
 
-        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
-        position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
         final Num profit = position.getProfit();
 
@@ -209,8 +209,8 @@ public class PositionTest {
     public void testGetProfitForShortPositions() {
         Position position = new Position(TradeType.SELL);
 
-        position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
-        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
 
         final Num profit = position.getProfit();
 
@@ -221,8 +221,8 @@ public class PositionTest {
     public void testGetGrossReturnForLongPositions() {
         Position position = new Position(TradeType.BUY);
 
-        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
-        position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
         final Num profit = position.getGrossReturn();
 
@@ -233,8 +233,8 @@ public class PositionTest {
     public void testGetGrossReturnForShortPositions() {
         Position position = new Position(TradeType.SELL);
 
-        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
-        position.operate(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        position.trade(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
 
         final Num profit = position.getGrossReturn();
 
@@ -274,7 +274,7 @@ public class PositionTest {
     public void getProfitLongNoFinalBarTest() {
         Position closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
         Position openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
-        openPosition.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        openPosition.trade(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num profitOfClosedPosition = closedPosition.getProfit();
         Num proftOfOpenPosition = openPosition.getProfit();
@@ -287,7 +287,7 @@ public class PositionTest {
     public void getProfitLongWithFinalBarTest() {
         Position closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
         Position openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
-        openPosition.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        openPosition.trade(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
         Num profitOfClosedPosition = closedPosition.getProfit(10, DoubleNum.valueOf(12));
         Num profitOfOpenPosition = openPosition.getProfit(10, DoubleNum.valueOf(12));
@@ -303,7 +303,7 @@ public class PositionTest {
 
         Position closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
         Position openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
-        openPosition.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        openPosition.trade(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num profitOfClosedPosition = closedPosition.getProfit();
         Num proftOfOpenPosition = openPosition.getProfit();
@@ -322,7 +322,7 @@ public class PositionTest {
 
         Position closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
         Position openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
-        openPosition.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        openPosition.trade(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
         Num profitOfClosedPositionFinalAfter = closedPosition.getProfit(20, DoubleNum.valueOf(3));
         Num profitOfOpenPositionFinalAfter = openPosition.getProfit(20, DoubleNum.valueOf(3));

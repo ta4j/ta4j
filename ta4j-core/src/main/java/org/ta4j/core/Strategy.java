@@ -106,7 +106,7 @@ public interface Strategy {
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend a trade, false otherwise (no recommendation)
      */
-    default boolean shouldOperate(int index, TradingRecord tradingRecord) {
+    default boolean shouldTrade(int index, TradingRecord tradingRecord) {
         Position position = tradingRecord.getCurrentPosition();
         if (position.isNew()) {
             return shouldEnter(index, tradingRecord);

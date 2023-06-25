@@ -127,14 +127,14 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion retWithBase = getCriterion();
         Position position1 = new Position();
         assertNumEquals(1d, retWithBase.calculate(series, position1));
-        position1.operate(0);
+        position1.trade(0);
         assertNumEquals(1d, retWithBase.calculate(series, position1));
 
         // without base percentage should return 0
         AnalysisCriterion retWithoutBase = getCriterion(false);
         Position position2 = new Position();
         assertNumEquals(0, retWithoutBase.calculate(series, position2));
-        position2.operate(0);
+        position2.trade(0);
         assertNumEquals(0, retWithoutBase.calculate(series, position2));
     }
 

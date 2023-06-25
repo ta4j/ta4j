@@ -184,8 +184,8 @@ public class BarSeriesManager {
 
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+            if (strategy.shouldTrade(i, tradingRecord)) {
+                tradingRecord.trade(i, barSeries.getBar(i).getClosePrice(), amount);
             }
         }
 
@@ -197,8 +197,8 @@ public class BarSeriesManager {
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+                if (strategy.shouldTrade(i, tradingRecord)) {
+                    tradingRecord.trade(i, barSeries.getBar(i).getClosePrice(), amount);
                     break;
                 }
             }

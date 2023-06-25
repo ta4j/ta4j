@@ -203,7 +203,7 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Trade newTrade = currentPosition.trade(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
     }
@@ -224,20 +224,20 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public void operate(int index, Num price, Num amount) {
+    public void trade(int index, Num price, Num amount) {
         if (currentPosition.isClosed()) {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
         boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        Trade newTrade = currentPosition.operate(index, price, amount);
+        Trade newTrade = currentPosition.trade(index, price, amount);
         recordTrade(newTrade, newTradeWillBeAnEntry);
     }
 
     @Override
     public boolean enter(int index, Num price, Num amount) {
         if (currentPosition.isNew()) {
-            operate(index, price, amount);
+            trade(index, price, amount);
             return true;
         }
         return false;
@@ -246,7 +246,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public boolean exit(int index, Num price, Num amount) {
         if (currentPosition.isOpened()) {
-            operate(index, price, amount);
+            trade(index, price, amount);
             return true;
         }
         return false;

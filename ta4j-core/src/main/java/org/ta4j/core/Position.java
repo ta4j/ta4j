@@ -158,24 +158,30 @@ public class Position implements Serializable {
     }
 
     /**
-     * Operates the position at the index-th position
+     * Executes a trade on the position at the index-th position.
      * 
      * @param index the bar index
      * @return the trade
+     * @see #trade(int, Num, Num)
      */
-    public Trade operate(int index) {
-        return operate(index, NaN, NaN);
+    public Trade trade(int index) {
+        return trade(index, NaN, NaN);
     }
 
     /**
-     * Operates the position at the index-th position
+     * Executes a trade on the position at the index-th position.
+     * 
+     * <p>
+     * Creates an entry trade if {@link #isNew()} (i.e. opens the new position).
+     * Otherwise, creates an exit trade (i.e. closes the existing position).
      * 
      * @param index  the bar index
      * @param price  the price
      * @param amount the amount
      * @return the trade
+     * @throws IllegalStateException if {@link #isOpened()} and index < entry.index
      */
-    public Trade operate(int index, Num price, Num amount) {
+    public Trade trade(int index, Num price, Num amount) {
         Trade trade = null;
         if (isNew()) {
             trade = new Trade(index, startingType, price, amount, transactionCostModel);

@@ -35,7 +35,7 @@ public class MockTradingRecord extends BaseTradingRecord {
     /*
      * Constructor. Builds a TradingRecord from a list of states. Initial state
      * value is zero. Then at each index where the state value changes, the
-     * TradingRecord operates at that index.
+     * TradingRecord executes a trade at that index.
      *
      * @param states List<Num> of state values
      */
@@ -45,7 +45,7 @@ public class MockTradingRecord extends BaseTradingRecord {
         for (int i = 0; i < states.size(); i++) {
             double state = states.get(i).doubleValue();
             if (state != lastState) {
-                this.operate(i);
+                this.trade(i);
             }
             lastState = state;
         }

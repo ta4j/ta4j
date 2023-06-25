@@ -108,7 +108,7 @@ public class LinearTransactionCostModelTest {
         // Calculate the transaction costs of an open position
         int currentIndex = 4;
         Position position = new Position(Trade.TradeType.BUY, transactionModel, new ZeroCostModel());
-        position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        position.trade(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num costsFromModel = transactionModel.calculate(position, currentIndex);
 

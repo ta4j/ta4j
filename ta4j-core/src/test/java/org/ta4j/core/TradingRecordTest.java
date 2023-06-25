@@ -56,7 +56,7 @@ public class TradingRecordTest {
     public void operate() {
         TradingRecord record = new BaseTradingRecord();
 
-        record.operate(1);
+        record.trade(1);
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(0, record.getPositionCount());
         assertNull(record.getLastPosition());
@@ -66,7 +66,7 @@ public class TradingRecordTest {
         assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastEntry());
         assertNull(record.getLastExit());
 
-        record.operate(3);
+        record.trade(3);
         assertTrue(record.getCurrentPosition().isNew());
         assertEquals(1, record.getPositionCount());
         assertEquals(new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN)), record.getLastPosition());
@@ -76,7 +76,7 @@ public class TradingRecordTest {
         assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastEntry());
         assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastExit());
 
-        record.operate(5);
+        record.trade(5);
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(1, record.getPositionCount());
         assertEquals(new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN)), record.getLastPosition());

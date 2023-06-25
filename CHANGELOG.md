@@ -14,6 +14,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
 - **UnstableIndicator** moved to package **`indicators/helpers`**
+- **Strategy#shouldOperate** renamed to **`Strategy#shouldTrade`**
+- **TradingRecord#operate** renamed to **`TradingRecord#trade`**
+- **Position#operate** renamed to **`Position#trade`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
