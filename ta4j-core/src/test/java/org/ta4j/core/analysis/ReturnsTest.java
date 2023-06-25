@@ -143,7 +143,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(arithDouble, DoubleNum.valueOf(-0.08333333333333326));
         assertNumEquals(arithPrecision,
-                DecimalNum.valueOf(1.1).dividedBy(DecimalNum.valueOf(1.2)).minus(DecimalNum.valueOf(1)));
+                DecimalNum.valueOf(1.1).divide(DecimalNum.valueOf(1.2)).minus(DecimalNum.valueOf(1)));
 
         assertNumEquals(logDouble, DoubleNum.valueOf(-0.08701137698962969));
         assertNumEquals(logPrecision, DecimalNum.valueOf("-0.087011376989629766167765901873746"));

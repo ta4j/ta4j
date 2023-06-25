@@ -55,7 +55,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             return indicator.getValue(0);
         }
         Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+        return indicator.getValue(index).minus(prevValue).multiply(multiplier).plus(prevValue);
     }
 
     @Override

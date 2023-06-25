@@ -48,7 +48,7 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
         if (grossLoss.isZero()) {
             return series.zero();
         }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return grossLoss.divide(numberOfLosingPositions);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
         if (grossLoss.isZero()) {
             return series.zero();
         }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return grossLoss.divide(numberOfLosingPositions);
     }
 
     /** The higher the criterion value, the better. */

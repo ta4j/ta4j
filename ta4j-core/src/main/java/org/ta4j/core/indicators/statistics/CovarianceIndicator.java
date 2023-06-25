@@ -63,10 +63,10 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         Num average1 = sma1.getValue(index);
         Num average2 = sma2.getValue(index);
         for (int i = startIndex; i <= index; i++) {
-            Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
+            Num mul = indicator1.getValue(i).minus(average1).multiply(indicator2.getValue(i).minus(average2));
             covariance = covariance.plus(mul);
         }
-        covariance = covariance.dividedBy(numOf(numberOfObservations));
+        covariance = covariance.divide(numOf(numberOfObservations));
         return covariance;
     }
 

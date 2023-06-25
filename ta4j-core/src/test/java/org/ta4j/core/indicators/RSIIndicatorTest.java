@@ -137,7 +137,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> avgLoss = new SMAIndicator(loss, 14);
 
         // first online calculation is simple division
-        double onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14)).doubleValue();
+        double onlineRs = avgGain.getValue(14).divide(avgLoss.getValue(14)).doubleValue();
         assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(1.0738, onlineRs, TestUtils.GENERAL_OFFSET);
@@ -155,15 +155,15 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // second online calculation uses MMAs
         // MMA of average gain
         double dividend = avgGain.getValue(14)
-                .multipliedBy(series.numOf(13))
+                .multiply(series.numOf(13))
                 .plus(gain.getValue(15))
-                .dividedBy(series.numOf(14))
+                .divide(series.numOf(14))
                 .doubleValue();
         // MMA of average loss
         double divisor = avgLoss.getValue(14)
-                .multipliedBy(series.numOf(13))
+                .multiply(series.numOf(13))
                 .plus(loss.getValue(15))
-                .dividedBy(series.numOf(14))
+                .divide(series.numOf(14))
                 .doubleValue();
         onlineRs = dividend / divisor;
         assertEquals(0.9409, onlineRs, TestUtils.GENERAL_OFFSET);

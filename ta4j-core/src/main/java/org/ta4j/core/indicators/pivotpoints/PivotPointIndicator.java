@@ -99,7 +99,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             high = (getBarSeries().getBar(i).getHighPrice()).max(high);
             low = (getBarSeries().getBar(i).getLowPrice()).min(low);
         }
-        return (high.plus(low).plus(close)).dividedBy(numOf(3));
+        return (high.plus(low).plus(close)).divide(numOf(3));
     }
 
     /**

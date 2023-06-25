@@ -91,7 +91,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             // - Multiply by the profit ratio
             // - Remove the cost of the *second* trade
             tradedAmount = tradedAmount.minus(getTradeCost(position.getEntry(), tradedAmount));
-            tradedAmount = tradedAmount.multipliedBy(grossReturn.calculate(series, position));
+            tradedAmount = tradedAmount.multiply(grossReturn.calculate(series, position));
             tradedAmount = tradedAmount.minus(getTradeCost(position.getExit(), tradedAmount));
         }
 
@@ -118,7 +118,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private Num getTradeCost(Trade trade, Num tradedAmount) {
         Num tradeCost = tradedAmount.zero();
         if (trade != null) {
-            return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
+            return tradedAmount.numOf(a).multiply(tradedAmount).plus(tradedAmount.numOf(b));
         }
         return tradeCost;
     }
@@ -138,7 +138,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
                 // - Remove the cost of the first trade
                 // - Multiply by the profit ratio
                 Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                        .multipliedBy(grossReturn.calculate(series, position));
+                        .multiply(grossReturn.calculate(series, position));
                 totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
             }
         }

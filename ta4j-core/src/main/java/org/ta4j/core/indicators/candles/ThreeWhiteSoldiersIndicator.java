@@ -88,7 +88,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
         // We use the black candle index to remove to bias of the previous soldiers
         Num averageUpperShadow = averageUpperShadowInd.getValue(blackCandleIndex);
 
-        return currentUpperShadow.isLessThan(averageUpperShadow.multipliedBy(factor));
+        return currentUpperShadow.isLessThan(averageUpperShadow.multiply(factor));
     }
 
     /**

@@ -55,7 +55,7 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
         final Num highPrice = bar.getHighPrice();
         final Num lowPrice = bar.getLowPrice();
         final Num closePrice = bar.getClosePrice();
-        return highPrice.plus(lowPrice).plus(closePrice).dividedBy(numOf(3));
+        return highPrice.plus(lowPrice).plus(closePrice).divide(numOf(3));
     }
 
     @Override

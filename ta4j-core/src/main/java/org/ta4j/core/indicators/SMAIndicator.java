@@ -57,7 +57,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
         }
 
         final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(numOf(realBarCount));
+        return sum.divide(numOf(realBarCount));
     }
 
     @Override

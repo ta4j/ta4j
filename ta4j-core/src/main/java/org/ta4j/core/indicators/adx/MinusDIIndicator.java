@@ -63,7 +63,7 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(hundred());
+        return avgMinusDMIndicator.getValue(index).divide(atrIndicator.getValue(index)).multiply(hundred());
     }
 
     @Override

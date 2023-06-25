@@ -76,7 +76,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
         Num averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
         Num currentBodyHeight = bodyHeightInd.getValue(index);
 
-        return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
+        return currentBodyHeight.isLessThan(averageBodyHeight.multiply(factor));
     }
 
     @Override

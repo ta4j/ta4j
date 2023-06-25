@@ -70,7 +70,7 @@ class BinaryOperation implements Indicator<Num> {
      * @see Num#multipliedBy
      */
     public static BinaryOperation product(Indicator<Num> left, Indicator<Num> right) {
-        return new BinaryOperation(Num::multipliedBy, left, right);
+        return new BinaryOperation(Num::multiply, left, right);
     }
 
     /**
@@ -82,7 +82,7 @@ class BinaryOperation implements Indicator<Num> {
      * @see Num#dividedBy
      */
     public static BinaryOperation quotient(Indicator<Num> left, Indicator<Num> right) {
-        return new BinaryOperation(Num::dividedBy, left, right);
+        return new BinaryOperation(Num::divide, left, right);
     }
 
     /**

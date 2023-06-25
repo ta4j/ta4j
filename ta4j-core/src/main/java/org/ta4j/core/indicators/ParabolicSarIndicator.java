@@ -137,7 +137,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         Num cur_high = highPriceIndicator.getValue(index);
         Num cur_low = lowPriceIndicator.getValue(index);
         Num cur_af = lastAf.get(index - 1);
-        sar = priorSar.plus(cur_af.multipliedBy((currentExtremePoint.minus(priorSar))));
+        sar = priorSar.plus(cur_af.multiply((currentExtremePoint.minus(priorSar))));
 
         if (is_up_trend) { // if up trend
             if (cur_low.isLessThan(sar)) { // check if sar touches the low price

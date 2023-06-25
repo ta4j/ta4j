@@ -71,7 +71,7 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
         Bar bar = getBarSeries().getBar(index - 1);
 
         Num currentBasic = this.medianPriceIndicator.getValue(index)
-                .minus(this.multiplier.multipliedBy(this.atrIndicator.getValue(index)));
+                .minus(this.multiplier.multiply(this.atrIndicator.getValue(index)));
 
         if (currentBasic.isGreaterThan(this.getValue(index - 1))
                 || bar.getClosePrice().isLessThan(this.getValue(index - 1))) {

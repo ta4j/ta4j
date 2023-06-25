@@ -63,7 +63,7 @@ public class PercentBIndicator extends CachedIndicator<Num> {
         Num value = indicator.getValue(index);
         Num upValue = bbu.getValue(index);
         Num lowValue = bbl.getValue(index);
-        return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+        return value.minus(lowValue).divide(upValue.minus(lowValue));
     }
 
     @Override

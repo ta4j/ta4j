@@ -151,12 +151,12 @@ public class DoubleNum implements Num {
     }
 
     @Override
-    public Num multipliedBy(Num multiplicand) {
+    public Num multiply(Num multiplicand) {
         return multiplicand.isNaN() ? NaN : new DoubleNum(delegate * ((DoubleNum) multiplicand).delegate);
     }
 
     @Override
-    public Num dividedBy(Num divisor) {
+    public Num divide(Num divisor) {
         if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }

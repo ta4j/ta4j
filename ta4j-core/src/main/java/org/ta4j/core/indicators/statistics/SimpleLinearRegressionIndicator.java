@@ -97,7 +97,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
             return intercept;
         }
 
-        return slope.multipliedBy(numOf(index)).plus(intercept);
+        return slope.multiply(numOf(index)).plus(intercept);
     }
 
     @Override
@@ -121,8 +121,8 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
             sumY = sumY.plus(indicator.getValue(i));
         }
         Num nbObservations = numOf(endIndex - startIndex + 1);
-        Num xBar = sumX.dividedBy(nbObservations);
-        Num yBar = sumY.dividedBy(nbObservations);
+        Num xBar = sumX.divide(nbObservations);
+        Num yBar = sumY.divide(nbObservations);
 
         // Second pass: compute slope and intercept
         Num xxBar = zero;
@@ -130,11 +130,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= endIndex; i++) {
             Num dX = numOf(i).minus(xBar);
             Num dY = indicator.getValue(i).minus(yBar);
-            xxBar = xxBar.plus(dX.multipliedBy(dX));
-            xyBar = xyBar.plus(dX.multipliedBy(dY));
+            xxBar = xxBar.plus(dX.multiply(dX));
+            xyBar = xyBar.plus(dX.multiply(dY));
         }
 
-        slope = xyBar.dividedBy(xxBar);
-        intercept = yBar.minus(slope.multipliedBy(xBar));
+        slope = xyBar.divide(xxBar);
+        intercept = yBar.minus(slope.multiply(xBar));
     }
 }

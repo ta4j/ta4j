@@ -52,7 +52,7 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final Bar bar = getBarSeries().getBar(index);
-        return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(numOf(2));
+        return bar.getHighPrice().plus(bar.getLowPrice()).divide(numOf(2));
     }
 
     @Override

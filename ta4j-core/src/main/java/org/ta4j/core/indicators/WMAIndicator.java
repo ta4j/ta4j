@@ -56,11 +56,11 @@ public class WMAIndicator extends CachedIndicator<Num> {
         int loopLength = (index - barCount < 0) ? index + 1 : barCount;
         int actualIndex = index;
         for (int i = loopLength; i > 0; i--) {
-            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            value = value.plus(numOf(i).multiply(indicator.getValue(actualIndex)));
             actualIndex--;
         }
 
-        return value.dividedBy(numOf((loopLength * (loopLength + 1)) / 2));
+        return value.divide(numOf((loopLength * (loopLength + 1)) / 2));
     }
 
     @Override

@@ -68,10 +68,10 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
             if (currentValue.isGreaterThan(highestValue)) {
                 highestValue = currentValue;
             }
-            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(hundred);
+            Num percentageDrawdown = currentValue.minus(highestValue).divide(highestValue).multiply(hundred);
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
-        squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
+        squaredAverage = squaredAverage.divide(numOf(numberOfObservations));
         return squaredAverage.sqrt();
     }
 

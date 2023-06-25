@@ -67,7 +67,7 @@ public class CMOIndicator extends CachedIndicator<Num> {
         for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
-        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(hundred());
+        return sumOfGains.minus(sumOfLosses).divide(sumOfGains.plus(sumOfLosses)).multiply(hundred());
     }
 
     @Override

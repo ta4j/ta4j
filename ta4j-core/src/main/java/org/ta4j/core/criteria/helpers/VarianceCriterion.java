@@ -76,10 +76,10 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
 
         Num variance = series.zero();
-        Num average = criterionValue.dividedBy(numberOfPositions);
+        Num average = criterionValue.divide(numberOfPositions);
         Num pow = criterion.calculate(series, position).minus(average).pow(2);
         variance = variance.plus(pow);
-        variance = variance.dividedBy(numberOfPositions);
+        variance = variance.divide(numberOfPositions);
         return variance;
     }
 
@@ -92,13 +92,13 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
 
         Num variance = series.zero();
-        Num average = criterionValue.dividedBy(numberOfPositions);
+        Num average = criterionValue.divide(numberOfPositions);
 
         for (Position position : tradingRecord.getPositions()) {
             Num pow = criterion.calculate(series, position).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numberOfPositions);
+        variance = variance.divide(numberOfPositions);
         return variance;
     }
 

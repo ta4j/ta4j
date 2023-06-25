@@ -80,7 +80,7 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num average = averageCriterion.calculate(series, position);
-        return standardDeviationCriterion.calculate(series, position).dividedBy(average);
+        return standardDeviationCriterion.calculate(series, position).divide(average);
     }
 
     @Override
@@ -89,7 +89,7 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
             return series.zero();
         }
         Num average = averageCriterion.calculate(series, tradingRecord);
-        return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(average);
+        return standardDeviationCriterion.calculate(series, tradingRecord).divide(average);
     }
 
     /**

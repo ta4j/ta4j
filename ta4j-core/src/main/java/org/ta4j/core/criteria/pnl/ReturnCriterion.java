@@ -71,7 +71,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
         return tradingRecord.getPositions()
                 .stream()
                 .map(position -> calculateProfit(series, position))
-                .reduce(series.one(), Num::multipliedBy)
+                .reduce(series.one(), Num::multiply)
                 .minus(addBase ? series.zero() : series.one());
     }
 

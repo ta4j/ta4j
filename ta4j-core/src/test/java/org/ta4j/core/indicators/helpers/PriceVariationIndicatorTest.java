@@ -58,7 +58,7 @@ public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator
         for (int i = 1; i < 10; i++) {
             Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
             Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
-            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
+            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.divide(previousBarClosePrice));
         }
     }
 }

@@ -91,14 +91,14 @@ public class StopGainRule extends AbstractRule {
     }
 
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.plus(gainPercentage).divide(HUNDRED);
+        Num threshold = entryPrice.multiply(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
     }
 
     private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).divide(HUNDRED);
+        Num threshold = entryPrice.multiply(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 }

@@ -89,7 +89,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(hundred);
+        return numOf(barCount - nbBars).divide(barCountNum).multiply(hundred);
     }
 
     @Override

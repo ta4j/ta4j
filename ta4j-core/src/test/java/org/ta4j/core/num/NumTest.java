@@ -153,13 +153,12 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public void testMultiplicationSymmetrically() {
         Num decimalFromString = numOf(new BigDecimal("0.33"));
         Num decimalFromDouble = numOf(45.33);
-        assertEquals(decimalFromString.multipliedBy(decimalFromDouble),
-                decimalFromDouble.multipliedBy(decimalFromString));
+        assertEquals(decimalFromString.multiply(decimalFromDouble), decimalFromDouble.multiply(decimalFromString));
 
         Num doubleNumFromString = numOf(new BigDecimal("0.33"));
         Num doubleNumFromDouble = numOf(10.33);
-        assertNumEquals(doubleNumFromString.multipliedBy(doubleNumFromDouble),
-                doubleNumFromDouble.multipliedBy(doubleNumFromString));
+        assertNumEquals(doubleNumFromString.multiply(doubleNumFromDouble),
+                doubleNumFromDouble.multiply(doubleNumFromString));
     }
 
     @Test(expected = java.lang.ClassCastException.class)
@@ -197,10 +196,10 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         mustBeNaN = a.minus(eleven);
         assertNumEquals(mustBeNaN, NaN);
 
-        mustBeNaN = a.dividedBy(a);
+        mustBeNaN = a.divide(a);
         assertNumEquals(mustBeNaN, NaN);
 
-        mustBeNaN = a.multipliedBy(NaN);
+        mustBeNaN = a.multiply(NaN);
         assertNumEquals(mustBeNaN, NaN);
 
         mustBeNaN = a.max(eleven);
@@ -235,13 +234,13 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num zero = ten.minus(ten);
         assertNumEquals(0, zero);
 
-        Num hundred = ten.multipliedBy(ten);
+        Num hundred = ten.multiply(ten);
         assertNumEquals(100, hundred);
 
-        Num hundredMillion = hundred.multipliedBy(million);
+        Num hundredMillion = hundred.multiply(million);
         assertNumEquals(100000000, hundredMillion);
 
-        assertNumEquals(hundredMillion.dividedBy(hundred), million);
+        assertNumEquals(hundredMillion.divide(hundred), million);
         assertNumEquals(0, hundredMillion.remainder(hundred));
 
         Num five = ten.numOf(5); // generate new value with NumFunction
@@ -332,7 +331,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
                 BigDecimal sqrtBD = new BigDecimal(sqrt.toString());
                 assertNumEquals(numOf(numBD),
                         numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, RoundingMode.HALF_UP))));
-                assertNumNotEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
+                assertNumNotEquals(numOf(numBD), sqrt.multiply(sqrt));
             } catch (IOException ioe) {
                 ioe.printStackTrace();
             }

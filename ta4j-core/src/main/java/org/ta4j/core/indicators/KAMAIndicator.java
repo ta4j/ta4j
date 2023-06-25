@@ -53,8 +53,8 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         super(price);
         this.price = price;
         this.barCountEffectiveRatio = barCountEffectiveRatio;
-        this.fastest = numOf(2).dividedBy(numOf(barCountFast + 1));
-        this.slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
+        this.fastest = numOf(2).divide(numOf(barCountFast + 1));
+        this.slowest = numOf(2).divide(numOf(barCountSlow + 1));
     }
 
     /**
@@ -90,17 +90,17 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         for (int i = startChangeIndex; i < index; i++) {
             volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
         }
-        Num er = change.dividedBy(volatility);
+        Num er = change.divide(volatility);
         /*
          * Smoothing Constant (SC) SC = [ER x (fastest SC - slowest SC) + slowest SC]2
          * SC = [ER x (2/(2+1) - 2/(30+1)) + 2/(30+1)]2
          */
-        Num sc = er.multipliedBy(fastest.minus(slowest)).plus(slowest).pow(2);
+        Num sc = er.multiply(fastest.minus(slowest)).plus(slowest).pow(2);
         /*
          * KAMA Current KAMA = Prior KAMA + SC x (Price - Prior KAMA)
          */
         Num priorKAMA = getValue(index - 1);
-        return priorKAMA.plus(sc.multipliedBy(currentPrice.minus(priorKAMA)));
+        return priorKAMA.plus(sc.multiply(currentPrice.minus(priorKAMA)));
     }
 
     @Override

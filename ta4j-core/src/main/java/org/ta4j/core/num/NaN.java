@@ -115,12 +115,12 @@ public class NaN implements Num {
     }
 
     @Override
-    public Num multipliedBy(Num multiplicand) {
+    public Num multiply(Num multiplicand) {
         return this;
     }
 
     @Override
-    public Num dividedBy(Num divisor) {
+    public Num divide(Num divisor) {
         return this;
     }
 

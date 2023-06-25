@@ -65,9 +65,9 @@ public class LWMAIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= index; i++) {
             count++;
             denominator = denominator.plus(numOf(count));
-            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
+            sum = sum.plus(indicator.getValue(i).multiply(numOf(count)));
         }
-        return sum.dividedBy(denominator);
+        return sum.divide(denominator);
     }
 
     @Override

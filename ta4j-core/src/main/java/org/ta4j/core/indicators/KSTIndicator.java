@@ -100,10 +100,9 @@ public class KSTIndicator extends CachedIndicator<Num> {
         Num RCMA3Multiplier = numOf(3);
         Num RCMA4Multiplier = numOf(4);
 
-        return ((RCMA1.getValue(index).multipliedBy(RCMA1Multiplier))
-                .plus(RCMA2.getValue(index).multipliedBy(RCMA2Multiplier))
-                .plus(RCMA3.getValue(index).multipliedBy(RCMA3Multiplier))
-                .plus(RCMA4.getValue(index).multipliedBy(RCMA4Multiplier)));
+        return ((RCMA1.getValue(index).multiply(RCMA1Multiplier)).plus(RCMA2.getValue(index).multiply(RCMA2Multiplier))
+                .plus(RCMA3.getValue(index).multiply(RCMA3Multiplier))
+                .plus(RCMA4.getValue(index).multiply(RCMA4Multiplier)));
     }
 
     @Override

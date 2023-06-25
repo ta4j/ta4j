@@ -75,7 +75,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
         int beginIndex = position.getEntry().getIndex();
         int endIndex = series.getEndIndex();
         TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
-        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, position).divide(criterion.calculate(series, fakeRecord));
     }
 
     @Override
@@ -83,7 +83,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
         TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
-        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, tradingRecord).divide(criterion.calculate(series, fakeRecord));
     }
 
     /** The higher the criterion value, the better. */

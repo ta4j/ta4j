@@ -151,14 +151,14 @@ public class CashFlow implements Indicator<Num> {
 
             int nPeriods = endIndex - entryIndex;
             Num holdingCost = position.getHoldingCost(endIndex);
-            Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+            Num avgCost = holdingCost.divide(holdingCost.numOf(nPeriods));
 
             // Add intermediate cash flows during position
             Num netEntryPrice = position.getEntry().getNetPrice();
             for (int i = startingIndex; i < endIndex; i++) {
                 Num intermediateNetPrice = addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                values.add(values.get(entryIndex).multipliedBy(ratio));
+                values.add(values.get(entryIndex).multiply(ratio));
             }
 
             // add net cash flow at exit position
@@ -169,7 +169,7 @@ public class CashFlow implements Indicator<Num> {
                 exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, addCost(exitPrice, avgCost, isLongTrade));
-            values.add(values.get(entryIndex).multipliedBy(ratio));
+            values.add(values.get(entryIndex).multiply(ratio));
         }
     }
 
@@ -183,9 +183,9 @@ public class CashFlow implements Indicator<Num> {
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
         Num ratio;
         if (isLongTrade) {
-            ratio = exitPrice.dividedBy(entryPrice);
+            ratio = exitPrice.divide(entryPrice);
         } else {
-            ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
+            ratio = entryPrice.numOf(2).minus(exitPrice.divide(entryPrice));
         }
 
         return ratio;

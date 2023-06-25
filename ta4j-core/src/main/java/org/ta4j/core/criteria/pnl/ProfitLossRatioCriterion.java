@@ -51,7 +51,7 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
             // only winning positions means a ratio of 1
             return series.one();
         }
-        return averageProfit.dividedBy(averageLoss).abs();
+        return averageProfit.divide(averageLoss).abs();
     }
 
     @Override
@@ -66,7 +66,7 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
             // only winning positions means a ratio of 1
             return series.one();
         }
-        return averageProfit.dividedBy(averageLoss).abs();
+        return averageProfit.divide(averageLoss).abs();
     }
 
     /** The higher the criterion value, the better. */

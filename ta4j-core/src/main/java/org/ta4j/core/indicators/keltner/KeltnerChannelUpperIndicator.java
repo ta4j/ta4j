@@ -67,8 +67,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return keltnerMiddleIndicator.getValue(index)
-                .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+        return keltnerMiddleIndicator.getValue(index).plus(ratio.multiply(averageTrueRangeIndicator.getValue(index)));
     }
 
     @Override

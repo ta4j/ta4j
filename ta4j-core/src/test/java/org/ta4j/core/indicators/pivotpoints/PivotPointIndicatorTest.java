@@ -1391,25 +1391,25 @@ public class PivotPointIndicatorTest {
         assertEquals(fibS3.getValue(6), NaN);
 
         assertEquals(fibR3.getValue(series1Hours.getEndIndex()), pp.getValue(series1Hours.getEndIndex())
-                .plus(series1Hours.one().multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                .plus(series1Hours.one().multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
         assertEquals(fibR2.getValue(series1Hours.getEndIndex()),
                 pp.getValue(series1Hours.getEndIndex())
                         .plus(series1Hours.numOf(0.618)
-                                .multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                                .multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
         assertEquals(fibR1.getValue(series1Hours.getEndIndex()),
                 pp.getValue(series1Hours.getEndIndex())
                         .plus(series1Hours.numOf(0.382)
-                                .multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                                .multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
         assertEquals(fibS1.getValue(series1Hours.getEndIndex()),
                 pp.getValue(series1Hours.getEndIndex())
                         .minus(series1Hours.numOf(0.382)
-                                .multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                                .multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
         assertEquals(fibS2.getValue(series1Hours.getEndIndex()),
                 pp.getValue(series1Hours.getEndIndex())
                         .minus(series1Hours.numOf(0.618)
-                                .multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                                .multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
         assertEquals(fibS3.getValue(series1Hours.getEndIndex()), pp.getValue(series1Hours.getEndIndex())
-                .minus(series1Hours.one().multipliedBy(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
+                .minus(series1Hours.one().multiply(series1Hours.numOf(171.66).minus(series1Hours.numOf(161.56)))));
 
         DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series1Hours, WEEK);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp,

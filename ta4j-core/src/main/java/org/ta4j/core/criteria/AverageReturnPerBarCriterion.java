@@ -48,7 +48,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.one();
         }
 
-        return grossReturn.calculate(series, position).pow(series.one().dividedBy(bars));
+        return grossReturn.calculate(series, position).pow(series.one().divide(bars));
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.one();
         }
 
-        return grossReturn.calculate(series, tradingRecord).pow(series.one().dividedBy(bars));
+        return grossReturn.calculate(series, tradingRecord).pow(series.one().divide(bars));
     }
 
     /** The higher the criterion value, the better. */

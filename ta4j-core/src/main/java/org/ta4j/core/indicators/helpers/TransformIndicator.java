@@ -88,7 +88,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      */
     public static TransformIndicator divide(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
-        return new TransformIndicator(indicator, val -> val.dividedBy(numCoefficient));
+        return new TransformIndicator(indicator, val -> val.divide(numCoefficient));
     }
 
     /**
@@ -96,7 +96,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      */
     public static TransformIndicator multiply(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
-        return new TransformIndicator(indicator, val -> val.multipliedBy(numCoefficient));
+        return new TransformIndicator(indicator, val -> val.multiply(numCoefficient));
     }
 
     /**

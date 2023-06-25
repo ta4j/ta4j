@@ -94,8 +94,8 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
         assertNumEquals(9 * 5, staticOp.getValue(8));
 
         final NumericIndicator dynamicOp = numericIndicator.multipliedBy(ema);
-        assertNumEquals(cp1.getValue(0).multipliedBy(ema.getValue(0)), dynamicOp.getValue(0));
-        assertNumEquals(cp1.getValue(8).multipliedBy(ema.getValue(8)), dynamicOp.getValue(8));
+        assertNumEquals(cp1.getValue(0).multiply(ema.getValue(0)), dynamicOp.getValue(0));
+        assertNumEquals(cp1.getValue(8).multiply(ema.getValue(8)), dynamicOp.getValue(8));
     }
 
     @Test
@@ -111,8 +111,8 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
         assertNumEquals(NaN.NaN, zeroOp.getValue(8));
 
         final NumericIndicator dynamicOp = numericIndicator.dividedBy(ema);
-        assertNumEquals(cp1.getValue(0).dividedBy(ema.getValue(0)), dynamicOp.getValue(0));
-        assertNumEquals(cp1.getValue(8).dividedBy(ema.getValue(8)), dynamicOp.getValue(8));
+        assertNumEquals(cp1.getValue(0).divide(ema.getValue(0)), dynamicOp.getValue(0));
+        assertNumEquals(cp1.getValue(8).divide(ema.getValue(8)), dynamicOp.getValue(8));
     }
 
     @Test

@@ -67,7 +67,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
     protected Num calculate(int index) {
 
         Num currentBasic = this.medianPriceIndicator.getValue(index)
-                .plus(this.multiplier.multipliedBy(this.atrIndicator.getValue(index)));
+                .plus(this.multiplier.multiply(this.atrIndicator.getValue(index)));
 
         if (index == 0)
             return currentBasic;

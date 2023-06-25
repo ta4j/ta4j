@@ -66,7 +66,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(numOf(nbValues));
+        return absoluteDeviations.divide(numOf(nbValues));
     }
 
     @Override

@@ -75,7 +75,7 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
         Num atrN = new ATRIndicator(series, n).getValue(index);
         Num sqrtN = numOf(n).sqrt();
 
-        return high.minus(lowN).dividedBy(atrN.multipliedBy(sqrtN));
+        return high.minus(lowN).divide(atrN.multiply(sqrtN));
     }
 
     @Override

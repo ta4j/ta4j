@@ -74,7 +74,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-        return criterion.calculate(series, position).dividedBy(numberOfPositions);
+        return criterion.calculate(series, position).divide(numberOfPositions);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
             return series.zero();
         }
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);
+        return criterion.calculate(series, tradingRecord).divide(numberOfPositions);
     }
 
     /**

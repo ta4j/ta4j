@@ -95,7 +95,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             for (int i = 0; i < nInTail; i++) {
                 sum = sum.plus(tailEvents.get(i));
             }
-            expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
+            expectedShortfall = sum.divide(returns.numOf(nInTail));
 
             // ES is non-positive
             if (expectedShortfall.isGreaterThan(zero)) {
