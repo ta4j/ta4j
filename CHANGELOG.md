@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - improved javadoc
+- **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 
 ### Removed/Deprecated
 
