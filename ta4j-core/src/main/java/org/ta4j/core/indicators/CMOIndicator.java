@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Chande Momentum Oscillator indicator.
+ * Chande Momentum Oscillator (CMO) indicator.
  *
  * @see <a href=
  *      "http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/">

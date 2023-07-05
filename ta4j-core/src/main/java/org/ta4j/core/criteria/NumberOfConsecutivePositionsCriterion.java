@@ -37,7 +37,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
 
     /**
      * Constructor.
-     * 
+     *
      * @param positionFilter consider either the winning or losing positions
      */
     public NumberOfConsecutivePositionsCriterion(PositionFilter positionFilter) {

@@ -31,11 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Maximum drawdown criterion (in percentage).
- * 
+ *
  * <p>
  * The maximum drawdown measures the largest loss. Its value can be within the
- * range of [0,1], e.g. a maximum drawdown of <code>+1</code> (= +100%) means a
- * total loss, a maximum drawdown of <code>0</code> (= 0%) means no loss at all.
+ * range of [0,1], e.g. a maximum drawdown of {@code +1} (= +100%) means a total
+ * loss, a maximum drawdown of {@code 0} (= 0%) means no loss at all.
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
@@ -65,9 +65,9 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the maximum drawdown from a cash flow over a series.
-     * 
+     *
      * The formula is as follows:
-     * 
+     *
      * <pre>
      * MDD = (LP - PV) / PV
      * with MDD: Maximum drawdown, in percent.

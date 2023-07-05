@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Returns the previous (n-th) value of an indicator
+ * Returns the previous (n-th) value of an indicator.
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
@@ -38,8 +38,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator of which the previous value should be
-     *                  calculated
+     * @param indicator the indicator from which to calculate the previous value
      */
     public PreviousValueIndicator(Indicator<Num> indicator) {
         this(indicator, 1);
@@ -48,8 +47,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator of which the previous value should be
-     *                  calculated
+     * @param indicator the indicator from which to calculate the previous value
      * @param n         parameter defines the previous n-th value
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
@@ -61,6 +59,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
     }
 
+    @Override
     protected Num calculate(int index) {
         int previousValue = Math.max(0, (index - n));
         return this.indicator.getValue(previousValue);

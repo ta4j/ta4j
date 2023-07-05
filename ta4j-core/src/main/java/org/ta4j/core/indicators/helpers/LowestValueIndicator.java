@@ -29,13 +29,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Lowest value indicator.
+ * 
+ * <p>
+ * Returns the lowest indicator value from the bar series within the bar count.
  */
 public class LowestValueIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final int barCount;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public LowestValueIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;

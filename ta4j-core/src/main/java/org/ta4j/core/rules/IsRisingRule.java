@@ -28,23 +28,23 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-rising-indicator rule.
- *
  * Satisfied when the values of the {@link Indicator indicator} increase within
- * the barCount.
+ * the {@code barCount}.
  */
 public class IsRisingRule extends AbstractRule {
 
     /** The actual indicator */
     private final Indicator<Num> ref;
+
     /** The barCount */
     private final int barCount;
+
     /** The minimum required strenght of the rising */
     private final double minStrength;
 
     /**
      * Constructor for strict rising.
-     * 
+     *
      * @param ref      the indicator
      * @param barCount the time frame
      */
@@ -54,7 +54,7 @@ public class IsRisingRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref         the indicator
      * @param barCount    the time frame
      * @param minStrenght the minimum required rising strenght (between '0' and '1',

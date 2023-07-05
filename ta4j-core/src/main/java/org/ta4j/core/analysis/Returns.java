@@ -35,9 +35,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * The return rates.
- *
- * This class allows to compute the return rate of a price time-series
+ * Allows to compute the return rate of a price time-series.
  */
 public class Returns implements Indicator<Num> {
 
@@ -58,26 +56,20 @@ public class Returns implements Indicator<Num> {
         };
 
         /**
-         * @return calculate a single return rate
+         * @return the single return rate
          */
         public abstract Num calculate(Num xNew, Num xOld);
     }
 
     private final ReturnType type;
 
-    /**
-     * The bar series
-     */
+    /** The bar series. */
     private final BarSeries barSeries;
 
-    /**
-     * The return rates
-     */
+    /** The return rates. */
     private List<Num> values;
 
-    /**
-     * Unit element for efficient arithmetic return computation
-     */
+    /** Unit element for efficient arithmetic return computation. */
     private static Num one;
 
     /**
@@ -85,6 +77,7 @@ public class Returns implements Indicator<Num> {
      *
      * @param barSeries the bar series
      * @param position  a single position
+     * @param type      the ReturnType
      */
     public Returns(BarSeries barSeries, Position position, ReturnType type) {
         one = barSeries.one();
@@ -102,6 +95,7 @@ public class Returns implements Indicator<Num> {
      *
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
+     * @param type          the ReturnType
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
         one = barSeries.one();
@@ -114,6 +108,9 @@ public class Returns implements Indicator<Num> {
         fillToTheEnd(tradingRecord.getEndIndex(barSeries));
     }
 
+    /**
+     * @return the return rates
+     */
     public List<Num> getValues() {
         return values;
     }
@@ -154,7 +151,8 @@ public class Returns implements Indicator<Num> {
      * for open positions).
      *
      * @param position   a single position
-     * @param finalIndex index up until cash flow of open positions is considered
+     * @param finalIndex the index up to which the cash flow of open positions is
+     *                   considered
      */
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
@@ -219,7 +217,9 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Fills with zeroes until the endIndex.
+     * Pads {@link #values} with zeros up until {@code endIndex}.
+     * 
+     * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {

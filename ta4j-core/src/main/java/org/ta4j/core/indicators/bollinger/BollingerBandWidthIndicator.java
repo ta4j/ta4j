@@ -44,7 +44,8 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param bbu the upper band Indicator.
-     * @param bbm the middle band Indicator. Typically an SMAIndicator is used.
+     * @param bbm the middle band Indicator. Typically an {@code SMAIndicator} is
+     *            used.
      * @param bbl the lower band Indicator.
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,

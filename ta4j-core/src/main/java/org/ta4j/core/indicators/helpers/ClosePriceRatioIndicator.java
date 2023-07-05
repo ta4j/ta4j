@@ -30,6 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Indicator that calculates the ratio between the current and previous close
  * prices.
+ * <pre>
+ * PriceVariation = currentBarClosePrice / previousBarClosePrice
+ * </pre>
  */
 public class ClosePriceRatioIndicator extends CachedIndicator<Num> {
 
