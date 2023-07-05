@@ -29,19 +29,36 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
+/**
+ * The SuperTrend indicator.
+ */
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Num ZERO = zero();
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
-    public SuperTrendIndicator(final BarSeries series, int length, final Integer multiplier) {
+    /**
+     * Constructor.
+     * 
+     * @param series     the bar series
+     * @param barCount   the time frame for the {@code ATRIndicator}
+     * @param multiplier the multiplier for the
+     *                   {@link #superTrendUpperBandIndicator} and
+     *                   {@link #superTrendLowerBandIndicator}
+     */
+    public SuperTrendIndicator(final BarSeries series, int barCount, final Integer multiplier) {
         super(series);
-        ATRIndicator atrIndicator = new ATRIndicator(series, length);
+        ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
         this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
         this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
     }
 
+    /**
+     * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
+     * 
+     * @param series the bar series
+     */
     public SuperTrendIndicator(final BarSeries series) {
         this(series, 10, 3);
     }
@@ -79,10 +96,12 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         return 0;
     }
 
+    /** @return the {@link #superTrendLowerBandIndicator} */
     public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
         return superTrendLowerBandIndicator;
     }
 
+    /** @return the {@link #superTrendUpperBandIndicator} */
     public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
         return superTrendUpperBandIndicator;
     }

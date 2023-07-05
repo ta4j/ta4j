@@ -56,7 +56,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param entryRule the entry rule
      * @param exitRule  the exit rule
      */
@@ -66,7 +66,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param entryRule    the entry rule
      * @param exitRule     the exit rule
      * @param unstableBars strategy will ignore possible signals at
@@ -78,7 +78,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param name      the name of the strategy
      * @param entryRule the entry rule
      * @param exitRule  the exit rule
@@ -89,7 +89,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param name         the name of the strategy
      * @param entryRule    the entry rule
      * @param exitRule     the exit rule
@@ -187,7 +187,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldEnter() method calls.
-     * 
+     *
      * @param index the bar index
      * @param enter true if the strategy should enter, false otherwise
      */
@@ -199,7 +199,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldExit() method calls.
-     * 
+     *
      * @param index the bar index
      * @param exit  true if the strategy should exit, false otherwise
      */

@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard deviation criterion.
- * 
+ *
  * <p>
  * Calculates the standard deviation for a Criterion.
  */
@@ -48,8 +48,8 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
     private final VarianceCriterion varianceCriterion;
 
     /**
-     * Constructor with {@link #lessIsBetter} == false.
-     * 
+     * Constructor with {@link #lessIsBetter} = false.
+     *
      * @param criterion the criterion from which the "standard deviation" is
      *                  calculated
      */
@@ -60,7 +60,7 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion    the criterion from which the "standard deviation" is
      *                     calculated
      * @param lessIsBetter the {@link #lessIsBetter}

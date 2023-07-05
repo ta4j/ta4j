@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard error criterion.
- * 
+ *
  * <p>
  * Calculates the standard error for a Criterion.
  */
@@ -50,8 +50,8 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor with {@link #lessIsBetter} == true.
-     * 
+     * Constructor with {@link #lessIsBetter} = true.
+     *
      * @param criterion the criterion from which the "standard deviation error" is
      *                  calculated
      */
@@ -62,7 +62,7 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion    the criterion from which the "standard deviation error"
      *                     is calculated
      * @param lessIsBetter the {@link #lessIsBetter}

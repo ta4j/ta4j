@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of the 'Ichimoku cloud trading strategy'
+ * Indicators for the realization of the 'Ichimoku cloud trading strategy'.
  */
 package org.ta4j.core.indicators.ichimoku;

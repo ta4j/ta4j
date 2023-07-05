@@ -33,7 +33,11 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Distance From Moving Average (close - MA)/MA
+ * Distance From Moving Average
+ * 
+ * <pre>
+ * (close - MA) / MA
+ * </pre>
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma">
@@ -49,9 +53,9 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param series        the bar series {@link BarSeries}.
-     * @param movingAverage the moving average.
+     *
+     * @param series        the bar series
+     * @param movingAverage the moving average
      */
     public DistanceFromMAIndicator(BarSeries series, Indicator<Num> movingAverage) {
         super(series);
@@ -66,7 +70,7 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Bar currentBar = getBarSeries().getBar(index);
         Num closePrice = currentBar.getClosePrice();
-        Num maValue = (Num) movingAverage.getValue(index);
+        Num maValue = movingAverage.getValue(index);
         return (closePrice.minus(maValue)).dividedBy(maValue);
     }
 

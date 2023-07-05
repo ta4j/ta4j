@@ -41,7 +41,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     private final boolean lessIsBetter;
 
     /**
-     * Constructor with {@link #lessIsBetter} == true.
+     * Constructor with {@link #lessIsBetter} = true.
      */
     public NumberOfPositionsCriterion() {
         this.lessIsBetter = true;
@@ -49,7 +49,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param lessIsBetter the {@link #lessIsBetter}
      */
     public NumberOfPositionsCriterion(boolean lessIsBetter) {

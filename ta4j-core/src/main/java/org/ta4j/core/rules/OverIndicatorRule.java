@@ -29,27 +29,25 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-over-indicator rule.
+ * A rule that monitors when one {@link Indicator indicator} is over another.
  *
+ * <p>
  * Satisfied when the value of the first {@link Indicator indicator} is strictly
  * greater than the value of the second one.
  */
 public class OverIndicatorRule extends AbstractRule {
 
-    /**
-     * The first indicator
-     */
+    /** The first indicator. */
     private final Indicator<Num> first;
-    /**
-     * The second indicator
-     */
+
+    /** The second indicator. */
     private final Indicator<Num> second;
 
     /**
      * Constructor.
      *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Number threshold) {
         this(indicator, indicator.numOf(threshold));
@@ -59,10 +57,10 @@ public class OverIndicatorRule extends AbstractRule {
      * Constructor.
      *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getBarSeries(), threshold));
+        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
     }
 
     /**
