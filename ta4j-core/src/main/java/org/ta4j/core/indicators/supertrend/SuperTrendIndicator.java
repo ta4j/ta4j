@@ -66,26 +66,29 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int i) {
         Num value = ZERO;
-
-        if (i == 0) {
+        if (i == 0)
             return value;
-        }
+
         Bar bar = getBarSeries().getBar(i);
+        Num closePrice = bar.getClosePrice();
+        Num previousValue = this.getValue(i - 1);
+        Num lowerBand = superTrendLowerBandIndicator.getValue(i);
+        Num upperBand = superTrendUpperBandIndicator.getValue(i);
 
-        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.superTrendUpperBandIndicator.getValue(i))) {
-            value = this.superTrendUpperBandIndicator.getValue(i);
+        if (previousValue.isEqual(superTrendUpperBandIndicator.getValue(i - 1))) {
+            if (closePrice.isLessThan(upperBand)) {
+                value = upperBand;
+            } else if (closePrice.isGreaterThan(upperBand)) {
+                value = lowerBand;
+            }
         }
 
-        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThan(this.superTrendUpperBandIndicator.getValue(i))) {
-            value = this.superTrendLowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThan(this.superTrendLowerBandIndicator.getValue(i))) {
-            value = this.superTrendLowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.superTrendLowerBandIndicator.getValue(i))) {
-            value = this.superTrendUpperBandIndicator.getValue(i);
+        if (previousValue.isEqual(superTrendLowerBandIndicator.getValue(i - 1))) {
+            if (closePrice.isGreaterThan(lowerBand)) {
+                value = lowerBand;
+            } else if (closePrice.isLessThan(lowerBand)) {
+                value = upperBand;
+            }
         }
 
         return value;
