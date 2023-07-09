@@ -51,6 +51,7 @@ public class MockIndicator implements Indicator<Num> {
      * @param index Indicator value to get
      * @return Num Indicator value at index
      */
+    @Override
     public Num getValue(int index) {
         return values.get(index);
     }
@@ -65,6 +66,7 @@ public class MockIndicator implements Indicator<Num> {
      * 
      * @return TimeSeries of the Indicator
      */
+    @Override
     public BarSeries getBarSeries() {
         return series;
     }

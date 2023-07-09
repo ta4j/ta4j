@@ -59,6 +59,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
+    @Override
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
@@ -73,6 +74,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @return Indicator from the file given the parameters
      * @throws Exception if getIndicator throws IOException or DataFormatException
      */
+    @Override
     public Indicator<Num> getIndicator(Object... params) throws Exception {
         return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
     }
