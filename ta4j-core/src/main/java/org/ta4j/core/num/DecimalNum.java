@@ -230,13 +230,18 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Returns a {@code Num} version of the given {@code Num}.
+     * Returns a {@code Num} version of the given {@code Number}.
+     * 
+     * <p>
+     * <b>Warning:</b> It first converts {@code val} to a {@code String} and then to
+     * a {@code Num}.
      *
      * @param val the number
      * @return the {@code Num}
+     * @see #valueOf(Number)
      */
-    public static DecimalNum valueOf(DecimalNum val) {
-        return val;
+    public static DecimalNum valueOf(DoubleNum val) {
+        return valueOf(val);
     }
 
     /**
