@@ -35,9 +35,14 @@ import org.ta4j.core.num.Num;
 public class SMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final int barCount;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;

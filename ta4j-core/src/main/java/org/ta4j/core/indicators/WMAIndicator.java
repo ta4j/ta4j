@@ -34,6 +34,12 @@ public class WMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> indicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public WMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;

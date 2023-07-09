@@ -43,22 +43,34 @@ public class KeltnerChannelFacade {
     private final NumericIndicator upper;
     private final NumericIndicator lower;
 
-    public KeltnerChannelFacade(BarSeries bs, int emaCount, int atrCount, Number k) {
-        NumericIndicator price = NumericIndicator.of(new ClosePriceIndicator(bs));
-        NumericIndicator atr = NumericIndicator.of(new ATRIndicator(bs, atrCount));
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param emaCount the bar count for the {@code EmaIndicator}
+     * @param atrCount the bar count for the {@code ATRIndicator}
+     * @param k        the multiplier for the {@link #upper} and {@link #lower}
+     *                 channel
+     */
+    public KeltnerChannelFacade(BarSeries series, int emaCount, int atrCount, Number k) {
+        NumericIndicator price = NumericIndicator.of(new ClosePriceIndicator(series));
+        NumericIndicator atr = NumericIndicator.of(new ATRIndicator(series, atrCount));
         this.middle = price.ema(emaCount);
         this.upper = middle.plus(atr.multipliedBy(k));
         this.lower = middle.minus(atr.multipliedBy(k));
     }
 
+    /** @return the middle channel */
     public NumericIndicator middle() {
         return middle;
     }
 
+    /** @return the upper channel */
     public NumericIndicator upper() {
         return upper;
     }
 
+    /** @return the lower channel */
     public NumericIndicator lower() {
         return lower;
     }

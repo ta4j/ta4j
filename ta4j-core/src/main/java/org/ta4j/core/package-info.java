@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * The core module of the ta4j library
+ * The core module of the ta4j library.
  */
 package org.ta4j.core;

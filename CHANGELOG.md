@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
+- improved javadoc
 
 ### Removed/Deprecated
 

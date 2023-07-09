@@ -30,8 +30,6 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Crossed-up indicator rule.
- *
  * Satisfied when the value of the first {@link Indicator indicator} crosses-up
  * the value of the second one.
  */
@@ -42,9 +40,9 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Number threshold) {
         this(indicator, indicator.numOf(threshold));
@@ -52,9 +50,9 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
@@ -62,7 +60,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param first  the first indicator
      * @param second the second indicator
      */
@@ -78,16 +76,12 @@ public class CrossedUpIndicatorRule extends AbstractRule {
         return satisfied;
     }
 
-    /**
-     * @return the initial lower indicator
-     */
+    /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
         return cross.getLow();
     }
 
-    /**
-     * @return the initial upper indicator
-     */
+    /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
         return cross.getUp();
     }

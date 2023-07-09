@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.analysis.cost;
 
+/**
+ * With this cost model there are no trading costs.
+ */
 public class ZeroCostModel extends FixedTransactionCostModel {
 
     private static final long serialVersionUID = -331246208177262596L;
@@ -30,10 +33,9 @@ public class ZeroCostModel extends FixedTransactionCostModel {
     private static final double ZERO_FEE_PER_TRADE = 0.0;
 
     /**
-     * Constructor for a trading cost-free model.
+     * Constructor with {@code feePerTrade = 0}.
      *
-     * @see FixedTransactionCostModel fixedTransactionCostModel
-     *
+     * @see FixedTransactionCostModel
      */
     public ZeroCostModel() {
         super(ZERO_FEE_PER_TRADE);

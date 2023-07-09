@@ -28,61 +28,101 @@ import java.time.ZonedDateTime;
 
 import org.ta4j.core.num.Num;
 
+/**
+ * A builder to build a new {@link BaseBar}.
+ */
 public class BaseBarBuilder {
 
     private Duration timePeriod;
     private ZonedDateTime endTime;
     private Num openPrice;
-    private Num closePrice;
     private Num highPrice;
     private Num lowPrice;
-    private Num amount;
+    private Num closePrice;
     private Num volume;
+    private Num amount;
     private long trades;
 
+    /** Constructor to build a {@code BaseBar}. */
     BaseBarBuilder() {
     }
 
+    /**
+     * @param timePeriod the time period
+     * @return {@code this}
+     */
     public BaseBarBuilder timePeriod(Duration timePeriod) {
         this.timePeriod = timePeriod;
         return this;
     }
 
+    /**
+     * @param endTime the end time of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder endTime(ZonedDateTime endTime) {
         this.endTime = endTime;
         return this;
     }
 
+    /**
+     * @param openPrice the open price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder openPrice(Num openPrice) {
         this.openPrice = openPrice;
         return this;
     }
 
-    public BaseBarBuilder closePrice(Num closePrice) {
-        this.closePrice = closePrice;
-        return this;
-    }
-
+    /**
+     * @param highPrice the highest price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder highPrice(Num highPrice) {
         this.highPrice = highPrice;
         return this;
     }
 
+    /**
+     * @param lowPrice the lowest price of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder lowPrice(Num lowPrice) {
         this.lowPrice = lowPrice;
         return this;
     }
 
-    public BaseBarBuilder amount(Num amount) {
-        this.amount = amount;
+    /**
+     * @param closePrice the close price of the bar period
+     * @return {@code this}
+     */
+    public BaseBarBuilder closePrice(Num closePrice) {
+        this.closePrice = closePrice;
         return this;
     }
 
+    /**
+     * @param volume the total traded volume of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder volume(Num volume) {
         this.volume = volume;
         return this;
     }
 
+    /**
+     * @param amount the total traded amount of the bar period
+     * @return {@code this}
+     */
+    public BaseBarBuilder amount(Num amount) {
+        this.amount = amount;
+        return this;
+    }
+
+    /**
+     * @param trades the number of trades of the bar period
+     * @return {@code this}
+     */
     public BaseBarBuilder trades(long trades) {
         this.trades = trades;
         return this;
