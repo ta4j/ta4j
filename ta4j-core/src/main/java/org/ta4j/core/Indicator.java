@@ -29,10 +29,12 @@ import java.util.stream.Stream;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator over a {@link BarSeries bar series}. <p/p> For each index of the
- * bar series, returns a value of type <b>T</b>.
+ * Indicator over a {@link BarSeries bar series}.
+ * 
+ * <p>
+ * Returns a value of type <b>T</b> for each index of the bar series.
  *
- * @param <T> the type of returned value (Double, Boolean, etc.)
+ * @param <T> the type of the returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> {
 
@@ -81,14 +83,23 @@ public interface Indicator<T> {
     }
 
     /**
-     * Returns all values from an {@link Indicator} as an array of Doubles. The
-     * returned doubles could have a minor loss of precise, if {@link Indicator} was
-     * based on {@link Num Num}.
+     * @return all values from {@code this} Indicator over {@link #getBarSeries()}
+     *         as a Stream
+     */
+    default Stream<T> stream() {
+        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
+                .mapToObj(this::getValue);
+    }
+
+    /**
+     * Returns all values of an {@link Indicator} within the given {@code index} and
+     * {@code barCount} as an array of Doubles. The returned doubles could have a
+     * minor loss of precision, if {@link Indicator} was based on {@link Num Num}.
      *
      * @param ref      the indicator
      * @param index    the index
      * @param barCount the barCount
-     * @return array of Doubles within the barCount
+     * @return array of Doubles within {@code index} and {@code barCount}
      */
     static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
         int startIndex = Math.max(0, index - barCount + 1);
@@ -96,11 +107,6 @@ public interface Indicator<T> {
                 .mapToObj(ref::getValue)
                 .map(Num::doubleValue)
                 .toArray(Double[]::new);
-    }
-
-    default Stream<T> stream() {
-        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
-                .mapToObj(this::getValue);
     }
 
 }

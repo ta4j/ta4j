@@ -42,7 +42,12 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
     private final Num k;
 
     /**
-     * Constructor.
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code barCount} = 22
+     * <li>{@code k} = 3
+     * </ul>
      *
      * @param series the bar series
      */
@@ -59,8 +64,8 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
      */
     public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
         super(series);
-        high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        atr = new ATRIndicator(series, barCount);
+        this.high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        this.atr = new ATRIndicator(series, barCount);
         this.k = numOf(k);
     }
 

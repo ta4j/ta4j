@@ -32,14 +32,19 @@ import org.ta4j.core.num.Num;
 /**
  * Simple linear regression indicator.
  *
+ * <p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
- * y = slope * x + intercept See also:
- * http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
+ * 
+ * <pre>
+ * y = slope * x + intercept
+ * </pre>
+ * 
+ * @see http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
-     * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+     * The type for the outcome of the {@link SimpleLinearRegressionIndicator}.
      */
     public enum SimpleLinearRegressionType {
         Y, SLOPE, INTERCEPT

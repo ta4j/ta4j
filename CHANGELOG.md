@@ -28,7 +28,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - updated pom.xml: slf4j-api to 2.0.7
 - updated pom.xml: org.apache.poi to 5.2.3
 - updated pom.xml: maven-jar-plugin to 3.3.0
-
+- improved javadoc
 
 ### Removed/Deprecated
 
