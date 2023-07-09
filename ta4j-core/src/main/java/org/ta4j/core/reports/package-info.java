@@ -22,7 +22,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * The main module for trade reports
- *
+ * This package can be used to generate
+ * {@link org.ta4j.core.reports.PerformanceReport performance} and
+ * {@link org.ta4j.core.reports.TradingStatement trading} reports.
  */
 package org.ta4j.core.reports;

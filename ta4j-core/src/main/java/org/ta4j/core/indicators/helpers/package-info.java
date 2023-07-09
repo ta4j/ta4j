@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators that can be helpful (for other indicators)
+ * Indicators that can be helpful (for other indicators).
  */
 package org.ta4j.core.indicators.helpers;

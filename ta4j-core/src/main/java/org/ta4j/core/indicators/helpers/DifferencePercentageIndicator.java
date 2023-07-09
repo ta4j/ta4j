@@ -31,12 +31,12 @@ import org.ta4j.core.num.Num;
 /**
  * Difference Change Indicator.
  *
- * Get the difference in percentage from the last time the threshold was
+ * <p>
+ * Returns the difference in percentage from the last time the threshold was
  * reached.
  *
- * Or if you don't pass the threshold you will always just get the difference
+ * Or if you don't pass the threshold you will always just get the difference in
  * percentage from the precious value.
- *
  */
 public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
@@ -45,19 +45,36 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     private final Num hundred;
     private Num lastNotification;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     */
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
         this(indicator, indicator.zero());
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator           the {@link Indicator}
+     * @param percentageThreshold the threshold percentage
+     */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
         this(indicator, indicator.numOf(percentageThreshold));
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator           the {@link Indicator}
+     * @param percentageThreshold the threshold percentage
+     */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Num percentageThreshold) {
         super(indicator);
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
-        hundred = hundred();
+        this.hundred = hundred();
     }
 
     @Override
