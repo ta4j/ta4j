@@ -29,8 +29,12 @@ import org.ta4j.core.TradingRecord;
 /**
  * An AND combination of two {@link Rule rules}.
  *
- * Satisfied when the two provided rules are satisfied as well.<br>
- * Warning: the second rule is not tested if the first rule is not satisfied.
+ * <p>
+ * Satisfied when both rules are satisfied.
+ *
+ * <p>
+ * <b>Warning:</b> The second rule is not tested if the first rule is not
+ * satisfied.
  */
 public class AndRule extends AbstractRule {
 
@@ -38,7 +42,7 @@ public class AndRule extends AbstractRule {
     private final Rule rule2;
 
     /**
-     * Constructor
+     * Constructor.
      *
      * @param rule1 a trading rule
      * @param rule2 another trading rule
@@ -55,10 +59,12 @@ public class AndRule extends AbstractRule {
         return satisfied;
     }
 
+    /** @return the first rule */
     public Rule getRule1() {
         return rule1;
     }
 
+    /** @return the second rule */
     public Rule getRule2() {
         return rule2;
     }

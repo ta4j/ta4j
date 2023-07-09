@@ -31,31 +31,84 @@ import org.ta4j.core.num.Num;
 
 /**
  * Objects of this class defer evaluation of an arithmetic operation.
- * 
+ *
+ * <p>
  * This is a lightweight version of the CombineIndicator; it doesn't cache.
  */
 class BinaryOperation implements Indicator<Num> {
 
+    /**
+     * Returns an {@code Indicator} whose value is {@code (left + right)}.
+     * 
+     * @param left
+     * @param right
+     * @return {@code left + right}, rounded as necessary
+     * @see Num#plus
+     */
     public static BinaryOperation sum(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::plus, left, right);
     }
 
+    /**
+     * Returns an {@code Indicator} whose value is {@code (left - right)}.
+     * 
+     * @param left
+     * @param right
+     * @return {@code left - right}, rounded as necessary
+     * @see Num#minus
+     */
     public static BinaryOperation difference(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::minus, left, right);
     }
 
+    /**
+     * Returns an {@code Indicator} whose value is {@code (left * right)}.
+     * 
+     * @param left
+     * @param right
+     * @return {@code left * right}, rounded as necessary
+     * @see Num#multipliedBy
+     */
     public static BinaryOperation product(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::multipliedBy, left, right);
     }
 
+    /**
+     * Returns an {@code Indicator} whose value is {@code (left / right)}.
+     * 
+     * @param left
+     * @param right
+     * @return {@code left / right}, rounded as necessary
+     * @see Num#dividedBy
+     */
     public static BinaryOperation quotient(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::dividedBy, left, right);
     }
 
+    /**
+     * Returns the minimum of {@code left} and {@code right} as an
+     * {@code Indicator}.
+     * 
+     * @param left
+     * @param right
+     * @return the {@code Indicator} whose value is the smaller of {@code left} and
+     *         {@code right}. If they are equal, {@code left} is returned.
+     * @see Num#min
+     */
     public static BinaryOperation min(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::min, left, right);
     }
 
+    /**
+     * Returns the maximum of {@code left} and {@code right} as an
+     * {@code Indicator}.
+     * 
+     * @param left
+     * @param right
+     * @return the {@code Indicator} whose value is the greater of {@code left} and
+     *         {@code right}. If they are equal, {@code left} is returned.
+     * @see Num#max
+     */
     public static BinaryOperation max(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::max, left, right);
     }

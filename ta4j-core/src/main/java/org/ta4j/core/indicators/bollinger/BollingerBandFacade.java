@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * A facade to create the 3 Bollinger Band indicators. A simple moving average
  * of close price is used as the middle band. The BB bandwidth and %B indicators
  * can also be created on demand.
- * 
+ *
  * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
  * not cached, although they may be wrapped around cached objects. Overall there
@@ -48,7 +48,7 @@ public class BollingerBandFacade {
 
     /**
      * Create the BollingerBands facade based on the close price of a bar series
-     * 
+     *
      * @param barSeries a bar series
      * @param barCount  the number of periods used for the indicators
      * @param k         the multiplier used to calculate the upper and lower bands
@@ -78,7 +78,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB middle band
-     * 
+     *
      * @return a NumericIndicator wrapped around a cached SMAIndicator of close
      *         price.
      */
@@ -88,7 +88,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB upper band
-     * 
+     *
      * @return an object that calculates the sum of BB middle and a multiple of
      *         standard deviation.
      */
@@ -98,7 +98,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB lower band
-     * 
+     *
      * @return an object that calculates the difference between BB middle and a
      *         multiple of standard deviation.
      */
@@ -108,7 +108,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent BB Bandwidth indicator
-     * 
+     *
      * @return an object that calculates BB bandwidth from BB upper, lower and
      *         middle
      */
@@ -118,7 +118,7 @@ public class BollingerBandFacade {
 
     /**
      * A fluent %B indicator
-     * 
+     *
      * @return an object that calculates %B from close price, BB upper and lower
      */
     public NumericIndicator percentB() {

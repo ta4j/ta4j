@@ -29,20 +29,15 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-highest-indicator rule.
- *
  * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the barCount.
+ * within the {@code barCount}.
  */
 public class IsHighestRule extends AbstractRule {
 
-    /**
-     * The actual indicator
-     */
+    /** The actual indicator. */
     private final Indicator<Num> ref;
-    /**
-     * The barCount
-     */
+
+    /** The barCount. */
     private final int barCount;
 
     /**

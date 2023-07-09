@@ -33,26 +33,54 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 
 /**
- * This class enables back-testing of multiple strategies and comparing them to
- * see which is the best.
+ * Allows backtesting multiple strategies and comparing them to find out which
+ * is the best.
  */
 public class BacktestExecutor {
 
-    private final TradingStatementGenerator tradingStatementGenerator;
     private final BarSeriesManager seriesManager;
+    private final TradingStatementGenerator tradingStatementGenerator;
 
+    /**
+     * Constructor.
+     *
+     * @param series the bar series
+     */
     public BacktestExecutor(BarSeries series) {
         this(series, new TradingStatementGenerator());
     }
 
+    /**
+     * Constructor.
+     *
+     * @param series               the bar series
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
+     */
     public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel) {
         this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel);
     }
 
+    /**
+     * Constructor.
+     *
+     * @param series                    the bar series
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
         this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel());
     }
 
+    /**
+     * Constructor.
+     *
+     * @param series                    the bar series
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     * @param transactionCostModel      the cost model for transactions of the asset
+     * @param holdingCostModel          the cost model for holding the asset (e.g.
+     *                                  borrowing)
+     */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
             CostModel transactionCostModel, CostModel holdingCostModel) {
         this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel);
@@ -60,11 +88,12 @@ public class BacktestExecutor {
     }
 
     /**
-     * Executes given strategies and returns trading statements.
+     * Executes given strategies and returns trading statements with
+     * {@code tradeType} (to open the position) = BUY.
      *
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
-     * @return
+     * @return a list of TradingStatements
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
         return execute(strategies, amount, Trade.TradeType.BUY);
@@ -77,7 +106,7 @@ public class BacktestExecutor {
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
      * @param tradeType  the {@link Trade.TradeType} used to open the position
-     * @return
+     * @return a list of TradingStatements
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
         List<TradingStatement> tradingStatements = strategies.parallelStream().map(strategy -> {

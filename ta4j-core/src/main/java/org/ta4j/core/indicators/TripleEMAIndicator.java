@@ -27,10 +27,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Triple exponential moving average indicator.
+ * Triple exponential moving average indicator (also called "TRIX").
  *
- * a.k.a TRIX
- *
+ * <p>
  * TEMA needs "3 * period - 2" of data to start producing values in contrast to
  * the period samples needed by a regular EMA.
  *

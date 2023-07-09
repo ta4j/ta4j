@@ -64,7 +64,8 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Default Constructor that is using the high price
+     * Default Constructor with {@code highPriceIndicator} =
+     * {@link HighPriceIndicator}.
      *
      * @param series   the bar series
      * @param barCount the time frame

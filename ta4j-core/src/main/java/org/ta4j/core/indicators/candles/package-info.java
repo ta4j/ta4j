@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators analyzing candle sticks and patterns
+ * Indicators analyzing candle sticks and patterns.
  */
 package org.ta4j.core.indicators.candles;

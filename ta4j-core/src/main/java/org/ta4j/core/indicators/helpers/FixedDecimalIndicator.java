@@ -29,13 +29,17 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
 /**
- * A fixed decimal indicator.
+ * A fixed {@code Num} indicator.
+ * 
+ * <p>
+ * Returns constant {@link Num} values for a bar.
  */
 public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
+     * @param series the bar series
      * @param values the values to be returned by this indicator
      */
     public FixedDecimalIndicator(BarSeries series, double... values) {
@@ -47,7 +51,8 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
+     * @param series the bar series
      * @param values the values to be returned by this indicator
      */
     public FixedDecimalIndicator(BarSeries series, String... values) {

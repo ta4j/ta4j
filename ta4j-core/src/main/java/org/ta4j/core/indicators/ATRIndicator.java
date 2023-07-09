@@ -35,10 +35,22 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     private final TRIndicator trIndicator;
     private final MMAIndicator averageTrueRangeIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the time frame
+     */
     public ATRIndicator(BarSeries series, int barCount) {
         this(new TRIndicator(series), barCount);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param tr       the {@link TRIndicator}
+     * @param barCount the time frame
+     */
     public ATRIndicator(TRIndicator tr, int barCount) {
         super(tr.getBarSeries());
         this.trIndicator = tr;
@@ -55,10 +67,12 @@ public class ATRIndicator extends AbstractIndicator<Num> {
         return getBarCount();
     }
 
+    /** @return the {@link #trIndicator} */
     public TRIndicator getTRIndicator() {
         return trIndicator;
     }
 
+    /** @return the bar count of {@link #averageTrueRangeIndicator} */
     public int getBarCount() {
         return averageTrueRangeIndicator.getBarCount();
     }
