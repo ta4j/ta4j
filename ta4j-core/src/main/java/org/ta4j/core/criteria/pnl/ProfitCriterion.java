@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,7 +42,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossProfit (includes trading costs)
+     * Constructor for GrossProfit (includes trading costs).
      */
     public ProfitCriterion() {
         this(false);
@@ -50,7 +50,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param excludeTradingCosts set to true to exclude trading costs
      */
     public ProfitCriterion(boolean excludeCosts) {

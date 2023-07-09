@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,8 +28,10 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Rate of change of volume (ROCVIndicator) indicator. Aka. Momentum of Volume
+ * Rate of change of volume (ROCVIndicator) indicator (also called "Momentum of
+ * Volume").
  *
+ * <p>
  * The ROCVIndicator calculation compares the current volume with the volume "n"
  * periods ago.
  */

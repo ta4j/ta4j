@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,23 +33,43 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard error criterion.
- * 
+ *
  * <p>
  * Calculates the standard error for a Criterion.
  */
 public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * If true, then the lower the criterion value the better, otherwise the higher
+     * the criterion value the better. This property is only used for
+     * {@link #betterThan(Num, Num)}.
+     */
+    private final boolean lessIsBetter;
+
     private final StandardDeviationCriterion standardDeviationCriterion;
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor.
-     * 
+     * Constructor with {@link #lessIsBetter} = true.
+     *
      * @param criterion the criterion from which the "standard deviation error" is
      *                  calculated
      */
     public StandardErrorCriterion(AnalysisCriterion criterion) {
         this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
+        this.lessIsBetter = true;
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param criterion    the criterion from which the "standard deviation error"
+     *                     is calculated
+     * @param lessIsBetter the {@link #lessIsBetter}
+     */
+    public StandardErrorCriterion(AnalysisCriterion criterion, boolean lessIsBetter) {
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
+        this.lessIsBetter = lessIsBetter;
     }
 
     @Override
@@ -67,10 +87,14 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
         return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(numberOfPositions.sqrt());
     }
 
-    /** The lower the criterion value, the better. */
+    /**
+     * If {@link #lessIsBetter} == false, then the lower the criterion value, the
+     * better, otherwise the higher the criterion value the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return lessIsBetter ? criterionValue1.isLessThan(criterionValue2)
+                : criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

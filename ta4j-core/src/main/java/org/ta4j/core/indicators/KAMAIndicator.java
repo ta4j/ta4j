@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Kaufman's Adaptive Moving Average (KAMA) Indicator.
- * 
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average</a>
@@ -36,11 +36,8 @@ import org.ta4j.core.num.Num;
 public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> price;
-
     private final int barCountEffectiveRatio;
-
     private final Num fastest;
-
     private final Num slowest;
 
     /**
@@ -56,15 +53,18 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         super(price);
         this.price = price;
         this.barCountEffectiveRatio = barCountEffectiveRatio;
-        fastest = numOf(2).dividedBy(numOf(barCountFast + 1));
-        slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
+        this.fastest = numOf(2).dividedBy(numOf(barCountFast + 1));
+        this.slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
     }
 
     /**
-     * Constructor with default values: <br/>
-     * - barCountEffectiveRatio=10 <br/>
-     * - barCountFast=2 <br/>
-     * - barCountSlow=30
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code barCountEffectiveRatio} = 10
+     * <li>{@code barCountFast} = 2
+     * <li>{@code barCountSlow} = 30
+     * </ul>
      *
      * @param price the priceindicator
      */

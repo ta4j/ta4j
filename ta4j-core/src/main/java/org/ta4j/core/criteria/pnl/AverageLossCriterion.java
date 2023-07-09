@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
-    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
     private final LossCriterion grossLossCriterion = new LossCriterion(false);
+    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

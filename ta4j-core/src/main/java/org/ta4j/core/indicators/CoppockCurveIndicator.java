@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -39,10 +39,13 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     private final WMAIndicator wma;
 
     /**
-     * Constructor with default values: <br/>
-     * - longRoCBarCount=14 <br/>
-     * - shortRoCBarCount=11 <br/>
-     * - wmaBarCount=10
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code longRoCBarCount} = 14
+     * <li>{@code shortRoCBarCount} = 11
+     * <li>{@code wmaBarCount} = 10
+     * </ul>
      *
      * @param indicator the indicator
      */
@@ -52,7 +55,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator        the indicator (usually close price)
      * @param longRoCBarCount  the time frame for long term RoC
      * @param shortRoCBarCount the time frame for short term RoC
@@ -62,7 +65,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
         super(indicator);
         SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
                 new ROCIndicator(indicator, shortRoCBarCount));
-        wma = new WMAIndicator(sum, wmaBarCount);
+        this.wma = new WMAIndicator(sum, wmaBarCount);
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,7 +33,7 @@ import org.ta4j.core.rules.IsFallingRule;
 import org.ta4j.core.rules.IsRisingRule;
 
 /**
- * Indicator-convergence-divergence.
+ * Convergence-Divergence indicator.
  */
 public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
@@ -138,23 +138,23 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor. <br/>
      * <br/>
-     * 
+     *
      * The <b>"minStrength"</b> is the minimum required strength for convergence or
      * divergence and must be a number between "0.1" and "1.0": <br/>
      * <br/>
      * 0.1: very weak <br/>
      * 0.8: strong (recommended) <br/>
      * 1.0: very strong <br/>
-     * 
+     *
      * <br/>
-     * 
+     *
      * The <b>"minSlope"</b> is the minimum required slope for convergence or
      * divergence and must be a number between "0.1" and "1.0": <br/>
      * <br/>
      * 0.1: very unstrict<br/>
      * 0.3: strict (recommended) <br/>
      * 1.0: very strict <br/>
-     * 
+     *
      * @param ref         the indicator
      * @param other       the other indicator
      * @param barCount    the time frame
@@ -177,7 +177,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor for strong convergence or divergence.
-     * 
+     *
      * @param ref      the indicator
      * @param other    the other indicator
      * @param barCount the time frame
@@ -197,7 +197,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor for strict convergence or divergence.
-     * 
+     *
      * @param ref        the indicator
      * @param other      the other indicator
      * @param barCount   the time frame

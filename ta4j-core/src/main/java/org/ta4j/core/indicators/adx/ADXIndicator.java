@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,17 +29,27 @@ import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * ADX indicator. Part of the Directional Movement System.
+ * ADX indicator.
+ * 
+ * <p>
+ * Part of the Directional Movement System.
  *
- * @see <a
- *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator averageDXIndicator;
     private final int diBarCount;
     private final int adxBarCount;
+    private final MMAIndicator averageDXIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series      the bar series
+     * @param diBarCount  the bar count for {@link DXIndicator}
+     * @param adxBarCount the bar count for {@link #averageDXIndicator}
+     */
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
         super(series);
         this.diBarCount = diBarCount;
@@ -47,6 +57,13 @@ public class ADXIndicator extends CachedIndicator<Num> {
         this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the bar count for {@link DXIndicator} and
+     *                 {@link #averageDXIndicator}
+     */
     public ADXIndicator(BarSeries series, int barCount) {
         this(series, barCount, barCount);
     }

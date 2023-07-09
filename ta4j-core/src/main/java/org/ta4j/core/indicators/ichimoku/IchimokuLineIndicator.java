@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,22 +41,22 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
-    /** The period high */
+    /** The period high. */
     private final Indicator<Num> periodHigh;
 
-    /** The period low */
+    /** The period low. */
     private final Indicator<Num> periodLow;
 
     /**
      * Contructor.
-     * 
-     * @param series   the series
+     *
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public IchimokuLineIndicator(BarSeries series, int barCount) {
         super(series);
-        periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        this.periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        this.periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
     }
 
     @Override

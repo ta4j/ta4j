@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,13 +34,18 @@ import org.ta4j.core.num.Num;
  */
 public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
-    private final LowestValueIndicator lowestPrice;
-    private final LowPriceIndicator lowPrice;
     private final int barCount;
+    private final LowPriceIndicator lowPrice;
+    private final LowestValueIndicator lowestPrice;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the time frame
+     */
     public DonchianChannelLowerIndicator(BarSeries series, int barCount) {
         super(series);
-
         this.barCount = barCount;
         this.lowPrice = new LowPriceIndicator(series);
         this.lowestPrice = new LowestValueIndicator(this.lowPrice, barCount);

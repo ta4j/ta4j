@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,11 +24,10 @@
 package org.ta4j.core;
 
 /**
- * A trading strategy.
- *
- * A strategy is a pair of complementary {@link Rule rules}. It may recommend to
- * enter or to exit. Recommendations are based respectively on the entry rule or
- * on the exit rule.
+ * A {@code Strategy} (also called "trading strategy") is a pair of
+ * complementary (entry and exit) {@link Rule rules}. It may recommend to enter
+ * or to exit. Recommendations are based respectively on the entry rule or on
+ * the exit rule.
  */
 public interface Strategy {
 

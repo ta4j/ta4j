@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,11 +24,12 @@
 package org.ta4j.core;
 
 /**
- * Interface to build a bar series
+ * Interface to build a bar series.
  */
 public interface BarSeriesBuilder {
+
     /**
-     * Builds the bar series with corresponding parameters
+     * Builds the bar series with corresponding parameters.
      *
      * @return bar series
      */

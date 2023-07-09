@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,9 +24,9 @@
 /**
  * Analysis.
  *
- * Contains instruments to inspect backtesting results like the
- * {@link org.ta4j.core.analysis.CashFlow CashFlow} and other
- * {@link org.apache.commons.collections4.functors.ComparatorPredicate.Criterion
- * Criterions}
+ * <p>
+ * This package contains instruments to inspect backtesting results like the
+ * {@link org.ta4j.core.analysis.CashFlow CashFlow} and to calculate
+ * {@link org.ta4j.core.analysis.cost.CostModel trading costs}.
  */
 package org.ta4j.core.analysis;

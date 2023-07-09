@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,7 +29,10 @@ import org.ta4j.core.Indicator;
 /**
  * Recursive cached {@link Indicator indicator}.
  *
- * Recursive indicators should extend this class.<br>
+ * <p>
+ * Recursive indicators should extend this class.
+ * 
+ * <p>
  * This class is only here to avoid (OK, to postpone) the StackOverflowError
  * that may be thrown on the first getValue(int) call of a recursive indicator.
  * Concretely when an index value is asked, if the last cached value is too
@@ -39,15 +42,17 @@ import org.ta4j.core.Indicator;
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
-     * The recursion threshold for which an iterative calculation is executed. TODO
-     * Should be variable (depending on the sub-indicators used in this indicator)
+     * The recursion threshold for which an iterative calculation is executed.
+     * 
+     * TODO: Should be variable (depending on the sub-indicators used in this
+     * indicator).
      */
     private static final int RECURSION_THRESHOLD = 100;
 
     /**
      * Constructor.
      *
-     * @param series the related bar series
+     * @param series the bar series
      */
     protected RecursiveCachedIndicator(BarSeries series) {
         super(series);
@@ -56,7 +61,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator a related indicator (with a bar series)
+     * @param indicator the indicator (with its bar series)
      */
     protected RecursiveCachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());

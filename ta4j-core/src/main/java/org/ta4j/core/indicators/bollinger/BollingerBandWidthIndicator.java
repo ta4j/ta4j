@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -44,7 +44,8 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param bbu the upper band Indicator.
-     * @param bbm the middle band Indicator. Typically an SMAIndicator is used.
+     * @param bbm the middle band Indicator. Typically an {@code SMAIndicator} is
+     *            used.
      * @param bbl the lower band Indicator.
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,

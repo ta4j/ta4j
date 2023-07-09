@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,14 +21,15 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator that returns NaN in unstable bars
+ * Indicator that returns {@link NaN#NaN NaN} in unstable bars.
  */
 public class UnstableIndicator extends CachedIndicator<Num> {
 
@@ -37,7 +38,7 @@ public class UnstableIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator    the indicator
      * @param unstableBars the number of first bars of the barSeries to be unstable
      */

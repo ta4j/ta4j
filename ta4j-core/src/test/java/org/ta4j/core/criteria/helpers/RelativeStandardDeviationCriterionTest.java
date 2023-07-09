@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -43,7 +43,9 @@ import org.ta4j.core.num.Num;
 public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTest {
 
     public RelativeStandardDeviationCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
+        super((params) -> params.length == 2
+                ? new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0], (boolean) params[1])
+                : new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
@@ -58,7 +60,14 @@ public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTes
     }
 
     @Test
-    public void betterThan() {
+    public void betterThanWithLessIsBetter() {
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion(), true);
+        assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
+        assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
+    }
+
+    @Test
+    public void betterThanWithLessIsNotBetter() {
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
         assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
         assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));

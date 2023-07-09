@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,9 +28,8 @@ import java.util.Arrays;
 import org.ta4j.core.TradingRecord;
 
 /**
- * An indexes-based rule.
- *
- * Satisfied for provided indexes.
+ * Satisfied when any of the specified {@code indexes} match the current bar
+ * index.
  */
 public class FixedRule extends AbstractRule {
 
@@ -38,8 +37,8 @@ public class FixedRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
-     * @param indexes a sequence of indexes
+     *
+     * @param indexes a sequence of indices to be compared to the current bar index
      */
     public FixedRule(int... indexes) {
         this.indexes = Arrays.copyOf(indexes, indexes.length);

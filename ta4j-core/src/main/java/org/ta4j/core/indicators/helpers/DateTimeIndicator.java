@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,15 +32,29 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * DateTime indicator.
+ * 
+ * <p>
+ * Returns a {@link ZonedDateTime} of (or for) a bar.
  */
 public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
     private final Function<Bar, ZonedDateTime> action;
 
+    /**
+     * Constructor to return {@link Bar#getBeginTime()} of a bar.
+     * 
+     * @param barSeries the bar series
+     */
     public DateTimeIndicator(BarSeries barSeries) {
         this(barSeries, Bar::getBeginTime);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param barSeries the bar series
+     * @param action    the action
+     */
     public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
         super(barSeries);
         this.action = action;

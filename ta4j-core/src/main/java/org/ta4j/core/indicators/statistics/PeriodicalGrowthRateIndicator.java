@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,10 +32,12 @@ import org.ta4j.core.num.Num;
 /**
  * Periodical Growth Rate indicator.
  *
+ * <p>
  * In general the 'Growth Rate' is useful for comparing the average returns of
  * investments in stocks or funds and can be used to compare the performance
  * e.g. comparing the historical returns of stocks with bonds.
  *
+ * <p>
  * This indicator has the following characteristics: - the calculation is
  * timeframe dependendant. The timeframe corresponds to the number of trading
  * events in a period, e. g. the timeframe for a US trading year for end of day
@@ -47,14 +49,18 @@ import org.ta4j.core.num.Num;
  * are calculated for the remaining 0,3 years - the method 'getTotalReturn'
  * calculates the total return over all returns of the coresponding timeframes
  *
- *
- * Further readings: Good sumary on 'Rate of Return':
- * https://en.wikipedia.org/wiki/Rate_of_return Annual return / CAGR:
- * http://www.investopedia.com/terms/a/annual-return.asp Annualized Total
- * Return: http://www.investopedia.com/terms/a/annualized-total-return.asp
- * Annualized Return vs. Cumulative Return:
+ * <p>
+ * Further readings:
+ * 
+ * <ul>
+ * <li>Good sumary on 'Rate of Return':
+ * https://en.wikipedia.org/wiki/Rate_of_return Annual return
+ * <li>CAGR: http://www.investopedia.com/terms/a/annual-return.asp
+ * <li>Annualized Total Return:
+ * http://www.investopedia.com/terms/a/annualized-total-return.asp
+ * <li>Annualized Return vs. Cumulative Return:
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
- *
+ * </ul>
  */
 public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
@@ -65,7 +71,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
     /**
      * Constructor. Example: use barCount = 251 and "end of day"-bars for annual
      * behaviour in the US (http://tradingsim.com/blog/trading-days-in-a-year/).
-     * 
+     *
      * @param indicator the indicator
      * @param barCount  the time frame
      */
@@ -73,7 +79,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        one = one();
+        this.one = one();
     }
 
     /**
@@ -81,7 +87,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * For a barCount = number of trading days within a year (e. g. 251 days in the
      * US) and "end of day"-bars you will get the 'Annualized Total Return'. Only
      * complete barCounts are taken into the calculation.
-     * 
+     *
      * @return the total return from the calculated results of the method
      *         'calculate'
      */

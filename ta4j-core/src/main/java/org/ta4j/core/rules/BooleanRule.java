@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,20 +26,14 @@ package org.ta4j.core.rules;
 import org.ta4j.core.TradingRecord;
 
 /**
- * A simple boolean rule.
- *
- * Satisfied when it has been initialized with true.
+ * Satisfied when the rule has been initialized with {@code true}.
  */
 public class BooleanRule extends AbstractRule {
 
-    /**
-     * An always-true rule
-     */
+    /** An always-true rule. */
     public static final BooleanRule TRUE = new BooleanRule(true);
 
-    /**
-     * An always-false rule
-     */
+    /** An always-false rule. */
     public static final BooleanRule FALSE = new BooleanRule(false);
 
     private final boolean satisfied;

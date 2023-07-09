@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 /**
  * Simple boolean transform indicator.
  *
+ * <p>
  * Transforms any decimal indicator to a boolean indicator by using common
  * logical operators.
  */
@@ -118,7 +119,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator   the indicator
      * @param coefficient the value for transformation
      * @param type        the type of the transformation
@@ -133,7 +134,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
      * @param type      the type of the transformation
      */

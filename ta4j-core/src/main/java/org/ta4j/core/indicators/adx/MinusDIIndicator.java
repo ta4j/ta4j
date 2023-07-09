@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,25 +30,35 @@ import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * -DI indicator. Part of the Directional Movement System
+ * -DI indicator.
+ * 
+ * <p>
+ * Part of the Directional Movement System.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
- * @see <a
- *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class MinusDIIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator avgMinusDMIndicator;
-    private final ATRIndicator atrIndicator;
     private final int barCount;
+    private final ATRIndicator atrIndicator;
+    private final MMAIndicator avgMinusDMIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #atrIndicator} and
+     *                 {@link #avgMinusDMIndicator}
+     */
     public MinusDIIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
         this.atrIndicator = new ATRIndicator(series, barCount);
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
     }
 
     @Override

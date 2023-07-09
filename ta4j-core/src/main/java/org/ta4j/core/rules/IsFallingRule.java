@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,23 +28,23 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-falling-indicator rule.
- *
  * Satisfied when the values of the {@link Indicator indicator} decrease within
- * the barCount.
+ * the {@code barCount}.
  */
 public class IsFallingRule extends AbstractRule {
 
     /** The actual indicator */
     private final Indicator<Num> ref;
+
     /** The barCount */
     private final int barCount;
+
     /** The minimum required strenght of the falling */
     private final double minStrength;
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref      the indicator
      * @param barCount the time frame
      */
@@ -54,7 +54,7 @@ public class IsFallingRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref         the indicator
      * @param barCount    the time frame
      * @param minStrenght the minimum required falling strength (between '0' and

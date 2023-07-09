@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,43 +29,62 @@ import java.util.Objects;
 import org.ta4j.core.Rule;
 
 /**
- * A ChainLink is part of a {@link org.ta4j.core.rules.ChainRule}. Every
- * Chainlink has a {@link Rule} and a threshold. ChainLinks are evaluated in the
- * trade they are added to the ChainRule and the rule has to be satisfied within
- * the threshold number of bars.
+ * A {@code ChainLink} is part of a {@link org.ta4j.core.rules.ChainRule
+ * ChainRule}. Every Chainlink has a {@link Rule} and a {@code threshold}.
+ * ChainLinks are evaluated in the trade they are added to the ChainRule and the
+ * rule has to be satisfied within a specified "number of bars (= threshold)".
  */
 public class ChainLink implements Serializable {
 
     private static final long serialVersionUID = -436033401669929601L;
 
+    /** The {@link Rule}, which must be satisfied within the threshold. */
     private Rule rule;
+
+    /**
+     * The number of bars in which the rule must be satisfied. The current index is
+     * included.
+     */
     private int threshold = 0;
 
     /**
      * Threshold is the number of bars the provided rule has to be satisfied after
-     * the preceding rule
+     * the preceding rule.
      *
-     * @param rule      A {@link Rule} that has to be satisfied within the threshold
-     * @param threshold Number of bars the rule has to be satisfied in. The current
-     *                  index is included.
+     * @param rule      the {@link Rule}, which must be satisfied within the
+     *                  threshold
+     * @param threshold the number of bars in which the rule must be satisfied. The
+     *                  current index is included.
      */
     public ChainLink(Rule rule, int threshold) {
         this.rule = rule;
         this.threshold = threshold;
     }
 
+    /**
+     * @return {@link #rule}
+     */
     public Rule getRule() {
         return rule;
     }
 
+    /**
+     * @param rule the {@link #rule}
+     */
     public void setRule(Rule rule) {
         this.rule = rule;
     }
 
+    /**
+     * @return {@link #threshold}
+     */
     public int getThreshold() {
         return threshold;
     }
 
+    /**
+     * @param threshold the {@link #threshold}
+     */
     public void setThreshold(int threshold) {
         this.threshold = threshold;
     }

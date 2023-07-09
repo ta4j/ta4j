@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,8 +32,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Transform indicator.
+ * 
  * <p>
- * Transforms the Num of any indicator by using common math operations.
+ * Transforms the {@link Num} of any indicator by using common math operations.
  *
  * @apiNote Minimal deviations in last decimal places possible. During some
  *          calculations this indicator converts {@link Num DecimalNum} to
@@ -46,8 +47,8 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param indicator      the indicator
+     *
+     * @param indicator      the {@link Indicator}
      * @param transformation a {@link Function} describing the transformation
      */
     public TransformIndicator(Indicator<Num> indicator, UnaryOperator<Num> transformation) {
@@ -138,7 +139,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.log().
-     * 
+     *
      * @apiNote precision may be lost, because this implementation is using the
      *          underlying doubleValue method
      */

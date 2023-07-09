@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Double exponential moving average indicator.
- * </p/>
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">

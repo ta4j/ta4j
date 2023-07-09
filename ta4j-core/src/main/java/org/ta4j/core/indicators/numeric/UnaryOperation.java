@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,15 +31,30 @@ import org.ta4j.core.num.Num;
 
 /**
  * Objects of this class defer the evaluation of a unary operator, like sqrt().
- * 
+ *
  * There may be other unary operations on Num that could be added here.
  */
 class UnaryOperation implements Indicator<Num> {
 
+    /**
+     * Returns an {@code Indicator} whose value is {@code √(operand)}.
+     * 
+     * @param operand
+     * @return {@code √(operand)}
+     * @see Num#sqrt
+     */
     public static UnaryOperation sqrt(Indicator<Num> operand) {
         return new UnaryOperation(Num::sqrt, operand);
     }
 
+    /**
+     * Returns an {@code Indicator} whose value is the absolute value of
+     * {@code operand}.
+     * 
+     * @param operand
+     * @return {@code abs(operand)}
+     * @see Num#abs
+     */
     public static UnaryOperation abs(Indicator<Num> operand) {
         return new UnaryOperation(Num::abs, operand);
     }

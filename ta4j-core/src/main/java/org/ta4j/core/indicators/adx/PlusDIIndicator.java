@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,25 +30,35 @@ import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * +DI indicator. Part of the Directional Movement System
+ * +DI indicator.
+ * 
+ * <p>
+ * Part of the Directional Movement System.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
- * @see <a
- *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class PlusDIIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator avgPlusDMIndicator;
-    private final ATRIndicator atrIndicator;
     private final int barCount;
+    private final ATRIndicator atrIndicator;
+    private final MMAIndicator avgPlusDMIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #atrIndicator} and
+     *                 {@link #avgPlusDMIndicator}
+     */
     public PlusDIIndicator(BarSeries series, int barCount) {
         super(series);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
-        this.atrIndicator = new ATRIndicator(series, barCount);
         this.barCount = barCount;
+        this.atrIndicator = new ATRIndicator(series, barCount);
+        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
     }
 
     @Override
@@ -63,6 +73,6 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

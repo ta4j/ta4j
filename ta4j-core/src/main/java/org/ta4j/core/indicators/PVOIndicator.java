@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,8 +27,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
- * Percentage Volume Oscillator (PVO): ((12-day EMA of Volume - 26-day EMA of
- * Volume)/26-day EMA of Volume) x 100
+ * Percentage Volume Oscillator (PVO) indicator.
+ * 
+ * <pre>
+ * ((12-day EMA of Volume - 26-day EMA of Volume) / 26-day EMA of Volume) x 100
+ * </pre>
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo">
@@ -38,18 +41,29 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 public class PVOIndicator extends PPOIndicator {
 
     /**
-     * @param series the bar series {@link BarSeries}. Will use PPO default
-     *               constructor with shortBarCount "12" and longBarCount "26".
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code shortBarCount} = 12
+     * <li>{@code longBarCount} = 26
+     * </ul>
+     * 
+     * @param series the bar series {@link BarSeries}
      */
     public PVOIndicator(BarSeries series) {
         super(new VolumeIndicator(series));
     }
 
     /**
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code shortBarCount} = 12
+     * <li>{@code longBarCount} = 26
+     * </ul>
+     * 
      * @param series         the bar series {@link BarSeries}.
-     * @param volumeBarCount Volume Indicator bar count. Will use PPO default
-     *                       constructor with shortBarCount "12" and longBarCount
-     *                       "26".
+     * @param volumeBarCount the bar count for the {@link VolumeIndicator}
      */
     public PVOIndicator(BarSeries series, int volumeBarCount) {
         super(new VolumeIndicator(series, volumeBarCount));

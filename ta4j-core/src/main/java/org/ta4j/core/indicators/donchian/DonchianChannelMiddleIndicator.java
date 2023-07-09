@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,13 +32,18 @@ import org.ta4j.core.num.Num;
  */
 public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
+    private final int barCount;
     private final DonchianChannelLowerIndicator lower;
     private final DonchianChannelUpperIndicator upper;
-    private final int barCount;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the time frame
+     */
     public DonchianChannelMiddleIndicator(BarSeries series, int barCount) {
         super(series);
-
         this.barCount = barCount;
         this.lower = new DonchianChannelLowerIndicator(series, barCount);
         this.upper = new DonchianChannelUpperIndicator(series, barCount);

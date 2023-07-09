@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,12 +26,17 @@ package org.ta4j.core.reports;
 import org.ta4j.core.num.Num;
 
 /**
- * This class represents report with statistics for positions.
+ * Represents a report with statistics for positions.
  */
 public class PositionStatsReport {
 
+    /** The number of positions making a profit. */
     private final Num profitCount;
+
+    /** The number of positions making a loss. */
     private final Num lossCount;
+
+    /** The number of positions with a break even. */
     private final Num breakEvenCount;
 
     /**
@@ -47,14 +52,17 @@ public class PositionStatsReport {
         this.breakEvenCount = breakEvenCount;
     }
 
+    /** @return {@link #profitCount} */
     public Num getProfitCount() {
         return profitCount;
     }
 
+    /** @return {@link #lossCount} */
     public Num getLossCount() {
         return lossCount;
     }
 
+    /** @return {@link #breakEvenCount} */
     public Num getBreakEvenCount() {
         return breakEvenCount;
     }

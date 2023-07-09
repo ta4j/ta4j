@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,20 +29,15 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-highest-indicator rule.
- *
  * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the barCount.
+ * within the {@code barCount}.
  */
 public class IsHighestRule extends AbstractRule {
 
-    /**
-     * The actual indicator
-     */
+    /** The actual indicator. */
     private final Indicator<Num> ref;
-    /**
-     * The barCount
-     */
+
+    /** The barCount. */
     private final int barCount;
 
     /**

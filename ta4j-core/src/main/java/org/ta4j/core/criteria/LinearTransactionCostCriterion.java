@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 /**
  * A linear transaction cost criterion.
  *
+ * <p>
  * Calculates the transaction cost according to an initial traded amount and a
  * linear function defined by a and b (a * x + b).
  */

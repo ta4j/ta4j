@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,8 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Moving average convergence divergence (MACDIndicator) indicator. <br/>
- * Aka. MACD Absolute Price Oscillator (APO).
+ * Moving average convergence divergence (MACDIndicator) indicator (also called
+ * "MACD Absolute Price Oscillator (APO)").
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd">
@@ -40,9 +40,14 @@ public class MACDIndicator extends CachedIndicator<Num> {
     private final EMAIndicator longTermEma;
 
     /**
-     * Constructor with shortBarCount "12" and longBarCount "26".
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code shortBarCount} = 12
+     * <li>{@code longBarCount} = 26
+     * </ul>
      *
-     * @param indicator the indicator
+     * @param indicator the {@link Indicator}
      */
     public MACDIndicator(Indicator<Num> indicator) {
         this(indicator, 12, 26);
@@ -51,7 +56,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator     the indicator
+     * @param indicator     the {@link Indicator}
      * @param shortBarCount the short time frame (normally 12)
      * @param longBarCount  the long time frame (normally 26)
      */
@@ -60,13 +65,11 @@ public class MACDIndicator extends CachedIndicator<Num> {
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
-        shortTermEma = new EMAIndicator(indicator, shortBarCount);
-        longTermEma = new EMAIndicator(indicator, longBarCount);
+        this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
+        this.longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
     /**
-     * Short term EMA indicator
-     *
      * @return the Short term EMA indicator
      */
     public EMAIndicator getShortTermEma() {
@@ -74,8 +77,6 @@ public class MACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Long term EMA indicator
-     *
      * @return the Long term EMA indicator
      */
     public EMAIndicator getLongTermEma() {

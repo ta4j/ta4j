@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,8 +31,8 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net profit and loss in percentage criterion (relative PnL, excludes trading
- * costs).
- * 
+ * costs), returned in decimal format.
+ *
  * <p>
  * Defined as the position profit over the purchase price. The profit or loss in
  * percentage over the provided {@link Position position(s)}.

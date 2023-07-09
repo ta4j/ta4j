@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,7 +29,9 @@ import org.ta4j.core.TradingRecord;
 /**
  * A XOR combination of two {@link Rule rules}.
  *
- * Satisfied when only of the two provided rules is satisfied.
+ * <p>
+ * Satisfied if only one of the two rules is satisfied. Not satisfied if no rule
+ * or both rules are satisfied.
  */
 public class XorRule extends AbstractRule {
 
@@ -54,10 +56,12 @@ public class XorRule extends AbstractRule {
         return satisfied;
     }
 
+    /** @return the first rule */
     public Rule getRule1() {
         return rule1;
     }
 
+    /** @return the second rule */
     public Rule getRule2() {
         return rule2;
     }

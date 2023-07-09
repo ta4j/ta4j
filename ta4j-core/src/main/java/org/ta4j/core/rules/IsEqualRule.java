@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,20 +29,15 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-equal-indicator rule.
- *
  * Satisfied when the value of the first {@link Indicator indicator} is equal to
  * the value of the second one.
  */
 public class IsEqualRule extends AbstractRule {
 
-    /**
-     * The first indicator
-     */
+    /** The first indicator. */
     private final Indicator<Num> first;
-    /**
-     * The second indicator
-     */
+
+    /** The second indicator. */
     private final Indicator<Num> second;
 
     /**

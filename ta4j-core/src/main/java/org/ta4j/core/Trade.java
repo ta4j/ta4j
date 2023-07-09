@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,35 +31,34 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * A trade.
- *
- * The trade is defined by:
+ * A {@code Trade} is defined by:
+ * 
  * <ul>
- * <li>the index (in the {@link BarSeries bar series}) it is executed
+ * <li>the index (in the {@link BarSeries bar series}) on which the trade is
+ * executed
  * <li>a {@link TradeType type} (BUY or SELL)
  * <li>a pricePerAsset (optional)
  * <li>a trade amount (optional)
  * </ul>
+ * 
  * A {@link Position position} is a pair of complementary trades.
  */
 public class Trade implements Serializable {
 
     private static final long serialVersionUID = -905474949010114150L;
 
-    /**
-     * The type of an {@link Trade trade}.
-     *
-     * A BUY corresponds to a <i>BID</i> trade. A SELL corresponds to an <i>ASK</i>
-     * trade.
-     */
+    /** The type of a {@link Trade trade}. */
     public enum TradeType {
 
+        /** A BUY corresponds to a <i>BID</i> trade. */
         BUY {
             @Override
             public TradeType complementType() {
                 return SELL;
             }
         },
+
+        /** A SELL corresponds to an <i>ASK</i> trade. */
         SELL {
             @Override
             public TradeType complementType() {
@@ -73,39 +72,28 @@ public class Trade implements Serializable {
         public abstract TradeType complementType();
     }
 
-    /**
-     * Type of the trade
-     */
+    /** The type of the trade. */
     private TradeType type;
 
-    /**
-     * The index the trade was executed
-     */
+    /** The index the trade was executed. */
     private int index;
 
-    /**
-     * the trade price per asset
-     */
+    /** The trade price per asset. */
     private Num pricePerAsset;
 
     /**
-     * The net price for the trade, net transaction costs
+     * The net price per asset for the trade (i.e. {@link #pricePerAsset} with
+     * {@link #cost}).
      */
     private Num netPrice;
 
-    /**
-     * the trade amount
-     */
+    /** The trade amount. */
     private Num amount;
 
-    /**
-     * The cost for executing the trade
-     */
+    /** The cost for executing the trade. */
     private Num cost;
 
-    /**
-     * The cost model for trade execution
-     */
+    /** The cost model for trade execution. */
     private CostModel costModel;
 
     /**
@@ -133,7 +121,7 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param index                the index the trade is executed
      * @param series               the bar series
      * @param type                 the trade type
@@ -216,8 +204,8 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the trade price per asset, or, if <code>NaN</code>, the close price
-     *         from the supplied {@link BarSeries}.
+     * @return the trade price per asset, or, if {@code NaN}, the close price from
+     *         the supplied {@link BarSeries}.
      */
     public Num getPricePerAsset(BarSeries barSeries) {
         if (pricePerAsset.isNaN()) {
@@ -227,7 +215,8 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the trade price per asset, net transaction costs
+     * @return the net price per asset for the trade (i.e. {@link #pricePerAsset}
+     *         with {@link #cost})
      */
     public Num getNetPrice() {
         return netPrice;
@@ -248,7 +237,7 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Sets the raw and net prices of the trade
+     * Sets the raw and net prices of the trade.
      *
      * @param pricePerAsset        the raw price of the asset
      * @param amount               the amount of assets ordered
@@ -314,7 +303,7 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
-     * @param price                the trade price
+     * @param price                the trade price per asset
      * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a BUY trade
@@ -325,7 +314,7 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
-     * @param price  the trade price
+     * @param price  the trade price per asset
      * @param amount the trade amount
      * @return a BUY trade
      */
@@ -365,7 +354,7 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
-     * @param price  the trade price
+     * @param price  the trade price per asset
      * @param amount the trade amount
      * @return a SELL trade
      */
@@ -375,7 +364,7 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
-     * @param price                the trade price
+     * @param price                the trade price per asset
      * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a SELL trade

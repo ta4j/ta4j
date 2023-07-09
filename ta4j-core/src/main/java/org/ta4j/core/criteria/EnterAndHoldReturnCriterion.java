@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,10 +30,11 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Enter and hold criterion.
+ * Enter and hold criterion, returned in decimal format.
  *
+ * <p>
  * Calculates the gross return (in percent) of an enter-and-hold strategy:
- * 
+ *
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
  * of the first bar and sell with the close price of the last bar.
@@ -49,8 +50,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     private final TradeType tradeType;
 
     /**
-     * Constructor
-     * 
+     * Constructor.
+     *
      * <p>
      * For buy-and-hold strategy.
      */
@@ -60,7 +61,7 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param tradeType the {@link TradeType} used to open the position
      */
     public EnterAndHoldReturnCriterion(TradeType tradeType) {

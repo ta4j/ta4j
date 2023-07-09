@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -51,8 +51,8 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;
-        sma1 = new SMAIndicator(indicator1, barCount);
-        sma2 = new SMAIndicator(indicator2, barCount);
+        this.sma1 = new SMAIndicator(indicator1, barCount);
+        this.sma2 = new SMAIndicator(indicator2, barCount);
     }
 
     @Override

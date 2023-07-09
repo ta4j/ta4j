@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,32 +31,31 @@ import org.slf4j.LoggerFactory;
  */
 public class BaseStrategy implements Strategy {
 
-    /** The logger */
+    /** The logger. */
     protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The class name */
+    /** The class name. */
     private final String className = getClass().getSimpleName();
 
-    /** Name of the strategy */
+    /** The name of the strategy. */
     private final String name;
 
-    /** The entry rule */
+    /** The entry rule. */
     private final Rule entryRule;
 
-    /** The exit rule */
+    /** The exit rule. */
     private final Rule exitRule;
 
     /**
-     * The number of first bars in a bar series that this strategy ignores.<br>
-     * During the unstable bars of the strategy any trade placement will be
-     * cancelled.<br>
-     * I.e. no entry/exit signal will be fired before index == unstableBars.
+     * The number of first bars in a bar series that this strategy ignores. During
+     * the unstable bars of the strategy, any trade placement will be canceled i.e.
+     * no entry/exit signal will be triggered before {@code index == unstableBars}.
      */
     private int unstableBars;
 
     /**
      * Constructor.
-     * 
+     *
      * @param entryRule the entry rule
      * @param exitRule  the exit rule
      */
@@ -66,11 +65,11 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param entryRule    the entry rule
      * @param exitRule     the exit rule
      * @param unstableBars strategy will ignore possible signals at
-     *                     <code>index</code> < <code>unstableBars</code>
+     *                     {@code index < unstableBars}
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars) {
         this(null, entryRule, exitRule, unstableBars);
@@ -78,7 +77,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param name      the name of the strategy
      * @param entryRule the entry rule
      * @param exitRule  the exit rule
@@ -89,12 +88,12 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * 
+     *
      * @param name         the name of the strategy
      * @param entryRule    the entry rule
      * @param exitRule     the exit rule
      * @param unstableBars strategy will ignore possible signals at
-     *                     <code>index</code> < <code>unstableBars</code>
+     *                     {@code index < unstableBars}
      * @throws IllegalArgumentException if entryRule or exitRule is null
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
@@ -186,8 +185,8 @@ public class BaseStrategy implements Strategy {
     }
 
     /**
-     * Traces the shouldEnter() method calls.
-     * 
+     * Traces the {@code shouldEnter()} method calls.
+     *
      * @param index the bar index
      * @param enter true if the strategy should enter, false otherwise
      */
@@ -198,8 +197,8 @@ public class BaseStrategy implements Strategy {
     }
 
     /**
-     * Traces the shouldExit() method calls.
-     * 
+     * Traces the {@code shouldExit()} method calls.
+     *
      * @param index the bar index
      * @param exit  true if the strategy should exit, false otherwise
      */

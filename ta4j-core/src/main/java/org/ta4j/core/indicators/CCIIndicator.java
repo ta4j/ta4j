@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -51,10 +51,10 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(BarSeries series, int barCount) {
         super(series);
-        factor = numOf(0.015);
-        typicalPriceInd = new TypicalPriceIndicator(series);
-        smaInd = new SMAIndicator(typicalPriceInd, barCount);
-        meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
+        this.factor = numOf(0.015);
+        this.typicalPriceInd = new TypicalPriceIndicator(series);
+        this.smaInd = new SMAIndicator(typicalPriceInd, barCount);
+        this.meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
         this.barCount = barCount;
     }
 

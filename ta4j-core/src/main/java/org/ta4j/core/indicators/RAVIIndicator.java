@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,8 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
- * 
+ *
+ * <p>
  * To preserve trend direction, default calculation does not use absolute value.
  */
 public class RAVIIndicator extends CachedIndicator<Num> {
@@ -38,15 +39,15 @@ public class RAVIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param price            the price
      * @param shortSmaBarCount the time frame for the short SMA (usually 7)
      * @param longSmaBarCount  the time frame for the long SMA (usually 65)
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
         super(price);
-        shortSma = new SMAIndicator(price, shortSmaBarCount);
-        longSma = new SMAIndicator(price, longSmaBarCount);
+        this.shortSma = new SMAIndicator(price, shortSmaBarCount);
+        this.longSma = new SMAIndicator(price, longSmaBarCount);
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The SQN ("System Quality Number") Criterion.
- * 
+ *
  * @see <a href=
  *      "https://indextrader.com.au/van-tharps-sqn/">https://indextrader.com.au/van-tharps-sqn/</a>
  */
@@ -44,18 +44,15 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * The number to be used for the part of <code>√(numberOfPositions)</code>
-     * within the SQN-Formula when there are more than 100 trades. If this value is
-     * <code>null</code>, then the number of positions calculated by
+     * The number to be used for the part of {@code √(numberOfPositions)} within the
+     * SQN-Formula when there are more than 100 trades. If this value is
+     * {@code null}, then the number of positions calculated by
      * {@link #numberOfPositionsCriterion} is used instead.
      */
     private final Integer nPositions;
 
     /**
-     * Constructor.
-     * 
-     * <p>
-     * Uses ProfitLossCriterion for {@link #criterion}.
+     * Constructor with {@code criterion} = {@link ProfitLossCriterion}.
      */
     public SqnCriterion() {
         this(new ProfitLossCriterion());
@@ -63,7 +60,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion the Criterion (e.g. ProfitLossCriterion or
      *                  ExpectancyCriterion)
      */
@@ -73,7 +70,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion  the Criterion (e.g. ProfitLossCriterion or
      *                   ExpectancyCriterion)
      * @param nPositions the {@link #nPositions} (optional)

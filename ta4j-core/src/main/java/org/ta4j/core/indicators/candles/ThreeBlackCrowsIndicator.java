@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -37,17 +37,13 @@ import org.ta4j.core.num.Num;
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
-    /**
-     * Lower shadow
-     */
+    /** Lower shadow. */
     private final LowerShadowIndicator lowerShadowInd;
-    /**
-     * Average lower shadow
-     */
+
+    /** Average lower shadow. */
     private final SMAIndicator averageLowerShadowInd;
-    /**
-     * Factor used when checking if a candle has a very short lower shadow
-     */
+
+    /** Factor used when checking if a candle has a very short lower shadow. */
     private final Num factor;
 
     private int whiteCandleIndex = -1;
@@ -62,8 +58,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeBlackCrowsIndicator(BarSeries series, int barCount, double factor) {
         super(series);
-        lowerShadowInd = new LowerShadowIndicator(series);
-        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
+        this.lowerShadowInd = new LowerShadowIndicator(series);
+        this.averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
         this.factor = numOf(factor);
     }
 

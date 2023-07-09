@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Relative strength index indicator.
  *
+ * <p>
  * Computed using original Welles Wilder formula.
  */
 public class RSIIndicator extends CachedIndicator<Num> {
@@ -38,6 +39,12 @@ public class RSIIndicator extends CachedIndicator<Num> {
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);

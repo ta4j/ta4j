@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,15 +36,21 @@ import org.ta4j.core.num.Num;
  */
 public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
-    private final AroonDownIndicator aroonDownIndicator;
-    private final AroonUpIndicator aroonUpIndicator;
     private final int barCount;
+    private final AroonUpIndicator aroonUpIndicator;
+    private final AroonDownIndicator aroonDownIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the number of periods used for the indicators
+     */
     public AroonOscillatorIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
         this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
+        this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
     }
 
     @Override
@@ -62,11 +68,14 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
+    /** @return the {@link #aroonUpIndicator} */
+    public AroonUpIndicator getAroonUpIndicator() {
+        return aroonUpIndicator;
+    }
+
+    /** @return the {@link #aroonDownIndicator} */
     public AroonDownIndicator getAroonDownIndicator() {
         return aroonDownIndicator;
     }
 
-    public AroonUpIndicator getAroonUpIndicator() {
-        return aroonUpIndicator;
-    }
 }

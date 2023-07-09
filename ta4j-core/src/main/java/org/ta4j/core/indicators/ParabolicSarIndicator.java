@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -46,17 +46,25 @@ import org.ta4j.core.num.Num;
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
-    private final Map<Integer, Num> lastExtreme = new HashMap<>();
-    private final Map<Integer, Num> lastAf = new HashMap<>();
-    private final Num maxAcceleration;
-    private final Num accelerationIncrement;
-    private final Num accelerationStart;
     private final LowPriceIndicator lowPriceIndicator;
     private final HighPriceIndicator highPriceIndicator;
 
+    private final Num maxAcceleration;
+    private final Num accelerationStart;
+    private final Num accelerationIncrement;
+
+    private final Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
+    private final Map<Integer, Num> lastExtreme = new HashMap<>();
+    private final Map<Integer, Num> lastAf = new HashMap<>();
+
     /**
-     * Constructor with default parameters
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code aF} = 0.02
+     * <li>{@code maxA} = 0.2
+     * <li>{@code increment} = 0.02
+     * </ul>
      *
      * @param series the bar series for this indicator
      */
@@ -65,7 +73,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     /**
-     * Constructor with custom parameters and default increment value
+     * Constructor with {@code increment} = 0.02.
      *
      * @param series the bar series for this indicator
      * @param aF     acceleration factor
@@ -76,20 +84,20 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     /**
-     * Constructor with custom parameters
+     * Constructor.
      *
      * @param series    the bar series for this indicator
-     * @param aF        acceleration factor
-     * @param maxA      maximum acceleration
-     * @param increment the increment step
+     * @param aF        acceleration factor (usually 0.02)
+     * @param maxA      maximum acceleration (usually 0.2)
+     * @param increment the increment step (usually 0.02)
      */
     public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
         super(series);
-        highPriceIndicator = new HighPriceIndicator(series);
-        lowPriceIndicator = new LowPriceIndicator(series);
-        maxAcceleration = maxA;
-        accelerationIncrement = increment;
-        accelerationStart = aF;
+        this.lowPriceIndicator = new LowPriceIndicator(series);
+        this.highPriceIndicator = new HighPriceIndicator(series);
+        this.maxAcceleration = maxA;
+        this.accelerationStart = aF;
+        this.accelerationIncrement = increment;
     }
 
     @Override

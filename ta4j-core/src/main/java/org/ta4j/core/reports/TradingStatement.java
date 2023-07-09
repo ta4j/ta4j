@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,8 +26,8 @@ package org.ta4j.core.reports;
 import org.ta4j.core.Strategy;
 
 /**
- * This class represents trading statement report which contains position and
- * performance statistics
+ * Represents a trading statement report containing position and performance
+ * statistics.
  */
 public class TradingStatement {
 
@@ -35,6 +35,13 @@ public class TradingStatement {
     private final PositionStatsReport positionStatsReport;
     private final PerformanceReport performanceReport;
 
+    /**
+     * Constructor.
+     * 
+     * @param strategy            the {@link Strategy}
+     * @param positionStatsReport the {@link PositionStatsReport}
+     * @param performanceReport   the {@link PerformanceReport}
+     */
     public TradingStatement(Strategy strategy, PositionStatsReport positionStatsReport,
             PerformanceReport performanceReport) {
         this.strategy = strategy;
@@ -42,14 +49,17 @@ public class TradingStatement {
         this.performanceReport = performanceReport;
     }
 
+    /** @return {@link #strategy} */
     public Strategy getStrategy() {
         return strategy;
     }
 
+    /** @return {@link #positionStatsReport} */
     public PositionStatsReport getPositionStatsReport() {
         return positionStatsReport;
     }
 
+    /** @return {@link #performanceReport} */
     public PerformanceReport getPerformanceReport() {
         return performanceReport;
     }

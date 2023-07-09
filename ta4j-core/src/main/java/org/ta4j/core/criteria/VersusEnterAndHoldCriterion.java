@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,12 +32,12 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Versus "enter and hold" criterion.
+ * Versus "enter and hold" criterion, returned in decimal format.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
  * value of an "enter and hold". The "enter and hold"-strategy is done as
  * follows:
- * 
+ *
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
  * of the first bar and sell with the close price of the last bar.
@@ -52,8 +52,8 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor for buy-and-hold strategy.
-     * 
-     * @param criterion an analysis criterion to be compared
+     *
+     * @param criterion the criterion to be compared
      */
     public VersusEnterAndHoldCriterion(AnalysisCriterion criterion) {
         this(TradeType.BUY, criterion);
@@ -61,9 +61,9 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param tradeType the {@link TradeType} used to open the position
-     * @param criterion the analysis criterion to be compared
+     * @param criterion the criterion to be compared
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
         this.tradeType = tradeType;

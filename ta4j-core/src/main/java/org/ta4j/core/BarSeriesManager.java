@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,15 +31,13 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * A manager for {@link BarSeries} objects.
- *
- * Used for backtesting. Allows to run a {@link Strategy trading strategy} over
- * the managed bar series.
+ * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
+ * {@link Strategy trading strategy} over the managed bar series.
  */
 public class BarSeriesManager {
 
     /** The logger */
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(BarSeriesManager.class);
 
     /** The managed bar series */
     private final BarSeries barSeries;
@@ -50,7 +48,7 @@ public class BarSeriesManager {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
@@ -59,10 +57,11 @@ public class BarSeriesManager {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
         this.barSeries = barSeries;
@@ -78,10 +77,24 @@ public class BarSeriesManager {
     }
 
     /**
+     * @return the transaction cost model
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    /**
+     * @return the holding cost model
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
+    }
+
+    /**
      * Runs the provided strategy over the managed series.
      *
      * Opens the position with a {@link TradeType} BUY trade.
-     * 
+     *
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
@@ -93,7 +106,7 @@ public class BarSeriesManager {
      * finishIndex).
      *
      * Opens the position with a {@link TradeType} BUY trade.
-     * 
+     *
      * @param strategy    the trading strategy
      * @param startIndex  the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
@@ -107,7 +120,7 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series.
      *
      * Opens the position with a trade of {@link TradeType tradeType}.
-     * 
+     *
      * @param strategy  the trading strategy
      * @param tradeType the {@link TradeType} used to open the position
      * @return the trading record coming from the run
@@ -121,7 +134,7 @@ public class BarSeriesManager {
      * finishIndex).
      *
      * Opens the position with a trade of {@link TradeType tradeType}.
-     * 
+     *
      * @param strategy    the trading strategy
      * @param tradeType   the {@link TradeType} used to open the position
      * @param startIndex  the start index for the run (included)

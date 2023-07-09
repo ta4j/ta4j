@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,13 +30,12 @@ import java.util.function.Function;
 
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
- * should be used as base for calculations
- * 
+ * should be used as base for calculations.
+ *
  * @see Num
  * @see Num#function()
  * @see DoubleNum
  * @see DecimalNum
- * 
  */
 public interface Num extends Comparable<Num> {
 
@@ -62,54 +61,54 @@ public interface Num extends Comparable<Num> {
     }
 
     /**
-     * @return the delegate used from this <code>Num</code> implementation
+     * @return the delegate used from this {@code Num} implementation
      */
     Number getDelegate();
 
     /**
-     * Returns the name/description of this Num implementation
-     * 
+     * Returns the name/description of this Num implementation.
+     *
      * @return the name/description
      */
     String getName();
 
     /**
-     * Returns a {@code num} whose value is {@code (this + augend)},
-     * 
-     * @param augend value to be added to this {@code num}.
+     * Returns a {@code Num} whose value is {@code (this + augend)}.
+     *
+     * @param augend value to be added to this {@code Num}
      * @return {@code this + augend}, rounded as necessary
      */
     Num plus(Num augend);
 
     /**
-     * Returns a {@code num} whose value is {@code (this - augend)},
-     * 
-     * @param subtrahend value to be subtracted from this {@code num}.
+     * Returns a {@code Num} whose value is {@code (this - augend)}.
+     *
+     * @param subtrahend value to be subtracted from this {@code Num}
      * @return {@code this - subtrahend}, rounded as necessary
      */
     Num minus(Num subtrahend);
 
     /**
-     * Returns a {@code num} whose value is {@code this * multiplicand},
-     * 
-     * @param multiplicand value to be multiplied by this {@code num}.
+     * Returns a {@code Num} whose value is {@code this * multiplicand}.
+     *
+     * @param multiplicand value to be multiplied by this {@code Num}
      * @return {@code this * multiplicand}, rounded as necessary
      */
     Num multipliedBy(Num multiplicand);
 
     /**
-     * Returns a {@code num} whose value is {@code (this / divisor)},
-     * 
-     * @param divisor value by which this {@code num} is to be divided.
+     * Returns a {@code Num} whose value is {@code (this / divisor)}.
+     *
+     * @param divisor value by which this {@code Num} is to be divided
      * @return {@code this / divisor}, rounded as necessary
      */
     Num dividedBy(Num divisor);
 
     /**
-     * Returns a {@code num} whose value is {@code (this % divisor)},
-     * 
-     * @param divisor value by which this {@code num} is to be divided.
-     * @return {@code this % divisor}, rounded as necessary.
+     * Returns a {@code Num} whose value is {@code (this % divisor)}.
+     *
+     * @param divisor value by which this {@code Num} is to be divided
+     * @return {@code this % divisor}, rounded as necessary
      */
     Num remainder(Num divisor);
 
@@ -117,192 +116,192 @@ public interface Num extends Comparable<Num> {
      * Returns a {@code Num} whose value is rounded down to the nearest whole
      * number.
      *
-     * @return <code>this</code> to whole Num rounded down
+     * @return {@code this} to whole Num rounded down
      */
     Num floor();
 
     /**
      * Returns a {@code Num} whose value is rounded up to the nearest whole number.
-     * 
-     * @return <code>this</code> to whole Num rounded up
+     *
+     * @return {@code this} to whole Num rounded up
      */
     Num ceil();
 
     /**
-     * Returns a {@code num} whose value is <code>(this<sup>n</sup>)</code>.
-     * 
-     * @param n power to raise this {@code num} to.
+     * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
+     *
+     * @param n power to raise this {@code Num} to.
      * @return <code>this<sup>n</sup></code>
      */
     Num pow(int n);
 
     /**
-     * Returns a {@code num} whose value is <code>(this<sup>n</sup>)</code>.
-     * 
-     * @param n power to raise this {@code num} to.
+     * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
+     *
+     * @param n power to raise this {@code Num} to.
      * @return <code>this<sup>n</sup></code>
      */
     Num pow(Num n);
 
     /**
-     * Returns a {@code num} whose value is <code>ln(this)</code>.
-     * 
-     * @return <code>this<sup>n</sup></code>
+     * Returns a {@code Num} whose value is {@code log(this)}.
+     *
+     * @return {@code log(this)}
      */
     Num log();
 
     /**
-     * Returns a {@code num} whose value is <code>√(this)</code>.
-     * 
-     * @return <code>this<sup>n</sup></code>
+     * Returns a {@code Num} whose value is {@code √(this)}.
+     *
+     * @return {@code √(this)}
      */
     Num sqrt();
 
     /**
-     * Returns a {@code num} whose value is <code>√(this)</code>.
-     * 
+     * Returns a {@code Num} whose value is {@code √(this)}.
+     *
      * @param precision to calculate.
-     * @return <code>this<sup>n</sup></code>
+     * @return {@code √(this)}
      */
     Num sqrt(int precision);
 
     /**
-     * Returns a {@code num} whose value is the absolute value of this {@code num}.
-     * 
+     * Returns a {@code Num} whose value is the absolute value of this {@code Num}.
+     *
      * @return {@code abs(this)}
      */
     Num abs();
 
     /**
-     * Returns a {@code num} whose value is (-this), and whose scale is
+     * Returns a {@code Num} whose value is (-this), and whose scale is
      * this.scale().
-     * 
+     *
      * @return {@code negate(this)}
      */
     Num negate();
 
     /**
-     * Checks if the value is zero.
-     * 
-     * @return true if the value is zero, false otherwise
+     * Checks if {@code this} is zero.
+     *
+     * @return true if {@code this == 0}, false otherwise
      */
     boolean isZero();
 
     /**
-     * Checks if the value is greater than zero.
-     * 
-     * @return true if the value is greater than zero, false otherwise
+     * Checks if {@code this} is greater than zero.
+     *
+     * @return true if {@code this > 0}, false otherwise
      */
     boolean isPositive();
 
     /**
-     * Checks if the value is zero or greater.
-     * 
-     * @return true if the value is zero or greater, false otherwise
+     * Checks if {@code this} is zero or greater.
+     *
+     * @return true if {@code this ≥ 0}, false otherwise
      */
     boolean isPositiveOrZero();
 
     /**
-     * Checks if the value is less than zero.
-     * 
-     * @return true if the value is less than zero, false otherwise
+     * Checks if {@code this} is less than zero.
+     *
+     * @return true if {@code this < 0}, false otherwise
      */
     boolean isNegative();
 
     /**
-     * Checks if the value is zero or less.
-     * 
-     * @return true if the value is zero or less, false otherwise
+     * Checks if {@code this} is zero or less.
+     *
+     * @return true if {@code this ≤ 0}, false otherwise
      */
     boolean isNegativeOrZero();
 
     /**
-     * Checks if this value is equal to another.
-     * 
+     * Checks if {@code this} is equal to {@code other}.
+     *
      * @param other the other value, not null
-     * @return true if this is equal to the specified value, false otherwise
+     * @return true if {@code this == other}, false otherwise
      */
     boolean isEqual(Num other);
 
     /**
-     * Checks if this value is greater than another.
-     * 
+     * Checks if {@code this} is greater than {@code other}.
+     *
      * @param other the other value, not null
-     * @return true if this is greater than the specified value, false otherwise
+     * @return true if {@code this > other}, false otherwise
      */
     boolean isGreaterThan(Num other);
 
     /**
-     * Checks if this value is greater than or equal to another.
-     * 
+     * Checks if {@code this} is greater than or equal to {@code other}.
+     *
      * @param other the other value, not null
-     * @return true if this is greater than or equal to the specified value, false
-     *         otherwise
+     * @return true if {@code this ≥ other}, false otherwise
      */
     boolean isGreaterThanOrEqual(Num other);
 
     /**
-     * Checks if this value is less than another.
-     * 
+     * Checks if {@code this} is less than {@code other}.
+     *
      * @param other the other value, not null
-     * @return true if this is less than the specified value, false otherwise
+     * @return true if {@code this < other}, false otherwise
      */
     boolean isLessThan(Num other);
 
     /**
-     * Checks if this value is less than another.
-     * 
+     * Checks if {@code this} is less than {@code other}.
+     *
      * @param other the other value, not null
-     * @return true if this is less than or equal the specified value, false
-     *         otherwise
+     * @return true if {@code this ≤ other}, false otherwise
      */
     boolean isLessThanOrEqual(Num other);
 
     /**
-     * Returns the minimum of this {@code num} and {@code other}.
-     * 
-     * @param other value with which the minimum is to be computed
-     * @return the {@code num} whose value is the lesser of this {@code num} and
-     *         {@code other}. If they are equal, method, {@code this} is returned.
+     * Returns the {@code Num} whose value is the smaller of {@code this} and
+     * {@code other}.
+     *
+     * @param other value with which to calculate the minimum
+     * @return the smaller of {@code this} and {@code other}. If they are equal,
+     *         {@code this} is returned.
      */
     Num min(Num other);
 
     /**
-     * Returns the maximum of this {@code num} and {@code other}.
-     * 
-     * @param other value with which the maximum is to be computed
-     * @return the {@code num} whose value is the greater of this {@code num} and
-     *         {@code other}. If they are equal, method, {@code this} is returned.
+     * Returns the {@code Num} whose value is the greater of {@code this} and
+     * {@code other}.
+     *
+     * @param other value with which to calculate the maximum
+     * @return the greater of {@code this} and {@code other}. If they are equal,
+     *         {@code this} is returned.
      */
     Num max(Num other);
 
     /**
      * Returns the {@link Function} to convert a number instance into the
-     * corresponding Num instance
-     * 
+     * corresponding Num instance.
+     *
      * @return function which converts a number instance into the corresponding Num
      *         instance
      */
     Function<Number, Num> function();
 
     /**
-     * Transforms a {@link Number} into a new Num instance of this <code>Num</code>
-     * implementation
-     * 
+     * Transforms a {@link Number} into a new Num instance of this {@code Num}
+     * implementation.
+     *
      * @param value the Number to transform
-     * @return the corresponding Num implementation of the <code>value</code>
+     * @return the corresponding Num implementation of the {@code value}
      */
     default Num numOf(Number value) {
         return function().apply(value);
     }
 
     /**
-     * Transforms a {@link String} into a new Num instance of this with a precision
-     * <code>Num</code> implementation
-     * 
+     * Transforms a {@link String} into a new Num instance of this {@code Num}
+     * implementation with a precision.
+     *
      * @param value     the String to transform
      * @param precision the precision
-     * @return the corresponding Num implementation of the <code>value</code>
+     * @return the corresponding Num implementation of the {@code value}
      */
     default Num numOf(String value, int precision) {
         MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
@@ -310,45 +309,45 @@ public interface Num extends Comparable<Num> {
     }
 
     /**
-     * Only for NaN this should be true
-     * 
-     * @return false if this implementation is not NaN
+     * Returns true only if {@code this} is an instance of {@link NaN}.
+     *
+     * @return false if this implementation is not {@link NaN}
      */
     default boolean isNaN() {
         return false;
     }
 
     /**
-     * Converts this {@code num} to a {@code double}.
-     * 
-     * @return this {@code num} converted to a {@code double}
+     * Converts this {@code Num} to a {@code double}.
+     *
+     * @return this {@code Num} converted to a {@code double}
      */
     default double doubleValue() {
         return getDelegate().doubleValue();
     }
 
     /**
-     * Converts this {@code num} to an {@code integer}.
-     * 
-     * @return this {@code num} converted to an {@code integer}
+     * Converts this {@code Num} to an {@code integer}.
+     *
+     * @return this {@code Num} converted to an {@code integer}
      */
     default int intValue() {
         return getDelegate().intValue();
     }
 
     /**
-     * Converts this {@code num} to a {@code long}.
-     * 
-     * @return this {@code num} converted to a {@code loong}
+     * Converts this {@code Num} to a {@code long}.
+     *
+     * @return this {@code Num} converted to a {@code long}
      */
     default long longValue() {
         return getDelegate().longValue();
     }
 
     /**
-     * Converts this {@code num} to a {@code float}.
-     * 
-     * @return this {@code num} converted to a {@code float}
+     * Converts this {@code Num} to a {@code float}.
+     *
+     * @return this {@code Num} converted to a {@code float}
      */
     default float floatValue() {
         return getDelegate().floatValue();

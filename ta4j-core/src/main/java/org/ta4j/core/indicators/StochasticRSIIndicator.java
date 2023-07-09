@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,8 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Stochastic RSI Indicator.
- * 
+ *
+ * <pre>
  * Stoch RSI = (RSI - MinimumRSIn) / (MaximumRSIn - MinimumRSIn)
+ * </pre>
  */
 public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
@@ -42,11 +44,14 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     private final HighestValueIndicator maxRsi;
 
     /**
-     * Constructor. In most cases, this should be used to avoid confusion over what
-     * Indicator parameters should be used.
+     * Constructor.
      * 
-     * @param series   the series
-     * @param barCount the time frame
+     * <p>
+     * <b>Note:</b> In most cases, this constructor should be used to avoid
+     * confusion about which indicator parameters to use.
+     *
+     * @param series   the bar series
+     * @param barCount the time frame for {@link #minRsi} and {@link #maxRsi}
      */
     public StochasticRSIIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
@@ -54,9 +59,9 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param indicator the Indicator, in practice is always a ClosePriceIndicator.
-     * @param barCount  the time frame
+     *
+     * @param indicator the Indicator (usually a {@link ClosePriceIndicator})
+     * @param barCount  the time frame for {@link #minRsi} and {@link #maxRsi}
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
         this(new RSIIndicator(indicator, barCount), barCount);
@@ -64,15 +69,15 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param rsiIndicator the rsi indicator
-     * @param barCount     the time frame
+     *
+     * @param rsiIndicator the {@link RSIIndicator}
+     * @param barCount     the time frame for {@link #minRsi} and {@link #maxRsi}
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
         super(rsiIndicator);
         this.rsi = rsiIndicator;
-        minRsi = new LowestValueIndicator(rsiIndicator, barCount);
-        maxRsi = new HighestValueIndicator(rsiIndicator, barCount);
+        this.minRsi = new LowestValueIndicator(rsiIndicator, barCount);
+        this.maxRsi = new HighestValueIndicator(rsiIndicator, barCount);
     }
 
     @Override

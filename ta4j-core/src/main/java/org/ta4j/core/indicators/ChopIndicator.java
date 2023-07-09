@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,15 +31,22 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * The "CHOP" index is used to indicate side-ways markets see <a href=
- * "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
- * 100++ * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n) n = User
- * defined period length. LOG10(n) = base-10 LOG of n ATR(1) = Average True
- * Range (Period of 1) SUM(ATR(1), n) = Sum of the Average True Range over past
- * n bars MaxHi(n) = The highest high over past n bars
+ * The "CHOP" index is used to indicate side-ways markets.
+ * 
+ * <pre>
+ * 100++ * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n),
+ * with n = User defined period length. 
+ * LOG10(n) = base-10 LOG of n 
+ * ATR(1) = Average True
+ * Range (Period of 1) SUM(ATR(1), n) = Sum of the Average True Range over past n bars 
+ * MaxHi(n) = The highest high over past n bars
  *
  * ++ usually this index is between 0 and 100, but could be scaled differently
  * by the 'scaleTo' arg of the constructor
+ * </pre>
+ * 
+ * @see <a href=
+ *      "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
  *
  * @apiNote Minimal deviations in last decimal places possible. During the
  *          calculations this indicator converts {@link Num Decimal /BigDecimal}
@@ -57,7 +64,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param barSeries   the bar series {@link BarSeries}
+     * @param barSeries   the bar series
      * @param ciTimeFrame time-frame often something like '14'
      * @param scaleTo     maximum value to scale this oscillator, usually '1' or
      *                    '100'
@@ -65,8 +72,8 @@ public class ChopIndicator extends CachedIndicator<Num> {
     public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
         super(barSeries);
         this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
+        this.hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
+        this.lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
         this.log10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);

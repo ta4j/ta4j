@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,6 +35,13 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     private final int barCount;
     private final Num multiplier;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator  the {@link Indicator}
+     * @param barCount   the time frame
+     * @param multiplier the multiplier
+     */
     protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
         this.indicator = indicator;

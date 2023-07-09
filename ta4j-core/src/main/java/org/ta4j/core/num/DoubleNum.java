@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,10 +28,10 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.util.function.Function;
 
 /**
- * Representation of Double. High performance, lower precision.
+ * Representation of {@link Double}. High performance, lower precision.
  *
- * @apiNote the delegate should never become a NaN value. No self NaN checks
- *          provided
+ * @apiNote the delegate should never become a NaN value. No self NaN checks are
+ *          provided.
  */
 public class DoubleNum implements Num {
 
@@ -46,26 +46,66 @@ public class DoubleNum implements Num {
         delegate = val;
     }
 
-    public static DoubleNum valueOf(int i) {
-        return new DoubleNum((double) i);
+    /**
+     * Returns a {@code Num} version of the given {@code String}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static DoubleNum valueOf(String val) {
+        return new DoubleNum(Double.parseDouble(val));
     }
 
-    public static DoubleNum valueOf(long i) {
-        return new DoubleNum((double) i);
+    /**
+     * Returns a {@code Num} version of the given {@code int}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static DoubleNum valueOf(int val) {
+        return new DoubleNum((double) val);
     }
 
-    public static DoubleNum valueOf(short i) {
-        return new DoubleNum((double) i);
+    /**
+     * Returns a {@code Num} version of the given {@code long}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static DoubleNum valueOf(long val) {
+        return new DoubleNum((double) val);
     }
 
-    public static DoubleNum valueOf(float i) {
-        return new DoubleNum((double) i);
+    /**
+     * Returns a {@code Num} version of the given {@code short}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static DoubleNum valueOf(short val) {
+        return new DoubleNum((double) val);
     }
 
-    public static DoubleNum valueOf(String i) {
-        return new DoubleNum(Double.parseDouble(i));
+    /**
+     * Returns a {@code Num} version of the given {@code float}.
+     *
+     * <p>
+     * <b>Warning:</b> The {@code Num} returned may have inaccuracies.
+     *
+     * @param val the number
+     * @return the {@code Num} whose value is equal to or approximately equal to the
+     *         value of {@code val}.
+     */
+    public static DoubleNum valueOf(float val) {
+        return new DoubleNum((double) val);
     }
 
+    /**
+     * Returns a {@code Num} version of the given {@code Number}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
     public static DoubleNum valueOf(Number i) {
         return new DoubleNum(i.doubleValue());
     }
@@ -202,6 +242,7 @@ public class DoubleNum implements Num {
         return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
     }
 
+    @Override
     public Num log() {
         if (delegate <= 0) {
             return NaN;
@@ -209,33 +250,17 @@ public class DoubleNum implements Num {
         return new DoubleNum(Math.log(delegate));
     }
 
-    /**
-     * Checks if this value is greater than another.
-     *
-     * @param other the other value, not null
-     * @return true if this is greater than the specified value, false otherwise
-     */
+    @Override
     public boolean isGreaterThan(Num other) {
         return !other.isNaN() && compareTo(other) > 0;
     }
 
-    /**
-     * Checks if this value is greater than or equal to another.
-     *
-     * @param other the other value, not null
-     * @return true if this is greater than or equal to the specified value, false
-     *         otherwise
-     */
+    @Override
     public boolean isGreaterThanOrEqual(Num other) {
         return !other.isNaN() && compareTo(other) > -1;
     }
 
-    /**
-     * Checks if this value is less than another.
-     *
-     * @param other the other value, not null
-     * @return true if this is less than the specified value, false otherwise
-     */
+    @Override
     public boolean isLessThan(Num other) {
         return !other.isNaN() && compareTo(other) < 0;
     }

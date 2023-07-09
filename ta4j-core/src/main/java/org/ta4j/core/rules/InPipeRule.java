@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,23 +29,23 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-between-indicators rule.
- *
- * Satisfied when the value of the {@link Indicator indicator} is between the
- * values of the boundary (up/down) indicators.
+ * Satisfied when the value of the {@link Indicator indicator} is between two
+ * other indicators or values.
  */
 public class InPipeRule extends AbstractRule {
 
     /** The upper indicator */
     private Indicator<Num> upper;
+
     /** The lower indicator */
     private Indicator<Num> lower;
+
     /** The evaluated indicator */
     private Indicator<Num> ref;
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref   the reference indicator
      * @param upper the upper threshold
      * @param lower the lower threshold
@@ -56,7 +56,7 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref   the reference indicator
      * @param upper the upper threshold
      * @param lower the lower threshold
@@ -68,7 +68,7 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref   the reference indicator
      * @param upper the upper indicator
      * @param lower the lower indicator

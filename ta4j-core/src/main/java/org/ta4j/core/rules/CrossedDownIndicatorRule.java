@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,8 +30,6 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Crossed-down indicator rule.
- *
  * Satisfied when the value of the first {@link Indicator indicator}
  * crosses-down the value of the second one.
  */
@@ -42,7 +40,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
@@ -52,7 +50,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
@@ -62,7 +60,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param first  the first indicator
      * @param second the second indicator
      */
@@ -78,16 +76,12 @@ public class CrossedDownIndicatorRule extends AbstractRule {
         return satisfied;
     }
 
-    /**
-     * @return the initial lower indicator
-     */
+    /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
         return cross.getLow();
     }
 
-    /**
-     * @return the initial upper indicator
-     */
+    /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
         return cross.getUp();
     }

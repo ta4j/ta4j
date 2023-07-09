@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The volume-weighted average price (VWAP) Indicator.
- * 
+ *
  * @see <a href=
  *      "http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
  *      http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
@@ -51,8 +51,8 @@ public class VWAPIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param series   the series
+     *
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public VWAPIndicator(BarSeries series, int barCount) {

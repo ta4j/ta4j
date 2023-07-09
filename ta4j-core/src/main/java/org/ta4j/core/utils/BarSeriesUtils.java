@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,7 +42,7 @@ import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.num.Num;
 
 /**
- * Common utilities and helper methods for BarSeries.
+ * Common utilities and helper methods for {@link BarSeries}.
  */
 public final class BarSeriesUtils {
 
@@ -56,11 +56,12 @@ public final class BarSeriesUtils {
     }
 
     /**
-     * Aggregates a list of bars by <code>timePeriod</code>. The new
-     * <code>timePeriod</code> must be a multiplication of the actual time period.
-     * 
+     * Aggregates a list of bars by {@code timePeriod}. The new {@code timePeriod}
+     * must be a multiplication of the actual time period.
+     *
      * @param barSeries            the barSeries
-     * @param timePeriod           time period to aggregate
+     * @param timePeriod           the target time period that aggregated bars
+     *                             should have
      * @param aggregatedSeriesName the name of the aggregated barSeries
      * @return the aggregated barSeries
      */
@@ -78,7 +79,7 @@ public final class BarSeriesUtils {
      * can also be uses to check bar data equality over different marketdata
      * providers. This method does <b>not</b> add missing bars but replaces an
      * existing bar with its new bar.
-     * 
+     *
      * @param barSeries the barSeries
      * @param newBar    the bar which has precedence over the same existing bar
      * @return the previous bar replaced by newBar, or null if there was no
@@ -100,14 +101,14 @@ public final class BarSeriesUtils {
     }
 
     /**
-     * Finds possibly missing bars. The returned list contains the
-     * <code>endTime</code> of each missing bar. A bar is possibly missing if: (1)
-     * the subsequent bar starts not with the end time of the previous bar or (2) if
-     * any open, high, low price is missing.
-     * 
+     * Finds possibly missing bars. The returned list contains the {@code endTime}
+     * of each missing bar. A bar is possibly missing if: (1) the subsequent bar
+     * starts not with the end time of the previous bar or (2) if any open, high,
+     * low price is missing.
+     *
      * <b>Note:</b> Market closing times (e.g., weekends, holidays) will lead to
      * wrongly detected missing bars and should be ignored by the client.
-     * 
+     *
      * @param barSeries       the barSeries
      * @param findOnlyNaNBars find only bars with undefined prices
      * @return the list of possibly missing bars
@@ -141,10 +142,9 @@ public final class BarSeriesUtils {
 
     /**
      * Gets a new BarSeries cloned from the provided barSeries with bars converted
-     * by conversionFunction. The returned barSeries inherits
-     * <code>beginIndex</code>, <code>endIndex</code> and
-     * <code>maximumBarCount</code> from the provided barSeries.
-     * 
+     * by conversionFunction. The returned barSeries inherits {@code beginIndex},
+     * {@code endIndex} and {@code maximumBarCount} from the provided barSeries.
+     *
      * @param barSeries the BarSeries
      * @param num       any instance of Num to determine its Num function; with
      *                  this, we can convert a {@link Number} to a {@link Num Num
@@ -159,7 +159,7 @@ public final class BarSeriesUtils {
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
             Function<Number, Num> conversionFunction = num.function();
-            Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
+            Bar convertedBar = new ConvertibleBaseBarBuilder<>(conversionFunction::apply)
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
@@ -182,7 +182,7 @@ public final class BarSeriesUtils {
 
     /**
      * Finds overlapping bars within barSeries.
-     * 
+     *
      * @param barSeries the bar series with bar data
      * @return overlapping bars
      */
@@ -206,8 +206,8 @@ public final class BarSeriesUtils {
     }
 
     /**
-     * Adds <code>newBars</code> to <code>barSeries</code>.
-     * 
+     * Adds {@code newBars} to {@code barSeries}.
+     *
      * @param barSeries the BarSeries
      * @param newBars   the new bars to be added
      */
@@ -225,7 +225,7 @@ public final class BarSeriesUtils {
     /**
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
      * before higher times).
-     * 
+     *
      * @param bars the bars
      * @return the sorted bars
      */

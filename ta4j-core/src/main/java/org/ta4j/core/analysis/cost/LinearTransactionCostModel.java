@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,16 +27,18 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
+/**
+ * With this cost model, the trading costs for opening or closing a position
+ * accrue linearly.
+ */
 public class LinearTransactionCostModel implements CostModel {
 
-    /**
-     * Slope of the linear model - fee per position
-     */
+    /** The slope of the linear model (fee per position). */
     private final double feePerPosition;
 
     /**
-     * Constructor. (feePerPosition * x)
-     * 
+     * Constructor with {@code feePerPosition * x}.
+     *
      * @param feePerPosition the feePerPosition coefficient (e.g. 0.005 for 0.5% per
      *                       {@link Trade trade})
      */
@@ -45,28 +47,26 @@ public class LinearTransactionCostModel implements CostModel {
     }
 
     /**
-     * Calculates the transaction cost of a position.
-     * 
      * @param position     the position
      * @param currentIndex current bar index (irrelevant for the
      *                     LinearTransactionCostModel)
-     * @return the absolute trade cost
+     * @return the absolute trading cost of the single {@code position}
      */
+    @Override
     public Num calculate(Position position, int currentIndex) {
         return this.calculate(position);
     }
 
     /**
-     * Calculates the transaction cost of a position.
-     * 
      * @param position the position
-     * @return the absolute trade cost
+     * @return the absolute trading cost of the single {@code position}
      */
+    @Override
     public Num calculate(Position position) {
         Num totalPositionCost = null;
         Trade entryTrade = position.getEntry();
         if (entryTrade != null) {
-            // transaction costs of entry trade
+            // transaction costs of the entry trade
             totalPositionCost = entryTrade.getCost();
             if (position.getExit() != null) {
                 totalPositionCost = totalPositionCost.plus(position.getExit().getCost());
@@ -75,20 +75,12 @@ public class LinearTransactionCostModel implements CostModel {
         return totalPositionCost;
     }
 
-    /**
-     * @param price  execution price
-     * @param amount trade amount
-     * @return the absolute trade transaction cost
-     */
+    @Override
     public Num calculate(Num price, Num amount) {
         return amount.numOf(feePerPosition).multipliedBy(price).multipliedBy(amount);
     }
 
-    /**
-     * Evaluate if two models are equal
-     * 
-     * @param otherModel model to compare with
-     */
+    @Override
     public boolean equals(CostModel otherModel) {
         boolean equality = false;
         if (this.getClass().equals(otherModel.getClass())) {

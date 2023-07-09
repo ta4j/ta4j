@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 /**
  * Modified moving average indicator.
  *
+ * <p>
  * It is similar to exponential moving average but smooths more slowly. Used in
  * Welles Wilder's indicators like ADX, RSI.
  */
@@ -37,7 +38,7 @@ public class MMAIndicator extends AbstractEMAIndicator {
     /**
      * Constructor.
      *
-     * @param indicator an indicator
+     * @param indicator the {@link Indicator}
      * @param barCount  the MMA time frame
      */
     public MMAIndicator(Indicator<Num> indicator, int barCount) {

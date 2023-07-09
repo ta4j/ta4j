@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,23 +31,18 @@ import org.ta4j.core.num.Num;
 /**
  * A stop-loss rule.
  *
+ * <p>
  * Satisfied when the close price reaches the loss threshold.
  */
 public class StopLossRule extends AbstractRule {
 
-    /**
-     * Constant value for 100
-     */
+    /** The constant value for 100. */
     private final Num HUNDRED;
 
-    /**
-     * The close price indicator
-     */
+    /** The close price indicator. */
     private final ClosePriceIndicator closePrice;
 
-    /**
-     * The loss percentage
-     */
+    /** The loss percentage. */
     private final Num lossPercentage;
 
     /**

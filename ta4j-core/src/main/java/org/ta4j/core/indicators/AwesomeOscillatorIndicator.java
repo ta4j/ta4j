@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,14 +29,13 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Awesome oscillator. (AO)
+ * Awesome oscillator (AO) indicator.
  *
- * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
+ * @see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     private final SMAIndicator sma5;
-
     private final SMAIndicator sma34;
 
     /**
@@ -53,7 +52,12 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code barCountSma1} = 5
+     * <li>{@code barCountSma2} = 34
+     * </ul>
      *
      * @param indicator (normally {@link MedianPriceIndicator})
      */
@@ -62,7 +66,13 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code indicator} = {@link MedianPriceIndicator}
+     * <li>{@code barCountSma1} = 5
+     * <li>{@code barCountSma2} = 34
+     * </ul>
      *
      * @param series the bar series
      */

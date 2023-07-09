@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,7 +49,7 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     /**
-     * Standard Fibonacci factors
+     * Standard Fibonacci factors.
      */
     public enum FibonacciFactor {
         FACTOR_1(0.382), FACTOR_2(0.618), FACTOR_3(1);

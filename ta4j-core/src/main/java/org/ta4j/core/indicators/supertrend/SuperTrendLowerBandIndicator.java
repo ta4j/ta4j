@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,16 +30,31 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
+/**
+ * The lower band of the SuperTrend indicator.
+ */
 public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
     private final Num multiplier;
     private final MedianPriceIndicator medianPriceIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param barSeries the bar series
+     */
     public SuperTrendLowerBandIndicator(final BarSeries barSeries) {
         this(barSeries, new ATRIndicator(barSeries, 10), 3);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param barSeries    the bar series
+     * @param atrIndicator the {@link ATRIndicator}
+     * @param multiplier   the multiplier
+     */
     public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
             final Integer multiplier) {
         super(barSeries);

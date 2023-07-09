@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,10 +27,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Triple exponential moving average indicator.
+ * Triple exponential moving average indicator (also called "TRIX").
  *
- * a.k.a TRIX
- *
+ * <p>
  * TEMA needs "3 * period - 2" of data to start producing values in contrast to
  * the period samples needed by a regular EMA.
  *

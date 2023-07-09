@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,7 +38,7 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor. (operand0 plus operand1 plus ... plus operandN)
-     * 
+     *
      * @param operands the operand indicators for the sum
      */
     @SafeVarargs

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -43,9 +43,7 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /**
-     * List of cached results.
-     */
+    /** List of cached results. */
     private final List<T> results;
 
     /**
@@ -57,12 +55,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Constructor.
      *
-     * @param series the related bar series
+     * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
         int limit = series.getMaximumBarCount();
-        results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
     }
 
     /**
@@ -81,7 +79,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected abstract T calculate(int index);
 
     @Override
-    public T getValue(int index) {
+    public synchronized T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.

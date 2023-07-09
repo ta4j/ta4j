@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,9 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 
 /**
- * A boolean-indicator-based rule.
- *
- * Satisfied when the value of the {@link Indicator indicator} is true.
+ * Satisfied when the value of the boolean {@link Indicator indicator} is
+ * {@code true}.
  */
 public class BooleanIndicatorRule extends AbstractRule {
 
@@ -38,7 +37,7 @@ public class BooleanIndicatorRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param indicator a boolean indicator
+     * @param indicator the boolean indicator
      */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {
         this.indicator = indicator;

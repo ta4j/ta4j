@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,26 +34,39 @@ import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator K.
- *
- * Receives barSeries and barCount and calculates the
- * StochasticOscillatorKIndicator over ClosePriceIndicator, or receives an
- * indicator, HighPriceIndicator and LowPriceIndicator and returns
- * StochasticOsiclatorK over this indicator.
  */
 public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
+
     private final Indicator<Num> indicator;
-
     private final int barCount;
-
     private HighPriceIndicator highPriceIndicator;
-
     private LowPriceIndicator lowPriceIndicator;
 
+    /**
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code indicator} = {@link ClosePriceIndicator}
+     * <li>{@code highPriceIndicator} = {@link HighPriceIndicator}
+     * <li>{@code lowPriceIndicator} = {@link LowPriceIndicator}
+     * </ul>
+     * 
+     * @param barSeries the bar series
+     * @param barCount  the time frame
+     */
     public StochasticOscillatorKIndicator(BarSeries barSeries, int barCount) {
         this(new ClosePriceIndicator(barSeries), barCount, new HighPriceIndicator(barSeries),
                 new LowPriceIndicator(barSeries));
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator          the {@link Indicator}
+     * @param barCount           the time frame
+     * @param highPriceIndicator the {@link HighPriceIndicator}
+     * @param lowPriceIndicator  the {@link LowPriceIndicator}
+     */
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,
             LowPriceIndicator lowPriceIndicator) {
         super(indicator);

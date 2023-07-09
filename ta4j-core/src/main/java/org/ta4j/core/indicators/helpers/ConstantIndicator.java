@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,11 +28,20 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
+ * 
+ * <p>
+ * Returns a constant value for a bar.
  */
 public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     private final T value;
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     * @param t      the constant value
+     */
     public ConstantIndicator(BarSeries series, T t) {
         super(series);
         this.value = t;

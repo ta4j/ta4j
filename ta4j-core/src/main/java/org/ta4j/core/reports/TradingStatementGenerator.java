@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,20 +28,28 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * This class generates TradingStatement basis on provided trading record and
- * bar series
- *
- * @see TradingStatement
+ * Generates a {@link TradingStatement} based on the provided trading record and
+ * bar series.
  */
 public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
 
     private final PerformanceReportGenerator performanceReportGenerator;
     private final PositionStatsReportGenerator positionStatsReportGenerator;
 
+    /**
+     * Constructor with new {@link PerformanceReportGenerator} and new
+     * {@link PositionStatsReportGenerator}.
+     */
     public TradingStatementGenerator() {
         this(new PerformanceReportGenerator(), new PositionStatsReportGenerator());
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param performanceReportGenerator   the {@link PerformanceReportGenerator}
+     * @param positionStatsReportGenerator the {@link PositionStatsReportGenerator}
+     */
     public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
             PositionStatsReportGenerator positionStatsReportGenerator) {
         super();

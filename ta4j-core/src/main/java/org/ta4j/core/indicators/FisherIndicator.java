@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -81,7 +81,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param price    the price indicator (usually {@link MedianPriceIndicator})
      * @param barCount the time frame (usually 10)
      * @param alpha    the alpha (usually 0.33 or 0.5)
-     * @param beta     the beta (usually 0.67 0.5 or)
+     * @param beta     the beta (usually 0.67 or 0.5)
      */
     public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta) {
         this(price, barCount, alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
@@ -151,7 +151,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         final Indicator<Num> periodLow = new LowestValueIndicator(
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
-        intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
+        this.intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 
             @Override
             protected Num calculate(int index) {
