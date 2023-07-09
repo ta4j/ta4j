@@ -34,82 +34,57 @@ import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link TradingRecord}.
- *
  */
 public class BaseTradingRecord implements TradingRecord {
 
     private static final long serialVersionUID = -4436851731855891220L;
 
-    /**
-     * The name of the trading record
-     */
+    /** The name of the trading record. */
     private String name;
 
-    /**
-     * The start of the recording (included)
-     */
+    /** The start of the recording (included). */
     private final Integer startIndex;
 
-    /**
-     * The end of the recording (included)
-     */
+    /** The end of the recording (included). */
     private final Integer endIndex;
 
-    /**
-     * The recorded trades
-     */
+    /** The recorded trades. */
     private final List<Trade> trades = new ArrayList<>();
 
-    /**
-     * The recorded BUY trades
-     */
+    /** The recorded BUY trades. */
     private final List<Trade> buyTrades = new ArrayList<>();
 
-    /**
-     * The recorded SELL trades
-     */
+    /** The recorded SELL trades. */
     private final List<Trade> sellTrades = new ArrayList<>();
 
-    /**
-     * The recorded entry trades
-     */
+    /** The recorded entry trades. */
     private final List<Trade> entryTrades = new ArrayList<>();
 
-    /**
-     * The recorded exit trades
-     */
+    /** The recorded exit trades. */
     private final List<Trade> exitTrades = new ArrayList<>();
 
-    /**
-     * The entry type (BUY or SELL) in the trading session
-     */
+    /** The entry type (BUY or SELL) in the trading session. */
     private final TradeType startingType;
 
-    /**
-     * The recorded positions
-     */
+    /** The recorded positions. */
     private final List<Position> positions = new ArrayList<>();
 
-    /**
-     * The current non-closed position (there's always one)
-     */
+    /** The current non-closed position (there's always one). */
     private Position currentPosition;
 
-    /**
-     * Trading cost models
-     */
+    /** The cost model for transactions of the asset. */
     private final CostModel transactionCostModel;
+
+    /** The cost model for holding asset (e.g. borrowing). */
     private final CostModel holdingCostModel;
 
-    /**
-     * Constructor.
-     */
+    /** Constructor with {@link #startingType} = BUY. */
     public BaseTradingRecord() {
         this(TradeType.BUY);
     }
 
     /**
-     * Constructor.
+     * Constructor with {@link #startingType} = BUY.
      *
      * @param name the name of the tradingRecord
      */
@@ -146,7 +121,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @param entryTradeType       the {@link TradeType trade type} of entries in
      *                             the trading session
      * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
         this(entryTradeType, null, null, transactionCostModel, holdingCostModel);
@@ -160,7 +136,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @param startIndex           the start of the recording (included)
      * @param endIndex             the end of the recording (included)
      * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
      * @throws NullPointerException if entryTradeType is null
      */
     public BaseTradingRecord(TradeType entryTradeType, Integer startIndex, Integer endIndex,
@@ -188,7 +165,8 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
      * @param trades               the trades to be recorded (cannot be empty)
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {

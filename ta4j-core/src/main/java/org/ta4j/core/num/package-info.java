@@ -24,13 +24,14 @@
 /**
  * {@link org.ta4j.core.num.Num Num} interface and implementations of
  * {@link org.ta4j.core.num.NaN NaN}, {@link org.ta4j.core.num.DoubleNum
- * DoubleNum} and {@link org.ta4j.core.num.DecimalNum PrecisionNum}
+ * DoubleNum} and {@link org.ta4j.core.num.DecimalNum PrecisionNum}.
  *
+ * <p>
  * The {@link org.ta4j.core.num.Num Num interface} enables the use of different
  * delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage
  * and calculations in {@link org.ta4j.core.BarSeries BarSeries},
  * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators}
  * and {@link org.ta4j.core.criteria.AbstractAnalysisCriterion
- * AnalysisCriterions}
+ * AnalysisCriterions}.
  */
 package org.ta4j.core.num;

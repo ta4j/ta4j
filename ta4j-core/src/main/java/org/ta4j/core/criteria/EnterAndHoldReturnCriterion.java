@@ -32,8 +32,9 @@ import org.ta4j.core.num.Num;
 /**
  * Enter and hold criterion, returned in decimal format.
  *
+ * <p>
  * Calculates the gross return (in percent) of an enter-and-hold strategy:
- * 
+ *
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
  * of the first bar and sell with the close price of the last bar.
@@ -49,8 +50,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     private final TradeType tradeType;
 
     /**
-     * Constructor
-     * 
+     * Constructor.
+     *
      * <p>
      * For buy-and-hold strategy.
      */
@@ -60,7 +61,7 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param tradeType the {@link TradeType} used to open the position
      */
     public EnterAndHoldReturnCriterion(TradeType tradeType) {

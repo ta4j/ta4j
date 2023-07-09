@@ -39,7 +39,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
      * @param barCount  the time frame
      */

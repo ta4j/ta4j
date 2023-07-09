@@ -44,8 +44,8 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series        the {@link BarSeries}
-     * @param shortBarCount (usually 3)
-     * @param longBarCount  (usually 10)
+     * @param shortBarCount the bar count for {@link #emaShort} (usually 3)
+     * @param longBarCount  the bar count for {@link #emaLong} (usually 10)
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(series);
@@ -54,7 +54,7 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor with {@code shortBarCount} = 3 and {@code longBarCount} = 10.
      *
      * @param series the {@link BarSeries}
      */

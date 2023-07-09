@@ -34,14 +34,15 @@ import java.util.function.Function;
 import org.ta4j.core.num.Num;
 
 /**
- * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15
- * minutes, 1 day, etc.)
- *
- * Notably, a {@link BarSeries bar series} can be:
+ * A {@code BarSeries} is a sequence of {@link Bar bars} separated by a
+ * predefined period (e.g. 15 minutes, 1 day, etc.).
+ * 
+ * Notably, it can be:
+ * 
  * <ul>
  * <li>the base of {@link Indicator indicator} calculations
- * <li>constrained between begin and end indexes (e.g. for some backtesting
- * cases)
+ * <li>constrained between beginning and ending indices (e.g. for some
+ * backtesting cases)
  * <li>limited to a fixed number of bars (e.g. for actual trading)
  * </ul>
  */
@@ -135,9 +136,12 @@ public interface BarSeries extends Serializable {
      * Warning: should be used carefully!
      *
      * Returns the raw bar data. It means that it returns the current List object
-     * used internally to store the {@link Bar bars}. It may be: - a shortened bar
-     * list if a maximum bar count has been set - an extended bar list if it is a
-     * constrained bar series
+     * used internally to store the {@link Bar bars}. It may be:
+     *
+     * <ul>
+     * <li>a shortened bar list if a maximum bar count has been set.
+     * <li>an extended bar list if it is a constrained bar series.
+     * </ul>
      *
      * @return the raw bar data
      */
@@ -284,7 +288,7 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * Adds a new <code>Bar</code> to the bar series.
+     * Adds a new {@code Bar} to the bar series.
      *
      * @param endTime    end time of the bar
      * @param openPrice  the open price
@@ -298,7 +302,7 @@ public interface BarSeries extends Serializable {
             Num amount);
 
     /**
-     * Adds a new <code>Bar</code> to the bar series.
+     * Adds a new {@code Bar} to the bar series.
      *
      * @param endTime    end time of the bar
      * @param openPrice  the open price
@@ -311,7 +315,7 @@ public interface BarSeries extends Serializable {
             Num volume);
 
     /**
-     * Adds a new <code>Bar</code> to the bar series.
+     * Adds a new {@code Bar} to the bar series.
      *
      * @param timePeriod the time period of the bar
      * @param endTime    end time of the bar
@@ -326,58 +330,77 @@ public interface BarSeries extends Serializable {
             Num volume, Num amount);
 
     /**
-     * Adds a trade at the end of bar period.
+     * Adds a trade and updates the close price of the last bar.
      *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
+     * @see Bar#addTrade(Num, Num)
      */
     default void addTrade(Number tradeVolume, Number tradePrice) {
         addTrade(numOf(tradeVolume), numOf(tradePrice));
     }
 
     /**
-     * Adds a trade at the end of bar period.
+     * Adds a trade and updates the close price of the last bar.
      *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
+     * @see Bar#addTrade(Num, Num)
      */
     default void addTrade(String tradeVolume, String tradePrice) {
         addTrade(numOf(new BigDecimal(tradeVolume)), numOf(new BigDecimal(tradePrice)));
     }
 
     /**
-     * Adds a trade at the end of bar period.
+     * Adds a trade and updates the close price of the last bar.
      *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
+     * @see Bar#addTrade(Num, Num)
      */
     void addTrade(Num tradeVolume, Num tradePrice);
 
     /**
-     * Adds a price to the last bar
+     * Updates the close price of the last bar. The open, high and low prices are
+     * also updated as needed.
      *
      * @param price the price for the bar
+     * @see Bar#addPrice(Num)
      */
     void addPrice(Num price);
 
+    /**
+     * Updates the close price of the last bar. The open, high and low prices are
+     * also updated as needed.
+     *
+     * @param price the price for the bar
+     * @see Bar#addPrice(Num)
+     */
     default void addPrice(String price) {
         addPrice(new BigDecimal(price));
     }
 
+    /**
+     * Updates the close price of the last bar. The open, high and low prices are
+     * also updated as needed.
+     *
+     * @param price the price for the bar
+     * @see Bar#addPrice(Num)
+     */
     default void addPrice(Number price) {
         addPrice(numOf(price));
     }
 
     /**
-     * Returns a new {@link BarSeries} instance that is a subset of this BarSeries
-     * instance. It holds a copy of all {@link Bar bars} between <tt>startIndex</tt>
-     * (inclusive) and <tt>endIndex</tt> (exclusive) of this BarSeries. The indices
-     * of this BarSeries and the new subset BarSeries can be different. I. e. index
-     * 0 of the new BarSeries will be index <tt>startIndex</tt> of this BarSeries.
-     * If <tt>startIndex</tt> < this.seriesBeginIndex the new BarSeries will start
-     * with the first available Bar of this BarSeries. If <tt>endIndex</tt> >
-     * this.seriesEndIndex the new BarSeries will end at the last available Bar of
-     * this BarSeries
+     * Returns a new {@link BarSeries} instance (= "subseries") that is a subset of
+     * {@code this} BarSeries instance. It contains a copy of all {@link Bar bars}
+     * between {@code startIndex} (inclusive) and {@code endIndex} (exclusive) of
+     * {@code this} instance. The indices of {@code this} and its subseries can be
+     * different, i. e. index 0 of the subseries will be the {@code startIndex} of
+     * {@code this}. If {@code startIndex} < this.seriesBeginIndex, then the
+     * subseries will start with the first available bar of {@code this}. If
+     * {@code endIndex} > this.seriesEndIndex, then the subseries will end at the
+     * last available bar of {@code this}.
      *
      * @param startIndex the startIndex (inclusive)
      * @param endIndex   the endIndex (exclusive)

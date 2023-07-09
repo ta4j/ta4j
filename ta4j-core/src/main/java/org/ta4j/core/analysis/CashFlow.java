@@ -34,21 +34,15 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * The cash flow.
- *
- * This class allows to follow the money cash flow involved by a list of
- * positions over a bar series.
+ * Allows to follow the money cash flow involved by a list of positions over a
+ * bar series.
  */
 public class CashFlow implements Indicator<Num> {
 
-    /**
-     * The bar series
-     */
+    /** The bar series. */
     private final BarSeries barSeries;
 
-    /**
-     * The (accrued) cash flow sequence (without trading costs).
-     */
+    /** The (accrued) cash flow sequence (without trading costs). */
     private final List<Num> values;
 
     /**
@@ -242,7 +236,9 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Fills with last value till the endIndex.
+     * Pads {@link #values} with its last value up until {@code endIndex}.
+     * 
+     * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {

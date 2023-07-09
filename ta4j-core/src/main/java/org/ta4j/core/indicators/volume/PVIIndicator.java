@@ -39,6 +39,11 @@ import org.ta4j.core.num.Num;
  */
 public class PVIIndicator extends RecursiveCachedIndicator<Num> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public PVIIndicator(BarSeries series) {
         super(series);
     }

@@ -45,6 +45,12 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     private final VolumeIndicator volumeIndicator;
     private final int barCount;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the time frame
+     */
     public ChaikinMoneyFlowIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;

@@ -27,35 +27,38 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
+/**
+ * With this cost model, the trading costs for opening or closing a position are
+ * accrued through a constant fee per trade (i.e. a fixed fee per transaction).
+ */
 public class FixedTransactionCostModel implements CostModel {
 
     private static final long serialVersionUID = 3486293523619720786L;
 
-    /**
-     * Cost per {@link Trade trade}.
-     */
+    /** The fixed fee per {@link Trade trade}. */
     private final double feePerTrade;
 
     /**
      * Constructor for a fixed fee trading cost model.
      *
-     * Open {@link Position position} cost: (fixedFeePerTrade * 1) Closed
-     * {@link Position position} cost: (fixedFeePerTrade * 2)
+     * <pre>
+     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1) 
+     * Cost of closed {@link Position position}: (fixedFeePerTrade * 2)
+     * </pre>
      *
-     * @param feePerTrade the fixed fee per {@link Trade trade})
+     * @param feePerTrade the fixed fee per {@link Trade trade}
      */
     public FixedTransactionCostModel(double feePerTrade) {
         this.feePerTrade = feePerTrade;
     }
 
     /**
-     * Calculates the transaction cost of a position.
-     *
      * @param position     the position
-     * @param currentIndex current bar index (irrelevant for the
-     *                     FixedTransactionCostModel)
-     * @return the absolute position cost
+     * @param currentIndex the current bar index (irrelevant for
+     *                     {@code FixedTransactionCostModel})
+     * @return the transaction cost of the single {@code position}
      */
+    @Override
     public Num calculate(Position position, int currentIndex) {
         Num pricePerAsset = position.getEntry().getPricePerAsset();
         Num multiplier = pricePerAsset.one();
@@ -66,31 +69,25 @@ public class FixedTransactionCostModel implements CostModel {
     }
 
     /**
-     * Calculates the transaction cost of a position.
-     *
-     * @param position the position
-     * @return the absolute position cost
+     * @return the transaction cost of the single {@code position}
      */
+    @Override
     public Num calculate(Position position) {
         return this.calculate(position, 0);
     }
 
     /**
-     * Calculates the transaction cost based on the price and the amount (both
-     * irrelevant for the FixedTransactionCostModel as the fee is always the same).
+     * <b>Note:</b> Both {@code price} and {@code amount} are irrelevant as the fee
+     * in {@code FixedTransactionCostModel} is always the same.
      *
-     * @param price  the price per asset
-     * @param amount number of traded assets
+     * @return {@link feePerTrade}
      */
+    @Override
     public Num calculate(Num price, Num amount) {
         return price.numOf(feePerTrade);
     }
 
-    /**
-     * Evaluate if two models are equal
-     *
-     * @param otherModel model to compare with
-     */
+    @Override
     public boolean equals(CostModel otherModel) {
         boolean equality = false;
         if (this.getClass().equals(otherModel.getClass())) {

@@ -30,7 +30,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Ichimoku clouds: Chikou Span indicator
+ * Ichimoku clouds: Chikou Span indicator.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -38,20 +38,16 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
-    /**
-     * The close price
-     */
+    /** The close price. */
     private final ClosePriceIndicator closePriceIndicator;
 
-    /**
-     * The time delay
-     */
+    /** The time delay. */
     private final int timeDelay;
 
     /**
-     * Constructor.
+     * Constructor with {@code barCount} = 26.
      *
-     * @param series the series
+     * @param series the bar series
      */
     public IchimokuChikouSpanIndicator(BarSeries series) {
         this(series, 26);
@@ -60,7 +56,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series    the series
+     * @param series    the bar series
      * @param timeDelay the time delay (usually 26)
      */
     public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
