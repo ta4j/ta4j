@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class ReturnCriterionTest extends AbstractCriterionTest {
 
     public ReturnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 1 ? new ReturnCriterion((boolean) params[0]) : new ReturnCriterion(),
+        super(params -> params.length == 1 ? new ReturnCriterion((boolean) params[0]) : new ReturnCriterion(),
                 numFunction);
     }
 

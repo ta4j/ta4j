@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     public EnterAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 0 ? new EnterAndHoldReturnCriterion()
+        super(params -> params.length == 0 ? new EnterAndHoldReturnCriterion()
                 : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFunction);
     }
 
