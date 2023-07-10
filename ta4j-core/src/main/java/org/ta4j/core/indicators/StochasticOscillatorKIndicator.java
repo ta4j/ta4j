@@ -39,8 +39,8 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private HighPriceIndicator highPriceIndicator;
-    private LowPriceIndicator lowPriceIndicator;
+    private final HighPriceIndicator highPriceIndicator;
+    private final LowPriceIndicator lowPriceIndicator;
 
     /**
      * Constructor with:

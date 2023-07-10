@@ -312,8 +312,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this - augend)}, with rounding
      * according to the context settings.
      *
-     * @param subtrahend value to be subtracted from this {@code Num}.
-     * @return {@code this - subtrahend}, rounded as necessary
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -331,8 +329,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code this * multiplicand}, with
      * rounding according to the context settings.
      *
-     * @param multiplicand value to be multiplied by this {@code Num}.
-     * @return {@code this * multiplicand}, rounded as necessary
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -350,8 +346,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this / divisor)}, with rounding
      * according to the context settings.
      *
-     * @param divisor value by which this {@code Num} is to be divided.
-     * @return {@code this / divisor}, rounded as necessary
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -369,8 +363,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this % divisor)}, with rounding
      * according to the context settings.
      *
-     * @param divisor value by which this {@code Num} is to be divided.
-     * @return {@code this % divisor}, rounded as necessary.
      * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -424,7 +416,6 @@ public final class DecimalNum implements Num {
         switch (comparedToZero) {
         case -1:
             return NaN;
-
         case 0:
             return DecimalNum.valueOf(0);
         }

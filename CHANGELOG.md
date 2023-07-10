@@ -28,9 +28,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - updated pom.xml: slf4j-api to 2.0.7
 - updated pom.xml: org.apache.poi to 5.2.3
 - updated pom.xml: maven-jar-plugin to 3.3.0
+- add `final` to properties where possible
 - improved javadoc
+- add missing `@Override` annotation
 
 ### Removed/Deprecated
+- removed **Serializable** from `CostModel`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording

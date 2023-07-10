@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class LossCriterionTest extends AbstractCriterionTest {
 
     public LossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new LossCriterion((boolean) params[0]), numFunction);
+        super(params -> new LossCriterion((boolean) params[0]), numFunction);
     }
 
     @Test
