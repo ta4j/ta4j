@@ -44,7 +44,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private final double a;
     private final double b;
 
-    private ReturnCriterion grossReturn;
+    private final ReturnCriterion grossReturn;
 
     /**
      * Constructor. (a * x)
