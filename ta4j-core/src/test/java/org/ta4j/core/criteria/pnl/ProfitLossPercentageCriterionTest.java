@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
 
     public ProfitLossPercentageCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ProfitLossPercentageCriterion(), numFunction);
+        super(params -> new ProfitLossPercentageCriterion(), numFunction);
     }
 
     @Test
