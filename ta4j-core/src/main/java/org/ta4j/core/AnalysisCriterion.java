@@ -29,12 +29,11 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
 
 /**
- * An analysis criterion.
- *
- * Can be used to:
+ * An analysis criterion. It can be used to:
+ * 
  * <ul>
- * <li>Analyze the performance of a {@link Strategy strategy}
- * <li>Compare several {@link Strategy strategies} together
+ * <li>analyze the performance of a {@link Strategy strategy}
+ * <li>compare several {@link Strategy strategies} together
  * </ul>
  */
 public interface AnalysisCriterion {
@@ -48,15 +47,15 @@ public interface AnalysisCriterion {
     }
 
     /**
-     * @param series   a bar series, not null
-     * @param position a position, not null
+     * @param series   the bar series, not null
+     * @param position the position, not null
      * @return the criterion value for the position
      */
     Num calculate(BarSeries series, Position position);
 
     /**
-     * @param series        a bar series, not null
-     * @param tradingRecord a trading record, not null
+     * @param series        the bar series, not null
+     * @param tradingRecord the trading record, not null
      * @return the criterion value for the positions
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord);
@@ -99,10 +98,7 @@ public interface AnalysisCriterion {
 
     /**
      * @param criterionValue1 the first value
-     * @param criterionValue2
-     * 
-     * 
-     *                        the second value
+     * @param criterionValue2 the second value
      * @return true if the first value is better than (according to the criterion)
      *         the second one, false otherwise
      */

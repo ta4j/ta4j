@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class NumberOfConsecutivePositionsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfConsecutivePositionsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfConsecutivePositionsCriterion((PositionFilter) params[0]), numFunction);
+        super(params -> new NumberOfConsecutivePositionsCriterion((PositionFilter) params[0]), numFunction);
     }
 
     @Test

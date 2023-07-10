@@ -51,10 +51,10 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(BarSeries series, int barCount) {
         super(series);
-        factor = numOf(0.015);
-        typicalPriceInd = new TypicalPriceIndicator(series);
-        smaInd = new SMAIndicator(typicalPriceInd, barCount);
-        meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
+        this.factor = numOf(0.015);
+        this.typicalPriceInd = new TypicalPriceIndicator(series);
+        this.smaInd = new SMAIndicator(typicalPriceInd, barCount);
+        this.meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
         this.barCount = barCount;
     }
 

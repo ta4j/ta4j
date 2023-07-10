@@ -28,18 +28,17 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Generic interface for generating trading reports
+ * Generic interface for generating trading reports.
  *
  * @param <T> type of report to be generated
  */
 public interface ReportGenerator<T> {
 
     /**
-     * Generate report
+     * Generates a report based on the {@code tradingRecord}.
      *
-     * @param tradingRecord the trading record which is a source to generate report,
-     *                      not null
-     * @param series        the bar series, not null
+     * @param tradingRecord the trading record (not null)
+     * @param series        the bar series (not null)
      * @return generated report
      */
     T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);

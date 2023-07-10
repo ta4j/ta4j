@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Number of bars criterion.
  *
+ * <p>
  * Returns the total number of bars in all the positions.
  */
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {

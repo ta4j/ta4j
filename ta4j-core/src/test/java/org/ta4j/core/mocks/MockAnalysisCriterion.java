@@ -53,6 +53,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param series   BarSeries is ignored
      * @param position is ignored
      */
+    @Override
     public Num calculate(BarSeries series, Position position) {
         return values.get(values.size() - 1);
     }
@@ -63,6 +64,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param series        BarSeries is ignored
      * @param tradingRecord is ignored
      */
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return values.get(values.size() - 1);
     }
@@ -75,6 +77,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param criterionValue2 second value
      * @return boolean indicating first value is greater than second value
      */
+    @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }

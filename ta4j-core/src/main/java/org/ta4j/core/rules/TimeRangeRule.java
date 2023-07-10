@@ -31,16 +31,20 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
- * Time range rule.
- *
- * Satisfied when the local time value of the DateTimeIndicator is within a time
- * range specified in the TimeRange list.
+ * Satisfied when the "local time" value of the {@link DateTimeIndicator} is
+ * wihin the specified set of {@link TimeRange}.
  */
 public class TimeRangeRule extends AbstractRule {
 
     private final List<TimeRange> timeRanges;
     private final DateTimeIndicator timeIndicator;
 
+    /**
+     * Constructor.
+     *
+     * @param timeRanges         the list of time ranges
+     * @param beginTimeIndicator the beginTime indicator
+     */
     public TimeRangeRule(List<TimeRange> timeRanges, DateTimeIndicator beginTimeIndicator) {
         this.timeRanges = timeRanges;
         this.timeIndicator = beginTimeIndicator;

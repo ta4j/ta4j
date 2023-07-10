@@ -39,6 +39,12 @@ public class HMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final WMAIndicator sqrtWma;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.barCount = barCount;
@@ -47,7 +53,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
         WMAIndicator origWma = new WMAIndicator(indicator, barCount);
 
         Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
-        sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
+        this.sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
     }
 
     @Override
