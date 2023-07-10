@@ -33,8 +33,6 @@ import org.ta4j.core.num.Num;
  */
 public class LinearTransactionCostModel implements CostModel {
 
-    private static final long serialVersionUID = -8808559507754156097L;
-
     /** The slope of the linear model (fee per position). */
     private final double feePerPosition;
 
@@ -52,17 +50,13 @@ public class LinearTransactionCostModel implements CostModel {
      * @param position     the position
      * @param currentIndex current bar index (irrelevant for the
      *                     LinearTransactionCostModel)
-     * @return the absolute trading cost of the single {@code position}
+     * @return the trading cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
         return this.calculate(position);
     }
 
-    /**
-     * @param position the position
-     * @return the absolute trading cost of the single {@code position}
-     */
     @Override
     public Num calculate(Position position) {
         Num totalPositionCost = null;

@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
 public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
     public PositionsRatioCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new PositionsRatioCriterion((PositionFilter) params[0]), numFunction);
+        super(params -> new PositionsRatioCriterion((PositionFilter) params[0]), numFunction);
     }
 
     @Test

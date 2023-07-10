@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     public MaximumDrawdownCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new MaximumDrawdownCriterion(), numFunction);
+        super(params -> new MaximumDrawdownCriterion(), numFunction);
     }
 
     @Test

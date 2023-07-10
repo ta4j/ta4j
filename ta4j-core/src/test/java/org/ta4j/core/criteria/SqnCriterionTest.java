@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 public class SqnCriterionTest extends AbstractCriterionTest {
 
     public SqnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new SqnCriterion(), numFunction);
+        super(params -> new SqnCriterion(), numFunction);
     }
 
     @Test
