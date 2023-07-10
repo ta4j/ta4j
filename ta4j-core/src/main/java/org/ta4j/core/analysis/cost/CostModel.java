@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import java.io.Serializable;
-
 import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
@@ -32,7 +30,7 @@ import org.ta4j.core.num.Num;
  * With the {@code CostModel}, we can include trading costs that may be incurred
  * when opening or closing a position.
  */
-public interface CostModel extends Serializable {
+public interface CostModel {
 
     /**
      * @param position   the position

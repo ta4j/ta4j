@@ -26,9 +26,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
+- add `final` to properties where possible
 - improved javadoc
+- add missing `@Override` annotation
 
 ### Removed/Deprecated
+- removed **Serializable** from `CostModel`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording

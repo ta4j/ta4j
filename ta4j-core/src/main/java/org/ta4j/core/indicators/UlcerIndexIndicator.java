@@ -40,8 +40,8 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
     private final Num hundred;
     private final Num zero;
 
-    private Indicator<Num> indicator;
-    private int barCount;
+    private final Indicator<Num> indicator;
+    private final int barCount;
 
     /**
      * Constructor.

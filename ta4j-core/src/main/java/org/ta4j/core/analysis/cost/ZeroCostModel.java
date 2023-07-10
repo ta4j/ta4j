@@ -28,8 +28,6 @@ package org.ta4j.core.analysis.cost;
  */
 public class ZeroCostModel extends FixedTransactionCostModel {
 
-    private static final long serialVersionUID = -331246208177262596L;
-
     private static final double ZERO_FEE_PER_TRADE = 0.0;
 
     /**

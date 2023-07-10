@@ -53,10 +53,9 @@ public class TimeRangeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        ZonedDateTime dateTime = this.timeIndicator.getValue(index);
+        ZonedDateTime dateTime = timeIndicator.getValue(index);
         LocalTime localTime = dateTime.toLocalTime();
-        satisfied = this.timeRanges.stream()
+        final boolean satisfied = timeRanges.stream()
                 .anyMatch(
                         timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
         traceIsSatisfied(index, satisfied);

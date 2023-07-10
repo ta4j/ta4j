@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
 public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTest {
 
     public RelativeStandardDeviationCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 2
+        super(params -> params.length == 2
                 ? new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0], (boolean) params[1])
                 : new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
