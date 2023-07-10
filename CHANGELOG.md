@@ -18,6 +18,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
+- catch NumberFormatException if `DecimalNum.valueOf(Number)` is `NaN`
+
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
@@ -31,6 +33,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
+- removed `DecimalNum.valueOf(DecimalNum)`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
@@ -50,6 +53,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added `DecimalNum.valueOf(DoubleNum)` to convert a DoubleNum to a DecimalNum.
+- added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
