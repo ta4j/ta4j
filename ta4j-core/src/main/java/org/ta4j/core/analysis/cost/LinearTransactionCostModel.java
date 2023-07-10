@@ -50,17 +50,13 @@ public class LinearTransactionCostModel implements CostModel {
      * @param position     the position
      * @param currentIndex current bar index (irrelevant for the
      *                     LinearTransactionCostModel)
-     * @return the absolute trading cost of the single {@code position}
+     * @return the trading cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
         return this.calculate(position);
     }
 
-    /**
-     * @param position the position
-     * @return the absolute trading cost of the single {@code position}
-     */
     @Override
     public Num calculate(Position position) {
         Num totalPositionCost = null;

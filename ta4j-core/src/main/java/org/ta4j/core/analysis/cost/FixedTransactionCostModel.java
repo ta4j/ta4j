@@ -78,7 +78,7 @@ public class FixedTransactionCostModel implements CostModel {
      * <b>Note:</b> Both {@code price} and {@code amount} are irrelevant as the fee
      * in {@code FixedTransactionCostModel} is always the same.
      *
-     * @return {@link feePerTrade}
+     * @return {@link #feePerTrade}
      */
     @Override
     public Num calculate(Num price, Num amount) {
