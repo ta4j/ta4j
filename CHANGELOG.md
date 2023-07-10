@@ -25,10 +25,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
+- add `final` to properties where possible
 - improved javadoc
+- add missing `@Override` annotation
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
+- removed **Serializable** from `CostModel`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording

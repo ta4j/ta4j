@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfLosingPositionsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfLosingPositionsCriterion(), numFunction);
+        super(params -> new NumberOfLosingPositionsCriterion(), numFunction);
     }
 
     @Test

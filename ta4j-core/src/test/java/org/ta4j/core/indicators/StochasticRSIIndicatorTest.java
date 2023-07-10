@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
 
 public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public StochasticRSIIndicatorTest(Function<Number, Num> numFunction) {
         super((data, params) -> new StochasticRSIIndicator(data, (int) params[0]), numFunction);

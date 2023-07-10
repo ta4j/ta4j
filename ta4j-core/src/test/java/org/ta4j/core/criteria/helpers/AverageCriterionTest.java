@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class AverageCriterionTest extends AbstractCriterionTest {
 
     public AverageCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 2 ? new AverageCriterion((AnalysisCriterion) params[0], (boolean) params[1])
+        super(params -> params.length == 2 ? new AverageCriterion((AnalysisCriterion) params[0], (boolean) params[1])
                 : new AverageCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 

@@ -48,7 +48,7 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
 
     public ExpectedShortfallCriterionTest(Function<Number, Num> numFunction) {
         // LOG returns requre DoubleNum implementation
-        super((params) -> new ExpectedShortfallCriterion(0.95), DoubleNum::valueOf);
+        super(params -> new ExpectedShortfallCriterion(0.95), DoubleNum::valueOf);
     }
 
     @Test
