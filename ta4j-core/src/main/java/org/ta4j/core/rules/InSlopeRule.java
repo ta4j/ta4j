@@ -41,17 +41,17 @@ import org.ta4j.core.num.Num;
  */
 public class InSlopeRule extends AbstractRule {
 
-    /** The actual indicator */
-    private Indicator<Num> ref;
+    /** The actual indicator. */
+    private final Indicator<Num> ref;
 
-    /** The previous n-th value of ref */
-    private PreviousValueIndicator prev;
+    /** The previous n-th value of ref. */
+    private final PreviousValueIndicator prev;
 
-    /** The minimum slope between ref and prev */
-    private Num minSlope;
+    /** The minimum slope between ref and prev. */
+    private final Num minSlope;
 
-    /** The maximum slope between ref and prev */
-    private Num maxSlope;
+    /** The maximum slope between ref and prev. */
+    private final Num maxSlope;
 
     /**
      * Constructor.

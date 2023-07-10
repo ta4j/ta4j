@@ -34,10 +34,10 @@ import org.ta4j.core.criteria.LinearTransactionCostCriterion;
 import org.ta4j.core.criteria.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.criteria.PositionsRatioCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;

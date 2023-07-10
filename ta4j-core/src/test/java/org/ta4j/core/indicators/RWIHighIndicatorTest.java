@@ -41,7 +41,7 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
      * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
      * formula needed
      */
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public RWIHighIndicatorTest(Function<Number, Num> numFunction) {
         super((data, params) -> new RWIHighIndicator(data, (int) params[0]), numFunction);
