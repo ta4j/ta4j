@@ -39,6 +39,15 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
     /**
+     * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
+     * 
+     * @param series the bar series
+     */
+    public SuperTrendIndicator(final BarSeries series) {
+        this(series, 10, 3d);
+    }
+
+    /**
      * Constructor.
      * 
      * @param series     the bar series
@@ -47,20 +56,11 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
      *                   {@link #superTrendUpperBandIndicator} and
      *                   {@link #superTrendLowerBandIndicator}
      */
-    public SuperTrendIndicator(final BarSeries series, int barCount, final Integer multiplier) {
+    public SuperTrendIndicator(final BarSeries series, int barCount, final Double multiplier) {
         super(series);
         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
         this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
         this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
-    }
-
-    /**
-     * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
-     * 
-     * @param series the bar series
-     */
-    public SuperTrendIndicator(final BarSeries series) {
-        this(series, 10, 3);
     }
 
     @Override
