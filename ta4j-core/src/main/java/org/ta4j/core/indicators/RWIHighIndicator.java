@@ -41,7 +41,7 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the series
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public RWIHighIndicator(BarSeries series, int barCount) {

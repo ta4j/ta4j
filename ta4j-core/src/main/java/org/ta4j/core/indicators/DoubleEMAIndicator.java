@@ -28,7 +28,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Double exponential moving average indicator.
- * </p/>
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">

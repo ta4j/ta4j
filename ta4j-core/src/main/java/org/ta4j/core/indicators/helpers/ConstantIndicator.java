@@ -28,11 +28,20 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
+ * 
+ * <p>
+ * Returns a constant value for a bar.
  */
 public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     private final T value;
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     * @param t      the constant value
+     */
     public ConstantIndicator(BarSeries series, T t) {
         super(series);
         this.value = t;

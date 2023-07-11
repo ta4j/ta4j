@@ -26,18 +26,26 @@ package org.ta4j.core.rules;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Rule to specify minimum bar count for opened position. Using this rule makes
- * sense only for exit rule (for entry rule
+ * A rule for setting the minimum number of bars up to which an open position
+ * should not be closed.
+ * 
+ * <p>
+ * Using this rule only makes sense for exit rules. For entry rules,
  * {@link OpenedPositionMinimumBarCountRule#isSatisfied(int, TradingRecord)}
- * always return false.
+ * always returns {@code false}.
  */
 public class OpenedPositionMinimumBarCountRule extends AbstractRule {
 
     /**
-     * Minimum bar count for opened trade.
+     * The minimum number of bars up to which an open position should not be closed.
      */
     private final int barCount;
 
+    /**
+     * Constructor.
+     * 
+     * @param barCount the {@link #barCount}
+     */
     public OpenedPositionMinimumBarCountRule(int barCount) {
         if (barCount < 1) {
             throw new IllegalArgumentException("Bar count must be positive");
@@ -46,13 +54,9 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
     }
 
     /**
-     * Returns true if opened trade reached minimum bar count specified in
-     * {@link OpenedPositionMinimumBarCountRule#barCount}
-     *
      * @param index         the bar index
      * @param tradingRecord the required trading history
-     * @return true if opened trade reached minimum bar count specified in
-     *         {@link OpenedPositionMinimumBarCountRule#barCount}, otherwise false
+     * @return true if opened trade has reached {@link #barCount}, otherwise false
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {

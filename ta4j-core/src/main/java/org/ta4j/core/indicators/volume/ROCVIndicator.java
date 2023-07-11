@@ -28,8 +28,10 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Rate of change of volume (ROCVIndicator) indicator. Aka. Momentum of Volume
+ * Rate of change of volume (ROCVIndicator) indicator (also called "Momentum of
+ * Volume").
  *
+ * <p>
  * The ROCVIndicator calculation compares the current volume with the volume "n"
  * periods ago.
  */

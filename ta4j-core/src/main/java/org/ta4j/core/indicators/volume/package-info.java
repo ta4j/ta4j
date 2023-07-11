@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of volume based analysis
+ * Indicators for the realization of volume based analysis.
  */
 package org.ta4j.core.indicators.volume;

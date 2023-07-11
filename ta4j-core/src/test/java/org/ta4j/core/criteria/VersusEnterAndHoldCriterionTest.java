@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
 public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     public VersusEnterAndHoldCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
+        super(params -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test

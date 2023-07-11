@@ -51,8 +51,8 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * Calculates the DeMark reversal for the corresponding pivot level
-     * 
+     * Calculates the DeMark reversal for the corresponding pivot level.
+     *
      * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this
      *                            reversal
      * @param level               the {@link DeMarkPivotLevel} for this reversal
