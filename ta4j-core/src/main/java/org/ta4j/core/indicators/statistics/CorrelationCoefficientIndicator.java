@@ -49,9 +49,9 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
-        variance1 = new VarianceIndicator(indicator1, barCount);
-        variance2 = new VarianceIndicator(indicator2, barCount);
-        covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
+        this.variance1 = new VarianceIndicator(indicator1, barCount);
+        this.variance2 = new VarianceIndicator(indicator2, barCount);
+        this.covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
     }
 
     @Override

@@ -33,10 +33,10 @@ import org.ta4j.core.num.Num;
 /**
  * Standard deviation criterion in percentage (also known as Coefficient of
  * Variation (CV)).
- * 
+ *
  * <p>
  * Calculates the standard deviation in percentage for a Criterion.
- * 
+ *
  * @see <a href=
  *      "https://www.investopedia.com/terms/c/coefficientofvariation.asp">https://www.investopedia.com/terms/c/coefficientofvariation.asp</a>
  */
@@ -53,8 +53,8 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
     private final AverageCriterion averageCriterion;
 
     /**
-     * Constructor with {@link #lessIsBetter} == false.
-     * 
+     * Constructor with {@link #lessIsBetter} = false.
+     *
      * @param criterion the criterion from which the "relative standard deviation"
      *                  is calculated
      */
@@ -66,7 +66,7 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion    the criterion from which the "relative standard
      *                     deviation" is calculated
      * @param lessIsBetter the {@link #lessIsBetter}

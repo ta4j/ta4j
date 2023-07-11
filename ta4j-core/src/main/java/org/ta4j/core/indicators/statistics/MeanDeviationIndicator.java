@@ -51,7 +51,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        sma = new SMAIndicator(indicator, barCount);
+        this.sma = new SMAIndicator(indicator, barCount);
     }
 
     @Override

@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of the 'Keltner Channel'
+ * Indicators for the realization of the 'Keltner Channel'.
  */
 package org.ta4j.core.indicators.keltner;

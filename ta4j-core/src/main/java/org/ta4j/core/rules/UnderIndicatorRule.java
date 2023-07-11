@@ -29,27 +29,25 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator-under-indicator rule.
+ * A rule that monitors when one {@link Indicator indicator} is below another.
  *
+ * <p>
  * Satisfied when the value of the first {@link Indicator indicator} is strictly
- * lesser than the value of the second one.
+ * less than the value of the second one.
  */
 public class UnderIndicatorRule extends AbstractRule {
 
-    /**
-     * The first indicator
-     */
+    /** The first indicator. */
     private final Indicator<Num> first;
-    /**
-     * The second indicator
-     */
+
+    /** The second indicator. */
     private final Indicator<Num> second;
 
     /**
      * Constructor.
      *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), indicator.numOf(threshold)));
@@ -59,7 +57,7 @@ public class UnderIndicatorRule extends AbstractRule {
      * Constructor.
      *
      * @param indicator the indicator
-     * @param threshold a threshold
+     * @param threshold the threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));

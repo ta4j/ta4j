@@ -30,15 +30,16 @@ import org.ta4j.core.criteria.pnl.ProfitLossRatioCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Expectancy criterion (Kelly Criterion).
+ * Expectancy criterion (also called "Kelly Criterion").
  *
+ * <p>
  * Measures the positive or negative expectancy. The higher the positive number,
  * the better a winning expectation. A negative number means there is only
  * losing expectations.
  *
  * @see <a href=
  *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/">https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
- * 
+ *
  */
 public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 

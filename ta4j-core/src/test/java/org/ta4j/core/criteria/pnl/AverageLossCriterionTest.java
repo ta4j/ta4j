@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class AverageLossCriterionTest extends AbstractCriterionTest {
 
     public AverageLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageLossCriterion(), numFunction);
+        super(params -> new AverageLossCriterion(), numFunction);
     }
 
     @Test
