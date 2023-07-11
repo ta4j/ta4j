@@ -29,23 +29,25 @@ import org.ta4j.core.num.Num;
 
 /**
  * Buy - Occurs when the price line crosses from below to above the Lower
- * Bollinger Band. Sell - Occurs when the price line crosses from above to below
- * the Upper Bollinger Band.
+ * Bollinger Band.
  * 
+ * <p>
+ * Sell - Occurs when the price line crosses from above to below the Upper
+ * Bollinger Band.
  */
 public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final BollingerBandsMiddleIndicator bbm;
+    private final Indicator<Num> indicator;
     private final Num k;
 
     /**
-     * Constructor. Defaults k value to 2.
-     * 
-     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
-     *                  used.
+     * Constructor with {@code k} = 2.
+     *
+     * @param bbm       the middle band Indicator. Typically an {@code SMAIndicator}
+     *                  is used.
      * @param indicator the deviation above and below the middle, factored by k.
-     *                  Typically a StandardDeviationIndicator is used.
+     *                  Typically a {@code StandardDeviationIndicator} is used.
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
         this(bbm, indicator, bbm.getBarSeries().numOf(2));
@@ -53,11 +55,11 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
-     *                  used.
+     *
+     * @param bbm       the middle band Indicator. Typically an {@code SMAIndicator}
+     *                  is used.
      * @param indicator the deviation above and below the middle, factored by k.
-     *                  Typically a StandardDeviationIndicator is used.
+     *                  Typically a {@code StandardDeviationIndicator} is used.
      * @param k         the scaling factor to multiply the deviation by. Typically
      *                  2.
      */
@@ -78,9 +80,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
         return 0;
     }
 
-    /**
-     * @return the K multiplier
-     */
+    /** @return the K multiplier */
     public Num getK() {
         return k;
     }

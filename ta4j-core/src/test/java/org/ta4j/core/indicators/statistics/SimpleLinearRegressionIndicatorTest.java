@@ -47,7 +47,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
 
     @Before
     public void setUp() {
-        double[] data = new double[] { 10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80 };
+        double[] data = { 10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80 };
         closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, data));
     }
 
@@ -99,7 +99,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
 
     @Test
     public void calculateLinearRegression() {
-        double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
+        double[] values = { 1, 2, 1.3, 3.75, 2.25 };
         ClosePriceIndicator indicator = new ClosePriceIndicator(new MockBarSeries(numFunction, values));
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
 

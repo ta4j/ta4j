@@ -13,6 +13,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
+- **UnstableIndicator** moved to package **`indicators/helpers`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -24,9 +25,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
-
+- add `final` to properties where possible
+- improved javadoc
+- add missing `@Override` annotation
 
 ### Removed/Deprecated
+- removed **Serializable** from `CostModel`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
@@ -45,6 +49,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **StandardErrorCriterion**
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
+- added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
 - added **IntraDayMomentumIndexIndicator**
 
 ### Fixed

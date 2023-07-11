@@ -30,12 +30,18 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 
 /**
- * Bar series aggregator based on provided bar aggregator.
+ * Aggregates a {@link BaseBarSeries} into another one using a
+ * {@link BarAggregator}.
  */
 public class BaseBarSeriesAggregator implements BarSeriesAggregator {
 
     private final BarAggregator barAggregator;
 
+    /**
+     * Constructor.
+     * 
+     * @param barAggregator the {@link BarAggregator}
+     */
     public BaseBarSeriesAggregator(BarAggregator barAggregator) {
         this.barAggregator = barAggregator;
     }

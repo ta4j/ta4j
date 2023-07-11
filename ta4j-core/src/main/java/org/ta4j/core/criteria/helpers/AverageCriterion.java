@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average criterion.
- * 
+ *
  * <p>
  * Calculates the average of a Criterion by dividing it by the number of
  * positions.
@@ -51,8 +51,8 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor with {@link #lessIsBetter} == false.
-     * 
+     * Constructor with {@link #lessIsBetter} = false.
+     *
      * @param criterion the criterion from which the "average" is calculated
      */
     public AverageCriterion(AnalysisCriterion criterion) {
@@ -62,7 +62,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion    the criterion from which the "average" is calculated
      * @param lessIsBetter the {@link #lessIsBetter}
      */

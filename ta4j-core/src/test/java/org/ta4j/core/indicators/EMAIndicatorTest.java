@@ -45,7 +45,7 @@ import org.ta4j.core.num.Num;
 
 public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public EMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
         super((data, params) -> new EMAIndicator(data, (int) params[0]), numFunction);

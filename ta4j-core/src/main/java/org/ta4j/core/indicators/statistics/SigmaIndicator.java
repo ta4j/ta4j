@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Sigma-Indicator (also called, "z-score" or "standard score").
  *
- * see http://www.statisticshowto.com/probability-and-statistics/z-score/
+ * @see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
 
@@ -43,7 +43,7 @@ public class SigmaIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param ref      the indicator
      * @param barCount the time frame
      */
@@ -51,8 +51,8 @@ public class SigmaIndicator extends CachedIndicator<Num> {
         super(ref);
         this.ref = ref;
         this.barCount = barCount;
-        mean = new SMAIndicator(ref, barCount);
-        sd = new StandardDeviationIndicator(ref, barCount);
+        this.mean = new SMAIndicator(ref, barCount);
+        this.sd = new StandardDeviationIndicator(ref, barCount);
     }
 
     @Override

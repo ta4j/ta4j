@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfPositionsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 0 ? new NumberOfPositionsCriterion()
+        super(params -> params.length == 0 ? new NumberOfPositionsCriterion()
                 : new NumberOfPositionsCriterion((boolean) params[0]), numFunction);
     }
 

@@ -32,6 +32,11 @@ import org.ta4j.core.num.Num;
  */
 public class TRIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public TRIndicator(BarSeries series) {
         super(series);
     }

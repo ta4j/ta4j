@@ -29,6 +29,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * DX indicator.
+ * 
+ * <p>
+ * Part of the Directional Movement System.
  */
 public class DXIndicator extends CachedIndicator<Num> {
 
@@ -36,11 +39,18 @@ public class DXIndicator extends CachedIndicator<Num> {
     private final PlusDIIndicator plusDIIndicator;
     private final MinusDIIndicator minusDIIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #plusDIIndicator} and
+     *                 {@link #minusDIIndicator}
+     */
     public DXIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        plusDIIndicator = new PlusDIIndicator(series, barCount);
-        minusDIIndicator = new MinusDIIndicator(series, barCount);
+        this.plusDIIndicator = new PlusDIIndicator(series, barCount);
+        this.minusDIIndicator = new MinusDIIndicator(series, barCount);
     }
 
     @Override

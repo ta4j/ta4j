@@ -39,6 +39,28 @@ import org.ta4j.core.num.Num;
  */
 public class ReturnCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * If true, then the base percentage of {@code 1} (equivalent to 100%) is added
+     * to the criterion value.
+     */
+    private final boolean addBase;
+
+    /**
+     * Constructor with {@link #addBase} == true.
+     */
+    public ReturnCriterion() {
+        this.addBase = true;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param addBase the {@link #addBase}
+     */
+    public ReturnCriterion(boolean addBase) {
+        this.addBase = addBase;
+    }
+
     @Override
     public Num calculate(BarSeries series, Position position) {
         return calculateProfit(series, position);
@@ -49,7 +71,8 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
         return tradingRecord.getPositions()
                 .stream()
                 .map(position -> calculateProfit(series, position))
-                .reduce(series.one(), Num::multipliedBy);
+                .reduce(series.one(), Num::multipliedBy)
+                .minus(addBase ? series.zero() : series.one());
     }
 
     /** The higher the criterion value, the better. */
@@ -69,6 +92,6 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             return position.getGrossReturn(series);
         }
-        return series.one();
+        return addBase ? series.one() : series.zero();
     }
 }

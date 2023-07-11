@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class VarianceCriterionTest extends AbstractCriterionTest {
 
     public VarianceCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 2 ? new VarianceCriterion((AnalysisCriterion) params[0], (boolean) params[1])
+        super(params -> params.length == 2 ? new VarianceCriterion((AnalysisCriterion) params[0], (boolean) params[1])
                 : new VarianceCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 

@@ -27,8 +27,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Rate of change (ROCIndicator) indicator. Aka. Momentum
+ * Rate of change (ROCIndicator) indicator (also called "Momentum").
  *
+ * <p>
  * The ROCIndicator calculation compares the current value with the value "n"
  * periods ago.
  *

@@ -41,7 +41,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossLoss (includes trading costs)
+     * Constructor for GrossLoss (includes trading costs).
      */
     public LossCriterion() {
         this(false);
@@ -49,7 +49,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param excludeCosts set to true to exclude trading costs
      */
     public LossCriterion(boolean excludeCosts) {

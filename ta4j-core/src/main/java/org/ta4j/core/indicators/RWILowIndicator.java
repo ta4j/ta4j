@@ -41,7 +41,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the series
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public RWILowIndicator(BarSeries series, int barCount) {

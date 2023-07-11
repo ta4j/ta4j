@@ -42,7 +42,8 @@ import org.ta4j.core.num.Num;
 public class ReturnCriterionTest extends AbstractCriterionTest {
 
     public ReturnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ReturnCriterion(), numFunction);
+        super(params -> params.length == 1 ? new ReturnCriterion((boolean) params[0]) : new ReturnCriterion(),
+                numFunction);
     }
 
     @Test
@@ -51,8 +52,13 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1.10 * 1.05, ret.calculate(series, tradingRecord));
+        // include base percentage
+        AnalysisCriterion retWithBase = getCriterion();
+        assertNumEquals(1.10 * 1.05, retWithBase.calculate(series, tradingRecord));
+
+        // exclude base percentage
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        assertNumEquals(1.10 * 1.05 - 1, retWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
@@ -61,8 +67,13 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion ret = getCriterion();
-        assertNumEquals(0.95 * 0.7, ret.calculate(series, tradingRecord));
+        // include base percentage
+        AnalysisCriterion retWithBase = getCriterion();
+        assertNumEquals(0.95 * 0.7, retWithBase.calculate(series, tradingRecord));
+
+        // exclude base percentage
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        assertNumEquals(0.95 * 0.7 - 1, retWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
@@ -71,8 +82,13 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1.05 * 1.30, ret.calculate(series, tradingRecord));
+        // include base percentage
+        AnalysisCriterion retWithBase = getCriterion();
+        assertNumEquals(1.05 * 1.30, retWithBase.calculate(series, tradingRecord));
+
+        // exclude base percentage
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        assertNumEquals(1.05 * 1.30 - 1, retWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
@@ -81,26 +97,54 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion ret = getCriterion();
-        assertNumEquals(0.95 * 0.70, ret.calculate(series, tradingRecord));
+        // include base percentage
+        AnalysisCriterion retWithBase = getCriterion();
+        assertNumEquals(0.95 * 0.70, retWithBase.calculate(series, tradingRecord));
+
+        // exclude base percentage
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        assertNumEquals(0.95 * 0.70 - 1, retWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithNoPositionsShouldReturn1() {
+    public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
-        AnalysisCriterion ret = getCriterion();
-        assertNumEquals(1d, ret.calculate(series, new BaseTradingRecord()));
+        // with base percentage should return 1
+        AnalysisCriterion retWithBase = getCriterion();
+        assertNumEquals(1d, retWithBase.calculate(series, new BaseTradingRecord()));
+
+        // without base percentage should return 0
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        assertNumEquals(0, retWithoutBase.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
-    public void calculateWithOpenedPositionShouldReturn1() {
+    public void calculateWithOpenedPosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        AnalysisCriterion ret = getCriterion();
-        Position position = new Position();
-        assertNumEquals(1d, ret.calculate(series, position));
-        position.operate(0);
-        assertNumEquals(1d, ret.calculate(series, position));
+
+        // with base percentage should return 1
+        AnalysisCriterion retWithBase = getCriterion();
+        Position position1 = new Position();
+        assertNumEquals(1d, retWithBase.calculate(series, position1));
+        position1.operate(0);
+        assertNumEquals(1d, retWithBase.calculate(series, position1));
+
+        // without base percentage should return 0
+        AnalysisCriterion retWithoutBase = getCriterion(false);
+        Position position2 = new Position();
+        assertNumEquals(0, retWithoutBase.calculate(series, position2));
+        position2.operate(0);
+        assertNumEquals(0, retWithoutBase.calculate(series, position2));
+    }
+
+    @Test
+    public void testCalculateOneOpenPosition() {
+        // with base percentage should return 1
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+
+        // without base percentage should return 0
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(false), 0);
     }
 
     @Test
@@ -108,10 +152,5 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
-    }
-
-    @Test
-    public void testCalculateOneOpenPositionShouldReturnOne() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }
