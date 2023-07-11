@@ -54,8 +54,8 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
         super(series);
         Indicator<Num> highLowDifferential = CombineIndicator.minus(new HighPriceIndicator(series),
                 new LowPriceIndicator(series));
-        singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
-        doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
+        this.singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
+        this.doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
         this.barCount = barCount;
     }
 

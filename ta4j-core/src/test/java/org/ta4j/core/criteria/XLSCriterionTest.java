@@ -33,10 +33,10 @@ import org.ta4j.core.num.Num;
 
 public class XLSCriterionTest implements ExternalCriterionTest {
 
-    private Class<?> clazz;
-    private String fileName;
-    private int criterionColumn;
-    private int statesColumn;
+    private final Class<?> clazz;
+    private final String fileName;
+    private final int criterionColumn;
+    private final int statesColumn;
     private BarSeries cachedSeries = null;
     private final Function<Number, Num> numFunction;
 
@@ -65,6 +65,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
+    @Override
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
@@ -80,6 +81,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @throws Exception if getFinalCriterionValue throws IOException or
      *                   DataFormatException
      */
+    @Override
     public Num getFinalCriterionValue(Object... params) throws Exception {
         return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().function(), params);
     }
@@ -89,6 +91,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * 
      * @return TradingRecord from the file
      */
+    @Override
     public TradingRecord getTradingRecord() throws Exception {
         return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().function());
     }

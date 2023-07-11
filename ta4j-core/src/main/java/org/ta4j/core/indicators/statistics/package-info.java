@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of statistical analysis
+ * Indicators for the realization of statistical analysis.
  */
 package org.ta4j.core.indicators.statistics;

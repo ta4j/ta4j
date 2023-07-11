@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Real (candle) body height indicator.
  *
+ * <p>
  * Provides the (relative) difference between the open price and the close price
  * of a bar. I.e.: close price - open price
  *
@@ -43,7 +44,7 @@ public class RealBodyIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series a bar series
+     * @param series the bar series
      */
     public RealBodyIndicator(BarSeries series) {
         super(series);

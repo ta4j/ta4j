@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Variance criterion.
- * 
+ *
  * <p>
  * Calculates the variance for a Criterion.
  */
@@ -50,8 +50,8 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor with {@link #lessIsBetter} == false.
-     * 
+     * Constructor with {@link #lessIsBetter} = false.
+     *
      * @param criterion the criterion from which the "variance" is calculated
      */
     public VarianceCriterion(AnalysisCriterion criterion) {
@@ -61,7 +61,7 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param criterion    the criterion from which the "variance" is calculated
      * @param lessIsBetter the {@link #lessIsBetter}
      */

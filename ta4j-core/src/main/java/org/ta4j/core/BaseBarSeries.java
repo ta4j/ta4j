@@ -39,60 +39,45 @@ import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link BarSeries}.
- * </p>
  */
 public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
 
-    /**
-     * The logger
-     */
+    /** The logger. */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /**
-     * Name for unnamed series
-     */
+    /** The {@link #name} for an unnamed bar series. */
     private static final String UNNAMED_SERIES_NAME = "unnamed_series";
 
-    /**
-     * Any instance of Num to determine its Num type.
-     */
+    /** Any instance of Num to determine its Num type. */
     protected final transient Num num;
 
-    /**
-     * Name of the series
-     */
+    /** The name of the bar series. */
     private final String name;
-    /**
-     * List of bars
-     */
+
+    /** The list of bars of the bar series. */
     private final List<Bar> bars;
-    /**
-     * Begin index of the bar series
-     */
+
+    /** The begin index of the bar series */
     private int seriesBeginIndex;
-    /**
-     * End index of the bar series
-     */
+
+    /** The end index of the bar series. */
     private int seriesEndIndex;
-    /**
-     * Maximum number of bars for the bar series
-     */
+
+    /** The maximum number of bars for the bar series. */
     private int maximumBarCount = Integer.MAX_VALUE;
-    /**
-     * Number of removed bars
-     */
+
+    /** The number of removed bars. */
     private int removedBarsCount = 0;
+
     /**
-     * True if the current series is constrained (i.e. its indexes cannot change),
-     * false otherwise
+     * True if the current bar series is constrained (i.e. its indexes cannot
+     * change), false otherwise.
      */
     private final boolean constrained;
 
-    /**
-     * Constructor of an unnamed series.
-     */
+    /** Constructor with {@link #name} = {@link #UNNAMED_SERIES_NAME}. */
     public BaseBarSeries() {
         this(UNNAMED_SERIES_NAME);
     }
@@ -100,16 +85,16 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      *
-     * @param name the name of the series
+     * @param name the name of the bar series
      */
     public BaseBarSeries(String name) {
         this(name, new ArrayList<>());
     }
 
     /**
-     * Constructor of an unnamed series.
+     * Constructor with {@link #name} = {@link #UNNAMED_SERIES_NAME}.
      *
-     * @param bars the list of bars of the series
+     * @param bars the list of bars of the bar series
      */
     public BaseBarSeries(List<Bar> bars) {
         this(UNNAMED_SERIES_NAME, bars);
@@ -118,8 +103,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      *
-     * @param name the name of the series
-     * @param bars the list of bars of the series
+     * @param name the name of the bar series
+     * @param bars the list of bars of the bar series
      */
     public BaseBarSeries(String name, List<Bar> bars) {
         this(name, bars, 0, bars.size() - 1, false);
@@ -127,8 +112,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Constructor.
-     * 
-     * @param name the name of the series
+     *
+     * @param name the name of the bar series
      * @param num  any instance of Num to determine its Num function; with this, we
      *             can convert a {@link Number} to a {@link Num Num implementation}
      */
@@ -139,8 +124,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      *
-     * @param name the name of the series
-     * @param bars the list of bars of the series
+     * @param name the name of the bar series
+     * @param bars the list of bars of the bar series
      * @param num  any instance of Num to determine its Num function; with this, we
      *             can convert a {@link Number} to a {@link Num Num implementation}
      */
@@ -154,8 +139,8 @@ public class BaseBarSeries implements BarSeries {
      * Creates a BaseBarSeries with default {@link DecimalNum} as type for the data
      * and all operations on it
      *
-     * @param name             the name of the series
-     * @param bars             the list of bars of the series
+     * @param name             the name of the bar series
+     * @param bars             the list of bars of the bar series
      * @param seriesBeginIndex the begin index (inclusive) of the bar series
      * @param seriesEndIndex   the end index (inclusive) of the bar series
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
@@ -168,8 +153,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      *
-     * @param name             the name of the series
-     * @param bars             the list of bars of the series
+     * @param name             the name of the bar series
+     * @param bars             the list of bars of the bar series
      * @param seriesBeginIndex the begin index (inclusive) of the bar series
      * @param seriesEndIndex   the end index (inclusive) of the bar series
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
@@ -211,7 +196,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     /**
-     * Cuts a list of bars into a new list of bars that is a subset of it
+     * Cuts a list of bars into a new list of bars that is a subset of it.
      *
      * @param bars       the list of {@link Bar bars}
      * @param startIndex start index of the subset
@@ -234,16 +219,18 @@ public class BaseBarSeries implements BarSeries {
     }
 
     /**
-     * Returns a new BaseBarSeries that is a subset of this BaseBarSeries. The new
-     * series holds a copy of all {@link Bar bars} between <tt>startIndex</tt>
-     * (inclusive) and <tt>endIndex</tt> (exclusive) of this BaseBarSeries. The
-     * indices of this BaseBarSeries and the new subset BaseBarSeries can be
-     * different. I. e. index 0 of the new BaseBarSeries will be index
-     * <tt>startIndex</tt> of this BaseBarSeries. If <tt>startIndex</tt> <
+     * Returns a new {@code BaseBarSeries} that is a subset of {@code this}.
+     *
+     * <p>
+     * The new BaseBarSeries holds a copy of all {@link Bar bars} between
+     * <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive) of this
+     * BaseBarSeries. The indices of this BaseBarSeries and the new subset
+     * BaseBarSeries can be different. I. e. index 0 of the new BaseBarSeries will
+     * be index <tt>startIndex</tt> of this BaseBarSeries. If <tt>startIndex</tt> <
      * this.seriesBeginIndex the new BaseBarSeries will start with the first
      * available Bar of this BaseBarSeries. If <tt>endIndex</tt> >
      * this.seriesEndIndex+1 the new BaseBarSeries will end at the last available
-     * Bar of this BaseBarSeries
+     * Bar of this BaseBarSeries.
      *
      * @param startIndex the startIndex (inclusive)
      * @param endIndex   the endIndex (exclusive)
@@ -291,7 +278,7 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Checks if the {@link Num} implementation of a {@link Bar} fits to the
-     * NumFunction used by bar series.
+     * NumFunction used by this bar series.
      *
      * @param bar a Bar object.
      * @return false if another Num implementation is used than by this bar series.

@@ -31,23 +31,18 @@ import org.ta4j.core.num.Num;
 /**
  * A stop-gain rule.
  *
+ * <p>
  * Satisfied when the close price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {
 
-    /**
-     * Constant value for 100
-     */
+    /** The constant value for 100. */
     private final Num HUNDRED;
 
-    /**
-     * The close price indicator
-     */
+    /** The close price indicator. */
     private final ClosePriceIndicator closePrice;
 
-    /**
-     * The gain percentage
-     */
+    /** The gain percentage. */
     private final Num gainPercentage;
 
     /**

@@ -42,7 +42,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossProfit (includes trading costs)
+     * Constructor for GrossProfit (includes trading costs).
      */
     public ProfitCriterion() {
         this(false);
@@ -50,7 +50,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param excludeTradingCosts set to true to exclude trading costs
      */
     public ProfitCriterion(boolean excludeCosts) {

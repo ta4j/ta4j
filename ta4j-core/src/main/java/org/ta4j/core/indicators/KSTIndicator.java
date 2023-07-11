@@ -27,10 +27,16 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Know Sure Thing (KST) RCMA1 = X1-Period SMA of Y1-Period Rate-of-Change RCMA2
- * = X2-Period SMA of Y2-Period Rate-of-Change RCMA3 = X3-Period SMA of
- * Y3-Period Rate-of-Change RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
+ * Know Sure Thing (KST) indicator.
+ * 
+ * <pre>
+ * RCMA1 = X1-Period SMA of Y1-Period Rate-of-Change
+ * RCMA2 = X2-Period SMA of Y2-Period Rate-of-Change
+ * RCMA3 = X3-Period SMA of Y3-Period Rate-of-Change
+ * RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
+ * 
  * KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
+ * </pre>
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:know_sure_thing_kst">
@@ -38,18 +44,23 @@ import org.ta4j.core.num.Num;
  *      </a>
  */
 public class KSTIndicator extends CachedIndicator<Num> {
-    private SMAIndicator RCMA1;
-    private SMAIndicator RCMA2;
-    private SMAIndicator RCMA3;
-    private SMAIndicator RCMA4;
+
+    private final SMAIndicator RCMA1;
+    private final SMAIndicator RCMA2;
+    private final SMAIndicator RCMA3;
+    private final SMAIndicator RCMA4;
 
     /**
+     * Constructor with:
      *
-     * @param indicator the indicator. Default parameters: RCMA1 = 10-Period SMA of
-     *                  10-Period Rate-of-Change RCMA2 = 10-Period SMA of 15-Period
-     *                  Rate-of-Change RCMA3 = 10-Period SMA of 20-Period
-     *                  Rate-of-Change RCMA4 = 15-Period SMA of 30-Period
-     *                  Rate-of-Change
+     * <ul>
+     * <li>RCMA1 = 10-Period SMA of 10-Period Rate-of-Change
+     * <li>RCMA2 = 10-Period SMA of 15-Period Rate-of-Change
+     * <li>RCMA3 = 10-Period SMA of 20-Period Rate-of-Change
+     * <li>RCMA4 = 15-Period SMA of 30-Period Rate-of-Change
+     * </ul>
+     *
+     * @param indicator the {@link Indicator}
      */
     public KSTIndicator(Indicator<Num> indicator) {
         super(indicator);
@@ -60,6 +71,7 @@ public class KSTIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Constructor.
      *
      * @param indicator        the indicator.
      * @param rcma1SMABarCount RCMA1 SMA period.

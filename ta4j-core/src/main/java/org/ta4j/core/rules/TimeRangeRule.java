@@ -31,16 +31,20 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
- * Time range rule.
- *
- * Satisfied when the local time value of the DateTimeIndicator is within a time
- * range specified in the TimeRange list.
+ * Satisfied when the "local time" value of the {@link DateTimeIndicator} is
+ * wihin the specified set of {@link TimeRange}.
  */
 public class TimeRangeRule extends AbstractRule {
 
     private final List<TimeRange> timeRanges;
     private final DateTimeIndicator timeIndicator;
 
+    /**
+     * Constructor.
+     *
+     * @param timeRanges         the list of time ranges
+     * @param beginTimeIndicator the beginTime indicator
+     */
     public TimeRangeRule(List<TimeRange> timeRanges, DateTimeIndicator beginTimeIndicator) {
         this.timeRanges = timeRanges;
         this.timeIndicator = beginTimeIndicator;
@@ -49,10 +53,9 @@ public class TimeRangeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        ZonedDateTime dateTime = this.timeIndicator.getValue(index);
+        ZonedDateTime dateTime = timeIndicator.getValue(index);
         LocalTime localTime = dateTime.toLocalTime();
-        satisfied = this.timeRanges.stream()
+        final boolean satisfied = timeRanges.stream()
                 .anyMatch(
                         timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
         traceIsSatisfied(index, satisfied);

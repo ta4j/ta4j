@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 /**
  * A linear transaction cost criterion.
  *
+ * <p>
  * Calculates the transaction cost according to an initial traded amount and a
  * linear function defined by a and b (a * x + b).
  */
@@ -43,7 +44,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private final double a;
     private final double b;
 
-    private ReturnCriterion grossReturn;
+    private final ReturnCriterion grossReturn;
 
     /**
      * Constructor. (a * x)
@@ -130,17 +131,15 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
         Num totalTradeCost = series.zero();
-        if (position != null) {
-            if (position.getEntry() != null) {
-                totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
-                if (position.getExit() != null) {
-                    // To calculate the new traded amount:
-                    // - Remove the cost of the first trade
-                    // - Multiply by the profit ratio
-                    Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                            .multipliedBy(grossReturn.calculate(series, position));
-                    totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
-                }
+        if (position != null && position.getEntry() != null) {
+            totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
+            if (position.getExit() != null) {
+                // To calculate the new traded amount:
+                // - Remove the cost of the first trade
+                // - Multiply by the profit ratio
+                Num newTradedAmount = initialAmount.minus(totalTradeCost)
+                        .multipliedBy(grossReturn.calculate(series, position));
+                totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
             }
         }
         return totalTradeCost;

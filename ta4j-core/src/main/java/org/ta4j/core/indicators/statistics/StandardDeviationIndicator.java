@@ -46,7 +46,7 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        variance = new VarianceIndicator(indicator, barCount);
+        this.variance = new VarianceIndicator(indicator, barCount);
     }
 
     @Override

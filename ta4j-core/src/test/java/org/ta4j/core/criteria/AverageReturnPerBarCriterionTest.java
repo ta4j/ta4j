@@ -42,7 +42,7 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     private MockBarSeries series;
 
     public AverageReturnPerBarCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageReturnPerBarCriterion(), numFunction);
+        super(params -> new AverageReturnPerBarCriterion(), numFunction);
     }
 
     @Test

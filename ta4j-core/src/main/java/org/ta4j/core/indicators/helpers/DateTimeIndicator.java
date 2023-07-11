@@ -32,15 +32,29 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * DateTime indicator.
+ * 
+ * <p>
+ * Returns a {@link ZonedDateTime} of (or for) a bar.
  */
 public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
     private final Function<Bar, ZonedDateTime> action;
 
+    /**
+     * Constructor to return {@link Bar#getBeginTime()} of a bar.
+     * 
+     * @param barSeries the bar series
+     */
     public DateTimeIndicator(BarSeries barSeries) {
         this(barSeries, Bar::getBeginTime);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param barSeries the bar series
+     * @param action    the action
+     */
     public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
         super(barSeries);
         this.action = action;

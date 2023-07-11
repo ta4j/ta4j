@@ -23,32 +23,40 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import java.io.Serializable;
-
 import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
-public interface CostModel extends Serializable {
+/**
+ * With the {@code CostModel}, we can include trading costs that may be incurred
+ * when opening or closing a position.
+ */
+public interface CostModel {
 
     /**
      * @param position   the position
-     * @param finalIndex final index of consideration for open positions
-     * @return Calculates the trading cost of a single position
+     * @param finalIndex the index up to which open positions are considered
+     * @return the trading cost of the single {@code position}
      */
     Num calculate(Position position, int finalIndex);
 
     /**
      * @param position the position
-     * @return Calculates the trading cost of a single position
+     * @return the trading cost of the single {@code position}
      */
     Num calculate(Position position);
 
     /**
-     * @param price  the price per asset
-     * @param amount number of traded assets
-     * @return Calculates the trading cost for a certain traded amount
+     * @param price  the trade price per asset
+     * @param amount the trade amount (i.e. the number of traded assets)
+     * @return the trading cost for the traded {@code amount}
      */
     Num calculate(Num price, Num amount);
 
-    boolean equals(CostModel model);
+    /**
+     * Evaluates if two models are equal.
+     *
+     * @param otherModel
+     * @return true if {@code this} and {@code otherModel} are equal
+     */
+    boolean equals(CostModel otherModel);
 }
