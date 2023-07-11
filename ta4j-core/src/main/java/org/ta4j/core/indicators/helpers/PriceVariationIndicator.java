@@ -29,9 +29,18 @@ import org.ta4j.core.num.Num;
 
 /**
  * Price variation indicator.
+ * 
+ * <pre>
+ * PriceVariation = currentBarClosePrice / previousBarClosePrice
+ * </pre>
  */
 public class PriceVariationIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public PriceVariationIndicator(BarSeries series) {
         super(series);
     }

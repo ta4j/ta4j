@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 
 public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public SMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
         super((data, params) -> new SMAIndicator((Indicator<Num>) data, (int) params[0]), numFunction);

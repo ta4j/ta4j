@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * %B indicator.
- * 
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce</a>
@@ -39,15 +39,13 @@ import org.ta4j.core.num.Num;
 public class PercentBIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final BollingerBandsUpperIndicator bbu;
-
     private final BollingerBandsLowerIndicator bbl;
 
     /**
      * Constructor.
-     * 
-     * @param indicator an indicator (usually close price)
+     *
+     * @param indicator the {@link Indicator} (usually {@code ClosePriceIndicator})
      * @param barCount  the time frame
      * @param k         the K multiplier (usually 2.0)
      */

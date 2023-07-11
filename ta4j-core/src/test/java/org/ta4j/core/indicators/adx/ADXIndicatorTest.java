@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
 
 public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public ADXIndicatorTest(Function<Number, Num> nf) throws Exception {
         super((data, params) -> new ADXIndicator((BarSeries) data, (int) params[0], (int) params[1]), nf);

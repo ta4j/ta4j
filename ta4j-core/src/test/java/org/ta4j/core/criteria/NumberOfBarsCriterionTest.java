@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfBarsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfBarsCriterion(), numFunction);
+        super(params -> new NumberOfBarsCriterion(), numFunction);
     }
 
     @Test

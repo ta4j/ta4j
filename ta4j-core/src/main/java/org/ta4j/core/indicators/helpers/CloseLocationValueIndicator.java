@@ -38,6 +38,11 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
     private final Num zero = numOf(0);
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public CloseLocationValueIndicator(BarSeries series) {
         super(series);
     }

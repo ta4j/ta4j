@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 /**
  * Doji indicator.
  *
+ * <p>
  * A candle/bar is considered Doji if its body height is lower than the average
  * multiplied by a factor.
  *
@@ -42,15 +43,13 @@ import org.ta4j.core.num.Num;
  */
 public class DojiIndicator extends CachedIndicator<Boolean> {
 
-    /**
-     * Body height
-     */
+    /** Body height. */
     private final Indicator<Num> bodyHeightInd;
-    /**
-     * Average body height
-     */
+
+    /** Average body height. */
     private final SMAIndicator averageBodyHeightInd;
 
+    /** The factor used when checking if a candle is Doji. */
     private final Num factor;
 
     /**
@@ -63,9 +62,9 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
-        bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
-        averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
-        factor = numOf(bodyFactor);
+        this.bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
+        this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
+        this.factor = numOf(bodyFactor);
     }
 
     @Override

@@ -32,9 +32,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Combine indicator.
+ * 
  * <p>
  * Combines two Num indicators by using common math operations.
- *
  */
 public class CombineIndicator extends CachedIndicator<Num> {
 

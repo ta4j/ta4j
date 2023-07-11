@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 /**
  * Net profit and loss in percentage criterion (relative PnL, excludes trading
  * costs), returned in decimal format.
- * 
+ *
  * <p>
  * Defined as the position profit over the purchase price. The profit or loss in
  * percentage over the provided {@link Position position(s)}.

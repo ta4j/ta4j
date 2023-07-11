@@ -35,6 +35,7 @@ import org.ta4j.core.num.Num;
 /**
  * Expected Shortfall criterion, returned in decimal format.
  *
+ * <p>
  * Measures the expected shortfall of the strategy log-return time-series.
  *
  * @see <a href=
@@ -43,13 +44,11 @@ import org.ta4j.core.num.Num;
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
 
-    /**
-     * Confidence level as absolute value (e.g. 0.95)
-     */
+    /** Confidence level as absolute value (e.g. 0.95). */
     private final double confidence;
 
     /**
-     * Constructor
+     * Constructor.
      *
      * @param confidence the confidence level
      */
@@ -73,8 +72,8 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the Expected Shortfall on the return series
-     * 
+     * Calculates the Expected Shortfall on the return series.
+     *
      * @param returns    the corresponding returns
      * @param confidence the confidence level
      * @return the relative Expected Shortfall
