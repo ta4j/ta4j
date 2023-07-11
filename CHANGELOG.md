@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - add `final` to properties where possible
 - improved javadoc
+- **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 - add missing `@Override` annotation
 
 ### Removed/Deprecated

@@ -40,12 +40,12 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
     private final MedianPriceIndicator medianPriceIndicator;
 
     /**
-     * Constructor.
+     * Constructor with {@code multiplier} = 3.
      * 
-     * @param barSeries the bar seris
+     * @param barSeries the bar series
      */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
-        this(barSeries, new ATRIndicator(barSeries, 10), 3);
+        this(barSeries, new ATRIndicator(barSeries, 10), 3d);
     }
 
     /**
@@ -56,7 +56,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
      * @param multiplier   the multiplier
      */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
-            final Integer multiplier) {
+            final Double multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
         this.multiplier = numOf(multiplier);
