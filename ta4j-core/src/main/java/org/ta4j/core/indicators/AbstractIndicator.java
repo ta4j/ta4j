@@ -30,6 +30,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.caching.IndicatorValueCache;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 
 /**
  * Abstract {@link Indicator indicator}.
@@ -113,6 +114,10 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     public void setCache(IndicatorValueCache<T> cache) {
         this.cache = cache;
+    }
+
+    public void disableCache() {
+        this.cache = new NoIndicatorValueCache<>();
     }
 
     @Override
