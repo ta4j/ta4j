@@ -73,7 +73,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     /**
      * Constructor.
      *
-     * @param series the bar series
+     * @param series              the bar series
      * @param indicatorValueCache the cache implementation
      */
     protected AbstractIndicator(BarSeries series, IndicatorValueCache<T> indicatorValueCache) {
