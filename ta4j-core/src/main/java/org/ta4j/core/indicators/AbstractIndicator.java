@@ -94,7 +94,6 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         }
 
         final Bar bar = series.getBar(index);
-        log.info("index: {}, bar: {}", index, bar);
         return cache.get(bar.getEndTime(), (endTime) -> calculate(index));
     }
 

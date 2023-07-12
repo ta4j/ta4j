@@ -25,7 +25,12 @@ public class BaseIndicatorValueCache<T> implements IndicatorValueCache<T> {
 
     @Override
     public T get(ZonedDateTime endTime, Function<ZonedDateTime, T> mappingFunction) {
-        return cache.get(endTime, mappingFunction);
+        T value = cache.getIfPresent(endTime);
+        if (value == null) {
+            value = mappingFunction.apply(endTime);
+            cache.put(endTime, value);
+        }
+        return value;
     }
 
     @Override
