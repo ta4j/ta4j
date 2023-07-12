@@ -42,7 +42,9 @@ import org.ta4j.core.num.Num;
 public class StandardDeviationCriterionTest extends AbstractCriterionTest {
 
     public StandardDeviationCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new StandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
+        super(params -> params.length == 2
+                ? new StandardDeviationCriterion((AnalysisCriterion) params[0], (boolean) params[1])
+                : new StandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
@@ -57,7 +59,14 @@ public class StandardDeviationCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void betterThan() {
+    public void betterThanWithLessIsBetter() {
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion(), true);
+        assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
+        assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
+    }
+
+    @Test
+    public void betterThanWithLessIsNotBetter() {
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
         assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
         assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));

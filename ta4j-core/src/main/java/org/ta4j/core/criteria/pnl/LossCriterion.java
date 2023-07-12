@@ -41,7 +41,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossLoss (includes trading costs)
+     * Constructor for GrossLoss (includes trading costs).
      */
     public LossCriterion() {
         this(false);
@@ -49,7 +49,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param excludeCosts set to true to exclude trading costs
      */
     public LossCriterion(boolean excludeCosts) {
@@ -59,7 +59,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num loss = excludeCosts ? position.getProfit() : position.getGrossProfit();
+            Num loss = excludeCosts ? position.getGrossProfit() : position.getProfit();
             return loss.isNegative() ? loss : series.zero();
         }
         return series.zero();

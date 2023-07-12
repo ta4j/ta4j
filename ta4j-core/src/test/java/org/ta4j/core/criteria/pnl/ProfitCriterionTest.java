@@ -34,6 +34,9 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -41,7 +44,7 @@ import org.ta4j.core.num.Num;
 public class ProfitCriterionTest extends AbstractCriterionTest {
 
     public ProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ProfitCriterion((boolean) params[0]), numFunction);
+        super(params -> new ProfitCriterion((boolean) params[0]), numFunction);
     }
 
     @Test
@@ -62,6 +65,26 @@ public class ProfitCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion profit = getCriterion(false);
         assertNumEquals(25, profit.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateComparingIncludingVsExcludingCosts() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, new FixedTransactionCostModel(1),
+                new ZeroCostModel());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
+        ;
+        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+
+        AnalysisCriterion profitIncludingCosts = getCriterion(false);
+        assertNumEquals(21, profitIncludingCosts.calculate(series, tradingRecord));
+
+        AnalysisCriterion profitExcludingCosts = getCriterion(true);
+        assertNumEquals(25, profitExcludingCosts.calculate(series, tradingRecord));
     }
 
     @Test

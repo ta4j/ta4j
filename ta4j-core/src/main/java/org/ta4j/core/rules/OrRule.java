@@ -29,8 +29,12 @@ import org.ta4j.core.TradingRecord;
 /**
  * An OR combination of two {@link Rule rules}.
  *
- * Satisfied when one of the two provided rules is satisfied.<br>
- * Warning: the second rule is not tested if the first rule is satisfied.
+ * <p>
+ * Satisfied when one of the two rules is satisfied. It doesn't matter which
+ * one.
+ *
+ * <p>
+ * <b>Warning:</b> The second rule is not tested if the first rule is satisfied.
  */
 public class OrRule extends AbstractRule {
 
@@ -39,7 +43,7 @@ public class OrRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param rule1 a trading rule
      * @param rule2 another trading rule
      */
@@ -55,16 +59,12 @@ public class OrRule extends AbstractRule {
         return satisfied;
     }
 
-    /**
-     * @return first trading rule
-     */
+    /** @return the first rule */
     public Rule getRule1() {
         return rule1;
     }
 
-    /**
-     * @return second trading rule
-     */
+    /** @return the second rule */
     public Rule getRule2() {
         return rule2;
     }

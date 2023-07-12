@@ -41,7 +41,7 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
      * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
      * formula needed
      */
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public RWILowIndicatorTest(Function<Number, Num> numFunction) {
         super((data, params) -> new RWILowIndicator(data, (int) params[0]), numFunction);

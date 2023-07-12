@@ -42,7 +42,12 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
     private final Num k;
 
     /**
-     * Constructor.
+     * Constructor with:
+     * 
+     * <ul>
+     * <li>{@code barCount} = 22
+     * <li>{@code k} = 3
+     * </ul>
      *
      * @param series the bar series
      */
@@ -59,8 +64,8 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      */
     public ChandelierExitShortIndicator(BarSeries series, int barCount, double k) {
         super(series);
-        low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
-        atr = new ATRIndicator(series, barCount);
+        this.low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        this.atr = new ATRIndicator(series, barCount);
         this.k = numOf(k);
     }
 

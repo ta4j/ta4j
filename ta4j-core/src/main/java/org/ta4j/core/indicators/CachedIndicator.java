@@ -52,7 +52,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Constructor.
      *
-     * @param series the related bar series
+     * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
         super(series);

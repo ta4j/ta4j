@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
 
 public class PlusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public PlusDIIndicatorTest(Function<Number, Num> nf) throws Exception {
         super((data, params) -> new PlusDIIndicator((BarSeries) data, (int) params[0]), nf);

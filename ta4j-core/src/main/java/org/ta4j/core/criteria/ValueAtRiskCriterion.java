@@ -39,13 +39,12 @@ import org.ta4j.core.num.Num;
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
  */
 public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
-    /**
-     * Confidence level as absolute value (e.g. 0.95)
-     */
+
+    /** Confidence level as absolute value (e.g. 0.95). */
     private final Double confidence;
 
     /**
-     * Constructor
+     * Constructor.
      *
      * @param confidence the confidence level
      */
@@ -69,8 +68,8 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the VaR on the return series
-     * 
+     * Calculates the VaR on the return series.
+     *
      * @param returns    the corresponding returns
      * @param confidence the confidence level
      * @return the relative Value at Risk

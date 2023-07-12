@@ -26,14 +26,14 @@ package org.ta4j.core.aggregator;
 import org.ta4j.core.BarSeries;
 
 /**
- * Bar aggregator interface to aggregate list of bars into another list of bars.
+ * Aggregates a {@link BarSeries} into another one.
  */
 public interface BarSeriesAggregator {
 
     /**
-     * Aggregates bar series.
+     * Aggregates the {@code series} into another one.
      *
-     * @param series series to aggregate
+     * @param series the series to be aggregated
      * @return aggregated series
      */
     default BarSeries aggregate(BarSeries series) {
@@ -41,10 +41,10 @@ public interface BarSeriesAggregator {
     }
 
     /**
-     * Aggregates bar series.
+     * Aggregates the {@code series} into another one.
      *
-     * @param series               series to aggregate
-     * @param aggregatedSeriesName name for aggregated series
+     * @param series               the series to be aggregated
+     * @param aggregatedSeriesName the name for the aggregated series
      * @return aggregated series with specified name
      */
     BarSeries aggregate(BarSeries series, String aggregatedSeriesName);

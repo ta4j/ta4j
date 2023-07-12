@@ -29,46 +29,66 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
+/**
+ * The SuperTrend indicator.
+ */
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Num ZERO = zero();
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
-    public SuperTrendIndicator(final BarSeries series, int length, final Integer multiplier) {
-        super(series);
-        ATRIndicator atrIndicator = new ATRIndicator(series, length);
-        this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
-        this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
+    /**
+     * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
+     * 
+     * @param series the bar series
+     */
+    public SuperTrendIndicator(final BarSeries series) {
+        this(series, 10, 3d);
     }
 
-    public SuperTrendIndicator(final BarSeries series) {
-        this(series, 10, 3);
+    /**
+     * Constructor.
+     * 
+     * @param series     the bar series
+     * @param barCount   the time frame for the {@code ATRIndicator}
+     * @param multiplier the multiplier for the
+     *                   {@link #superTrendUpperBandIndicator} and
+     *                   {@link #superTrendLowerBandIndicator}
+     */
+    public SuperTrendIndicator(final BarSeries series, int barCount, final Double multiplier) {
+        super(series);
+        ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
+        this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
+        this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
     }
 
     @Override
     protected Num calculate(int i) {
         Num value = ZERO;
-
-        if (i == 0) {
+        if (i == 0)
             return value;
-        }
+
         Bar bar = getBarSeries().getBar(i);
+        Num closePrice = bar.getClosePrice();
+        Num previousValue = this.getValue(i - 1);
+        Num lowerBand = superTrendLowerBandIndicator.getValue(i);
+        Num upperBand = superTrendUpperBandIndicator.getValue(i);
 
-        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.superTrendUpperBandIndicator.getValue(i))) {
-            value = this.superTrendUpperBandIndicator.getValue(i);
+        if (previousValue.isEqual(superTrendUpperBandIndicator.getValue(i - 1))) {
+            if (closePrice.isLessThan(upperBand)) {
+                value = upperBand;
+            } else if (closePrice.isGreaterThan(upperBand)) {
+                value = lowerBand;
+            }
         }
 
-        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThan(this.superTrendUpperBandIndicator.getValue(i))) {
-            value = this.superTrendLowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThan(this.superTrendLowerBandIndicator.getValue(i))) {
-            value = this.superTrendLowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.superTrendLowerBandIndicator.getValue(i))) {
-            value = this.superTrendUpperBandIndicator.getValue(i);
+        if (previousValue.isEqual(superTrendLowerBandIndicator.getValue(i - 1))) {
+            if (closePrice.isGreaterThan(lowerBand)) {
+                value = lowerBand;
+            } else if (closePrice.isLessThan(lowerBand)) {
+                value = upperBand;
+            }
         }
 
         return value;
@@ -79,10 +99,12 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         return 0;
     }
 
+    /** @return the {@link #superTrendLowerBandIndicator} */
     public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
         return superTrendLowerBandIndicator;
     }
 
+    /** @return the {@link #superTrendUpperBandIndicator} */
     public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
         return superTrendUpperBandIndicator;
     }

@@ -45,7 +45,7 @@ import org.ta4j.core.num.Num;
 
 public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public MMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
         super((data, params) -> new MMAIndicator(data, (int) params[0]), numFunction);

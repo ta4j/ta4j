@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 
 public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
 
     public ATRIndicatorTest(Function<Number, Num> numFunction) throws Exception {
         super((data, params) -> new ATRIndicator(data, (int) params[0]), numFunction);
