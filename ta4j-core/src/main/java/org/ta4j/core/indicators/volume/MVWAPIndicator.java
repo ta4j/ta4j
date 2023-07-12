@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
  *      http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
  */
-public class MVWAPIndicator extends CachedIndicator<Num> {
+public class MVWAPIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> sma;
 

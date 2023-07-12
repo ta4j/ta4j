@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator</a>
  */
-public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
+public class ChaikinOscillatorIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator emaShort;
     private final EMAIndicator emaLong;

@@ -23,12 +23,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
+import org.ta4j.core.num.Num;
+
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
-
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.Num;
 
 /**
  * Transform indicator.
@@ -40,7 +41,7 @@ import org.ta4j.core.num.Num;
  *          calculations this indicator converts {@link Num DecimalNum} to
  *          {@link Double double}
  */
-public class TransformIndicator extends CachedIndicator<Num> {
+public class TransformIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final UnaryOperator<Num> transformationFunction;
@@ -52,7 +53,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * @param transformation a {@link Function} describing the transformation
      */
     public TransformIndicator(Indicator<Num> indicator, UnaryOperator<Num> transformation) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
         this.transformationFunction = transformation;
     }

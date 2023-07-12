@@ -23,11 +23,11 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.BinaryOperator;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+
+import java.util.function.BinaryOperator;
 
 /**
  * Objects of this class defer evaluation of an arithmetic operation.

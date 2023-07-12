@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * Returns the sum of the total traded volumes from the bar series within the
  * bar count.
  */
-public class VolumeIndicator extends CachedIndicator<Num> {
+public class VolumeIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
 

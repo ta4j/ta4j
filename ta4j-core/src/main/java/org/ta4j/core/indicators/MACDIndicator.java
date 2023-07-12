@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd</a>
  */
-public class MACDIndicator extends CachedIndicator<Num> {
+public class MACDIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;

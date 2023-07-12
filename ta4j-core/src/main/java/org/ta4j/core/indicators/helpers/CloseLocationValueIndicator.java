@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/c/close_location_value.asp">
  *      http://www.investopedia.com/terms/c/close_location_value.asp</a>
  */
-public class CloseLocationValueIndicator extends CachedIndicator<Num> {
+public class CloseLocationValueIndicator extends AbstractIndicator<Num> {
 
     private final Num zero = numOf(0);
 

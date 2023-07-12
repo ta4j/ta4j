@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Returns the previous (n-th) value of an indicator.
  */
-public class PreviousValueIndicator extends CachedIndicator<Num> {
+public class PreviousValueIndicator extends AbstractIndicator<Num> {
 
     private final int n;
     private final Indicator<Num> indicator;

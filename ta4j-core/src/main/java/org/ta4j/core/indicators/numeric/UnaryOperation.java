@@ -23,11 +23,11 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.UnaryOperator;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+
+import java.util.function.UnaryOperator;
 
 /**
  * Objects of this class defer the evaluation of a unary operator, like sqrt().

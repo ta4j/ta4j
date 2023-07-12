@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm">
  *      http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm</a>
  */
-public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
+public class ChaikinMoneyFlowIndicator extends AbstractIndicator<Num> {
 
     private final CloseLocationValueIndicator clvIndicator;
     private final VolumeIndicator volumeIndicator;

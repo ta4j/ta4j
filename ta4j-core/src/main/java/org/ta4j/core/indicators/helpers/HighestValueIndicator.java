@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +34,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the highest indicator value from the bar series within the bar count.
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class HighestValueIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -45,7 +46,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
         this.barCount = barCount;
     }

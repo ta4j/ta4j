@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the amount of a bar.
  */
-public class AmountIndicator extends CachedIndicator<Num> {
+public class AmountIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.

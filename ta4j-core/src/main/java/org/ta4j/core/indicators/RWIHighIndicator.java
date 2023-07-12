@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source
  *      of formular</a>
  */
-public class RWIHighIndicator extends CachedIndicator<Num> {
+public class RWIHighIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
 

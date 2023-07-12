@@ -24,14 +24,15 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
  * Variance indicator.
  */
-public class VarianceIndicator extends CachedIndicator<Num> {
+public class VarianceIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -44,7 +45,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public VarianceIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
         this.barCount = barCount;
         this.sma = new SMAIndicator(indicator, barCount);

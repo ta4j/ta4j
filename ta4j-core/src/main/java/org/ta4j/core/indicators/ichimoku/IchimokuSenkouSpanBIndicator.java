@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +36,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
+public class IchimokuSenkouSpanBIndicator extends AbstractIndicator<Num> {
 
     /** Ichimoku avg line indicator. */
     private final IchimokuLineIndicator lineIndicator;
@@ -70,7 +71,7 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * @param offset   displacement on the chart
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
-        super(series);
+        super(series, new BaseIndicatorValueCache<>(series));
         this.lineIndicator = new IchimokuLineIndicator(series, barCount);
         this.offset = offset;
     }

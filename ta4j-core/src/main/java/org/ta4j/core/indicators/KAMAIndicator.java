@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average</a>
  */
-public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
+public class KAMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> price;
     private final int barCountEffectiveRatio;

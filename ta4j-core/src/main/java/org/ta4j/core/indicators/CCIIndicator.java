@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -35,7 +36,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
-public class CCIIndicator extends CachedIndicator<Num> {
+public class CCIIndicator extends AbstractIndicator<Num> {
 
     private final Num factor;
     private final TypicalPriceIndicator typicalPriceInd;
@@ -50,7 +51,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame (normally 20)
      */
     public CCIIndicator(BarSeries series, int barCount) {
-        super(series);
+        super(series, new BaseIndicatorValueCache<>(series));
         this.factor = numOf(0.015);
         this.typicalPriceInd = new TypicalPriceIndicator(series);
         this.smaInd = new SMAIndicator(typicalPriceInd, barCount);

@@ -23,12 +23,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * A fixed indicator.
@@ -50,7 +51,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      */
     @SafeVarargs
     public FixedIndicator(BarSeries series, T... values) {
-        super(series);
+        super(series, new NoIndicatorValueCache<>());
         this.values.addAll(Arrays.asList(values));
     }
 
@@ -64,7 +65,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
     }
 
     @Override
-    public T getValue(int index) {
+    public T calculate(int index) {
         return values.get(index);
     }
 

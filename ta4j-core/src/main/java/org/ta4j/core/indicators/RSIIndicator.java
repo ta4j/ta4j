@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.num.Num;
@@ -34,7 +35,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Computed using original Welles Wilder formula.
  */
-public class RSIIndicator extends CachedIndicator<Num> {
+public class RSIIndicator extends AbstractIndicator<Num> {
 
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;
@@ -46,7 +47,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
     }

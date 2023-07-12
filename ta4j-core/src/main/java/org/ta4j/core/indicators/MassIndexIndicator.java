@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index</a>
  */
-public class MassIndexIndicator extends CachedIndicator<Num> {
+public class MassIndexIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator singleEma;
     private final EMAIndicator doubleEma;

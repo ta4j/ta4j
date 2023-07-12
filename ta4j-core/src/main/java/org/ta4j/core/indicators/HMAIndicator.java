@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
@@ -34,7 +35,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://alanhull.com/hull-moving-average">
  *      http://alanhull.com/hull-moving-average</a>
  */
-public class HMAIndicator extends CachedIndicator<Num> {
+public class HMAIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final WMAIndicator sqrtWma;
@@ -46,7 +47,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.barCount = barCount;
 
         WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);

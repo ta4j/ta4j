@@ -23,10 +23,10 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.num.Num;
+
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
-import org.ta4j.core.num.Num;
 
 /**
  * Indicator over a {@link BarSeries bar series}.

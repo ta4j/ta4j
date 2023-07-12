@@ -23,13 +23,13 @@
  */
 package org.ta4j.core;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
 import java.util.List;
 
-import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A {@code TradingRecord} holds the full history/record of a trading session

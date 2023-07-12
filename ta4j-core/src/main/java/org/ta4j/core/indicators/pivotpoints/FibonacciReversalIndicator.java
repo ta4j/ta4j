@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Bar;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Fibonacci Reversal Indicator.
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
+public class FibonacciReversalIndicator extends AbstractIndicator<Num> {
 
     private final PivotPointIndicator pivotPointIndicator;
     private final FibReversalTyp fibReversalTyp;

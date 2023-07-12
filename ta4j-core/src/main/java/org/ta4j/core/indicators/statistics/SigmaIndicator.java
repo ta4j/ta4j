@@ -24,8 +24,9 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +34,7 @@ import org.ta4j.core.num.Num;
  *
  * @see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
-public class SigmaIndicator extends CachedIndicator<Num> {
+public class SigmaIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> ref;
     private final int barCount;
@@ -48,7 +49,7 @@ public class SigmaIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {
-        super(ref);
+        super(ref, new BaseIndicatorValueCache<>(ref.getBarSeries()));
         this.ref = ref;
         this.barCount = barCount;
         this.mean = new SMAIndicator(ref, barCount);

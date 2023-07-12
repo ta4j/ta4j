@@ -25,11 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
+import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,7 +35,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/w/williamsr.asp">https://www.investopedia.com/terms/w/williamsr.asp</a>
  */
-public class WilliamsRIndicator extends CachedIndicator<Num> {
+public class WilliamsRIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> closePriceIndicator;
     private final int barCount;
@@ -68,7 +65,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
      */
     public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount,
             HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
-        super(closePriceIndicator);
+        super(closePriceIndicator, new BaseIndicatorValueCache<>(closePriceIndicator.getBarSeries()));
         this.closePriceIndicator = closePriceIndicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;

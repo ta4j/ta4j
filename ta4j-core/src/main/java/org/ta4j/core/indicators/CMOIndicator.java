@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.investopedia.com/terms/c/chandemomentumoscillator.asp">
  *      href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp"</a>
  */
-public class CMOIndicator extends CachedIndicator<Num> {
+public class CMOIndicator extends AbstractIndicator<Num> {
 
     private final GainIndicator gainIndicator;
     private final LossIndicator lossIndicator;

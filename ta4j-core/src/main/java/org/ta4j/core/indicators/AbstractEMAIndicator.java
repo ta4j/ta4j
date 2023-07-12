@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 /**
  * Base class for Exponential Moving Average implementations.
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
+public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

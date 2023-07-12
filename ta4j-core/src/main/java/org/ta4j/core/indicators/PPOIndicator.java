@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +34,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/ppo.asp">https://www.investopedia.com/terms/p/ppo.asp</a>
  */
-public class PPOIndicator extends CachedIndicator<Num> {
+public class PPOIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
@@ -60,7 +61,7 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the long time frame
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term barCount must be greater than short term barCount");
         }

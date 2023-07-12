@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,7 +33,7 @@ import org.ta4j.core.num.Num;
  *
  * I.e.: operand0 + operand1 + ... + operandN
  */
-public class SumIndicator extends CachedIndicator<Num> {
+public class SumIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num>[] operands;
 
@@ -44,7 +45,7 @@ public class SumIndicator extends CachedIndicator<Num> {
     @SafeVarargs
     public SumIndicator(Indicator<Num>... operands) {
         // TODO: check if first series is equal to the other ones
-        super(operands[0]);
+        super(operands[0], new BaseIndicatorValueCache<>(operands[0].getBarSeries()));
         this.operands = operands;
     }
 

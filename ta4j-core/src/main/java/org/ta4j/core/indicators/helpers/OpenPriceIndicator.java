@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,11 +42,11 @@ public class OpenPriceIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public OpenPriceIndicator(BarSeries series) {
-        super(series);
+        super(series, new NoIndicatorValueCache<>());
     }
 
     @Override
-    public Num getValue(int index) {
+    public Num calculate(int index) {
         return getBarSeries().getBar(index).getOpenPrice();
     }
 

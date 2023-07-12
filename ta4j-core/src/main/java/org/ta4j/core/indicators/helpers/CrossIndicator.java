@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Boolean indicator that monitors the crossing of two indicators.
  */
-public class CrossIndicator extends CachedIndicator<Boolean> {
+public class CrossIndicator extends AbstractIndicator<Boolean> {
 
     /** Upper indicator */
     private final Indicator<Num> up;
@@ -49,7 +49,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
      */
     public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
         // TODO: check if up series is equal to low series
-        super(up);
+        super(up.getBarSeries());
         this.up = up;
         this.low = low;
     }

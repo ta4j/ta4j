@@ -26,14 +26,15 @@ package org.ta4j.core.indicators.supertrend;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * The lower band of the SuperTrend indicator.
  */
-public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
+public class SuperTrendLowerBandIndicator extends AbstractIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
     private final Num multiplier;
@@ -57,7 +58,7 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
      */
     public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
             final Double multiplier) {
-        super(barSeries);
+        super(barSeries, new BaseIndicatorValueCache<>(barSeries));
         this.atrIndicator = atrIndicator;
         this.multiplier = numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);

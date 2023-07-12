@@ -23,15 +23,15 @@
  */
 package org.ta4j.core;
 
-import static org.ta4j.core.num.NaN.NaN;
-
-import java.io.Serializable;
-import java.util.Objects;
-
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+
+import java.io.Serializable;
+import java.util.Objects;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A {@code Position} is a pair of two {@link Trade trades}.

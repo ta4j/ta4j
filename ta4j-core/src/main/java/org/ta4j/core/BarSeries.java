@@ -23,6 +23,8 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.num.Num;
+
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -30,8 +32,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-
-import org.ta4j.core.num.Num;
 
 /**
  * A {@code BarSeries} is a sequence of {@link Bar bars} separated by a

@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
  *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
-public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class ZLEMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

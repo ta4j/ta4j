@@ -24,12 +24,13 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator D.
  */
-public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
+public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
@@ -48,7 +49,7 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public StochasticOscillatorDIndicator(Indicator<Num> indicator) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
     }
 

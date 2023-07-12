@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width</a>
  */
-public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
+public class BollingerBandWidthIndicator extends AbstractIndicator<Num> {
 
     private final BollingerBandsUpperIndicator bbu;
     private final BollingerBandsMiddleIndicator bbm;

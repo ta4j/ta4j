@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * To preserve trend direction, default calculation does not use absolute value.
  */
-public class RAVIIndicator extends CachedIndicator<Num> {
+public class RAVIIndicator extends AbstractIndicator<Num> {
 
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;
@@ -45,7 +46,7 @@ public class RAVIIndicator extends CachedIndicator<Num> {
      * @param longSmaBarCount  the time frame for the long SMA (usually 65)
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
-        super(price);
+        super(price, new BaseIndicatorValueCache<>(price.getBarSeries()));
         this.shortSma = new SMAIndicator(price, shortSmaBarCount);
         this.longSma = new SMAIndicator(price, longSmaBarCount);
     }

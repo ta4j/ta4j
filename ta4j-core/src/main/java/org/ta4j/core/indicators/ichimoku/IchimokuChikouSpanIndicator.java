@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -36,7 +37,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
+public class IchimokuChikouSpanIndicator extends AbstractIndicator<Num> {
 
     /** The close price. */
     private final ClosePriceIndicator closePriceIndicator;
@@ -60,7 +61,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      * @param timeDelay the time delay (usually 26)
      */
     public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
-        super(series);
+        super(series, new BaseIndicatorValueCache<>(series));
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.timeDelay = timeDelay;
     }

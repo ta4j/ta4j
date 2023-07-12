@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  * Or if you don't pass the threshold you will always just get the difference in
  * percentage from the precious value.
  */
-public class DifferencePercentageIndicator extends CachedIndicator<Num> {
+public class DifferencePercentageIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;

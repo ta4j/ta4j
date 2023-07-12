@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * The ROCVIndicator calculation compares the current volume with the volume "n"
  * periods ago.
  */
-public class ROCVIndicator extends CachedIndicator<Num> {
+public class ROCVIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final Num hundred;

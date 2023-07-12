@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Pivot Point indicator.
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school:
  *      pivotpoints</a>
  */
-public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
+public class PivotPointIndicator extends AbstractIndicator<Num> {
 
     private final TimeLevel timeLevel;
 

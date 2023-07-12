@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
 
@@ -52,13 +53,13 @@ public class ATRIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public ATRIndicator(TRIndicator tr, int barCount) {
-        super(tr.getBarSeries());
+        super(tr.getBarSeries(), new BaseIndicatorValueCache<>(tr.getBarSeries()));
         this.trIndicator = tr;
         this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
     }
 
     @Override
-    public Num getValue(int index) {
+    public Num calculate(int index) {
         return averageTrueRangeIndicator.getValue(index);
     }
 

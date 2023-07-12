@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * True range indicator.
  */
-public class TRIndicator extends CachedIndicator<Num> {
+public class TRIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.

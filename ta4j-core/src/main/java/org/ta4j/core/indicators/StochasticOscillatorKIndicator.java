@@ -25,17 +25,14 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
+import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator K.
  */
-public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
+public class StochasticOscillatorKIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -69,7 +66,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
      */
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,
             LowPriceIndicator lowPriceIndicator) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;

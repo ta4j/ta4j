@@ -24,14 +24,14 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Accumulation-distribution indicator.
  */
-public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
+public class AccumulationDistributionIndicator extends AbstractIndicator<Num> {
 
     private final CloseLocationValueIndicator clvIndicator;
 

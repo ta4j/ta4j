@@ -26,9 +26,7 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -46,11 +44,11 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class IndicatorCacheTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public CachedIndicatorTest(Function<Number, Num> numFunction) {
+    public IndicatorCacheTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -187,7 +185,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void getCachedValuesTest() {
         var barSeries = new MockBarSeries(numFunction);
         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
-        var cachedValues = smaIndicator.getCachedValues();
+        var cachedValues = smaIndicator.getCache().getValues();
 
         assertTrue(cachedValues.isEmpty());
 
@@ -203,6 +201,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         var key = barSeries.getBar(1).getEndTime();
         assertThrows(UnsupportedOperationException.class, () -> cachedValues.put(key, numOf(1000)));
         assertThrows(UnsupportedOperationException.class, () -> cachedValues.remove(key));
+
+        smaIndicator.clearCache();
+
+        assertTrue(smaIndicator.getCache().getValues().isEmpty());
     }
 
 }

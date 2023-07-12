@@ -23,17 +23,18 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.num.NaN.NaN;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.
@@ -44,7 +45,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
  *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
-public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
+public class ParabolicSarIndicator extends AbstractIndicator<Num> {
 
     private final LowPriceIndicator lowPriceIndicator;
     private final HighPriceIndicator highPriceIndicator;
@@ -92,7 +93,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * @param increment the increment step (usually 0.02)
      */
     public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
-        super(series);
+        super(series, new BaseIndicatorValueCache<>(series));
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.maxAcceleration = maxA;

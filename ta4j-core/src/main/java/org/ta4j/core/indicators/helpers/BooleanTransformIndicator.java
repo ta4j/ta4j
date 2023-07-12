@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * Transforms any decimal indicator to a boolean indicator by using common
  * logical operators.
  */
-public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
+public class BooleanTransformIndicator extends AbstractIndicator<Boolean> {
 
     /**
      * Select the type for transformation.
@@ -125,7 +125,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      * @param type        the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
-        super(indicator);
+        super(indicator.getBarSeries());
         this.indicator = indicator;
         this.coefficient = coefficient;
         this.type = type;
@@ -139,7 +139,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      * @param type      the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
-        super(indicator);
+        super(indicator.getBarSeries());
         this.indicator = indicator;
         this.simpleType = type;
         this.coefficient = null;

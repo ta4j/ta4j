@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * PriceVariation = currentBarClosePrice / previousBarClosePrice
  * </pre>
  */
-public class PriceVariationIndicator extends CachedIndicator<Num> {
+public class PriceVariationIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.

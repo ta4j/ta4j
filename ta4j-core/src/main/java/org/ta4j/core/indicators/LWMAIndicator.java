@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
  *      https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp</a>
  */
-public class LWMAIndicator extends CachedIndicator<Num> {
+public class LWMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

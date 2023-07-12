@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +36,7 @@ import org.ta4j.core.num.Num;
  * if the indicator value of the current bar is greater than the indicator value
  * of the previous bar (otherwise, {@link Num#zero()} is returned).
  */
-public class GainIndicator extends CachedIndicator<Num> {
+public class GainIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
@@ -45,7 +46,7 @@ public class GainIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public GainIndicator(Indicator<Num> indicator) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
     }
 

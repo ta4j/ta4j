@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Pivot Point indicator.
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
+public class DeMarkPivotPointIndicator extends AbstractIndicator<Num> {
 
     private final TimeLevel timeLevel;
     private final Num two;

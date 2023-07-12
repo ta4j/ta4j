@@ -24,12 +24,13 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
  * WMA indicator.
  */
-public class WMAIndicator extends CachedIndicator<Num> {
+public class WMAIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> indicator;
@@ -41,7 +42,7 @@ public class WMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public WMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
         this.indicator = indicator;
         this.barCount = barCount;
     }

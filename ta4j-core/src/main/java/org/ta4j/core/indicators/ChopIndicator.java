@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -52,7 +53,7 @@ import org.ta4j.core.num.Num;
  *          calculations this indicator converts {@link Num Decimal /BigDecimal}
  *          to to {@link Double double}
  */
-public class ChopIndicator extends CachedIndicator<Num> {
+public class ChopIndicator extends AbstractIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
     private final int timeFrame;
@@ -70,7 +71,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
      *                    '100'
      */
     public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
-        super(barSeries);
+        super(barSeries, new BaseIndicatorValueCache<>(barSeries));
         this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
         this.hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
         this.lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);

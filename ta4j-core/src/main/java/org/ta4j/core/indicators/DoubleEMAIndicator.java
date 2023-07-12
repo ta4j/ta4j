@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
  *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
  */
-public class DoubleEMAIndicator extends CachedIndicator<Num> {
+public class DoubleEMAIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final EMAIndicator ema;

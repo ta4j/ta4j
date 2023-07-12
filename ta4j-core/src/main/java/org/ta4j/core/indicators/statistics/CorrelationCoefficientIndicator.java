@@ -24,7 +24,8 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
-public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
+public class CorrelationCoefficientIndicator extends AbstractIndicator<Num> {
 
     private final VarianceIndicator variance1;
     private final VarianceIndicator variance2;
@@ -48,7 +49,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * @param barCount   the time frame
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1);
+        super(indicator1, new BaseIndicatorValueCache<>(indicator1.getBarSeries()));
         this.variance1 = new VarianceIndicator(indicator1, barCount);
         this.variance2 = new VarianceIndicator(indicator2, barCount);
         this.covariance = new CovarianceIndicator(indicator1, indicator2, barCount);

@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 
 /**
  * Constant indicator.
@@ -43,12 +44,12 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
      * @param t      the constant value
      */
     public ConstantIndicator(BarSeries series, T t) {
-        super(series);
+        super(series, new NoIndicatorValueCache<>());
         this.value = t;
     }
 
     @Override
-    public T getValue(int index) {
+    public T calculate(int index) {
         return value;
     }
 
