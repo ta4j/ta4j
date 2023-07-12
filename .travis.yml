@@ -6,7 +6,7 @@ services:
   - xvfb
 
 jdk:
-  - openjdk8
+  - openjdk11
 
 script:
   - mvn -B formatter:validate license:check test
