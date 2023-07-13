@@ -23,17 +23,16 @@
  */
 package org.ta4j.core.indicators.caching;
 
-import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface IndicatorValueCache<T> {
+public interface IndicatorValueCache<V> {
 
-    T get(ZonedDateTime endTime, Function<ZonedDateTime, T> mappingFunction);
+    V get(CacheKeyHolder key, Function<CacheKeyHolder, V> mappingFunction);
 
-    void put(ZonedDateTime endTime, T result);
+    void put(CacheKeyHolder key, V result);
 
-    Map<ZonedDateTime, T> getValues();
+    Map<Object, V> getValues();
 
     void clear();
 }

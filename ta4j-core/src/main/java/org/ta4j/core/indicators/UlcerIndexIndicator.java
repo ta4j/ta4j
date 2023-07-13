@@ -51,7 +51,7 @@ public class UlcerIndexIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public UlcerIndexIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
         this.zero = zero();

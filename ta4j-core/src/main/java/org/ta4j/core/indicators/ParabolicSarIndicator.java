@@ -23,16 +23,14 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -93,7 +91,7 @@ public class ParabolicSarIndicator extends AbstractIndicator<Num> {
      * @param increment the increment step (usually 0.02)
      */
     public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.maxAcceleration = maxA;

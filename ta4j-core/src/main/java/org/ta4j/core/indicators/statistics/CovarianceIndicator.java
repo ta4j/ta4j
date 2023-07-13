@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.statistics;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -48,7 +47,7 @@ public class CovarianceIndicator extends AbstractIndicator<Num> {
      * @param barCount   the time frame
      */
     public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1, new BaseIndicatorValueCache<>(indicator1.getBarSeries()));
+        super(indicator1);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;

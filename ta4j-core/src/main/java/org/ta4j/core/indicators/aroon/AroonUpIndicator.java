@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.aroon;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
@@ -55,7 +54,7 @@ public class AroonUpIndicator extends AbstractIndicator<Num> {
      * @param barCount           the time frame
      */
     public AroonUpIndicator(Indicator<Num> highPriceIndicator, int barCount) {
-        super(highPriceIndicator, new BaseIndicatorValueCache<>(highPriceIndicator.getBarSeries()));
+        super(highPriceIndicator);
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
         this.hundred = hundred();

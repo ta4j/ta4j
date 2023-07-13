@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.SumIndicator;
 import org.ta4j.core.num.Num;
 
@@ -63,7 +62,7 @@ public class CoppockCurveIndicator extends AbstractIndicator<Num> {
      * @param wmaBarCount      the time frame (for WMA)
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
                 new ROCIndicator(indicator, shortRoCBarCount));
         this.wma = new WMAIndicator(sum, wmaBarCount);

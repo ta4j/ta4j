@@ -71,7 +71,7 @@ public class DPOIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
-        super(price, new BaseIndicatorValueCache<>(price.getBarSeries()));
+        super(price);
         int timeFrame = barCount / 2 + 1;
         final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
         final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,

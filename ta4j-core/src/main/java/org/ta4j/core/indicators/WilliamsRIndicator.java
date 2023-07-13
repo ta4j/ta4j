@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.num.Num;
 
@@ -65,7 +64,7 @@ public class WilliamsRIndicator extends AbstractIndicator<Num> {
      */
     public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount,
             HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
-        super(closePriceIndicator, new BaseIndicatorValueCache<>(closePriceIndicator.getBarSeries()));
+        super(closePriceIndicator);
         this.closePriceIndicator = closePriceIndicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;

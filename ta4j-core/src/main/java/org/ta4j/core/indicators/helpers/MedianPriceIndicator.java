@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.helpers;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,7 +46,7 @@ public class MedianPriceIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public MedianPriceIndicator(BarSeries series) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
     }
 
     @Override

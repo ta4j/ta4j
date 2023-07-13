@@ -53,7 +53,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
      * @param transformation a {@link Function} describing the transformation
      */
     public TransformIndicator(Indicator<Num> indicator, UnaryOperator<Num> transformation) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.indicator = indicator;
         this.transformationFunction = transformation;
     }

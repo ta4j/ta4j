@@ -25,6 +25,8 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.IndicatorValueCacheConfig;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,7 +43,7 @@ public class OnBalanceVolumeIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public OnBalanceVolumeIndicator(BarSeries series) {
-        super(series);
+        super(series, new NativeRecursiveIndicatorValueCache<>(new IndicatorValueCacheConfig(series.getMaximumBarCount())));
     }
 
     @Override

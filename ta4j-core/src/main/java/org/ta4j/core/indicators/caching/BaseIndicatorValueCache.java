@@ -23,18 +23,18 @@
  */
 package org.ta4j.core.indicators.caching;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import org.ta4j.core.BarSeries;
-
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Function;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
-public class BaseIndicatorValueCache<T> implements IndicatorValueCache<T> {
+public class BaseIndicatorValueCache<V> implements IndicatorValueCache<V> {
 
-    private final Cache<ZonedDateTime, T> cache;
+    private final Cache<ZonedDateTime, V> cache;
 
     public BaseIndicatorValueCache(BarSeries series) {
         this(new IndicatorValueCacheConfig(series.getMaximumBarCount()));
@@ -45,22 +45,24 @@ public class BaseIndicatorValueCache<T> implements IndicatorValueCache<T> {
     }
 
     @Override
-    public T get(ZonedDateTime endTime, Function<ZonedDateTime, T> mappingFunction) {
-        T value = cache.getIfPresent(endTime);
+    public V get(CacheKeyHolder keyHolder, Function<CacheKeyHolder, V> mappingFunction) {
+        Bar bar = keyHolder.getBar();
+        ZonedDateTime endTime = bar.getEndTime();
+        V value = cache.getIfPresent(endTime);
         if (value == null) {
-            value = mappingFunction.apply(endTime);
+            value = mappingFunction.apply(keyHolder);
             cache.put(endTime, value);
         }
         return value;
     }
 
     @Override
-    public void put(ZonedDateTime endTime, T result) {
-        cache.put(endTime, result);
+    public void put(CacheKeyHolder keyHolder, V result) {
+        cache.put(keyHolder.getBar().getEndTime(), result);
     }
 
     @Override
-    public Map<ZonedDateTime, T> getValues() {
+    public Map<Object, V> getValues() {
         return Collections.unmodifiableMap(cache.asMap());
     }
 

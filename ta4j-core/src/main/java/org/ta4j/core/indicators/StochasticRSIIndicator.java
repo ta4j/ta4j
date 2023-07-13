@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
@@ -75,7 +74,7 @@ public class StochasticRSIIndicator extends AbstractIndicator<Num> {
      * @param barCount     the time frame for {@link #minRsi} and {@link #maxRsi}
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
-        super(rsiIndicator, new BaseIndicatorValueCache<>(rsiIndicator.getBarSeries()));
+        super(rsiIndicator);
         this.rsi = rsiIndicator;
         this.minRsi = new LowestValueIndicator(rsiIndicator, barCount);
         this.maxRsi = new HighestValueIndicator(rsiIndicator, barCount);

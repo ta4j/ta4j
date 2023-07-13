@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -51,7 +50,7 @@ public class CCIIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame (normally 20)
      */
     public CCIIndicator(BarSeries series, int barCount) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         this.factor = numOf(0.015);
         this.typicalPriceInd = new TypicalPriceIndicator(series);
         this.smaInd = new SMAIndicator(typicalPriceInd, barCount);

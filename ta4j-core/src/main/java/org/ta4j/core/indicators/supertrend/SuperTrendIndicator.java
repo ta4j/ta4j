@@ -27,7 +27,6 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -58,7 +57,7 @@ public class SuperTrendIndicator extends AbstractIndicator<Num> {
      *                   {@link #superTrendLowerBandIndicator}
      */
     public SuperTrendIndicator(final BarSeries series, int barCount, final Double multiplier) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
         this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
         this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);

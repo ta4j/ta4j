@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
@@ -47,7 +46,7 @@ public class HMAIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.barCount = barCount;
 
         WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);

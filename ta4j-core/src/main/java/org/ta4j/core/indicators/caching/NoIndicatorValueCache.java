@@ -23,25 +23,24 @@
  */
 package org.ta4j.core.indicators.caching;
 
-import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Function;
 
-public class NoIndicatorValueCache<T> implements IndicatorValueCache<T> {
+public class NoIndicatorValueCache<V> implements IndicatorValueCache<V> {
 
     @Override
-    public T get(ZonedDateTime endTime, Function<ZonedDateTime, T> mappingFunction) {
-        return mappingFunction.apply(endTime);
+    public V get(CacheKeyHolder key, Function<CacheKeyHolder, V> mappingFunction) {
+        return mappingFunction.apply(key);
     }
 
     @Override
-    public void put(ZonedDateTime endTime, T result) {
+    public void put(CacheKeyHolder bar, V result) {
         // do nothing
     }
 
     @Override
-    public Map<ZonedDateTime, T> getValues() {
+    public Map<Object, V> getValues() {
         return Collections.emptyMap();
     }
 

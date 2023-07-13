@@ -46,7 +46,7 @@ public class StandardDeviationIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.variance = new VarianceIndicator(indicator, barCount);
     }
 

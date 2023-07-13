@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,7 +44,7 @@ public class SumIndicator extends AbstractIndicator<Num> {
     @SafeVarargs
     public SumIndicator(Indicator<Num>... operands) {
         // TODO: check if first series is equal to the other ones
-        super(operands[0], new BaseIndicatorValueCache<>(operands[0].getBarSeries()));
+        super(operands[0]);
         this.operands = operands;
     }
 

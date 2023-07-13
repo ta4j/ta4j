@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -71,7 +70,7 @@ public class IchimokuSenkouSpanBIndicator extends AbstractIndicator<Num> {
      * @param offset   displacement on the chart
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         this.lineIndicator = new IchimokuLineIndicator(series, barCount);
         this.offset = offset;
     }

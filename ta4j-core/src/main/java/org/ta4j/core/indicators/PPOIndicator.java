@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -61,7 +60,7 @@ public class PPOIndicator extends AbstractIndicator<Num> {
      * @param longBarCount  the long time frame
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term barCount must be greater than short term barCount");
         }

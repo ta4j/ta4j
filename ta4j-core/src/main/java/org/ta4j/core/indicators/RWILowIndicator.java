@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -46,7 +45,7 @@ public class RWILowIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public RWILowIndicator(BarSeries series, int barCount) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         this.barCount = barCount;
     }
 

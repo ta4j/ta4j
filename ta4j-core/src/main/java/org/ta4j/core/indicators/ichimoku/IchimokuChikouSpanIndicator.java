@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -61,7 +60,7 @@ public class IchimokuChikouSpanIndicator extends AbstractIndicator<Num> {
      * @param timeDelay the time delay (usually 26)
      */
     public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
-        super(series, new BaseIndicatorValueCache<>(series));
+        super(series);
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.timeDelay = timeDelay;
     }

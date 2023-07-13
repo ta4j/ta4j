@@ -27,7 +27,6 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -58,7 +57,7 @@ public class SuperTrendLowerBandIndicator extends AbstractIndicator<Num> {
      */
     public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
             final Double multiplier) {
-        super(barSeries, new BaseIndicatorValueCache<>(barSeries));
+        super(barSeries);
         this.atrIndicator = atrIndicator;
         this.multiplier = numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);

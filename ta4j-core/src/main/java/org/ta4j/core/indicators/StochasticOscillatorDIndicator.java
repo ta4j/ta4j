@@ -49,7 +49,7 @@ public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public StochasticOscillatorDIndicator(Indicator<Num> indicator) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.indicator = indicator;
     }
 

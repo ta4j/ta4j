@@ -43,7 +43,7 @@ public class StandardErrorIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.barCount = barCount;
         this.sdev = new StandardDeviationIndicator(indicator, barCount);
     }

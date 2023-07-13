@@ -47,7 +47,7 @@ public class RSIIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
     }

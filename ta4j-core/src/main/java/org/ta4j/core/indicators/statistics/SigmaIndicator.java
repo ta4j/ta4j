@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.statistics;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -49,7 +48,7 @@ public class SigmaIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {
-        super(ref, new BaseIndicatorValueCache<>(ref.getBarSeries()));
+        super(ref);
         this.ref = ref;
         this.barCount = barCount;
         this.mean = new SMAIndicator(ref, barCount);

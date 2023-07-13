@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.BaseCacheKeyHolder;
 import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
 import org.ta4j.core.indicators.caching.IndicatorValueCache;
 import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
@@ -95,7 +96,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         }
 
         final Bar bar = series.getBar(index);
-        return cache.get(bar.getEndTime(), (endTime) -> calculate(index));
+        return cache.get(BaseCacheKeyHolder.of(index, bar, series), (b) -> calculate(index));
     }
 
     /**

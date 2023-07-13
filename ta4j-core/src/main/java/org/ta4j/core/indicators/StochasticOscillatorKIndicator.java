@@ -66,7 +66,7 @@ public class StochasticOscillatorKIndicator extends AbstractIndicator<Num> {
      */
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,
             LowPriceIndicator lowPriceIndicator) {
-        super(indicator, new BaseIndicatorValueCache<>(indicator.getBarSeries()));
+        super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;

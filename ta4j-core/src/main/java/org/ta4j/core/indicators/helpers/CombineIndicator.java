@@ -23,13 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
-import org.ta4j.core.num.Num;
-
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Combine indicator.
@@ -55,7 +53,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
     public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
             BinaryOperator<Num> combination) {
         // TODO check both indicators use the same series/num function
-        super(indicatorLeft, new BaseIndicatorValueCache<>(indicatorLeft.getBarSeries()));
+        super(indicatorLeft);
         this.indicatorLeft = indicatorLeft;
         this.indicatorRight = indicatorRight;
         this.combineFunction = combination;
