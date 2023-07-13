@@ -43,7 +43,8 @@ public class OnBalanceVolumeIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public OnBalanceVolumeIndicator(BarSeries series) {
-        super(series, new NativeRecursiveIndicatorValueCache<>(new IndicatorValueCacheConfig(series.getMaximumBarCount())));
+        super(series,
+                new NativeRecursiveIndicatorValueCache<>(new IndicatorValueCacheConfig(series.getMaximumBarCount())));
     }
 
     @Override
