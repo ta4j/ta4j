@@ -26,7 +26,6 @@ package ta4jexamples.analysis;
 import java.text.DecimalFormat;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
@@ -36,6 +35,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
