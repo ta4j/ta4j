@@ -23,11 +23,10 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
+import java.util.List;
 import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
 
 import static org.ta4j.core.num.NaN.NaN;
 

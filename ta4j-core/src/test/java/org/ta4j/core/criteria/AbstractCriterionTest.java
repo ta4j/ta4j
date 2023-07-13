@@ -26,7 +26,6 @@ package org.ta4j.core.criteria;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.AnalysisCriterion;

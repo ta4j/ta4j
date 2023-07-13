@@ -23,13 +23,6 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -39,7 +32,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.IntStream;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,6 +45,8 @@ import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
+
+import static org.junit.Assert.*;
 
 public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 

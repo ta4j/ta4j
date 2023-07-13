@@ -23,9 +23,8 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-
 import java.util.Arrays;
+import org.ta4j.core.TradingRecord;
 
 /**
  * Satisfied when any of the specified {@code indexes} match the current bar

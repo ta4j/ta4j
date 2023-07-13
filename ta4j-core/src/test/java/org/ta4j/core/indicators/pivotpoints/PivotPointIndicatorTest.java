@@ -23,29 +23,20 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_1;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_2;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_3;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_1;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_2;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_3;
-import static org.ta4j.core.indicators.pivotpoints.TimeLevel.DAY;
-import static org.ta4j.core.indicators.pivotpoints.TimeLevel.MONTH;
-import static org.ta4j.core.indicators.pivotpoints.TimeLevel.WEEK;
-import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
-import static org.ta4j.core.num.NaN.NaN;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.*;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.*;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class PivotPointIndicatorTest {
 

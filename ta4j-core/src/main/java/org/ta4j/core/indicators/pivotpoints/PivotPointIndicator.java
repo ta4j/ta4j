@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
+import java.time.temporal.IsoFields;
+import java.util.ArrayList;
+import java.util.List;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
-
-import java.time.temporal.IsoFields;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.ta4j.core.num.NaN.NaN;
 

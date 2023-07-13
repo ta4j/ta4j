@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,7 +48,7 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
      * @param barCount  the time frame
      */
     public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, new NativeRecursiveIndicatorValueCache<>(indicator));
         this.indicator = indicator;
         this.barCount = barCount;
         this.k = numOf(2).dividedBy(numOf(barCount + 1));

@@ -23,22 +23,17 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.function.Function;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
-
-import java.util.function.Function;
-
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
 
 public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 

@@ -23,14 +23,13 @@
  */
 package org.ta4j.core;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Allows backtesting multiple strategies and comparing them to find out which

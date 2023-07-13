@@ -96,7 +96,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         }
 
         final Bar bar = series.getBar(index);
-        return cache.get(BaseCacheKeyHolder.of(index, bar, series), (b) -> calculate(index));
+        return cache.get(BaseCacheKeyHolder.of(index, bar, series), (b) -> calculate(b.getIndex()));
     }
 
     /**

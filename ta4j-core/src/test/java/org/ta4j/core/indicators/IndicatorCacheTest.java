@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Arrays;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
@@ -33,10 +36,6 @@ import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
-import java.util.Arrays;
-import java.util.function.Function;
-import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;

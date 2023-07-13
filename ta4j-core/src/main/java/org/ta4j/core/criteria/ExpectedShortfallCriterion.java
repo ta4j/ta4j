@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.Collections;
+import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
-
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Expected Shortfall criterion, returned in decimal format.

@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.num.Num;
 
@@ -134,7 +135,7 @@ public class FisherIndicator extends AbstractIndicator<Num> {
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, final double alphaD, final double betaD,
             final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
-        super(ref);
+        super(ref, new NativeRecursiveIndicatorValueCache<>(ref));
         this.ref = ref;
         this.gamma = numOf(gammaD);
         this.delta = numOf(deltaD);
@@ -147,7 +148,7 @@ public class FisherIndicator extends AbstractIndicator<Num> {
         final Indicator<Num> periodLow = new LowestValueIndicator(
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
-        this.intermediateValue = new AbstractIndicator<Num>(ref) {
+        this.intermediateValue = new AbstractIndicator<>(ref) {
 
             @Override
             protected Num calculate(int index) {

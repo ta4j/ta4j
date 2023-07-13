@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,7 +46,7 @@ public class PVIIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public PVIIndicator(BarSeries series) {
-        super(series);
+        super(series, new NativeRecursiveIndicatorValueCache<>(series));
     }
 
     @Override

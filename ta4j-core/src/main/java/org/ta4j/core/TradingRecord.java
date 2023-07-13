@@ -23,11 +23,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.num.Num;
-
 import java.io.Serializable;
 import java.util.List;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 

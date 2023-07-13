@@ -23,10 +23,9 @@
  */
 package org.ta4j.core;
 
+import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
 
 /**
  * An analysis criterion. It can be used to:

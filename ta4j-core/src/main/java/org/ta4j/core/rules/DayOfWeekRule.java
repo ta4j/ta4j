@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.DateTimeIndicator;
-
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
  * Satisfied when the "day of the week" value of the {@link DateTimeIndicator}

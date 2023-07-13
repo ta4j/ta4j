@@ -4,11 +4,20 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 
 public class NativeRecursiveIndicatorValueCache<T> extends NativeIndicatorValueCache<T>{
 
     private static final Logger log = LoggerFactory.getLogger(NativeRecursiveIndicatorValueCache.class);
     private static final int RECURSION_THRESHOLD = 100;
+
+    public NativeRecursiveIndicatorValueCache(Indicator<T> indicator) {
+        this(new IndicatorValueCacheConfig(indicator.getBarSeries().getMaximumBarCount()));
+    }
+
+    public NativeRecursiveIndicatorValueCache(BarSeries barSeries) {
+        this(new IndicatorValueCacheConfig(barSeries.getMaximumBarCount()));
+    }
 
     public NativeRecursiveIndicatorValueCache(IndicatorValueCacheConfig indicatorValueCacheConfig) {
         super(indicatorValueCacheConfig);

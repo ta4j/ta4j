@@ -23,12 +23,11 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.DateTimeIndicator;
-
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
  * Satisfied when the "local time" value of the {@link DateTimeIndicator} is

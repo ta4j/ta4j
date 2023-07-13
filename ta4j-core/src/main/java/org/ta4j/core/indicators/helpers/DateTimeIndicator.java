@@ -23,12 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
-
-import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 /**
  * DateTime indicator.

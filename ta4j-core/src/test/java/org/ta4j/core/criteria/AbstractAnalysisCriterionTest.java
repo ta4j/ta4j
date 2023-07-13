@@ -23,12 +23,9 @@
  */
 package org.ta4j.core.criteria;
 
-import static junit.framework.TestCase.assertEquals;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeriesManager;
@@ -40,6 +37,8 @@ import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 

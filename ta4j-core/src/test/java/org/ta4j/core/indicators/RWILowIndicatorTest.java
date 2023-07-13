@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-
 import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 /**
  * Testing the RWILowIndicator

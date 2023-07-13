@@ -23,11 +23,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
+import org.ta4j.core.num.Num;
 
 /**
  * A builder to build a new {@link BaseBar} with conversion from a

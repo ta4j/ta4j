@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -41,7 +42,7 @@ public class AccumulationDistributionIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public AccumulationDistributionIndicator(BarSeries series) {
-        super(series);
+        super(series, new NativeRecursiveIndicatorValueCache<>(series));
         this.clvIndicator = new CloseLocationValueIndicator(series);
     }
 

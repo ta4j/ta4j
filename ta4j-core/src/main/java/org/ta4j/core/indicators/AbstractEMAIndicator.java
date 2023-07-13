@@ -24,6 +24,8 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.IndicatorValueCacheConfig;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,7 +45,7 @@ public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
      * @param multiplier the multiplier
      */
     protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
-        super(indicator);
+        super(indicator, new NativeRecursiveIndicatorValueCache<>(new IndicatorValueCacheConfig(indicator.getBarSeries().getMaximumBarCount())));
         this.indicator = indicator;
         this.barCount = barCount;
         this.multiplier = numOf(multiplier);

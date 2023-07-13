@@ -23,14 +23,11 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.num.NaN.NaN;
-
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class TradingRecordTest {
 

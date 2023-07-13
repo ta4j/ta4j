@@ -23,12 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,6 +31,10 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 /**
  * The Class KAMAIndicatorTest.
