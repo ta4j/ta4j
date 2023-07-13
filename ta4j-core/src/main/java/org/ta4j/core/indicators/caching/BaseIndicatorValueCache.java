@@ -41,7 +41,11 @@ public class BaseIndicatorValueCache<V> implements IndicatorValueCache<V> {
     }
 
     public BaseIndicatorValueCache(IndicatorValueCacheConfig cacheConfig) {
-        cache = Caffeine.newBuilder().maximumSize(cacheConfig.getMaximumSize()).build();
+        if (cacheConfig.getMaximumSize() == Integer.MAX_VALUE) {
+            cache = Caffeine.newBuilder().build();
+        } else {
+            cache = Caffeine.newBuilder().maximumSize(cacheConfig.getMaximumSize()).build();
+        }
     }
 
     @Override

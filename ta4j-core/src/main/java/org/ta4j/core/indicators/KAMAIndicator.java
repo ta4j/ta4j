@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -50,7 +51,7 @@ public class KAMAIndicator extends AbstractIndicator<Num> {
      * @param barCountSlow           the time frame slow (usually 30)
      */
     public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
-        super(price);
+        super(price, new NativeRecursiveIndicatorValueCache<>(price));
         this.price = price;
         this.barCountEffectiveRatio = barCountEffectiveRatio;
         this.fastest = numOf(2).dividedBy(numOf(barCountFast + 1));

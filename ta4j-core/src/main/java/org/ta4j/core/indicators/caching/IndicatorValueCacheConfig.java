@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.caching;
 
 public class IndicatorValueCacheConfig {
 
-    private int maximumSize;
+    private final int maximumSize;
 
     public IndicatorValueCacheConfig(int maximumSize) {
         this.maximumSize = maximumSize;
