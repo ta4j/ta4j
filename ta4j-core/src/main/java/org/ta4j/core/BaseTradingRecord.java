@@ -26,6 +26,7 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;

@@ -24,6 +24,7 @@
 package org.ta4j.core.aggregator;
 
 import java.util.List;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;

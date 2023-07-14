@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+
 import org.ta4j.core.num.Num;
 
 /**

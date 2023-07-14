@@ -27,8 +27,10 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Function;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 

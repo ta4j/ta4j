@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -31,10 +33,9 @@ import java.text.ParseException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Representation of arbitrary precision {@link BigDecimal}. A {@code Num}

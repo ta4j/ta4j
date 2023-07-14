@@ -26,6 +26,7 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;

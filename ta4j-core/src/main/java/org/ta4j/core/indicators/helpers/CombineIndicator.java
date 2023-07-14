@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;

@@ -25,6 +25,7 @@ package org.ta4j.core.rules;
 
 import java.util.Arrays;
 import java.util.LinkedList;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.rules.helper.ChainLink;

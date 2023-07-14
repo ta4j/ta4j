@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
 import org.ta4j.core.num.Num;
 
 /**

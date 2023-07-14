@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;

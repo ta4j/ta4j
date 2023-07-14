@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.numeric;
 
 import java.util.function.UnaryOperator;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;

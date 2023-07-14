@@ -24,6 +24,7 @@
 package org.ta4j.core.rules;
 
 import java.util.Arrays;
+
 import org.ta4j.core.TradingRecord;
 
 /**

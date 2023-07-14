@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.caching;
 
 import java.util.function.Function;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;

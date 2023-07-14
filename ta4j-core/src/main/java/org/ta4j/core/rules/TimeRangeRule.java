@@ -26,6 +26,7 @@ package org.ta4j.core.rules;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 

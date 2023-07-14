@@ -26,6 +26,7 @@ package org.ta4j.core.indicators;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;

@@ -25,6 +25,7 @@ package org.ta4j.core.rules.helper;
 
 import java.io.Serializable;
 import java.util.Objects;
+
 import org.ta4j.core.Rule;
 
 /**
