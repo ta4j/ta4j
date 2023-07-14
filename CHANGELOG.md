@@ -59,6 +59,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **NumIndicator** to calculate any `Num`-value for a `Bar`
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
