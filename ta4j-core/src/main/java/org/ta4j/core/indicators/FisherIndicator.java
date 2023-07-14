@@ -55,6 +55,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     private final Num densityFactor;
     private final Num gamma;
     private final Num delta;
+    private final Num one;
 
     /**
      * Constructor.
@@ -143,6 +144,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         this.gamma = numOf(gammaD);
         this.delta = numOf(deltaD);
         this.densityFactor = numOf(densityFactorD);
+        this.one = one();
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
@@ -192,7 +194,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
-        Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
+        Num term1 = numOf((Math.log(one.plus(value).dividedBy(one.minus(value)).doubleValue())));
         Num term2 = getValue(index - 1);
         return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
     }
