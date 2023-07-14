@@ -112,8 +112,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         // the internal calculations until the previous index will fill the
         // required maps for the acceleration factor, the trend direction and the
         // last extreme value
-        for(int i = getBarSeries().getBeginIndex(); i < index; i++) {
-             calculateInternal(i);
+        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+            calculateInternal(i);
         }
 
         return calculateInternal(index);
