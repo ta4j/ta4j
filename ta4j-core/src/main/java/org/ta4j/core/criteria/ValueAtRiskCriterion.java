@@ -54,11 +54,11 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position != null && position.isClosed()) {
-            Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
-            return calculateVaR(returns, confidence);
+        if (position == null || !position.isClosed()) {
+            return series.zero();
         }
-        return series.numOf(0);
+        Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+        return calculateVaR(returns, confidence);
     }
 
     @Override
@@ -75,9 +75,13 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
      * @return the relative Value at Risk
      */
     private static Num calculateVaR(Returns returns, double confidence) {
-        Num zero = returns.numOf(0);
+        Num zero = returns.zero();
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
+        if (returnRates.isEmpty()) {
+            return zero;
+        }
+
         Num valueAtRisk = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
