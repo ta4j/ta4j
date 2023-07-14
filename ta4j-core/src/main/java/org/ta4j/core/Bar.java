@@ -134,32 +134,6 @@ public interface Bar extends Serializable {
      *
      * @param tradeVolume the traded volume
      * @param tradePrice  the actual price per asset
-     * @param numFunction the numbers precision
-     * @deprecated use corresponding function of {@link BarSeries}
-     */
-    @Deprecated
-    default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
-        addTrade(numFunction.apply(tradeVolume), numFunction.apply(tradePrice));
-    }
-
-    /**
-     * Adds a trade and updates the close price at the end of the bar period.
-     *
-     * @param tradeVolume the traded volume
-     * @param tradePrice  the actual price per asset
-     * @param numFunction the numbers precision
-     * @deprecated use corresponding function of {@link BarSeries}
-     */
-    @Deprecated
-    default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {
-        addTrade(numFunction.apply(new BigDecimal(tradeVolume)), numFunction.apply(new BigDecimal(tradePrice)));
-    }
-
-    /**
-     * Adds a trade and updates the close price at the end of the bar period.
-     *
-     * @param tradeVolume the traded volume
-     * @param tradePrice  the actual price per asset
      */
     void addTrade(Num tradeVolume, Num tradePrice);
 
