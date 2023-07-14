@@ -14,6 +14,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
 - **UnstableIndicator** moved to package **`indicators/helpers`**
+- **BarSeriesManager** updated to use **`TradeOnNextOpenModel`** by default, which opens new trades at index `t + 1` at the open price.
+  - For strategies require the previous behaviour, i.e. trades seconds or minutes before the closing prices, **`TradeOnCurerentCloseModel`** can be passed to **BarSeriesManager**
+    - For example:
+      - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
+      - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
+- **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -60,6 +66,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
 
 ### Fixed
