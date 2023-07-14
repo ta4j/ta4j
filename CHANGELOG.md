@@ -39,7 +39,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
-- Delete `.travis.yml` as this project is already using "Github Actions".
+- Delete `.travis.yml` as this project is managed by "Github actions".
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
