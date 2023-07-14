@@ -49,7 +49,7 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     /**
-     * Standard Fibonacci factors
+     * Standard Fibonacci factors.
      */
     public enum FibonacciFactor {
         FACTOR_1(0.382), FACTOR_2(0.618), FACTOR_3(1);

@@ -43,9 +43,7 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /**
-     * List of cached results.
-     */
+    /** List of cached results. */
     private final List<T> results;
 
     /**
@@ -57,12 +55,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Constructor.
      *
-     * @param series the related bar series
+     * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
         int limit = series.getMaximumBarCount();
-        results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
     }
 
     /**

@@ -13,19 +13,32 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
+- **UnstableIndicator** moved to package **`indicators/helpers`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
+- **ProfitCriterion** fixed excludeCosts functionality as it was reversed
+- **LossCriterion** fixed excludeCosts functionality as it was reversed
+- **PerformanceReportGenerator** fixed netProfit and netLoss calculations to include costs
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
-- **BarSeriesManager** add `holdingTransaction
+- **BarSeriesManager** add **`holdingTransaction`**
 - **BacktestExecutor** evaluates strategies in parallel when possible
 - **CachedIndicator** synchronize on getValue()
-
+- **BaseBar** defaults to **`DecimalNum`** type in all constructors
+- updated pom.xml: slf4j-api to 2.0.7
+- updated pom.xml: org.apache.poi to 5.2.3
+- updated pom.xml: maven-jar-plugin to 3.3.0
+- add `final` to properties where possible
+- improved javadoc
+- **SuperTrendIndicator**,**SuperTrendUpperIndicator**,**SuperTrendLowerIndicator**: optimized calculation
+- **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
+- add missing `@Override` annotation
 
 ### Removed/Deprecated
+- removed **Serializable** from `CostModel`
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
@@ -44,6 +57,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **StandardErrorCriterion**
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
+- added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex

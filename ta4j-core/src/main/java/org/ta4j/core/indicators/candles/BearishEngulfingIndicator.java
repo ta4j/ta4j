@@ -39,7 +39,7 @@ public class BearishEngulfingIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      *
-     * @param series a bar series
+     * @param series the bar series
      */
     public BearishEngulfingIndicator(BarSeries series) {
         super(series);

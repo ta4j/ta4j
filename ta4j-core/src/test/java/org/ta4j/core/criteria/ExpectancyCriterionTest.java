@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 public class ExpectancyCriterionTest extends AbstractCriterionTest {
 
     public ExpectancyCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ExpectancyCriterion(), numFunction);
+        super(params -> new ExpectancyCriterion(), numFunction);
     }
 
     @Test

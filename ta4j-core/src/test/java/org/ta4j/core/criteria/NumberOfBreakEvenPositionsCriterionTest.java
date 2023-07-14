@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfBreakEvenPositionsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfBreakEvenPositionsCriterion(), numFunction);
+        super(params -> new NumberOfBreakEvenPositionsCriterion(), numFunction);
     }
 
     @Test

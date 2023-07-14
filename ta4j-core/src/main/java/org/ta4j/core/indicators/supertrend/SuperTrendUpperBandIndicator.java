@@ -30,17 +30,33 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
+/**
+ * The upper band of the SuperTrend indicator.
+ */
 public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
+
     private final ATRIndicator atrIndicator;
     private final Num multiplier;
     private final MedianPriceIndicator medianPriceIndicator;
 
+    /**
+     * Constructor with {@code multiplier} = 3.
+     * 
+     * @param barSeries the bar series
+     */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
-        this(barSeries, new ATRIndicator(barSeries, 10), 3);
+        this(barSeries, new ATRIndicator(barSeries, 10), 3d);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param barSeries    the bar series
+     * @param atrIndicator the {@link #ATRIndicator}
+     * @param multiplier   the multiplier
+     */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
-            final Integer multiplier) {
+            final Double multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
         this.multiplier = numOf(multiplier);
@@ -49,20 +65,16 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
 
     @Override
     protected Num calculate(int index) {
-
-        Num currentBasic = this.medianPriceIndicator.getValue(index)
-                .plus(this.multiplier.multipliedBy(this.atrIndicator.getValue(index)));
-
+        Num currentBasic = medianPriceIndicator.getValue(index)
+                .plus(multiplier.multipliedBy(atrIndicator.getValue(index)));
         if (index == 0)
             return currentBasic;
 
         Bar bar = getBarSeries().getBar(index - 1);
+        Num previousValue = this.getValue(index - 1);
 
-        if (currentBasic.isLessThan(this.getValue(index - 1))
-                || bar.getClosePrice().isGreaterThan(this.getValue(index - 1)))
-            return currentBasic;
-        else
-            return this.getValue(index - 1);
+        return currentBasic.isLessThan(previousValue) || bar.getClosePrice().isGreaterThan(previousValue) ? currentBasic
+                : previousValue;
     }
 
     @Override

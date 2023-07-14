@@ -31,34 +31,31 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * A trailing stop-loss rule
+ * A trailing stop-loss rule.
  *
+ * <p>
  * Satisfied when the price reaches the trailing loss threshold.
  */
 public class TrailingStopLossRule extends AbstractRule {
 
-    /**
-     * The price indicator
-     */
+    /** The price indicator. */
     private final Indicator<Num> priceIndicator;
 
-    /** The barCount */
+    /** The barCount. */
     private final int barCount;
 
-    /** the loss-distance as percentage */
+    /** the loss-distance as percentage. */
     private final Num lossPercentage;
 
-    /**
-     * the current stop loss price activation
-     */
+    /** The current stop loss price activation. */
     private Num currentStopLossLimitActivation;
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator      the (close price) indicator
      * @param lossPercentage the loss percentage
-     * @param barCount       number of bars to look back for the calculation
+     * @param barCount       the number of bars to look back for the calculation
      */
     public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
         this.priceIndicator = indicator;
@@ -68,7 +65,7 @@ public class TrailingStopLossRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator      the (close price) indicator
      * @param lossPercentage the loss percentage
      */

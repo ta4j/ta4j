@@ -30,18 +30,20 @@ import org.ta4j.core.num.Num;
 /**
  * Cross indicator.
  *
- * Boolean indicator which monitors two-indicators crossings.
+ * <p>
+ * Boolean indicator that monitors the crossing of two indicators.
  */
 public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /** Upper indicator */
     private final Indicator<Num> up;
+
     /** Lower indicator */
     private final Indicator<Num> low;
 
     /**
      * Constructor.
-     * 
+     *
      * @param up  the upper indicator
      * @param low the lower indicator
      */
@@ -75,16 +77,12 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
         return 0;
     }
 
-    /**
-     * @return the initial lower indicator
-     */
+    /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
         return low;
     }
 
-    /**
-     * @return the initial upper indicator
-     */
+    /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
         return up;
     }

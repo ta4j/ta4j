@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class AverageProfitCriterionTest extends AbstractCriterionTest {
 
     public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageProfitCriterion(), numFunction);
+        super(params -> new AverageProfitCriterion(), numFunction);
     }
 
     @Test

@@ -35,6 +35,11 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
     private final CloseLocationValueIndicator clvIndicator;
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public AccumulationDistributionIndicator(BarSeries series) {
         super(series);
         this.clvIndicator = new CloseLocationValueIndicator(series);

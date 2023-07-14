@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Linearly Weighted Moving Average (LWMA).
+ * Linearly Weighted Moving Average (LWMA) indicator.
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
@@ -39,6 +39,12 @@ public class LWMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Num zero = zero();
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
+     */
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;

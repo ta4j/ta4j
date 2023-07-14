@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Intraday Intensity Index
+ * Intraday Intensity Index.
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
@@ -45,6 +45,11 @@ public class IIIIndicator extends CachedIndicator<Num> {
     private final VolumeIndicator volumeIndicator;
     private final Num two;
 
+    /**
+     * Constructor.
+     * 
+     * @param series the bar series
+     */
     public IIIIndicator(BarSeries series) {
         super(series);
         this.closePriceIndicator = new ClosePriceIndicator(series);
