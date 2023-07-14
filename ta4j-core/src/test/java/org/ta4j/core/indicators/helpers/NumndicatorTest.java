@@ -23,49 +23,38 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
+import java.util.function.Function;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * True range indicator.
- * 
- * <pre>
- * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
- * </pre>
- */
-public class TRIndicator extends CachedIndicator<Num> {
+public class NumndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    /**
-     * Constructor.
-     * 
-     * @param series the bar series
-     */
-    public TRIndicator(BarSeries series) {
-        super(series);
+    private NumIndicator closePrice;
+    private BarSeries barSeries;
+
+    public NumndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
+    @Before
+    public void setUp() {
+        barSeries = new MockBarSeries(numFunction);
+        closePrice = new NumIndicator(barSeries, Bar::getClosePrice);
+    }
 
-        if (index == 0) {
-            return hl.abs();
+    @Test
+    public void indicatorShouldRetrieveBarClosePrice() {
+        for (int i = 0; i < 10; i++) {
+            assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
         }
-
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
-        return hl.abs().max(hc.abs()).max(cl.abs());
-
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return 0;
     }
 }
