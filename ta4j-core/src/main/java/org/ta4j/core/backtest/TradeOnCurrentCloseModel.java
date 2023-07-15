@@ -21,29 +21,26 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.LossCriterion;
-import org.ta4j.core.criteria.pnl.ProfitCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Generates a {@link PerformanceReport} based on the provided trading record
- * and bar series.
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Executes trades on the current bar being considered using the closing price.
+ * 
+ * This is used for strategies that explicitly trade just before the bar closes
+ * at index `t`, in order to execute new or close existing trades as close as
+ * possible to the closing price.
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class TradeOnCurrentCloseModel implements TradeExecutionModel {
 
     @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new ProfitCriterion(false).calculate(series, tradingRecord);
-        final Num netLoss = new LossCriterion(false).calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
     }
+
 }
