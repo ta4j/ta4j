@@ -101,7 +101,17 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * @param i an index
+     * Gets the bar from {@link #getBarData()} with index {@code i}.
+     * 
+     * <p>
+     * The given {@code i} can return the same bar within the first range of indices
+     * due to {@link #setMaximumBarCount(int)}, for example: If you fill a BarSeries
+     * with 30 bars and then apply a {@code maximumBarCount} of 10 bars, the first
+     * 20 bars will be removed from the BarSeries. The indices going further from 0
+     * to 29 remain but return the same bar from 0 to 20. The remaining 9 bars are
+     * returned from index 21.
+     * 
+     * @param i the index
      * @return the bar at the i-th position
      */
     Bar getBar(int i);
@@ -183,8 +193,9 @@ public interface BarSeries extends Serializable {
      *
      * If a new bar is added to the series such that the number of bars will exceed
      * the maximum bar count, then the FIRST bar in the series is automatically
-     * removed, ensuring that the maximum bar count is not exceeded.
-     *
+     * removed, ensuring that the maximum bar count is not exceeded. The indices of
+     * the bar series do not change.
+     * 
      * @param maximumBarCount the maximum bar count
      */
     void setMaximumBarCount(int maximumBarCount);
