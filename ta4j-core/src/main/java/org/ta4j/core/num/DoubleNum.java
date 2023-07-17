@@ -57,6 +57,30 @@ public class DoubleNum implements Num {
     }
 
     /**
+     * Returns a {@code Num} version of the given {@code Number}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static DoubleNum valueOf(Number i) {
+        return new DoubleNum(i.doubleValue());
+    }
+
+    /**
+     * Returns a {@code DoubleNum} version of the given {@code DecimalNum}.
+     * 
+     * <p>
+     * <b>Warning:</b> The {@code Num} returned may have inaccuracies.
+     *
+     * @param val the number
+     * @return the {@code Num} whose value is equal to or approximately equal to the
+     *         value of {@code val}.
+     */
+    public static DoubleNum valueOf(DecimalNum val) {
+        return valueOf(val.toString());
+    }
+
+    /**
      * Returns a {@code Num} version of the given {@code int}.
      *
      * @param val the number
@@ -98,16 +122,6 @@ public class DoubleNum implements Num {
      */
     public static DoubleNum valueOf(float val) {
         return new DoubleNum((double) val);
-    }
-
-    /**
-     * Returns a {@code Num} version of the given {@code Number}.
-     *
-     * @param val the number
-     * @return the {@code Num}
-     */
-    public static DoubleNum valueOf(Number i) {
-        return new DoubleNum(i.doubleValue());
     }
 
     @Override
