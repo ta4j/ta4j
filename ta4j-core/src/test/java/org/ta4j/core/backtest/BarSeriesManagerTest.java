@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -34,7 +34,13 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Position;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -68,7 +74,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
-        manager = new BarSeriesManager(seriesForRun);
+        manager = new BarSeriesManager(seriesForRun, new TradeOnCurrentCloseModel());
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstableBars(2); // Strategy would need a real test class
@@ -77,7 +83,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Test
     public void runOnWholeSeries() {
         BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager = new BarSeriesManager(series);
+        manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         List<Position> allPositions = manager.run(strategy).getPositions();
         assertEquals(2, allPositions.size());
     }
@@ -85,7 +91,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Test
     public void runOnWholeSeriesWithAmount() {
         BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager = new BarSeriesManager(series);
+        manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         List<Position> allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
 
         assertEquals(2, allPositions.size());
@@ -163,7 +169,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager = new BarSeriesManager(series);
+        manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
