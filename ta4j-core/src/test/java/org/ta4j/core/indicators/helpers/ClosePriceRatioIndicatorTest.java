@@ -23,44 +23,42 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * Loss indicator.
- * 
- * <p>
- * Returns the difference of the indicator value of a bar and its previous bar
- * if the indicator value of the current bar is less than the indicator value of
- * the previous bar (otherwise, {@link Num#zero()} is returned).
- */
-public class LossIndicator extends CachedIndicator<Num> {
+public class ClosePriceRatioIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final Indicator<Num> indicator;
+    private ClosePriceRatioIndicator variationIndicator;
 
-    /**
-     * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
-     */
-    public LossIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
+    private BarSeries barSeries;
+
+    public ClosePriceRatioIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return zero();
+    @Before
+    public void setUp() {
+        barSeries = new MockBarSeries(numFunction);
+        variationIndicator = new ClosePriceRatioIndicator(barSeries);
+    }
+
+    @Test
+    public void indicatorShouldRetrieveBarVariation() {
+        assertNumEquals(1, variationIndicator.getValue(0));
+        for (int i = 1; i < 10; i++) {
+            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
+            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
         }
-        Num actualValue = indicator.getValue(index);
-        Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return 0;
     }
 }

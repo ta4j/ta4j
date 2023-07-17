@@ -29,8 +29,8 @@ import java.util.logging.Logger;
 
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.backtest.BarSeriesManager;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;

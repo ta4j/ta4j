@@ -21,43 +21,28 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
+package org.ta4j.core.backtest;
 
-import java.time.DayOfWeek;
-import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.DateTimeIndicator;
+import org.ta4j.core.num.Num;
 
 /**
- * Satisfied when the "day of the week" value of the {@link DateTimeIndicator}
- * matches the specified set of {@link DayOfWeek}.
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Used for backtesting. Instructs {@link BarSeriesManager} on how to execute
+ * trades.
  */
-public class DayOfWeekRule extends AbstractRule {
-
-    private final Set<DayOfWeek> daysOfWeekSet;
-    private final DateTimeIndicator timeIndicator;
+public interface TradeExecutionModel {
 
     /**
-     * Constructor.
+     * Executes a trade in the given {@code tradingRecord}.
      * 
-     * @param timeIndicator the {@link DateTimeIndicator}
-     * @param daysOfWeek    the days of the week
+     * @param index         the trade index from {@code barSeries}
+     * @param tradingRecord the trading record to place the trade
+     * @param barSeries     the bar series
+     * @param amount        the trade amount
      */
-    public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
-        this.timeIndicator = timeIndicator;
-        this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
-    }
+    void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount);
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        ZonedDateTime dateTime = timeIndicator.getValue(index);
-        final boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
-    }
 }
