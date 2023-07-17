@@ -23,49 +23,42 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * True range indicator.
- * 
- * <pre>
- * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
- * </pre>
- */
-public class TRIndicator extends CachedIndicator<Num> {
+public class ClosePriceRatioIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    /**
-     * Constructor.
-     * 
-     * @param series the bar series
-     */
-    public TRIndicator(BarSeries series) {
-        super(series);
+    private ClosePriceRatioIndicator variationIndicator;
+
+    private BarSeries barSeries;
+
+    public ClosePriceRatioIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
+    @Before
+    public void setUp() {
+        barSeries = new MockBarSeries(numFunction);
+        variationIndicator = new ClosePriceRatioIndicator(barSeries);
+    }
 
-        if (index == 0) {
-            return hl.abs();
+    @Test
+    public void indicatorShouldRetrieveBarVariation() {
+        assertNumEquals(1, variationIndicator.getValue(0));
+        for (int i = 1; i < 10; i++) {
+            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
+            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
         }
-
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
-        return hl.abs().max(hc.abs()).max(cl.abs());
-
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return 0;
     }
 }
