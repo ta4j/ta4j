@@ -21,46 +21,28 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.backtest;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Loss indicator.
- * 
- * <p>
- * Returns the difference of the indicator value of a bar and its previous bar
- * if the indicator value of the current bar is less than the indicator value of
- * the previous bar (otherwise, {@link Num#zero()} is returned).
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Used for backtesting. Instructs {@link BarSeriesManager} on how to execute
+ * trades.
  */
-public class LossIndicator extends CachedIndicator<Num> {
-
-    private final Indicator<Num> indicator;
+public interface TradeExecutionModel {
 
     /**
-     * Constructor.
+     * Executes a trade in the given {@code tradingRecord}.
      * 
-     * @param indicator the {@link Indicator}
+     * @param index         the trade index from {@code barSeries}
+     * @param tradingRecord the trading record to place the trade
+     * @param barSeries     the bar series
+     * @param amount        the trade amount
      */
-    public LossIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
-    }
+    void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount);
 
-    @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return zero();
-        }
-        Num actualValue = indicator.getValue(index);
-        Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return 0;
-    }
 }

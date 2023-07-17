@@ -21,46 +21,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.backtest;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Loss indicator.
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Executes trades on the next bar at the open price.
  * 
- * <p>
- * Returns the difference of the indicator value of a bar and its previous bar
- * if the indicator value of the current bar is less than the indicator value of
- * the previous bar (otherwise, {@link Num#zero()} is returned).
+ * This is used for strategies that explicitly trade just after a new bar opens
+ * at bar index `t + 1`, in order to execute new or close existing trades as
+ * close as possible to the opening price.
  */
-public class LossIndicator extends CachedIndicator<Num> {
-
-    private final Indicator<Num> indicator;
-
-    /**
-     * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
-     */
-    public LossIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
-    }
+public class TradeOnNextOpenModel implements TradeExecutionModel {
 
     @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return zero();
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+        int indexOfExecutedBar = index + 1;
+        if (indexOfExecutedBar <= barSeries.getEndIndex()) {
+            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
         }
-        Num actualValue = indicator.getValue(index);
-        Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
     }
 
-    @Override
-    public int getUnstableBars() {
-        return 0;
-    }
 }

@@ -133,15 +133,16 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * Warning: should be used carefully!
-     *
-     * Returns the raw bar data. It means that it returns the current List object
+     * Returns the raw bar data, i.e. it returns the current list object, which is
      * used internally to store the {@link Bar bars}. It may be:
      *
      * <ul>
-     * <li>a shortened bar list if a maximum bar count has been set.
+     * <li>a shortened bar list if a {@code maximumBarCount} has been set.
      * <li>an extended bar list if it is a constrained bar series.
      * </ul>
+     * 
+     * <p>
+     * <b>Warning:</b> This method should be used carefully!
      *
      * @return the raw bar data
      */
@@ -195,16 +196,17 @@ public interface BarSeries extends Serializable {
     int getRemovedBarsCount();
 
     /**
-     * Adds a bar at the end of the series.
+     * Adds the {@code bar} at the end of the series.
      *
-     * Begin index set to 0 if it wasn't initialized.<br>
-     * End index set to 0 if it wasn't initialized, or incremented if it matches the
-     * end of the series.<br>
+     * <p>
+     * The {@code beginIndex} is set to {@code 0} if not already initialized.<br>
+     * The {@code endIndex} is set to {@code 0} if not already initialized, or
+     * incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
      *
      * @param bar the bar to be added
-     * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
-     *          bar data directly
+     * @apiNote to add bar data directly you can use
+     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
      * @see BarSeries#setMaximumBarCount(int)
      */
     default void addBar(Bar bar) {
@@ -212,28 +214,38 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * Adds a bar at the end of the series.
+     * Adds the {@code bar} at the end of the series.
      *
-     * Begin index set to 0 if it wasn't initialized.<br>
-     * End index set to 0 if it wasn't initialized, or incremented if it matches the
-     * end of the series.<br>
+     * <p>
+     * The {@code beginIndex} is set to {@code 0} if not already initialized.<br>
+     * The {@code endIndex} is set to {@code 0} if not already initialized, or
+     * incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
      *
      * @param bar     the bar to be added
-     * @param replace true to replace the latest bar. Some exchange provide
-     *                continuous new bar data in the time period. (eg. 1s in 1m
-     *                Duration)<br>
-     * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
-     *          bar data directly
+     * @param replace true to replace the latest bar. Some exchanges continuously
+     *                provide new bar data in the respective period, e.g. 1 second
+     *                in 1 minute duration.
+     * @apiNote to add bar data directly you can use
+     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
      * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar, boolean replace);
 
     /**
-     * Adds a bar at the end of the series.
+     * Adds the {@code bar} at the end of the series.
+     * 
+     * <p>
+     * The {@code beginIndex} is set to {@code 0} if not already initialized.<br>
+     * The {@code endIndex} is set to {@code 0} if not already initialized, or
+     * incremented if it matches the end of the series.<br>
+     * Exceeding bars are removed.
      *
      * @param timePeriod the {@link Duration} of this bar
      * @param endTime    the {@link ZonedDateTime end time} of this bar
+     * @apiNote to add bar data directly you can use
+     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
+     * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Duration timePeriod, ZonedDateTime endTime);
 
