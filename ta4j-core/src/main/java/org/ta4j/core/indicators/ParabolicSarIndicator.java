@@ -59,7 +59,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code aF} = 0.02
      * <li>{@code maxA} = 0.2
@@ -102,13 +102,32 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        lastExtreme.clear();
+        lastAf.clear();
+        isUpTrendMap.clear();
+
+        // Caching of this indicator value calculation is essential for performance!
+        //
+        // clear the maps and recalculate the values for start to index
+        // the internal calculations until the previous index will fill the
+        // required maps for the acceleration factor, the trend direction and the
+        // last extreme value
+        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+            calculateInternal(i);
+        }
+
+        return calculateInternal(index);
+
+    }
+
+    private Num calculateInternal(int index) {
         Num sar = NaN;
         boolean is_up_trend;
 
         if (index == getBarSeries().getBeginIndex()) {
-            lastExtreme.put(0, getBarSeries().getBar(index).getClosePrice());
-            lastAf.put(0, zero());
-            isUpTrendMap.put(0, false);
+            lastExtreme.put(index, getBarSeries().getBar(index).getClosePrice());
+            lastAf.put(index, zero());
+            isUpTrendMap.put(index, false);
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
             is_up_trend = getBarSeries().getBar(index - 1)
@@ -119,11 +138,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             isUpTrendMap.put(index, is_up_trend);
             if (is_up_trend) { // up trend
                 sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1); // put the lowest low value of
-                                                                                          // two
+                // two
                 lastExtreme.put(index, new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1));
             } else { // down trend
                 sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1); // put the highest high
-                                                                                            // value of
+                // value of
                 lastExtreme.put(index, new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1));
             }
             return sar;
