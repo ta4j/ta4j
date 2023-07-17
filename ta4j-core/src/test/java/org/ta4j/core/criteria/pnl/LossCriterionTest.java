@@ -34,7 +34,6 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
@@ -45,6 +44,37 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
     public LossCriterionTest(Function<Number, Num> numFunction) {
         super(params -> new LossCriterion((boolean) params[0]), numFunction);
+    }
+
+    @Test
+    public void calculateComparingIncludingVsExcludingCosts() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        LinearTransactionCostModel transactionCost = new LinearTransactionCostModel(0.01);
+        ZeroCostModel holdingCost = new ZeroCostModel();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
+
+        // entry price = 100 (cost = 100*0.01 = 1) => netPrice = 101, grossPrice = 100
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
+        // exit price = 95 (cost = 95*0.01 = 0.95) => netPrice = 94.05, grossPrice = 95
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+
+        // entry price = 100 (cost = 100*0.01 = 1) => netPrice = 101, grossPrice = 100
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
+        // exit price = 70 (cost = 70*0.01 = 0.70) => netPrice = 69.3, grossPrice = 70
+        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+
+        // include costs, i.e. loss - costs:
+        // [(94.05 - 101)] + [(69.3 - 101)] = -6.95 + (-31.7) = -38.65 loss
+        // [(95 - 100)] + [(70 - 100)] = -5 + (-30) = -35 loss - 3.65 = -38.65 loss
+        AnalysisCriterion lossIncludingCosts = getCriterion(false);
+        assertNumEquals(-38.65, lossIncludingCosts.calculate(series, tradingRecord));
+
+        // exclude costs, i.e. costs are not contained:
+        // [(95 - 100)] + [(70 - 100)] = -5 + (-30) = -35 loss
+        AnalysisCriterion lossExcludingCosts = getCriterion(true);
+        assertNumEquals(-35, lossExcludingCosts.calculate(series, tradingRecord));
     }
 
     @Test
@@ -65,26 +95,6 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion loss = getCriterion(true);
         assertNumEquals(-35, loss.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateComparingIncludingVsExcludingCosts() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, new LinearTransactionCostModel(0.01),
-                new ZeroCostModel());
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
-        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
-                tradingRecord.getCurrentPosition().getEntry().getAmount());
-        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
-        ;
-        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
-                tradingRecord.getCurrentPosition().getEntry().getAmount());
-
-        AnalysisCriterion lossIncludingCosts = getCriterion(false);
-        assertNumEquals(-38.65, lossIncludingCosts.calculate(series, tradingRecord));
-
-        AnalysisCriterion lossExcludingCosts = getCriterion(true);
-        assertNumEquals(-35, lossExcludingCosts.calculate(series, tradingRecord));
     }
 
     @Test
