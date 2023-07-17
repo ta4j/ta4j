@@ -69,13 +69,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **IntraDayMomentumIndexIndicator**
 - added **ClosePriceDifferenceIndicator**
 - added **TimeSegmentedVolumeIndicator**
 - added `DecimalNum.valueOf(DoubleNum)` to convert a DoubleNum to a DecimalNum.
 - added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 - added "TradeExecutionModel" to modify trade execution during backtesting
-
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
+
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
