@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class StandardErrorCriterionTest extends AbstractCriterionTest {
 
     public StandardErrorCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> params.length == 2
+        super(params -> params.length == 2
                 ? new StandardErrorCriterion((AnalysisCriterion) params[0], (boolean) params[1])
                 : new StandardErrorCriterion((AnalysisCriterion) params[0]), numFunction);
     }

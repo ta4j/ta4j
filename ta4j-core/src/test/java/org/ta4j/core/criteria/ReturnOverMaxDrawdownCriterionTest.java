@@ -45,7 +45,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     private AnalysisCriterion rrc;
 
     public ReturnOverMaxDrawdownCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ReturnOverMaxDrawdownCriterion(), numFunction);
+        super(params -> new ReturnOverMaxDrawdownCriterion(), numFunction);
     }
 
     @Before

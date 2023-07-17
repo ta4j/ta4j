@@ -31,10 +31,11 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -50,7 +51,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ReturnCriterion(), numFunction);
+        super(params -> new ReturnCriterion(), numFunction);
     }
 
     @Before
@@ -73,7 +74,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
         MockBarSeries series = new MockBarSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
-        BarSeriesManager manager = new BarSeriesManager(series);
+        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }

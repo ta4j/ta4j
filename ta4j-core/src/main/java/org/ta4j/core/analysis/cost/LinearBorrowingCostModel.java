@@ -33,8 +33,6 @@ import org.ta4j.core.num.Num;
  */
 public class LinearBorrowingCostModel implements CostModel {
 
-    private static final long serialVersionUID = -2839623394737567618L;
-
     /** The slope of the linear model (fee per period). */
     private final double feePerPeriod;
 

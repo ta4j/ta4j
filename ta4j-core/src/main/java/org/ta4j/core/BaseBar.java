@@ -345,76 +345,46 @@ public class BaseBar implements Bar {
         return beginTime;
     }
 
-    /**
-     * @return the end timestamp of the bar period
-     */
     @Override
     public ZonedDateTime getEndTime() {
         return endTime;
     }
 
-    /**
-     * @return the open price of the bar period
-     */
     @Override
     public Num getOpenPrice() {
         return openPrice;
     }
 
-    /**
-     * @return the high price of the bar period
-     */
     @Override
     public Num getHighPrice() {
         return highPrice;
     }
 
-    /**
-     * @return the low price of the bar period
-     */
     @Override
     public Num getLowPrice() {
         return lowPrice;
     }
 
-    /**
-     * @return the close price of the bar period
-     */
     @Override
     public Num getClosePrice() {
         return closePrice;
     }
 
-    /**
-     * @return the total traded volume of the bar period
-     */
     @Override
     public Num getVolume() {
         return volume;
     }
 
-    /**
-     * @return the total traded amount (tradePrice x tradeVolume) of the bar period
-     */
     @Override
     public Num getAmount() {
         return amount;
     }
 
-    /**
-     * @return the number of trades of the bar period
-     */
     @Override
     public long getTrades() {
         return trades;
     }
 
-    /**
-     * Adds a trade at the end of the bar period.
-     *
-     * @param tradeVolume the traded volume
-     * @param tradePrice  the trade price per asset
-     */
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
         addPrice(tradePrice);

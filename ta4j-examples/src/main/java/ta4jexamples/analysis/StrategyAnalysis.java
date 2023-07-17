@@ -24,8 +24,8 @@
 package ta4jexamples.analysis;
 
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AverageReturnPerBarCriterion;
@@ -34,10 +34,10 @@ import org.ta4j.core.criteria.LinearTransactionCostCriterion;
 import org.ta4j.core.criteria.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.criteria.PositionsRatioCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;

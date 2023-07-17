@@ -73,10 +73,10 @@ public class Trade implements Serializable {
     }
 
     /** The type of the trade. */
-    private TradeType type;
+    private final TradeType type;
 
     /** The index the trade was executed. */
-    private int index;
+    private final int index;
 
     /** The trade price per asset. */
     private Num pricePerAsset;
@@ -88,7 +88,7 @@ public class Trade implements Serializable {
     private Num netPrice;
 
     /** The trade amount. */
-    private Num amount;
+    private final Num amount;
 
     /** The cost for executing the trade. */
     private Num cost;

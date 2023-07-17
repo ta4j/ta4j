@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
-    private ExternalIndicatorTest xls;
+    private final ExternalIndicatorTest xls;
     // private ExternalIndicatorTest sql;
 
     public RSIIndicatorTest(Function<Number, Num> numFunction) {

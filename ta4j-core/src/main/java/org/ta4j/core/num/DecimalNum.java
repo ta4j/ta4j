@@ -61,6 +61,11 @@ public final class DecimalNum implements Num {
 
     /**
      * Constructor.
+     * 
+     * <p>
+     * Constructs the most precise {@code Num}, because it converts a {@code String}
+     * to a {@code Num} with a precision of {@link #DEFAULT_PRECISION}; only a
+     * string parameter can accurately represent a value.
      *
      * @param val the string representation of the Num value
      */
@@ -71,8 +76,12 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Constructor. Above double precision, only String parameters can represent the
-     * value.
+     * Constructor.
+     * 
+     * <p>
+     * Constructs a more precise {@code Num} than from {@code double}, because it
+     * converts a {@code String} to a {@code Num} with a precision of
+     * {@code precision}; only a string parameter can accurately represent a value.
      *
      * @param val       the string representation of the Num value
      * @param precision the int precision of the Num value
@@ -114,9 +123,14 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code String}.
+     * 
+     * <p>
+     * Constructs the most precise {@code Num}, because it converts a {@code String}
+     * to a {@code Num} with a precision of {@link #DEFAULT_PRECISION}; only a
+     * string parameter can accurately represent a value.
      *
      * @param val the number
-     * @return the {@code Num}
+     * @return the {@code Num} with a precision of {@link #DEFAULT_PRECISION}
      * @throws NumberFormatException if {@code val} is {@code "NaN"}
      */
     public static DecimalNum valueOf(String val) {
@@ -127,11 +141,12 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Returns a {@code Num} version of the given {@code String} with a precision.
+     * Returns a {@code Num} version of the given {@code String} with a precision of
+     * {@code precision}.
      *
      * @param val       the number
      * @param precision the precision
-     * @return the {@code Num}
+     * @return the {@code Num} with a precision of {@code precision}
      * @throws NumberFormatException if {@code val} is {@code "NaN"}
      */
     public static DecimalNum valueOf(String val, int precision) {
@@ -139,6 +154,40 @@ public final class DecimalNum implements Num {
             throw new NumberFormatException();
         }
         return new DecimalNum(val, precision);
+    }
+
+    /**
+     * Returns a {@code Num} version of the given {@code Number}.
+     * 
+     * <p>
+     * Returns the most precise {@code Num}, because it first converts {@code val}
+     * to a {@code String} and then to a {@code Num} with a precision of
+     * {@link #DEFAULT_PRECISION}; only a string parameter can accurately represent
+     * a value.
+     *
+     * @param val the number
+     * @return the {@code Num} with a precision of {@link #DEFAULT_PRECISION}
+     * @throws NumberFormatException if {@code val} is {@code "NaN"}
+     */
+    public static DecimalNum valueOf(Number val) {
+        return valueOf(val.toString());
+    }
+
+    /**
+     * Returns a {@code DecimalNum} version of the given {@code DoubleNum}.
+     * 
+     * <p>
+     * Returns the most precise {@code Num}, because it first converts {@code val}
+     * to a {@code String} and then to a {@code Num} with a precision of
+     * {@link #DEFAULT_PRECISION}; only a string parameter can accurately represent
+     * a value.
+     *
+     * @param val the number
+     * @return the {@code Num} with a precision of {@link #DEFAULT_PRECISION}
+     * @throws NumberFormatException if {@code val} is {@code "NaN"}
+     */
+    public static DecimalNum valueOf(DoubleNum val) {
+        return valueOf(val.toString());
     }
 
     /**
@@ -209,6 +258,10 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code BigDecimal}.
+     * 
+     * <p>
+     * <b>Warning:</b> The {@code Num} returned may have inaccuracies because it
+     * only inherits the precision of {@code val}.
      *
      * @param val the number
      * @return the {@code Num}
@@ -219,7 +272,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code BigDecimal} with a
-     * precision.
+     * precision of {@code precision}.
      *
      * @param val       the number
      * @param precision the precision
@@ -227,30 +280,6 @@ public final class DecimalNum implements Num {
      */
     public static DecimalNum valueOf(BigDecimal val, int precision) {
         return new DecimalNum(val, precision);
-    }
-
-    /**
-     * Returns a {@code Num} version of the given {@code Num}.
-     *
-     * @param val the number
-     * @return the {@code Num}
-     */
-    public static DecimalNum valueOf(DecimalNum val) {
-        return val;
-    }
-
-    /**
-     * Returns a {@code Num} version of the given {@code Number}.
-     * 
-     * <p>
-     * <b>Warning:</b> It first converts {@code val} to a {@code String} and then to
-     * a {@code Num}.
-     *
-     * @param val the number
-     * @return the {@code Num}
-     */
-    public static DecimalNum valueOf(Number val) {
-        return new DecimalNum(val.toString());
     }
 
     @Override
@@ -312,8 +341,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this - augend)}, with rounding
      * according to the context settings.
      *
-     * @param subtrahend value to be subtracted from this {@code Num}.
-     * @return {@code this - subtrahend}, rounded as necessary
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -331,8 +358,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code this * multiplicand}, with
      * rounding according to the context settings.
      *
-     * @param multiplicand value to be multiplied by this {@code Num}.
-     * @return {@code this * multiplicand}, rounded as necessary
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -350,8 +375,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this / divisor)}, with rounding
      * according to the context settings.
      *
-     * @param divisor value by which this {@code Num} is to be divided.
-     * @return {@code this / divisor}, rounded as necessary
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -369,8 +392,6 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is {@code (this % divisor)}, with rounding
      * according to the context settings.
      *
-     * @param divisor value by which this {@code Num} is to be divided.
-     * @return {@code this % divisor}, rounded as necessary.
      * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
@@ -424,7 +445,6 @@ public final class DecimalNum implements Num {
         switch (comparedToZero) {
         case -1:
             return NaN;
-
         case 0:
             return DecimalNum.valueOf(0);
         }
