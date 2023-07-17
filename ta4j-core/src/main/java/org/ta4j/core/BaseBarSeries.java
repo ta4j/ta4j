@@ -218,25 +218,6 @@ public class BaseBarSeries implements BarSeries {
                 series.removedBarsCount, index);
     }
 
-    /**
-     * Returns a new {@code BaseBarSeries} that is a subset of {@code this}.
-     *
-     * <p>
-     * The new BaseBarSeries holds a copy of all {@link Bar bars} between
-     * <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive) of this
-     * BaseBarSeries. The indices of this BaseBarSeries and the new subset
-     * BaseBarSeries can be different. I. e. index 0 of the new BaseBarSeries will
-     * be index <tt>startIndex</tt> of this BaseBarSeries. If <tt>startIndex</tt> <
-     * this.seriesBeginIndex the new BaseBarSeries will start with the first
-     * available Bar of this BaseBarSeries. If <tt>endIndex</tt> >
-     * this.seriesEndIndex+1 the new BaseBarSeries will end at the last available
-     * Bar of this BaseBarSeries.
-     *
-     * @param startIndex the startIndex (inclusive)
-     * @param endIndex   the endIndex (exclusive)
-     * @return a new BarSeries with Bars from startIndex to endIndex-1
-     * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
-     */
     @Override
     public BaseBarSeries getSubSeries(int startIndex, int endIndex) {
         if (startIndex < 0) {
@@ -371,10 +352,9 @@ public class BaseBarSeries implements BarSeries {
     }
 
     /**
-     * @param bar the <code>Bar</code> to be added
-     * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num,
-     *          Num, Num, Num, Num)
-     * @throws NullPointerException if bar is null
+     * @apiNote to add bar data direclty you can use
+     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
+     * @throws NullPointerException if {@code bar} is {@code null}
      */
     @Override
     public void addBar(Bar bar, boolean replace) {
@@ -400,7 +380,7 @@ public class BaseBarSeries implements BarSeries {
 
         bars.add(bar);
         if (seriesBeginIndex == -1) {
-            // Begin index set to 0 only if it wasn't initialized
+            // The begin index is set to 0 if not already initialized:
             seriesBeginIndex = 0;
         }
         seriesEndIndex++;
@@ -458,7 +438,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     /**
-     * Removes the N first bars which exceed the maximum bar count.
+     * Removes the first N bars that exceed the {@link #maximumBarCount}.
      */
     private void removeExceedingBars() {
         int barCount = bars.size();
