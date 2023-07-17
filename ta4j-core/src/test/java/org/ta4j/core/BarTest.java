@@ -26,7 +26,6 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.ZoneId;
@@ -57,21 +56,20 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         bar = new BaseBar(Duration.ofHours(1), endTime, numFunction);
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void addTrades() {
 
-        bar.addTrade(3.0, 200.0, numFunction);
-        bar.addTrade(4.0, 201.0, numFunction);
-        bar.addTrade(2.0, 198.0, numFunction);
+        bar.addTrade(numOf(3.0), numOf(200.0));
+        bar.addTrade(numOf(4.0), numOf(201.0));
+        bar.addTrade(numOf(2.0), numOf(198.0));
 
         assertEquals(3, bar.getTrades());
-        assertNumEquals(3 * 200 + 4 * 201 + 2 * 198, bar.getAmount());
-        assertNumEquals(200, bar.getOpenPrice());
-        assertNumEquals(198, bar.getClosePrice());
-        assertNumEquals(198, bar.getLowPrice());
-        assertNumEquals(201, bar.getHighPrice());
-        assertNumEquals(9, bar.getVolume());
+        assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), bar.getAmount());
+        assertEquals(numOf(200), bar.getOpenPrice());
+        assertEquals(numOf(198), bar.getClosePrice());
+        assertEquals(numOf(198), bar.getLowPrice());
+        assertEquals(numOf(201), bar.getHighPrice());
+        assertEquals(numOf(9), bar.getVolume());
     }
 
     @Test

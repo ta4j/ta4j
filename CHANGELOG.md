@@ -51,6 +51,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
+- removed `@Deprecated Bar#addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction)`; use `Bar#addTrade(Num tradeVolume, Num tradePrice)` instead.
+- removed `@Deprecated Bar#addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction)`; use `Bar#addTrade(Num tradeVolume, Num tradePrice)` instead.
 - removed `DecimalNum.valueOf(DecimalNum)`
 - delete `.travis.yml` as this project is managed by "Github actions"
 
