@@ -230,7 +230,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the net profit of the position if it is closed.
+     * Calculates the net profit of the position if it is closed. The net profit
+     * includes any trading costs.
      *
      * @return the profit or loss of the position
      */
@@ -244,7 +245,7 @@ public class Position implements Serializable {
 
     /**
      * Calculates the net profit of the position. If it is open, calculates the
-     * profit until the final bar.
+     * profit until the final bar. The net profit includes any trading costs.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -259,7 +260,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross profit of the position if it is closed.
+     * Calculates the gross profit of the position if it is closed. The gross profit
+     * excludes any trading costs.
      *
      * @return the gross profit of the position
      */
@@ -272,7 +274,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross profit of the position.
+     * Calculates the gross profit of the position. The gross profit excludes any
+     * trading costs.
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
@@ -294,7 +297,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross return of the position if it is closed.
+     * Calculates the gross return of the position if it is closed. The gross return
+     * excludes any trading costs.
      *
      * @return the gross return of the position in percent
      */
@@ -308,7 +312,7 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross return of the position, if it exited at the provided
-     * price.
+     * price. The gross return excludes any trading costs.
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
@@ -321,6 +325,7 @@ public class Position implements Serializable {
     /**
      * Calculates the gross return of the position. If either the entry or exit
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
+     * The gross return excludes any trading costs.
      *
      * @param barSeries
      * @return the gross return in percent with entry and exit prices from the

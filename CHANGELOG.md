@@ -45,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 - add missing `@Override` annotation
 - **LossIndicator**: optimize calculation
+- **GainIndicator**: improved calculation
+
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
