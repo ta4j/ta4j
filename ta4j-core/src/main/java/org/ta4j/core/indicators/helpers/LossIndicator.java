@@ -54,11 +54,9 @@ public class LossIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return zero();
         }
-        if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index - 1).minus(indicator.getValue(index));
-        } else {
-            return zero();
-        }
+        Num actualValue = indicator.getValue(index);
+        Num previousValue = indicator.getValue(index - 1);
+        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
     }
 
     @Override
