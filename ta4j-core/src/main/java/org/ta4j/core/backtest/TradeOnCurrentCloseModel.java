@@ -21,51 +21,26 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.backtest;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * True range indicator.
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Executes trades on the current bar being considered using the closing price.
  * 
- * <pre>
- * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
- * </pre>
+ * This is used for strategies that explicitly trade just before the bar closes
+ * at index `t`, in order to execute new or close existing trades as close as
+ * possible to the closing price.
  */
-public class TRIndicator extends CachedIndicator<Num> {
-
-    /**
-     * Constructor.
-     * 
-     * @param series the bar series
-     */
-    public TRIndicator(BarSeries series) {
-        super(series);
-    }
+public class TradeOnCurrentCloseModel implements TradeExecutionModel {
 
     @Override
-    protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
-
-        if (index == 0) {
-            return hl.abs();
-        }
-
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
-        return hl.abs().max(hc.abs()).max(cl.abs());
-
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
     }
 
-    @Override
-    public int getUnstableBars() {
-        return 0;
-    }
 }
