@@ -24,6 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
+- catch NumberFormatException if `DecimalNum.valueOf(Number)` is `NaN`
 - **ProfitCriterion** fixed excludeCosts functionality as it was reversed
 - **LossCriterion** fixed excludeCosts functionality as it was reversed
 - **PerformanceReportGenerator** fixed netProfit and netLoss calculations to include costs
@@ -47,6 +48,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
+- removed `DecimalNum.valueOf(DecimalNum)`
 - delete `.travis.yml` as this project is managed by "Github actions"
 
 ### Added
@@ -69,7 +71,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
 - added **ClosePriceDifferenceIndicator**
 - added **TimeSegmentedVolumeIndicator**
+- added `DecimalNum.valueOf(DoubleNum)` to convert a DoubleNum to a DecimalNum.
+- added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 - added "TradeExecutionModel" to modify trade execution during backtesting
+
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
 
 ### Fixed
