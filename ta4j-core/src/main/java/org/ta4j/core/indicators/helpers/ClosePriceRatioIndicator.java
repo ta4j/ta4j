@@ -23,47 +23,52 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * True range indicator.
+ * Indicator that calculates the ratio between the current and previous close
+ * prices.
  * 
  * <pre>
- * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
+ * PriceVariation = currentBarClosePrice / previousBarClosePrice
  * </pre>
  */
-public class TRIndicator extends CachedIndicator<Num> {
+public class ClosePriceRatioIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
-    public TRIndicator(BarSeries series) {
+    public ClosePriceRatioIndicator(BarSeries series) {
         super(series);
     }
 
+    /**
+     * Calculates the ratio between the current and previous close prices.
+     *
+     * @param index the index of the current bar
+     * @return the ratio between the close prices
+     */
     @Override
     protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
+        // Get the close price of the previous bar
+        Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
 
-        if (index == 0) {
-            return hl.abs();
-        }
+        // Get the close price of the current bar
+        Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
 
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
-        return hl.abs().max(hc.abs()).max(cl.abs());
-
+        // Calculate the ratio between the close prices
+        return currentBarClosePrice.dividedBy(previousBarClosePrice);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This indicator is always stable, so it returns 0.
+     */
     @Override
     public int getUnstableBars() {
         return 0;
