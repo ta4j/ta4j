@@ -36,20 +36,20 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class ClosePriceRatioIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private PriceVariationIndicator variationIndicator;
+    private ClosePriceRatioIndicator variationIndicator;
 
     private BarSeries barSeries;
 
-    public PriceVariationIndicatorTest(Function<Number, Num> numFunction) {
+    public ClosePriceRatioIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
         barSeries = new MockBarSeries(numFunction);
-        variationIndicator = new PriceVariationIndicator(barSeries);
+        variationIndicator = new ClosePriceRatioIndicator(barSeries);
     }
 
     @Test

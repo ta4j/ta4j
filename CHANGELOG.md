@@ -44,6 +44,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **SuperTrendIndicator**,**SuperTrendUpperIndicator**,**SuperTrendLowerIndicator**: optimized calculation
 - **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 - add missing `@Override` annotation
+- **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
@@ -68,6 +69,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **ClosePriceDifferenceIndicator**
+- added **TimeSegmentedVolumeIndicator**
 - added `DecimalNum.valueOf(DoubleNum)` to convert a DoubleNum to a DecimalNum.
 - added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 - added "TradeExecutionModel" to modify trade execution during backtesting
