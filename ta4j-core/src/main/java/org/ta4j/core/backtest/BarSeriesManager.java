@@ -21,11 +21,15 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -46,18 +50,31 @@ public class BarSeriesManager {
     private final CostModel transactionCostModel;
     private final CostModel holdingCostModel;
 
+    /** The trade execution model to use */
+    private final TradeExecutionModel tradeExecutionModel;
+
     /**
-     * Constructor.
+     * Constructor with {@link #tradeExecutionModel} = {@link TradeOnNextOpenModel}.
      *
      * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
-        this(barSeries, new ZeroCostModel(), new ZeroCostModel());
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), new TradeOnNextOpenModel());
     }
 
     /**
      * Constructor.
-     *
+     * 
+     * @param barSeries           the bar series to be managed
+     * @param tradeExecutionModel the trade execution model to use
+     */
+    public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionModel) {
+        this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionModel);
+    }
+
+    /**
+     * Constructor with {@link #tradeExecutionModel} = {@link TradeOnNextOpenModel}.
+     * 
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding the asset (e.g.
@@ -67,6 +84,23 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
+        this.tradeExecutionModel = new TradeOnNextOpenModel();
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param barSeries            the bar series to be managed
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param tradeExecutionModel  the trade execution model to use
+     */
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
+            TradeExecutionModel tradeExecutionModel) {
+        this.barSeries = barSeries;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+        this.tradeExecutionModel = tradeExecutionModel;
     }
 
     /**
@@ -184,7 +218,7 @@ public class BarSeriesManager {
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+                tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
             }
         }
 
@@ -197,7 +231,7 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
+                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
                     break;
                 }
             }
