@@ -21,43 +21,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
+package org.ta4j.core.backtest;
 
-import java.time.DayOfWeek;
-import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.DateTimeIndicator;
+import org.ta4j.core.num.Num;
 
 /**
- * Satisfied when the "day of the week" value of the {@link DateTimeIndicator}
- * matches the specified set of {@link DayOfWeek}.
+ * An execution model for {@link BarSeriesManager} objects.
+ *
+ * Executes trades on the next bar at the open price.
+ * 
+ * This is used for strategies that explicitly trade just after a new bar opens
+ * at bar index `t + 1`, in order to execute new or close existing trades as
+ * close as possible to the opening price.
  */
-public class DayOfWeekRule extends AbstractRule {
+public class TradeOnNextOpenModel implements TradeExecutionModel {
 
-    private final Set<DayOfWeek> daysOfWeekSet;
-    private final DateTimeIndicator timeIndicator;
-
-    /**
-     * Constructor.
-     * 
-     * @param timeIndicator the {@link DateTimeIndicator}
-     * @param daysOfWeek    the days of the week
-     */
-    public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
-        this.timeIndicator = timeIndicator;
-        this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
-    }
-
-    /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        ZonedDateTime dateTime = timeIndicator.getValue(index);
-        final boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+        int indexOfExecutedBar = index + 1;
+        if (indexOfExecutedBar <= barSeries.getEndIndex()) {
+            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
+        }
     }
+
 }

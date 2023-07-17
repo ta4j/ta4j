@@ -23,42 +23,49 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Loss indicator.
- * 
- * <p>
- * Returns the difference of the indicator value of a bar and its previous bar
- * if the indicator value of the current bar is less than the indicator value of
- * the previous bar (otherwise, {@link Num#zero()} is returned).
+ * Indicator that calculates the difference between the close prices of the
+ * current bar and the previous bar.
  */
-public class LossIndicator extends CachedIndicator<Num> {
-
-    private final Indicator<Num> indicator;
+public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param indicator the {@link Indicator}
+     *
+     * @param series the bar series
      */
-    public LossIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
+    public ClosePriceDifferenceIndicator(BarSeries series) {
+        super(series);
     }
 
+    /**
+     * Calculates the difference between the close prices of the current bar and the
+     * previous bar.
+     *
+     * @param index the index of the current bar
+     * @return the difference between the close prices
+     */
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return zero();
-        }
-        Num actualValue = indicator.getValue(index);
-        Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
+        // Get the close price of the previous bar
+        Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
+
+        // Get the close price of the current bar
+        Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
+
+        // Calculate the difference between the close prices
+        return currentBarClosePrice.minus(previousBarClosePrice);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This indicator is always stable, so it returns 0.
+     */
     @Override
     public int getUnstableBars() {
         return 0;
