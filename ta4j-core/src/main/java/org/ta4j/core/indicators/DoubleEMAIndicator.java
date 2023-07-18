@@ -35,6 +35,7 @@ import org.ta4j.core.num.Num;
  */
 public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
+    private final Num two;
     private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;
@@ -47,6 +48,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.two = numOf(2);
         this.barCount = barCount;
         this.ema = new EMAIndicator(indicator, barCount);
         this.emaEma = new EMAIndicator(ema, barCount);
@@ -54,7 +56,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
+        return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
     }
 
     @Override
