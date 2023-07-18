@@ -37,6 +37,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
 - **WMAIndicator** improved calculation
+- **KSTIndicator** improved calculation
+- **RSIIndicator** simplify calculation
 - **FisherIndicator** improved calculation
 - **DoubleEMAIndicator** improved calculation
 - **CMOIndicator** improved calculation
