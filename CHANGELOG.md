@@ -36,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
+- **ZLEMAIndicator** improved calculation
 - **InPipeRule** improved calculation
 - updated pom.xml: slf4j-api to 2.0.7
 - updated pom.xml: org.apache.poi to 5.2.3
