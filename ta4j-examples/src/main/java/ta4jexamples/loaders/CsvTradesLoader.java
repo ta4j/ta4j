@@ -38,6 +38,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.num.Num;
 
 import com.opencsv.CSVReader;
 
@@ -97,7 +98,6 @@ public class CsvTradesLoader {
      * @param duration  the bar duration (in seconds)
      * @param lines     the csv data returned by CSVReader.readAll()
      */
-    @SuppressWarnings("deprecation")
     private static void buildSeries(BarSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,
             List<String[]> lines) {
 
@@ -117,9 +117,9 @@ public class CsvTradesLoader {
                 // if the trade happened during the bar
                 if (bar.inPeriod(tradeTimeStamp)) {
                     // add the trade to the bar
-                    double tradePrice = Double.parseDouble(tradeLine[1]);
-                    double tradeVolume = Double.parseDouble(tradeLine[2]);
-                    bar.addTrade(tradeVolume, tradePrice, series.function());
+                    Num tradePrice = series.numOf(Double.parseDouble(tradeLine[1]));
+                    Num tradeVolume = series.numOf(Double.parseDouble(tradeLine[2]));
+                    bar.addTrade(tradeVolume, tradePrice);
                 } else {
                     // the trade happened after the end of the bar
                     // go to the next bar but stay with the same trade (don't increment i)

@@ -36,6 +36,21 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
+- **WMAIndicator** improved calculation
+- **KSTIndicator** improved calculation
+- **RSIIndicator** simplify calculation
+- **FisherIndicator** improved calculation
+- **DoubleEMAIndicator** improved calculation
+- **CMOIndicator** improved calculation
+- **PearsonCorrelationIndicator** improved calculation
+- **PivotPoint**-Indicators improved calculations
+- **ValueAtRiskCriterion** improved calculation
+- **ExpectedShortfallCriterion** improved calculation
+- **SqnCriterion** improved calculation
+- **NumberOfBreakEvenPositionsCriterion** shorten code
+- **AverageReturnPerBarCriterion** improved calculation
+- **ZLEMAIndicator** improved calculation
+- **InPipeRule** improved calculation
 - updated pom.xml: slf4j-api to 2.0.7
 - updated pom.xml: org.apache.poi to 5.2.3
 - updated pom.xml: maven-jar-plugin to 3.3.0
@@ -45,10 +60,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 - add missing `@Override` annotation
 - **RecursiveCachedIndicator**: simplified code
+- **LossIndicator**: optimize calculation
+- **GainIndicator**: improved calculation
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
+- removed `@Deprecated Bar#addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction)`; use `Bar#addTrade(Num tradeVolume, Num tradePrice)` instead.
+- removed `@Deprecated Bar#addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction)`; use `Bar#addTrade(Num tradeVolume, Num tradePrice)` instead.
 - removed `DecimalNum.valueOf(DecimalNum)`
 - delete `.travis.yml` as this project is managed by "Github actions"
 

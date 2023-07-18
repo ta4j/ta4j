@@ -109,14 +109,16 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
         Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
         for (int i : barsOfPreviousPeriod) {
-            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
-            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+            Bar iBar = getBarSeries().getBar(i);
+            high = iBar.getHighPrice().max(high);
+            low = iBar.getLowPrice().min(low);
         }
 
-        if (fibReversalTyp == FibReversalTyp.RESISTANCE) {
-            return pivotPointIndicator.getValue(index).plus(fibonacciFactor.multipliedBy(high.minus(low)));
-        }
-        return pivotPointIndicator.getValue(index).minus(fibonacciFactor.multipliedBy(high.minus(low)));
+        Num pivotPointValue = pivotPointIndicator.getValue(index);
+        Num fibValue = fibonacciFactor.multipliedBy(high.minus(low));
+
+        return fibReversalTyp == FibReversalTyp.RESISTANCE ? pivotPointValue.plus(fibValue)
+                : pivotPointValue.minus(fibValue);
     }
 
     @Override

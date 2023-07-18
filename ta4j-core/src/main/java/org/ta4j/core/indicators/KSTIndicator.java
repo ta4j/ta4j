@@ -49,6 +49,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
     private final SMAIndicator RCMA2;
     private final SMAIndicator RCMA3;
     private final SMAIndicator RCMA4;
+    private final Num RCMA1_Multiplier = one();
+    private final Num RCMA2_Multiplier = numOf(2);
+    private final Num RCMA3_Multiplier = numOf(3);
+    private final Num RCMA4_Multiplier = numOf(4);
 
     /**
      * Constructor with:
@@ -95,15 +99,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num RCMA1Multiplier = one();
-        Num RCMA2Multiplier = numOf(2);
-        Num RCMA3Multiplier = numOf(3);
-        Num RCMA4Multiplier = numOf(4);
-
-        return ((RCMA1.getValue(index).multipliedBy(RCMA1Multiplier))
-                .plus(RCMA2.getValue(index).multipliedBy(RCMA2Multiplier))
-                .plus(RCMA3.getValue(index).multipliedBy(RCMA3Multiplier))
-                .plus(RCMA4.getValue(index).multipliedBy(RCMA4Multiplier)));
+        return ((RCMA1.getValue(index).multipliedBy(RCMA1_Multiplier))
+                .plus(RCMA2.getValue(index).multipliedBy(RCMA2_Multiplier))
+                .plus(RCMA3.getValue(index).multipliedBy(RCMA3_Multiplier))
+                .plus(RCMA4.getValue(index).multipliedBy(RCMA4_Multiplier)));
     }
 
     @Override

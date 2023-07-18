@@ -54,11 +54,9 @@ public class GainIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return zero();
         }
-        if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index).minus(indicator.getValue(index - 1));
-        } else {
-            return zero();
-        }
+        Num actualValue = indicator.getValue(index);
+        Num previousValue = indicator.getValue(index - 1);
+        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue) : zero();
     }
 
     @Override

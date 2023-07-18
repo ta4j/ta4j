@@ -58,11 +58,11 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position != null && position.getEntry() != null && position.getExit() != null) {
-            Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
-            return calculateES(returns, confidence);
+        if (position == null || position.getEntry() == null || position.getExit() == null) {
+            return series.zero();
         }
-        return series.zero();
+        Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+        return calculateES(returns, confidence);
     }
 
     @Override
@@ -82,26 +82,28 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         Num zero = returns.zero();
-        Num expectedShortfall = zero;
-        if (!returnRates.isEmpty()) {
-            // F(x_var) >= alpha (=1-confidence)
-            int nInBody = (int) (returns.getSize() * confidence);
-            int nInTail = returns.getSize() - nInBody;
-
-            // calculate average tail loss
-            Collections.sort(returnRates);
-            List<Num> tailEvents = returnRates.subList(0, nInTail);
-            Num sum = zero;
-            for (int i = 0; i < nInTail; i++) {
-                sum = sum.plus(tailEvents.get(i));
-            }
-            expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
-
-            // ES is non-positive
-            if (expectedShortfall.isGreaterThan(zero)) {
-                expectedShortfall = zero;
-            }
+        if (returnRates.isEmpty()) {
+            return zero;
         }
+        Num expectedShortfall = zero;
+        // F(x_var) >= alpha (=1-confidence)
+        int nInBody = (int) (returns.getSize() * confidence);
+        int nInTail = returns.getSize() - nInBody;
+
+        // calculate average tail loss
+        Collections.sort(returnRates);
+        List<Num> tailEvents = returnRates.subList(0, nInTail);
+        Num sum = zero;
+        for (int i = 0; i < nInTail; i++) {
+            sum = sum.plus(tailEvents.get(i));
+        }
+        expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
+
+        // ES is non-positive
+        if (expectedShortfall.isGreaterThan(zero)) {
+            expectedShortfall = zero;
+        }
+
         return expectedShortfall;
     }
 
