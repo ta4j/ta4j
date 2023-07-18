@@ -45,6 +45,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
     private final Num two;
+    private final Num four;
 
     /**
      * Constructor.
@@ -81,6 +82,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         super(series);
         this.timeLevel = timeLevelId;
         this.two = numOf(2);
+        this.four = numOf(4);
     }
 
     @Override
@@ -103,8 +105,9 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         Num low = bar.getLowPrice();
 
         for (int i : barsOfPreviousPeriod) {
-            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
-            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+            Bar iBar = getBarSeries().getBar(i);
+            high = iBar.getHighPrice().max(high);
+            low = iBar.getLowPrice().min(low);
         }
 
         Num x;
@@ -116,7 +119,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
             x = high.plus(low).plus(two.multipliedBy(close));
         }
 
-        return x.dividedBy(numOf(4));
+        return x.dividedBy(four);
     }
 
     /**
@@ -137,7 +140,6 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         final Bar currentBar = getBarSeries().getBar(index);
-
         // step back while bar-1 in same period (day, week, etc):
         while (index - 1 > getBarSeries().getBeginIndex()
                 && getPeriod(getBarSeries().getBar(index - 1)) == getPeriod(currentBar)) {
