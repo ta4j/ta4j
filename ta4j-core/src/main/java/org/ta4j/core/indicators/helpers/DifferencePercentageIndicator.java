@@ -89,8 +89,8 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        // calculate all the previous values to get the last notification
-        // for this index
+        // calculate all the previous values to get the correct
+        // last notification value for this index
         for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
             setLastNotification(i);
         }
@@ -100,13 +100,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         }
 
         Num changeFraction = value.dividedBy(lastNotification);
-        Num changePercentage = fractionToPercentage(changeFraction);
-
-        if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
-            lastNotification = value;
-        }
-
-        return changePercentage;
+        return fractionToPercentage(changeFraction);
     }
 
     public void setLastNotification(int index) {
