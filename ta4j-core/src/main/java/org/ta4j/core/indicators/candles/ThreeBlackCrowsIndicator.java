@@ -63,13 +63,13 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 3 || getBarSeries().getBar(index).isBullish()) {
+        if (getBarSeries().getBeginIndex() > (index - 3)) {
             // We need 4 candles: 1 white, 3 black
             return false;
         }
         int whiteCandleIndex = index - 3;
-        return isBlackCrow(index - 2, whiteCandleIndex) && isBlackCrow(index - 1, whiteCandleIndex)
-                && isBlackCrow(index, whiteCandleIndex);
+        return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2, whiteCandleIndex)
+                && isBlackCrow(index - 1, whiteCandleIndex) && isBlackCrow(index, whiteCandleIndex);
     }
 
     @Override
