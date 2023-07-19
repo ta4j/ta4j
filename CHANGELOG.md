@@ -36,6 +36,19 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator** synchronize on getValue()
 - **BaseBar** defaults to **`DecimalNum`** type in all constructors
 - **TRIndicator** improved calculation
+- **WMAIndicator** improved calculation
+- **KSTIndicator** improved calculation
+- **RSIIndicator** simplify calculation
+- **FisherIndicator** improved calculation
+- **DoubleEMAIndicator** improved calculation
+- **CMOIndicator** improved calculation
+- **PearsonCorrelationIndicator** improved calculation
+- **PivotPoint**-Indicators improved calculations
+- **ValueAtRiskCriterion** improved calculation
+- **ExpectedShortfallCriterion** improved calculation
+- **SqnCriterion** improved calculation
+- **NumberOfBreakEvenPositionsCriterion** shorten code
+- **AverageReturnPerBarCriterion** improved calculation
 - **ZLEMAIndicator** improved calculation
 - **InPipeRule** improved calculation
 - updated pom.xml: slf4j-api to 2.0.7
