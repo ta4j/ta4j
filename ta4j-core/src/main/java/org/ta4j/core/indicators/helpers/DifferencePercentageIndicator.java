@@ -84,7 +84,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num value = indicator.getValue((index));
+        Num value = indicator.getValue(index);
         if (value.isNaN() || value.isZero()) {
             return NaN.NaN;
         }
