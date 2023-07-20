@@ -45,9 +45,7 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.function.Function;
@@ -76,30 +74,24 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
-        assertNull(rule.getCurrentStopLossLimitActivation());
 
         assertFalse(rule.isSatisfied(1, tradingRecord));
-        assertNull(rule.getCurrentStopLossLimitActivation());
 
         // Enter at 114
         tradingRecord.enter(2, numOf(114), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
 
         assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
 
         assertTrue(rule.isSatisfied(4, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+
         // Exit
         tradingRecord.exit(5);
 
         // Enter at 128
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
         assertTrue(rule.isSatisfied(6, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
     }
 
     @Test
@@ -140,30 +132,23 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
-        assertNull(rule.getCurrentStopLossLimitActivation());
 
         assertFalse(rule.isSatisfied(1, tradingRecord));
-        assertNull(rule.getCurrentStopLossLimitActivation());
 
         // Enter at 84
         tradingRecord.enter(2, numOf(84), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertEquals(numOf(80).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
 
         assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
 
         assertTrue(rule.isSatisfied(4, tradingRecord));
-        assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
         // Exit
         tradingRecord.exit(5);
 
         // Enter at 128
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
         assertTrue(rule.isSatisfied(6, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
     }
 
     @Test
@@ -185,6 +170,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertFalse(rule.isSatisfied(4, tradingRecord));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
+
         // Exit
         tradingRecord.exit(7);
 

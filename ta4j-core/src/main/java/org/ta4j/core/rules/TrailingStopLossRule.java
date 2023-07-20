@@ -47,9 +47,6 @@ public class TrailingStopLossRule extends AbstractRule {
     /** the loss-distance as percentage. */
     private final Num lossPercentage;
 
-    /** The current stop loss price activation. */
-    private Num currentStopLossLimitActivation;
-
     /**
      * Constructor.
      *
@@ -100,12 +97,8 @@ public class TrailingStopLossRule extends AbstractRule {
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
         Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
-        currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
+        Num currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    public Num getCurrentStopLossLimitActivation() {
-        return currentStopLossLimitActivation;
     }
 
     private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
@@ -113,7 +106,7 @@ public class TrailingStopLossRule extends AbstractRule {
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
         Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
-        currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
+        Num currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
@@ -124,9 +117,8 @@ public class TrailingStopLossRule extends AbstractRule {
     @Override
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}",
-                    getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index),
-                    currentStopLossLimitActivation);
+            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation",
+                    getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index));
         }
     }
 }
