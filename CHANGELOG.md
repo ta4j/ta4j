@@ -28,7 +28,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ProfitCriterion** fixed excludeCosts functionality as it was reversed
 - **LossCriterion** fixed excludeCosts functionality as it was reversed
 - **PerformanceReportGenerator** fixed netProfit and netLoss calculations to include costs
-- **TrailingStopLossRuleTest** fixed eliminated instance variable holding possible wrong value
+- **TrailingStopLossRule** fixed eliminated instance variable holding possible wrong value
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
