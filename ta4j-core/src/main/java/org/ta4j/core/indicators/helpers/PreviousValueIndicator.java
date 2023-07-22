@@ -36,7 +36,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
     /**
-     * Constructor.
+     * Constructor to get the previous value of the {@code indicator}.
      *
      * @param indicator the indicator from which to calculate the previous value
      */
@@ -45,15 +45,16 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor to get the previous (n-th) value of the {@code indicator}.
      *
      * @param indicator the indicator from which to calculate the previous value
-     * @param n         parameter defines the previous n-th value
+     * @param n         the parameter defining the previous n-th value
+     * @throws IllegalArgumentException if {@code n < 1}
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
         super(indicator);
         if (n < 1) {
-            throw new IllegalArgumentException("n must be positive number, but was: " + n);
+            throw new IllegalArgumentException("n must be a positive number, but was: " + n);
         }
         this.n = n;
         this.indicator = indicator;
