@@ -31,9 +31,9 @@ import org.ta4j.core.num.Num;
  * Returns the previous (n-th) value of an indicator.
  *
  * <p>
- * If the current index equals the first index from the bar series, the current
- * indicator value is returned. If the previous index is below the first index
- * from the bar series, the indicator value of the first index is returned.
+ * If the current index equals the first index from the bar series or if the
+ * previous index is below the first index from the bar series, the indicator
+ * value of the first index is returned.
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
