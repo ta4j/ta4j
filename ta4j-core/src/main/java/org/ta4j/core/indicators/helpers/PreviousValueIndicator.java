@@ -65,9 +65,10 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
         return this.indicator.getValue(previousValue);
     }
 
+    /** @return {@link #n} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return n;
     }
 
     @Override
