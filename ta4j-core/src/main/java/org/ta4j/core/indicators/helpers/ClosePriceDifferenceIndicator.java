@@ -28,8 +28,11 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator that calculates the difference between the close prices of the
- * current bar and the previous bar.
+ * Calculates the difference between the current and the previous close price.
+ * 
+ * <pre>
+ * ClosePriceDifference = currentBarClosePrice - previousBarClosePrice
+ * </pre>
  */
 public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
 
