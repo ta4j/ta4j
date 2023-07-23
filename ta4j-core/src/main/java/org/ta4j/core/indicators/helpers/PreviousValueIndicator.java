@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
-    /** The parameter defining the previous n-th value. */
+    /** The previous n-th index in the bar series. */
     private final int n;
     private final Indicator<Num> indicator;
 
@@ -49,7 +49,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator from which to calculate the previous value
-     * @param n         parameter defines the previous n-th value
+     * @param n         the previous n-th index in the bar series
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
         super(indicator);
