@@ -255,9 +255,10 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         return false;
     }
 
+    /** @return {@link #barCount} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return barCount;
     }
 
     /**

@@ -59,8 +59,9 @@ public class GainIndicator extends CachedIndicator<Num> {
         return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue) : zero();
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }

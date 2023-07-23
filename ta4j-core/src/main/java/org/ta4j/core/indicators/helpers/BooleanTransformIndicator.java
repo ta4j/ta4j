@@ -190,6 +190,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
         return false;
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

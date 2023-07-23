@@ -56,6 +56,7 @@ public class UnstableIndicator extends CachedIndicator<Num> {
         return indicator.getValue(index);
     }
 
+    /** @return {@link #unstableBars} */
     @Override
     public int getUnstableBars() {
         return unstableBars;

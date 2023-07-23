@@ -58,6 +58,7 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
         return highPrice.plus(lowPrice).plus(closePrice).dividedBy(numOf(3));
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

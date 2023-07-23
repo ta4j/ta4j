@@ -49,6 +49,7 @@ public class HighPriceIndicator extends AbstractIndicator<Num> {
         return getBarSeries().getBar(index).getHighPrice();
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

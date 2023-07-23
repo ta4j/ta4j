@@ -29,6 +29,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LossCriterion** fixed excludeCosts functionality as it was reversed
 - **PerformanceReportGenerator** fixed netProfit and netLoss calculations to include costs
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- sets `ClosePriceDifferenceIndicator#getUnstableBars` = `1`
+- sets `ClosePriceRatioIndicator#getUnstableBars` = `1`
+- sets `ConvergenceDivergenceIndicator#getUnstableBars` = `barCount`
+- sets `GainIndicator#getUnstableBars` = `1`
+- sets `HighestValueIndicator#getUnstableBars` = `barCount`
+- sets `LossIndicator#getUnstableBars` = `1`
+- sets `LowestValueIndicator#getUnstableBars` = `barCount`
+- sets `TRIndicator#getUnstableBars` = `1`
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
