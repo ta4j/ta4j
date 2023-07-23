@@ -34,8 +34,8 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the percentage difference from the last time the
  * {@link #percentageThreshold threshold} was reached. If the threshold is
- * {@code 0} or no threshold is specified, only the percentage difference from
- * the previous value is returned.
+ * {@code 0} or not specified, only the percentage difference from the previous
+ * value is returned.
  */
 public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
