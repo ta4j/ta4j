@@ -72,17 +72,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
-
         assertFalse(rule.isSatisfied(0, null));
-
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 114
         tradingRecord.enter(2, numOf(114), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
-
         assertFalse(rule.isSatisfied(3, tradingRecord));
-
         assertTrue(rule.isSatisfied(4, tradingRecord));
 
         // Exit
@@ -130,18 +126,16 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
-
         assertFalse(rule.isSatisfied(0, null));
-
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 84
         tradingRecord.enter(2, numOf(84), numOf(1));
+
         assertFalse(rule.isSatisfied(2, tradingRecord));
-
         assertFalse(rule.isSatisfied(3, tradingRecord));
-
         assertTrue(rule.isSatisfied(4, tradingRecord));
+
         // Exit
         tradingRecord.exit(5);
 
