@@ -113,7 +113,6 @@ public class Position implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
-
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both trades must have different types");
         }
@@ -236,11 +235,7 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getProfit() {
-        if (isOpened()) {
-            return zero();
-        } else {
-            return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
-        }
+        return isOpened() ? zero() : getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
     }
 
     /**
@@ -266,11 +261,7 @@ public class Position implements Serializable {
      * @return the gross profit of the position
      */
     public Num getGrossProfit() {
-        if (isOpened()) {
-            return zero();
-        } else {
-            return getGrossProfit(exit.getPricePerAsset());
-        }
+        return isOpened() ? zero() : getGrossProfit(exit.getPricePerAsset());
     }
 
     /**
@@ -282,18 +273,9 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getGrossProfit(Num finalPrice) {
-        Num grossProfit;
-        if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
-        }
-
-        // Profits of long position are losses of short
-        if (entry.isSell()) {
-            grossProfit = grossProfit.negate();
-        }
-        return grossProfit;
+        Num exitValue = isOpened() ? entry.getAmount().multipliedBy(finalPrice) : exit.getValue();
+        Num grossProfit = exitValue.minus(entry.getValue());
+        return entry.isSell() ? grossProfit.negate() : grossProfit;
     }
 
     /**
@@ -303,11 +285,7 @@ public class Position implements Serializable {
      * @return the gross return of the position in percent
      */
     public Num getGrossReturn() {
-        if (isOpened()) {
-            return zero();
-        } else {
-            return getGrossReturn(exit.getPricePerAsset());
-        }
+        return isOpened() ? zero() : getGrossReturn(exit.getPricePerAsset());
     }
 
     /**
@@ -357,7 +335,7 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
-            Num one = entryPrice.numOf(1);
+            Num one = entryPrice.one();
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
     }
