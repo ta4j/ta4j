@@ -300,14 +300,13 @@ public class Position implements Serializable {
      * Calculates the gross return of the position if it is closed. The gross return
      * excludes any trading costs.
      *
+     * @param addBase set to true to add the base percentage of {@code 1}
+     *                (equivalent to 100%) to the gross return
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(boolean)
      */
-    public Num getGrossReturn() {
-        if (isOpened()) {
-            return zero();
-        } else {
-            return getGrossReturn(exit.getPricePerAsset());
-        }
+    public Num getGrossReturn(boolean addBase) {
+        return isOpened() ? zero() : getGrossReturn(exit.getPricePerAsset(), addBase);
     }
 
     /**
@@ -316,10 +315,13 @@ public class Position implements Serializable {
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
+     * @param addBase    set to true to add the base percentage of {@code 1}
+     *                   (equivalent to 100%) to the gross return
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(Num, Num)
      */
-    public Num getGrossReturn(Num finalPrice) {
-        return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
+    public Num getGrossReturn(Num finalPrice, boolean addBase) {
+        return getGrossReturn(getEntry().getPricePerAsset(), finalPrice, addBase);
     }
 
     /**
@@ -327,39 +329,49 @@ public class Position implements Serializable {
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
      * The gross return excludes any trading costs.
      *
-     * @param barSeries
+     * @param barSeries the bar series
+     * @param addBase   set to true to add the base percentage of {@code 1}
+     *                  (equivalent to 100%) to the gross return
      * @return the gross return in percent with entry and exit prices from the
      *         barSeries
+     * @see #getGrossReturn(Num, Num, boolean)
      */
-    public Num getGrossReturn(BarSeries barSeries) {
+    public Num getGrossReturn(BarSeries barSeries, boolean addBase) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
         Num exitPrice = getExit().getPricePerAsset(barSeries);
-        return getGrossReturn(entryPrice, exitPrice);
+        return getGrossReturn(entryPrice, exitPrice, addBase);
     }
 
     /**
-     * Calculates the gross return between entry and exit price in percent. Includes
-     * the base.
+     * Calculates the gross return between entry and exit price in percent.
      *
      * <p>
-     * For example:
+     * If {@code addBase == true}, then it includes the base, i.e.:
      * <ul>
      * <li>For buy position with a profit of 4%, it returns 1.04 (includes the base)
      * <li>For sell position with a loss of 4%, it returns 0.96 (includes the base)
      * </ul>
+     * 
+     * <p>
+     * If {@code addBase == false}, then it does not include the base, i.e.:
+     * <ul>
+     * <li>For buy position with a profit of 4%, it returns 0.04
+     * <li>For sell position with a loss of 4%, it returns -0.04
+     * </ul>
      *
      * @param entryPrice the entry price
      * @param exitPrice  the exit price
+     * @param addBase    set to true to add the base percentage of {@code 1}
+     *                   (equivalent to 100%) to the gross return
      * @return the gross return in percent between entryPrice and exitPrice
-     *         (includes the base)
      */
-    public Num getGrossReturn(Num entryPrice, Num exitPrice) {
-        if (getEntry().isBuy()) {
-            return exitPrice.dividedBy(entryPrice);
-        } else {
-            Num one = entryPrice.numOf(1);
-            return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
+    public Num getGrossReturn(Num entryPrice, Num exitPrice, boolean addBase) {
+        Num grossReturn = exitPrice.dividedBy(entryPrice);
+        if (getEntry().isSell()) {
+            final Num one = entryPrice.one();
+            grossReturn = ((grossReturn.minus(one)).negate()).plus(one);
         }
+        return addBase ? grossReturn : grossReturn.minus(entryPrice.one());
     }
 
     /**
@@ -406,16 +418,12 @@ public class Position implements Serializable {
         return holdingCostModel.calculate(this, finalIndex);
     }
 
-    /**
-     * @return the {@link #startingType}
-     */
+    /** @return the {@link #startingType} */
     public TradeType getStartingType() {
         return startingType;
     }
 
-    /**
-     * @return the Num of 0
-     */
+    /** @return the Num of {@code 0} */
     private Num zero() {
         return entry.getNetPrice().zero();
     }
