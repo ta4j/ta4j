@@ -414,7 +414,11 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the Num of 0
+     * <b>Warning:</b> This method should only be used if {@link #isOpened()} or
+     * {@link #isClosed()}, otherwise it returns {@code NaN} because
+     * {@link Trade#getNetPrice()} of {@link #entry} is {@code NaN}.
+     * 
+     * @return the Num of {@code 0}
      */
     private Num zero() {
         return entry.getNetPrice().zero();
