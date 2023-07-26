@@ -62,7 +62,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - add missing `@Override` annotation
 - **LossIndicator**: optimize calculation
 - **GainIndicator**: improved calculation
-
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
 
 ### Removed/Deprecated
@@ -90,6 +89,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added "addBase"-property for **EnterAndHoldReturnCriterion** to include or exclude the base percentage of 1
 - added **MoneyFlowIndexIndicator**
 - added **IntraDayMomentumIndexIndicator**
 - added **ClosePriceDifferenceIndicator**

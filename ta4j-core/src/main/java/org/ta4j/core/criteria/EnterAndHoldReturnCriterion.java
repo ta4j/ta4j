@@ -47,11 +47,18 @@ import org.ta4j.core.num.Num;
  */
 public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * If true, then the base percentage of {@code 1} (equivalent to 100%) is added
+     * to the criterion value.
+     */
+    private final boolean addBase;
+
+    /** The {@link TradeType} used to open the position. */
     private final TradeType tradeType;
 
     /**
-     * Constructor.
-     *
+     * Constructor with {@link #addBase} == true.
+     * 
      * <p>
      * For buy-and-hold strategy.
      */
@@ -60,26 +67,40 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Constructor.
+     * Constructor with {@link #addBase} == true.
      *
      * @param tradeType the {@link TradeType} used to open the position
      */
     public EnterAndHoldReturnCriterion(TradeType tradeType) {
         this.tradeType = tradeType;
+        this.addBase = true;
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param tradeType the {@link TradeType} used to open the position
+     * @param addBase   the {@link #addBase}
+     */
+    public EnterAndHoldReturnCriterion(TradeType tradeType, boolean addBase) {
+        this.tradeType = tradeType;
+        this.addBase = addBase;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         int beginIndex = position.getEntry().getIndex();
         int endIndex = series.getEndIndex();
-        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        Num grossReturn = createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        return addBase ? grossReturn : grossReturn.minus(grossReturn.isZero() ? series.zero() : series.one());
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
-        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        Num grossReturn = createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        return addBase ? grossReturn : grossReturn.minus(grossReturn.isZero() ? series.zero() : series.one());
     }
 
     /** The higher the criterion value the better. */

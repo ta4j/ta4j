@@ -43,7 +43,9 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     public EnterAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
         super(params -> params.length == 0 ? new EnterAndHoldReturnCriterion()
-                : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFunction);
+                : params.length == 1 ? new EnterAndHoldReturnCriterion((TradeType) params[0])
+                        : new EnterAndHoldReturnCriterion((TradeType) params[0], (boolean) params[1]),
+                numFunction);
     }
 
     @Test
@@ -52,11 +54,19 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
+        // include base percentage
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(1.05, buyAndHold.calculate(series, tradingRecord));
 
         AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
         assertNumEquals(0.95, sellAndHold.calculate(series, tradingRecord));
+
+        // excludes base percentage
+        AnalysisCriterion buyAndHoldWithoutBase = getCriterion(TradeType.BUY, false);
+        assertNumEquals(0.05, buyAndHoldWithoutBase.calculate(series, tradingRecord));
+
+        AnalysisCriterion sellAndHoldWithoutBase = getCriterion(TradeType.SELL, false);
+        assertNumEquals(-0.05, sellAndHoldWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
@@ -65,33 +75,58 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
+        // include base percentage
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0.7, buyAndHold.calculate(series, tradingRecord));
 
         AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
         assertNumEquals(1.3, sellAndHold.calculate(series, tradingRecord));
+
+        // exludes base percentage
+        AnalysisCriterion buyAndHoldWithoutBase = getCriterion(TradeType.BUY, false);
+        assertNumEquals(-0.3, buyAndHoldWithoutBase.calculate(series, tradingRecord));
+
+        AnalysisCriterion sellAndHoldWithoutBase = getCriterion(TradeType.SELL, false);
+        assertNumEquals(0.3, sellAndHoldWithoutBase.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
+        // include base percentage
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
 
         AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
         assertNumEquals(1.3, sellAndHold.calculate(series, new BaseTradingRecord()));
+
+        // excludes base percentage
+        AnalysisCriterion buyAndHoldExcludesBase = getCriterion(TradeType.BUY, false);
+        assertNumEquals(-0.3, buyAndHoldExcludesBase.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion sellAndHoldExcludesBase = getCriterion(TradeType.SELL, false);
+        assertNumEquals(0.3, sellAndHoldExcludesBase.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOnePositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105);
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+
+        // include base percentage
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(105d / 100, buyAndHold.calculate(series, position));
 
         AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
         assertNumEquals(0.95, sellAndHold.calculate(series, position));
+
+        // excludes base percentage
+        AnalysisCriterion buyAndHoldWithoutBase = getCriterion(TradeType.BUY, false);
+        assertNumEquals(5d / 100, buyAndHoldWithoutBase.calculate(series, position));
+
+        AnalysisCriterion sellAndHoldWithoutBase = getCriterion(TradeType.SELL, false);
+        assertNumEquals(-0.05, sellAndHoldWithoutBase.calculate(series, position));
     }
 
     @Test
