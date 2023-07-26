@@ -305,7 +305,7 @@ public class Position implements Serializable {
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
      * The gross return excludes any trading costs.
      *
-     * @param barSeries
+     * @param barSeries the barSeries
      * @return the gross return in percent with entry and exit prices from the
      *         barSeries
      */
@@ -384,16 +384,12 @@ public class Position implements Serializable {
         return holdingCostModel.calculate(this, finalIndex);
     }
 
-    /**
-     * @return the {@link #startingType}
-     */
+    /** @return the {@link #startingType} */
     public TradeType getStartingType() {
         return startingType;
     }
 
-    /**
-     * @return the Num of 0
-     */
+    /** @return the Num of {@code 0} */
     private Num zero() {
         return entry.getNetPrice().zero();
     }
