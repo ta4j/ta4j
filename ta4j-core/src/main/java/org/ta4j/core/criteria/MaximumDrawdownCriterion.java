@@ -30,7 +30,7 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
 
 /**
- * Maximum drawdown criterion (in percentage).
+ * Maximum drawdown criterion, returned in decimal format.
  *
  * <p>
  * The maximum drawdown measures the largest loss. Its value can be within the
