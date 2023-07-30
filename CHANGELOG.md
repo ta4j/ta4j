@@ -29,6 +29,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LossCriterion** fixed excludeCosts functionality as it was reversed
 - **PerformanceReportGenerator** fixed netProfit and netLoss calculations to include costs
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
