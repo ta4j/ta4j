@@ -21,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 - **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
+- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -70,7 +71,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LossIndicator**: optimize calculation
 - **GainIndicator**: improved calculation
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
+<<<<<<< Upstream, based on origin/master
 - made **UnaryOperation** and **BinaryOperation** public 
+=======
+- **VersusEnterAndHoldCriterion**: now compares to `EnterAndHoldCriterion`
+>>>>>>> a141d57 add EnterAndHoldCriterion
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
