@@ -79,10 +79,37 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        int beginIndex = getBarSeries().getBeginIndex();
+        if (beginIndex > index) {
+            return NaN.NaN;
+        }
+
+        Num value = indicator.getValue(index);
+        if (value.isNaN() || value.isZero()) {
+            return NaN.NaN;
+        }
+
+        // calculate all the previous values to get the correct
+        // last notification value for this index
+        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+            setLastNotification(i);
+        }
+
+        if (lastNotification == null) {
+            return NaN.NaN;
+        }
+
+        Num changeFraction = value.dividedBy(lastNotification);
+        return fractionToPercentage(changeFraction);
+    }
+
+    public void setLastNotification(int index) {
         Num value = indicator.getValue((index));
+        if (value.isNaN() || value.isZero()) {
+            return;
+        }
         if (lastNotification == null) {
             lastNotification = value;
-            return NaN.NaN;
         }
 
         Num changeFraction = value.dividedBy(lastNotification);
@@ -91,13 +118,11 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
             lastNotification = value;
         }
-
-        return changePercentage;
     }
 
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 
     private Num fractionToPercentage(Num changeFraction) {
