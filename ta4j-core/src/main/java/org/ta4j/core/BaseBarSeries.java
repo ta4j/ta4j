@@ -228,7 +228,7 @@ public class BaseBarSeries implements BarSeries {
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
         if (!bars.isEmpty()) {
-            int start = Math.max(startIndex - getRemovedBarsCount(), this.getBeginIndex());
+            int start = startIndex - getRemovedBarsCount();
             int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
             return new BaseBarSeries(getName(), cut(bars, start, end), num);
         }
@@ -452,6 +452,7 @@ public class BaseBarSeries implements BarSeries {
             }
             // Updating removed bars count
             removedBarsCount += nbBarsToRemove;
+            seriesBeginIndex = Math.max(seriesBeginIndex, removedBarsCount);
         }
     }
 

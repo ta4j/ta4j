@@ -255,7 +255,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         defaultSeries.setMaximumBarCount(3);
 
         // After
-        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(3, defaultSeries.getBeginIndex());
         assertEquals(5, defaultSeries.getEndIndex());
         assertEquals(3, defaultSeries.getBarCount());
     }
@@ -357,7 +357,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         IntStream.range(0, 100).forEach(i -> {
             series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, i);
-            int startIndex = Math.max(0, series.getEndIndex() - timespan + 1);
+            int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
             int endIndex = i + 1;
             final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
             assertEquals(subSeries.getBarCount(), endIndex - startIndex);
