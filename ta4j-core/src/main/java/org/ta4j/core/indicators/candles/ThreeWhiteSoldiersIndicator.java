@@ -72,6 +72,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
                 && isWhiteSoldier(index - 1, blackCandleIndex) && isWhiteSoldier(index, blackCandleIndex);
     }
 
+    /** @return {@code 4} */
     @Override
     public int getUnstableBars() {
         return 4;

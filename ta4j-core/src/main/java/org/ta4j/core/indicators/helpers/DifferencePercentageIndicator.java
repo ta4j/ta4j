@@ -120,6 +120,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         }
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
         return 1;

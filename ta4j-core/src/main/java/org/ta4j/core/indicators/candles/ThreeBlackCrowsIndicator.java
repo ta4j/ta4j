@@ -72,6 +72,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
                 && isBlackCrow(index - 1, whiteCandleIndex) && isBlackCrow(index, whiteCandleIndex);
     }
 
+    /** @return {@code 4} */
     @Override
     public int getUnstableBars() {
         return 4;
