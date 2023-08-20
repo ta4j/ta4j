@@ -32,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ThreeWhiteSoldiersIndicator** fixed eliminated instance variable holding possible wrong value
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
