@@ -225,7 +225,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (barIndex - 1 < seriesStartIndex) {
             return false;
         } else {
-            return getBarSeries().getBar(barIndex - 1).getClosePrice()
+            return getBarSeries().getBar(barIndex - 1)
+                    .getClosePrice()
                     .isLessThan(getBarSeries().getBar(barIndex).getClosePrice());
         }
     }

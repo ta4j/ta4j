@@ -57,11 +57,11 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         MockBarSeries mockBarSeries = new MockBarSeries(bars);
         mockBarSeries.setMaximumBarCount(3);
 
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(1),75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(2),79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(3),75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(4),75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(5),74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(1), 75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(2), 79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(3), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(4), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusSeconds(5), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
 
@@ -76,10 +76,11 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void startUpAndDownTrendTest() {
         ZonedDateTime now = ZonedDateTime.now();
         List<Bar> bars = new ArrayList<>();
-        // values of removable bars are much higher to be sure that they will not affect the result.
-        bars.add(new MockBar(now.plusSeconds(1),165.5, 175.1, 180.10, 170.1, 0, 0, 0, numFunction));
-        bars.add(new MockBar(now.plusSeconds(2),175.1, 185.1, 190.20, 180.2, 0, 0, 0, numFunction));
-        bars.add(new MockBar(now.plusSeconds(3),185.1, 195.1, 200.30, 190.3, 0, 0, 0, numFunction));
+        // values of removable bars are much higher to be sure that they will not affect
+        // the result.
+        bars.add(new MockBar(now.plusSeconds(1), 165.5, 175.1, 180.10, 170.1, 0, 0, 0, numFunction));
+        bars.add(new MockBar(now.plusSeconds(2), 175.1, 185.1, 190.20, 180.2, 0, 0, 0, numFunction));
+        bars.add(new MockBar(now.plusSeconds(3), 185.1, 195.1, 200.30, 190.3, 0, 0, 0, numFunction));
 
         MockBarSeries mockBarSeries = new MockBarSeries(bars);
         mockBarSeries.setMaximumBarCount(21);
@@ -90,21 +91,34 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         mockBarSeries.addBar(new MockBar(now.plusSeconds(7), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
         mockBarSeries.addBar(new MockBar(now.plusSeconds(8), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
         mockBarSeries.addBar(new MockBar(now.plusSeconds(9), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(10), 74.01, 73.740000, 74.700000, 73.546000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(11), 73.71, 73.390000, 73.830000, 72.720000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(10), 74.01, 73.740000, 74.700000, 73.546000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(11), 73.71, 73.390000, 73.830000, 72.720000, 0, 0, 0, numFunction));
         mockBarSeries.addBar(new MockBar(now.plusSeconds(12), 73.35, 73.25, 73.890000, 72.86, 0, 0, 0, numFunction));
         mockBarSeries.addBar(new MockBar(now.plusSeconds(13), 73.24, 74.36, 74.410000, 73, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(14), 74.36, 76.510000, 76.830000, 74.820000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(15), 76.5, 75.590000, 76.850000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(16), 75.60, 75.910000, 76.960000, 75.510000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(17), 75.82, 74.610000, 77.070000, 74.560000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(18), 74.75, 75.330000, 75.530000, 74.010000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(19), 75.33, 75.010000, 75.500000, 74.510000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(20), 75.0, 75.620000, 76.210000, 75.250000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(21), 75.63, 76.040000, 76.460000, 75.092800, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(22), 76.0, 76.450000, 76.450000, 75.435000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(23), 76.45, 76.260000, 76.470000, 75.840000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(24), 76.30, 76.850000, 77.000000, 76.190000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(14), 74.36, 76.510000, 76.830000, 74.820000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(15), 76.5, 75.590000, 76.850000, 74.540000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(16), 75.60, 75.910000, 76.960000, 75.510000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(17), 75.82, 74.610000, 77.070000, 74.560000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(18), 74.75, 75.330000, 75.530000, 74.010000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(19), 75.33, 75.010000, 75.500000, 74.510000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(20), 75.0, 75.620000, 76.210000, 75.250000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(21), 75.63, 76.040000, 76.460000, 75.092800, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(22), 76.0, 76.450000, 76.450000, 75.435000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(23), 76.45, 76.260000, 76.470000, 75.840000, 0, 0, 0, numFunction));
+        mockBarSeries
+                .addBar(new MockBar(now.plusSeconds(24), 76.30, 76.850000, 77.000000, 76.190000, 0, 0, 0, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
 
