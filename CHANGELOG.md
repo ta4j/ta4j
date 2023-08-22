@@ -68,6 +68,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LossIndicator**: optimize calculation
 - **GainIndicator**: improved calculation
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
+- made **UnaryOperation** and **BinaryOperation** public 
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
