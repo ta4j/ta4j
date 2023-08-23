@@ -95,6 +95,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **RelativeVolumeStandardDeviationIndicator**
 - added **MoneyFlowIndexIndicator**
 - added **IntraDayMomentumIndexIndicator**
 - added **ClosePriceDifferenceIndicator**
