@@ -33,9 +33,11 @@ import org.ta4j.core.num.Num;
  * Objects of this class defer evaluation of an arithmetic operation.
  *
  * <p>
- * This is a lightweight version of the CombineIndicator; it doesn't cache.
+ * This is a lightweight version of the
+ * {@link org.ta4j.core.indicators.helpers.CombineIndicator CombineIndicator};
+ * it doesn't cache.
  */
-class BinaryOperation implements Indicator<Num> {
+public class BinaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code (left + right)}.
