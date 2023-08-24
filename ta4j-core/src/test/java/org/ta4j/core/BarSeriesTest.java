@@ -36,6 +36,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -98,7 +99,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void createWithUnmodifiableCollectionTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withBars(List.copyOf(bars)).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withBars( new ArrayList<>(bars)).build();
         series.addBar(new MockBar(ZonedDateTime.of(2014, 7, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 7d, numFunction));
         assertEquals(7, series.getBarCount());
         assertEquals(0, series.getBeginIndex());

@@ -1,5 +1,9 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.16.8 (unreleased)
+- **downgrade to java 8,works on any Java Platform version 8 or later**
+- **ta4j-0.16.8 supports the Java EE edition whereas  ta4j-0.16 supports Jakarta EE, otherwise the two versions are feature identical.**
+
 ## 0.16 (unreleased)
 
 ### Breaking
