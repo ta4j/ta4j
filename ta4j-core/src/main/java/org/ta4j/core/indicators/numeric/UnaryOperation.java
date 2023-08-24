@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *
  * There may be other unary operations on Num that could be added here.
  */
-class UnaryOperation implements Indicator<Num> {
+public class UnaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.

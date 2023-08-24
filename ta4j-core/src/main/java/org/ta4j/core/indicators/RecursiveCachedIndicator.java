@@ -45,7 +45,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * The recursion threshold for which an iterative calculation is executed.
      * 
      * TODO: Should be variable (depending on the sub-indicators used in this
-     * indicator).
+     * indicator, e.g. Indicator#getUnstableBars()).
      */
     private static final int RECURSION_THRESHOLD = 100;
 
@@ -69,20 +69,19 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     public T getValue(int index) {
-        BarSeries series = getBarSeries();
-        if (series != null) {
-            final int seriesEndIndex = series.getEndIndex();
-            if (index <= seriesEndIndex) {
-                // We are not after the end of the series
-                final int removedBarsCount = series.getRemovedBarsCount();
-                int startIndex = Math.max(removedBarsCount, highestResultIndex);
-                if (index - startIndex > RECURSION_THRESHOLD) {
-                    // Too many uncalculated values; the risk for a StackOverflowError becomes high.
-                    // Calculating the previous values iteratively
-                    for (int prevIdx = startIndex; prevIdx < index; prevIdx++) {
-                        super.getValue(prevIdx);
-                    }
-                }
+        final BarSeries series = getBarSeries();
+        if (series == null || index > series.getEndIndex()) {
+            return super.getValue(index);
+        }
+
+        // We're not at the end of the series yet.
+        final int startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
+
+        if (index - startIndex > RECURSION_THRESHOLD) {
+            // Too many uncalculated values; the risk for a StackOverflowError becomes high.
+            // Calculating the previous values iteratively.
+            for (int prevIndex = startIndex; prevIndex < index; prevIndex++) {
+                super.getValue(prevIndex);
             }
         }
 
