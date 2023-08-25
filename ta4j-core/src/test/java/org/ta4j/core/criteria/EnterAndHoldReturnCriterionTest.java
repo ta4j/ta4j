@@ -48,7 +48,7 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithEmpyt() {
+    public void calculateWithEmpty() {
         MockBarSeries series = new MockBarSeries(numFunction, List.of());
         TradingRecord tradingRecord = new BaseTradingRecord();
         AnalysisCriterion buyAndHold = getCriterion();
