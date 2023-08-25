@@ -33,6 +33,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
+- **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
@@ -64,10 +65,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **SuperTrendIndicator**,**SuperTrendUpperIndicator**,**SuperTrendLowerIndicator**: optimized calculation
 - **SuperTrendIndicator**, **SuperTrendLowerBandIndicator**, **SuperTrendUpperBandIndicator**: `multiplier` changed to from `Integer` to `Double`
 - add missing `@Override` annotation
+- **RecursiveCachedIndicator**: simplified code
 - **LossIndicator**: optimize calculation
 - **GainIndicator**: improved calculation
-
 - **PriceVariationIndicator** renamed to **ClosePriceRatioIndicator** for consistency with new **ClosePriceDifferenceIndicator**
+- made **UnaryOperation** and **BinaryOperation** public 
 
 ### Removed/Deprecated
 - removed **Serializable** from `CostModel`
@@ -94,6 +96,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "lessIsBetter"-property for **VarianceCriterion**
 - added "lessIsBetter"-property for **NumberOfPositionsCriterion**
 - added "addBase"-property for **ReturnCriterion** to include or exclude the base percentage of 1
+- added **RelativeVolumeStandardDeviationIndicator**
 - added **MoneyFlowIndexIndicator**
 - added **IntraDayMomentumIndexIndicator**
 - added **ClosePriceDifferenceIndicator**
