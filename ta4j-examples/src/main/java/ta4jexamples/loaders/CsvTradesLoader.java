@@ -31,6 +31,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -103,6 +104,7 @@ public class CsvTradesLoader {
 
         Duration barDuration = Duration.ofSeconds(duration);
         ZonedDateTime barEndTime = beginTime;
+        ListIterator< String[]> iterator = lines.listIterator();
         // line number of trade data
         int i = 0;
         do {
@@ -111,7 +113,7 @@ public class CsvTradesLoader {
             Bar bar = new BaseBar(barDuration, barEndTime, series.function());
             do {
                 // get a trade
-                String[] tradeLine = lines.get(i);
+                String[] tradeLine = iterator.next();
                 ZonedDateTime tradeTimeStamp = ZonedDateTime
                         .ofInstant(Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000), ZoneId.systemDefault());
                 // if the trade happened during the bar
@@ -127,7 +129,7 @@ public class CsvTradesLoader {
                     break;
                 }
                 i++;
-            } while (i < lines.size());
+            } while (iterator.hasNext());
             // if the bar has any trades add it to the bars list
             // this is where the break drops to
             if (bar.getTrades() > 0) {
