@@ -104,7 +104,7 @@ public class CsvTradesLoader {
 
         Duration barDuration = Duration.ofSeconds(duration);
         ZonedDateTime barEndTime = beginTime;
-        ListIterator< String[]> iterator = lines.listIterator();
+        ListIterator<String[]> iterator = lines.listIterator();
         // line number of trade data
         int i = 0;
         do {
