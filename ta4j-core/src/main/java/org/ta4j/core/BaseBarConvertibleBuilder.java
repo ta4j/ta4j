@@ -30,12 +30,12 @@ import java.util.function.Function;
 import org.ta4j.core.num.Num;
 
 /**
- * A builder to build a new {@link BaseBar} with conversion from a
+ * A builder to build a new {@code BaseBar} with conversion from a
  * {@link Number} of type {@code T} to a {@link Num Num implementation}.
  *
  * @param <T> a {@link Number} of type {@code T}
  */
-public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
+public class BaseBarConvertibleBuilder<T> extends BaseBarBuilder {
 
     /**
      * The Num function to convert a {@link Number} to a {@link Num Num
@@ -49,24 +49,24 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param conversionFunction the Num function to convert a {@link Number} to a
      *                           {@link Num Num implementation}
      */
-    public ConvertibleBaseBarBuilder(Function<T, Num> conversionFunction) {
+    public BaseBarConvertibleBuilder(Function<T, Num> conversionFunction) {
         this.conversionFunction = conversionFunction;
     }
 
     @Override
-    public ConvertibleBaseBarBuilder<T> timePeriod(Duration timePeriod) {
+    public BaseBarConvertibleBuilder<T> timePeriod(Duration timePeriod) {
         super.timePeriod(timePeriod);
         return this;
     }
 
     @Override
-    public ConvertibleBaseBarBuilder<T> endTime(ZonedDateTime endTime) {
+    public BaseBarConvertibleBuilder<T> endTime(ZonedDateTime endTime) {
         super.endTime(endTime);
         return this;
     }
 
     @Override
-    public ConvertibleBaseBarBuilder<T> trades(long trades) {
+    public BaseBarConvertibleBuilder<T> trades(long trades) {
         super.trades(trades);
         return this;
     }
@@ -75,7 +75,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param openPrice the open price of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> openPrice(T openPrice) {
+    public BaseBarConvertibleBuilder<T> openPrice(T openPrice) {
         super.openPrice(conversionFunction.apply(openPrice));
         return this;
     }
@@ -84,7 +84,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param highPrice the highest price of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> highPrice(T highPrice) {
+    public BaseBarConvertibleBuilder<T> highPrice(T highPrice) {
         super.highPrice(conversionFunction.apply(highPrice));
         return this;
     }
@@ -93,7 +93,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param lowPrice the lowest price of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> lowPrice(T lowPrice) {
+    public BaseBarConvertibleBuilder<T> lowPrice(T lowPrice) {
         super.lowPrice(conversionFunction.apply(lowPrice));
         return this;
     }
@@ -102,7 +102,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param closePrice the close price of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> closePrice(T closePrice) {
+    public BaseBarConvertibleBuilder<T> closePrice(T closePrice) {
         super.closePrice(conversionFunction.apply(closePrice));
         return this;
     }
@@ -111,7 +111,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param volume the total traded volume of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> volume(T volume) {
+    public BaseBarConvertibleBuilder<T> volume(T volume) {
         super.volume(conversionFunction.apply(volume));
         return this;
     }
@@ -120,7 +120,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
      * @param amount the total traded amount of the bar period
      * @return {@code this}
      */
-    public ConvertibleBaseBarBuilder<T> amount(T amount) {
+    public BaseBarConvertibleBuilder<T> amount(T amount) {
         super.amount(conversionFunction.apply(amount));
         return this;
     }

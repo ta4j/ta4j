@@ -14,6 +14,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
 - **UnstableIndicator** moved to package **`indicators/helpers`**
+- **ConvertableBaseBarBuilder** renamed to **`BaseBarConvertableBuilder`**
 - **BarSeriesManager** updated to use **`TradeOnNextOpenModel`** by default, which opens new trades at index `t + 1` at the open price.
   - For strategies require the previous behaviour, i.e. trades seconds or minutes before the closing prices, **`TradeOnCurerentCloseModel`** can be passed to **BarSeriesManager**
     - For example:
