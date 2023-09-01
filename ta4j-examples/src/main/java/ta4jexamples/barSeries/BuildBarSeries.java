@@ -33,7 +33,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.BaseBarConvertibleBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 
@@ -200,7 +200,7 @@ public class BuildBarSeries {
                 .build();
     }
 
-    private static ConvertibleBaseBarBuilder<String> barBuilderFromString() {
+    private static BaseBarConvertibleBuilder<String> barBuilderFromString() {
         return BaseBar.builder(DoubleNum::valueOf, String.class);
     }
 }

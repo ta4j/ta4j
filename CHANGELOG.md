@@ -14,6 +14,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 - **DateTimeIndicator** moved to package **`indicators/helpers`**
 - **UnstableIndicator** moved to package **`indicators/helpers`**
+- **ConvertableBaseBarBuilder** renamed to **`BaseBarConvertableBuilder`**
 - **BarSeriesManager** updated to use **`TradeOnNextOpenModel`** by default, which opens new trades at index `t + 1` at the open price.
   - For strategies require the previous behaviour, i.e. trades seconds or minutes before the closing prices, **`TradeOnCurerentCloseModel`** can be passed to **BarSeriesManager**
     - For example:
@@ -33,6 +34,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
 - sets `PreviousValueIndicator#getUnstableBars` = `n` (= the n-th previous index)
+- **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 - **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
 
 ### Changed
@@ -105,6 +107,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 - added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
+- added **RunningTotalIndicator** to calculate a cumulative sum for a period.
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
