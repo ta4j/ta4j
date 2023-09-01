@@ -44,7 +44,8 @@ import org.ta4j.core.num.Num;
  * of the first bar and sell with the close price of the last bar.
  * <li>For {@link #tradeType} = {@link TradeType#SELL}: Sell with the close
  * price of the first bar and buy with the close price of the last bar.
- * <li>If {@code barSeries} is empty, {@code 0} is returned.
+ * <li>If {@code barSeries} is empty, it returns {@code 1} because the
+ * investment hasn't changed and is still 100%.
  * </ul>
  *
  * @see <a href=
@@ -103,7 +104,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (series.isEmpty()) {
-            return series.zero();
+            return series.one();
         }
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
