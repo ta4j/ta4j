@@ -106,6 +106,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `DoubleNum.valueOf(DecimalNum)` to convert a DecimalNum to a DoubleNum.
 - added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
+- added **RunningTotalIndicator** to calculate a cumulative sum for a period.
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
