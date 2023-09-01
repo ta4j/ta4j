@@ -34,7 +34,7 @@ import java.util.function.Function;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.BaseBarConvertibleBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
@@ -159,7 +159,7 @@ public final class BarSeriesUtils {
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
             Function<Number, Num> conversionFunction = num.function();
-            Bar convertedBar = new ConvertibleBaseBarBuilder<>(conversionFunction::apply)
+            Bar convertedBar = new BaseBarConvertibleBuilder<>(conversionFunction::apply)
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
