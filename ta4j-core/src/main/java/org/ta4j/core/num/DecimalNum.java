@@ -187,7 +187,7 @@ public final class DecimalNum implements Num {
      * @throws NumberFormatException if {@code val} is {@code "NaN"}
      */
     public static DecimalNum valueOf(DoubleNum val) {
-        return valueOf(val.toString());
+        return valueOf(val.doubleValue());
     }
 
     /**
