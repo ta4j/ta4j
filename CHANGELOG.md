@@ -107,6 +107,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
 - added **RunningTotalIndicator** to calculate a cumulative sum for a period.
+- added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
