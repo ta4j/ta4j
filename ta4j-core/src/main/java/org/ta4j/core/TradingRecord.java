@@ -148,6 +148,27 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
+     * Gets the trade executed at the specified {@code barIndex}.
+     * 
+     * @param barIndex the index the trade were executed
+     * @return the trade with {@link Trade#getIndex()} equals {@code barIndex}, null
+     *         otherwise
+     */
+    default Trade getTrade(int barIndex) {
+        for (Position p : getPositions()) {
+            Trade entry = p.getEntry();
+            if (entry != null && entry.getIndex() == barIndex) {
+                return entry;
+            }
+            Trade exit = p.getExit();
+            if (exit != null && exit.getIndex() == barIndex) {
+                return exit;
+            }
+        }
+        return null;
+    }
+
+    /**
      * @return the last trade recorded
      */
     Trade getLastTrade();
