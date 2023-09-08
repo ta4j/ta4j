@@ -26,6 +26,7 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.backtest.EntryType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -93,8 +94,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
         Position position = new Position(this.tradeType);
-        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.one());
-        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.one());
+        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.one(),EntryType.BUY);
+        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.one(),EntryType.SELL);
         return position;
     }
 }

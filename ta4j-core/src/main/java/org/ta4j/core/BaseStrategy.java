@@ -45,6 +45,9 @@ public class BaseStrategy implements Strategy {
 
     /** The exit rule. */
     private final Rule exitRule;
+    
+    private boolean isPyramidTrading = false;
+    private int pyramidDepth=1;
 
     /**
      * The number of first bars in a bar series that this strategy ignores. During
@@ -207,4 +210,21 @@ public class BaseStrategy implements Strategy {
             log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
         }
     }
+    
+    public void setPyramiding(boolean isPyramidTrading) {
+  		this.isPyramidTrading=isPyramidTrading;
+  	}
+    public boolean isPyramiding() {
+  		return this.isPyramidTrading;
+  	}
+
+	@Override
+	public void setPyramidDepth(int numberOfPositions) {
+		this.pyramidDepth=numberOfPositions;
+	}
+
+	@Override
+	public int getPyramidDepth() {
+		return pyramidDepth;
+	}
 }
