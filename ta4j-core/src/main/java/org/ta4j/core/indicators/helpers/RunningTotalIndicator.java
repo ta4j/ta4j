@@ -37,7 +37,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
 
-    protected RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
+    public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
