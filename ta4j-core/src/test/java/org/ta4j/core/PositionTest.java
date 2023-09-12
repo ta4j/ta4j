@@ -224,9 +224,13 @@ public class PositionTest {
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getGrossReturn();
+        // include base percentage
+        final Num profitWithBase = position.getGrossReturn(true);
+        assertEquals(DoubleNum.valueOf(1.2), profitWithBase);
 
-        assertEquals(DoubleNum.valueOf(1.2), profit);
+        // exclude base percentage
+        final Num profitWithoutBase = position.getGrossReturn(false);
+        assertEquals(DoubleNum.valueOf(0.2), profitWithoutBase);
     }
 
     @Test
@@ -236,23 +240,37 @@ public class PositionTest {
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getGrossReturn();
+        // include base percentage
+        final Num profitWith = position.getGrossReturn(true);
+        assertEquals(DoubleNum.valueOf(1.2), profitWith);
 
-        assertEquals(DoubleNum.valueOf(1.2), profit);
+        // exclude base percentage
+        final Num profitWithoutBase = position.getGrossReturn(false);
+        assertEquals(DoubleNum.valueOf(0.2), profitWithoutBase);
     }
 
     @Test
     public void testGetGrossReturnForLongPositionsUsingBarCloseOnNaN() {
         MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 105);
         Position position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
-        assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
+
+        // include base percentage
+        assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series, true));
+
+        // exclude base percentage
+        assertNumEquals(DoubleNum.valueOf(0.05), position.getGrossReturn(series, false));
     }
 
     @Test
     public void testGetGrossReturnForShortPositionsUsingBarCloseOnNaN() {
         MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95);
         Position position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
-        assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
+
+        // include base percentage
+        assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series, true));
+
+        // exclude base percentage
+        assertNumEquals(DoubleNum.valueOf(0.05), position.getGrossReturn(series, false));
     }
 
     @Test

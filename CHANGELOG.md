@@ -21,6 +21,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 - **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
+- added the parameter `addBase` to the following methods to be able to include or exlude the base from the result. The developer must now make a conscious decision whether to set `addBase` to `true` or `false` to avoid implicit bugs:
+    - changed `Position.getGrossReturn()` to `Position.getGrossReturn(boolean addBase)`
+    - changed `Position.getGrossReturn(Num finalPrice)` to `Position.getGrossReturn(Num finalPrice, boolean addBase)`
+    - changed `Position.getGrossReturn(BarSeries barSeries)` to `Position.getGrossReturn(BarSeries barSeries, boolean addBase)`
+    - changed `Position.getGrossReturn(Num entryPrice, Num exitPrice)` to `Position.getGrossReturn(Num entryPrice, Num exitPrice, boolean addBase)`
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices

@@ -72,7 +72,7 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         int beginIndex = position.getEntry().getIndex();
         int endIndex = series.getEndIndex();
-        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series, true);
     }
 
     @Override
@@ -82,7 +82,7 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
         }
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
-        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
+        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series, true);
     }
 
     /** The higher the criterion value the better. */
