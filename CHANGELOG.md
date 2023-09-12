@@ -21,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 - **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
+- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -107,6 +108,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
 - added **RunningTotalIndicator** to calculate a cumulative sum for a period.
+- added **EnterAndHoldCriterion** to calculate the "enter and hold"-strategy of any criteria.
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
