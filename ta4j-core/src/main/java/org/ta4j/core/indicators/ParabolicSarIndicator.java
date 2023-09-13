@@ -121,7 +121,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex()) {
             return NaN;
         }
-        
+
         seriesStartIndex = getBarSeries().getRemovedBarsCount();
         if (index < seriesStartIndex) {
             index = seriesStartIndex;
