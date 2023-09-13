@@ -166,7 +166,7 @@ public class BaseBarSeries implements BarSeries {
     BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
         this.name = name;
 
-        this.bars = bars;
+        this.bars = new ArrayList<>(bars);
         if (bars.isEmpty()) {
             // Bar list empty
             this.seriesBeginIndex = -1;

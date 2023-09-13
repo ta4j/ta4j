@@ -21,56 +21,35 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.numeric;
+package org.ta4j.core.indicators.helpers;
 
-import java.util.function.UnaryOperator;
-
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Objects of this class defer the evaluation of a unary operator, like sqrt().
+ * Running Total aka Cumulative Sum indicator
  *
- * There may be other unary operations on Num that could be added here.
+ * @see <a href=
+ *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
-public class UnaryOperation implements Indicator<Num> {
+public class RunningTotalIndicator extends CachedIndicator<Num> {
+    private final Indicator<Num> indicator;
+    private final int barCount;
 
-    /**
-     * Returns an {@code Indicator} whose value is {@code √(operand)}.
-     * 
-     * @param operand
-     * @return {@code √(operand)}
-     * @see Num#sqrt
-     */
-    public static UnaryOperation sqrt(Indicator<Num> operand) {
-        return new UnaryOperation(Num::sqrt, operand);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is the absolute value of
-     * {@code operand}.
-     * 
-     * @param operand
-     * @return {@code abs(operand)}
-     * @see Num#abs
-     */
-    public static UnaryOperation abs(Indicator<Num> operand) {
-        return new UnaryOperation(Num::abs, operand);
-    }
-
-    private final UnaryOperator<Num> operator;
-    private final Indicator<Num> operand;
-
-    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
-        this.operator = operator;
-        this.operand = operand;
+    public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
-    public Num getValue(int index) {
-        Num n = operand.getValue(index);
-        return operator.apply(n);
+    protected Num calculate(int index) {
+        Num sum = zero();
+        for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
+            sum = sum.plus(indicator.getValue(i));
+        }
+        return sum;
     }
 
     @Override
@@ -79,8 +58,7 @@ public class UnaryOperation implements Indicator<Num> {
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return operand.getBarSeries();
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
-
 }

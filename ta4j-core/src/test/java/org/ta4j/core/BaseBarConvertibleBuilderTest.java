@@ -40,21 +40,21 @@ import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 @RunWith(Parameterized.class)
-public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public ConvertibleBaseBarBuilderTest(Function<Number, Num> numFunction) {
+    public BaseBarConvertibleBuilderTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Test
     public void testBuildBigDecimal() {
-        new ConvertibleBaseBarBuilder<BigDecimal>(DecimalNum::valueOf);
+        new BaseBarConvertibleBuilder<BigDecimal>(DecimalNum::valueOf);
 
         final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new ConvertibleBaseBarBuilder<BigDecimal>(this::numOf).timePeriod(duration)
+        final BaseBar bar = new BaseBarConvertibleBuilder<BigDecimal>(this::numOf).timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(BigDecimal.valueOf(101.0))
                 .highPrice(BigDecimal.valueOf(103))
