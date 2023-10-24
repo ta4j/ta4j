@@ -67,7 +67,12 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
         bars.add(new MockBar(19.89, 6.36, 20.22, 6.21, numFunction));
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
+        // new bar creating the problem (close price == previous Super Trend value)
         bars.add(new MockBar(19.28, 22.78938583966133, 23.58, 10.11, numFunction));
+        // more values to show that Super Trend value stay 0 even after
+        bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
+        bars.add(new MockBar(21.56, 18.83, 21.80, 18.83, numFunction));
+        bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
 
         data = new MockBarSeries(bars);
     }
@@ -79,6 +84,11 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(this.numOf(15.730621000000003), superTrendIndicator.getValue(4));
         assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(9));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(14));
+        // now the Super Trend value goes to 0
         assertNumEquals(this.numOf(0), superTrendIndicator.getValue(15));
+        // no matter what happens after, it stays 0
+        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(16));
+        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(17));
+        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(18));
     }
 }
