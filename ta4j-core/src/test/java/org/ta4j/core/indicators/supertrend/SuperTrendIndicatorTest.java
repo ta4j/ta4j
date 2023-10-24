@@ -67,6 +67,7 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
         bars.add(new MockBar(19.89, 6.36, 20.22, 6.21, numFunction));
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
+        bars.add(new MockBar(19.28, 22.78938583966133, 23.58, 10.11, numFunction));
 
         data = new MockBarSeries(bars);
     }
@@ -78,6 +79,6 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(this.numOf(15.730621000000003), superTrendIndicator.getValue(4));
         assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(9));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(14));
-
+        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(15));
     }
 }
