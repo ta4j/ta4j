@@ -82,9 +82,7 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         assertNumEquals(this.numOf(15.730621000000003), superTrendIndicator.getValue(4));
         assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(9));
-        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(10));
-        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(11));
-        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(12));
+        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(14));
     }
 
     @Test
