@@ -67,12 +67,11 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
         bars.add(new MockBar(19.89, 6.36, 20.22, 6.21, numFunction));
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
-        // new bar creating the problem (close price == previous Super Trend value)
+        // this mock bar exemplify an edge case, the close price is the same as the previous Super Trend value
         bars.add(new MockBar(19.28, 22.78938583966133, 23.58, 10.11, numFunction));
-        // more values to show that Super Trend value stay 0 even after
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
-        bars.add(new MockBar(21.56, 18.83, 21.80, 18.83, numFunction));
-        bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
+        bars.add(new MockBar(10.34, 9.83, 12.80, 8.83, numFunction));
+        bars.add(new MockBar(11.83, 7.35, 11.41, 5.01, numFunction));
 
         data = new MockBarSeries(bars);
     }
@@ -83,12 +82,21 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         assertNumEquals(this.numOf(15.730621000000003), superTrendIndicator.getValue(4));
         assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(9));
+        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(10));
+        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(11));
+        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(12));
+    }
+
+    @Test
+    public void regressionTestOnZeroSuperTrendValueWhenClosePriceIsEqualToPreviousSuperTrendValue() {
+        // bug: https://github.com/ta4j/ta4j/issues/1120
+        SuperTrendIndicator superTrendIndicator = new SuperTrendIndicator(data);
+
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(13));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(14));
-        // now the Super Trend value goes to 0
-        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(15));
-        // no matter what happens after, it stays 0
-        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(16));
-        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(17));
-        assertNumEquals(this.numOf(0), superTrendIndicator.getValue(18));
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(15));
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(16));
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(17));
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(18));
     }
 }
