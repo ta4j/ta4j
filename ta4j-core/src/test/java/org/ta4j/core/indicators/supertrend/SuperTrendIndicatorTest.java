@@ -82,7 +82,7 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         assertNumEquals(this.numOf(15.730621000000003), superTrendIndicator.getValue(4));
         assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(9));
-        assertNumEquals(this.numOf(17.602360938100002), superTrendIndicator.getValue(14));
+        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(14));
     }
 
     @Test
@@ -90,7 +90,6 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         // bug: https://github.com/ta4j/ta4j/issues/1120
         SuperTrendIndicator superTrendIndicator = new SuperTrendIndicator(data);
 
-        assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(13));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(14));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(15));
         assertNumEquals(this.numOf(22.78938583966133), superTrendIndicator.getValue(16));
