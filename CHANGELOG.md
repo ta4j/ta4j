@@ -24,7 +24,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BarSeries#getBeginIndex()** methode returns correct begin index for bar series with max bar count
 
 ### Fixed
--  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
+- **Fixed** **SuperTrendIndicator** fixed calculation when close price is the same as the previous Super Trend indicator value
+- **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
 - catch NumberFormatException if `DecimalNum.valueOf(Number)` is `NaN`
 - **ProfitCriterion** fixed excludeCosts functionality as it was reversed
