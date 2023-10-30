@@ -67,7 +67,8 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         bars.add(new MockBar(19.00, 18.35, 19.41, 18.01, numFunction));
         bars.add(new MockBar(19.89, 6.36, 20.22, 6.21, numFunction));
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
-        // this mock bar exemplify an edge case, the close price is the same as the previous Super Trend value
+        // this mock bar exemplify an edge case, the close price is the same as the
+        // previous Super Trend value
         bars.add(new MockBar(19.28, 22.78938583966133, 23.58, 10.11, numFunction));
         bars.add(new MockBar(19.28, 10.34, 20.58, 10.11, numFunction));
         bars.add(new MockBar(10.34, 9.83, 12.80, 8.83, numFunction));
