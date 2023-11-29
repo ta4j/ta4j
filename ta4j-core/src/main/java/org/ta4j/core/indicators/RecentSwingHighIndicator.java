@@ -35,15 +35,14 @@ import org.ta4j.core.num.Num;
 public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
     /**
-     * A swing high is a bar with a higher high than the bars both before and
-     * after it. Defines the number of bars to consider on each side (e.g., 2
-     * bars on each side).
+     * A swing high is a bar with a higher high than the bars both before and after
+     * it. Defines the number of bars to consider on each side (e.g., 2 bars on each
+     * side).
      */
     private final int surroundingBars;
 
     /**
-     * *
-     * Full constructor
+     * * Full constructor
      *
      * @param series
      * @param surroundingBars
@@ -58,8 +57,7 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * *
-     * Convenience constructor defaulting surroundingBars to 2
+     * * Convenience constructor defaulting surroundingBars to 2
      *
      * @param series
      */
@@ -101,7 +99,7 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
         return NaN;
     }
-    
+
     @Override
     public int getUnstableBars() {
         return surroundingBars;
