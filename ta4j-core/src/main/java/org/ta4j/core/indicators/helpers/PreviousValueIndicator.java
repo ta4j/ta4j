@@ -28,10 +28,16 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Returns the previous (n-th) value of an indicator.
+ * Returns the (n-th) previous value of an indicator.
+ *
+ * <p>
+ * If the current index equals the first index from the bar series or if the
+ * previous index is below the first index from the bar series, the indicator
+ * value of the first index is returned.
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
+    /** The n-th previous index in the bar series. */
     private final int n;
     private final Indicator<Num> indicator;
 
@@ -47,13 +53,15 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator from which to calculate the previous value
-     * @param n         parameter defines the previous n-th value
+     * @param indicator the indicator from which to calculate the n-th previous
+     *                  value
+     * @param n         the n-th previous index in the bar series
+     * @throws IllegalArgumentException if {@code n < 1}
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
         super(indicator);
         if (n < 1) {
-            throw new IllegalArgumentException("n must be positive number, but was: " + n);
+            throw new IllegalArgumentException("n must be a positive number, but was: " + n);
         }
         this.n = n;
         this.indicator = indicator;
