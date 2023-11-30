@@ -69,9 +69,10 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
         return previousIndex < 0 ? NaN.NaN : indicator.getValue(previousIndex);
     }
 
+    /** @return {@link #n} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return n;
     }
 
     @Override
