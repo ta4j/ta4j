@@ -68,6 +68,7 @@ public class VolumeIndicator extends CachedIndicator<Num> {
         return sumOfVolume;
     }
 
+    /** @return {@link #barCount} */
     @Override
     public int getUnstableBars() {
         return barCount;

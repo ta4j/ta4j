@@ -35,6 +35,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ThreeWhiteSoldiersIndicator** fixed eliminated instance variable holding possible wrong value
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- sets `ClosePriceDifferenceIndicator#getUnstableBars` = `1`
+- sets `ClosePriceRatioIndicator#getUnstableBars` = `1`
+- sets `ConvergenceDivergenceIndicator#getUnstableBars` = `barCount`
+- sets `GainIndicator#getUnstableBars` = `1`
+- sets `HighestValueIndicator#getUnstableBars` = `barCount`
+- sets `LossIndicator#getUnstableBars` = `1`
+- sets `LowestValueIndicator#getUnstableBars` = `barCount`
+- sets `TRIndicator#getUnstableBars` = `1`
 - sets `PreviousValueIndicator#getUnstableBars` = `n` (= the n-th previous index)
 - **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty

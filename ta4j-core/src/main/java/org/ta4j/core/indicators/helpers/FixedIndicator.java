@@ -68,6 +68,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
         return values.get(index);
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

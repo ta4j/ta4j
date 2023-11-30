@@ -64,13 +64,9 @@ public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
         return currentBarClosePrice.minus(previousBarClosePrice);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This indicator is always stable, so it returns 0.
-     */
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }
