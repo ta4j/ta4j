@@ -21,9 +21,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 - **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
+- **BarSeries#getBeginIndex()** methode returns correct begin index for bar series with max bar count
 
 ### Fixed
--  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
+- **Fixed** **SuperTrendIndicator** fixed calculation when close price is the same as the previous Super Trend indicator value
+- **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
 - catch NumberFormatException if `DecimalNum.valueOf(Number)` is `NaN`
 - **ProfitCriterion** fixed excludeCosts functionality as it was reversed
@@ -41,6 +43,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - sets `LossIndicator#getUnstableBars` = `1`
 - sets `LowestValueIndicator#getUnstableBars` = `barCount`
 - sets `TRIndicator#getUnstableBars` = `1`
+- sets `PreviousValueIndicator#getUnstableBars` = `n` (= the n-th previous index)
+- **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 - **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
 
