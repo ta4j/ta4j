@@ -85,8 +85,8 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
 
             for (int j = 1; j <= surroundingBars; j++) {
                 if (i + j > endIndex || i - j < 0
-                        || currentBar.getLowPrice().isGreaterThanOrEqual(getBarSeries().getBar(i - j).getLowPrice())
-                        || currentBar.getLowPrice().isGreaterThanOrEqual(getBarSeries().getBar(i + j).getLowPrice())) {
+                        || currentBar.getLowPrice().isGreaterThan(getBarSeries().getBar(i - j).getLowPrice())
+                        || currentBar.getLowPrice().isGreaterThan(getBarSeries().getBar(i + j).getLowPrice())) {
                     isSwingLow = false;
                     break;
                 }
