@@ -93,7 +93,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
         assertNumEquals(12, swingHighIndicator.getValue(6));
     }
-    
+
     @Test
     public void testCalculate_PricePlateau_ReturnsValue() {
         List<Bar> bars = new ArrayList<>();
@@ -105,7 +105,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         bars.add(new MockBar(11, 11, 11, 11, numFunction));
         bars.add(new MockBar(10, 10, 10, 10, numFunction));
         BarSeries newSeries = new MockBarSeries(bars);
-        
+
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(newSeries, 2);
 
         assertNumEquals(12, swingHighIndicator.getValue(6));
