@@ -35,9 +35,9 @@ import org.ta4j.core.num.Num;
 public class RecentSwingLowIndicator extends CachedIndicator<Num> {
 
     /**
-     * A swing low is a bar (or sequence of bars) with a lower low than the bars both before and after it.
-     * Defines the number of bars to consider on each side (e.g., 2 bars on each
-     * side).
+     * A swing low is a bar (or sequence of bars) with a lower low than the bars
+     * both before and after it. Defines the number of bars to consider on each side
+     * (e.g., 2 bars on each side).
      */
     private final int surroundingBars;
 
