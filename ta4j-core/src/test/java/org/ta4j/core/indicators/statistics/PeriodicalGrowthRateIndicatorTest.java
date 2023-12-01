@@ -27,6 +27,7 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;

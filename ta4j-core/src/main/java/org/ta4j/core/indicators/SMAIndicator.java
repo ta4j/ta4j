@@ -60,6 +60,7 @@ public class SMAIndicator extends AbstractIndicator<Num> {
         return sum.dividedBy(numOf(realBarCount));
     }
 
+    /** @return {@link #barCount} */
     @Override
     public int getUnstableBars() {
         return barCount;

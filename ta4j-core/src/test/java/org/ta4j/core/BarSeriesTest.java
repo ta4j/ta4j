@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -89,6 +90,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     }
 
+    @Test
+    public void createWithUnmodifiableCollectionTest() {
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withBars(List.copyOf(bars)).build();
+        series.addBar(new MockBar(ZonedDateTime.of(2014, 7, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 7d, numFunction));
+        assertEquals(7, series.getBarCount());
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(6, series.getEndIndex());
+        assertNumEquals(1d, series.getFirstBar().getClosePrice());
+        assertNumEquals(7d, series.getLastBar().getClosePrice());
+
+    }
+
     /**
      * Tests if the addBar(bar, boolean) function works correct.
      */
@@ -97,15 +110,15 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction), true);
         assertEquals(1, series.getBarCount());
-        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.one());
+        assertNumEquals(series.getLastBar().getClosePrice(), series.one());
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d, numFunction), false);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d, numFunction), false);
         assertEquals(3, series.getBarCount());
-        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
+        assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d, numFunction), true);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d, numFunction), true);
         assertEquals(3, series.getBarCount());
-        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
+        assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
     }
 
     @Test
@@ -174,11 +187,12 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNotSame(bar, defaultSeries.getBar(5));
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
-    public void getBarOnMovingAndEmptySeriesShouldThrowExceptionTest() {
+    @Test
+    public void modificationsOnOriginalListShouldNotAffectBarSeries() {
         defaultSeries.setMaximumBarCount(2);
-        bars.clear(); // Should not be used like this
-        defaultSeries.getBar(1);
+        bars.clear();
+        assertEquals(2, defaultSeries.getBarCount());
+        assertNumEquals(5, defaultSeries.getBar(1).getClosePrice());
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
@@ -249,7 +263,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         defaultSeries.setMaximumBarCount(3);
 
         // After
-        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(3, defaultSeries.getBeginIndex());
         assertEquals(5, defaultSeries.getEndIndex());
         assertEquals(3, defaultSeries.getBarCount());
     }
@@ -298,19 +312,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         Num currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
         Num currentClose = cp.getValue(defaultSeries.getEndIndex());
 
-        TestUtils.assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
+        assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
         defaultSeries.addPrice(adding1);
-        TestUtils.assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
-        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
-        TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
-        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
+        assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
+        assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
+        assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
+        assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
 
         Num adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
-        TestUtils.assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close
-        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
-        TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
-        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
+        assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close
+        assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
+        assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
+        assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
     }
 
     /**
@@ -322,11 +336,11 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction));
         series.addTrade(200, 11.5);
-        TestUtils.assertNumEquals(series.numOf(200), series.getLastBar().getVolume());
-        TestUtils.assertNumEquals(series.numOf(11.5), series.getLastBar().getClosePrice());
+        assertNumEquals(series.numOf(200), series.getLastBar().getVolume());
+        assertNumEquals(series.numOf(11.5), series.getLastBar().getClosePrice());
         series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
-        TestUtils.assertNumEquals(series.numOf(400), series.getLastBar().getVolume());
-        TestUtils.assertNumEquals(series.numOf(100), series.getLastBar().getClosePrice());
+        assertNumEquals(series.numOf(400), series.getLastBar().getVolume());
+        assertNumEquals(series.numOf(100), series.getLastBar().getClosePrice());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -351,7 +365,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         IntStream.range(0, 100).forEach(i -> {
             series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, i);
-            int startIndex = Math.max(0, series.getEndIndex() - timespan + 1);
+            int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
             int endIndex = i + 1;
             final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
             assertEquals(subSeries.getBarCount(), endIndex - startIndex);

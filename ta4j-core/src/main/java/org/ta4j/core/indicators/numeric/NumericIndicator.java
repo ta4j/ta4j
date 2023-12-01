@@ -43,9 +43,9 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * 
  * <p>
  * Methods like plus(), minus() and sqrt() correspond directly to methods in the
- * Num interface. These methods create "lightweight" (not cached) indicators to
- * add, subtract, etc. Many methods are overloaded to accept either
- * Indicator<Num> or Number arguments.
+ * {@code Num} interface. These methods create "lightweight" (not cached)
+ * indicators to add, subtract, etc. Many methods are overloaded to accept
+ * either {@code Indicator<Num>} or {@code Number} arguments.
  * 
  * <p>
  * Methods like sma() and ema() simply create the corresponding indicator
@@ -54,8 +54,8 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * 
  * <p>
  * Another set of methods, like crossedOver() and isGreaterThan() create Rule
- * objects. These are also overloaded to accept both Indicator<Num> and Number
- * arguments.
+ * objects. These are also overloaded to accept both {@code Indicator<Num>} and
+ * {@code Number} arguments.
  */
 public class NumericIndicator implements Indicator<Num> {
 

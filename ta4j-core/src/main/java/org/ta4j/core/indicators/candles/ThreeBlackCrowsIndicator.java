@@ -46,8 +46,6 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
     /** Factor used when checking if a candle has a very short lower shadow. */
     private final Num factor;
 
-    private int whiteCandleIndex = -1;
-
     /**
      * Constructor.
      *
@@ -65,25 +63,25 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 3) {
+        if (getBarSeries().getBeginIndex() > (index - 3)) {
             // We need 4 candles: 1 white, 3 black
             return false;
         }
-        whiteCandleIndex = index - 3;
-        return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
-                && isBlackCrow(index);
+        int whiteCandleIndex = index - 3;
+        return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2, whiteCandleIndex)
+                && isBlackCrow(index - 1, whiteCandleIndex) && isBlackCrow(index, whiteCandleIndex);
     }
 
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 4;
     }
 
     /**
      * @param index the bar/candle index
      * @return true if the bar/candle has a very short lower shadow, false otherwise
      */
-    private boolean hasVeryShortLowerShadow(int index) {
+    private boolean hasVeryShortLowerShadow(int index, int whiteCandleIndex) {
         Num currentLowerShadow = lowerShadowInd.getValue(index);
         // We use the white candle index to remove to bias of the previous crows
         Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
@@ -113,15 +111,16 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
      * @param index the current bar/candle index
      * @return true if the current bar/candle is a black crow, false otherwise
      */
-    private boolean isBlackCrow(int index) {
+    private boolean isBlackCrow(int index, int whiteCandleIndex) {
         Bar prevBar = getBarSeries().getBar(index - 1);
         Bar currBar = getBarSeries().getBar(index);
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case
-                return hasVeryShortLowerShadow(index) && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
+                return hasVeryShortLowerShadow(index, whiteCandleIndex)
+                        && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
             } else {
-                return hasVeryShortLowerShadow(index) && isDeclining(index);
+                return hasVeryShortLowerShadow(index, whiteCandleIndex) && isDeclining(index);
             }
         }
         return false;

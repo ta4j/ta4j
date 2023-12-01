@@ -46,6 +46,37 @@ public class ProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateComparingIncludingVsExcludingCosts() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
+        FixedTransactionCostModel transactionCost = new FixedTransactionCostModel(1);
+        ZeroCostModel holdingCost = new ZeroCostModel();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
+
+        // entry price = 100 (cost = 1) => netPrice = 101, grossPrice = 100
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
+        // exit price = 105 (cost = 1) => netPrice = 104, grossPrice = 105
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+
+        // entry price = 100 (cost = 1) => netPrice = 101, grossPrice = 100
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
+        // exit price = 120 (cost = 1) => netPrice = 119, grossPrice = 120
+        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
+                tradingRecord.getCurrentPosition().getEntry().getAmount());
+
+        // include costs, i.e. profit - costs:
+        // [(104 - 101)] + [(119 - 101)] = 3 + 18 = +21 profit
+        // [(105 - 100)] + [(120 - 100)] = 5 + 20 = +25 profit - 4 = +21 profit
+        AnalysisCriterion profitIncludingCosts = getCriterion(false);
+        assertNumEquals(21, profitIncludingCosts.calculate(series, tradingRecord));
+
+        // exclude costs, i.e. costs are not contained:
+        // [(105 - 100)] + [(120 - 100)] = 5 + 20 = +25 profit
+        AnalysisCriterion profitExcludingCosts = getCriterion(true);
+        assertNumEquals(25, profitExcludingCosts.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void calculateOnlyWithProfitPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
@@ -63,26 +94,6 @@ public class ProfitCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion profit = getCriterion(false);
         assertNumEquals(25, profit.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateComparingIncludingVsExcludingCosts() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, new FixedTransactionCostModel(1),
-                new ZeroCostModel());
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
-        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
-                tradingRecord.getCurrentPosition().getEntry().getAmount());
-        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
-        ;
-        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
-                tradingRecord.getCurrentPosition().getEntry().getAmount());
-
-        AnalysisCriterion profitIncludingCosts = getCriterion(false);
-        assertNumEquals(21, profitIncludingCosts.calculate(series, tradingRecord));
-
-        AnalysisCriterion profitExcludingCosts = getCriterion(true);
-        assertNumEquals(25, profitExcludingCosts.calculate(series, tradingRecord));
     }
 
     @Test

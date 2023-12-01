@@ -54,15 +54,14 @@ public class LossIndicator extends AbstractIndicator<Num> {
         if (index == 0) {
             return zero();
         }
-        if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index - 1).minus(indicator.getValue(index));
-        } else {
-            return zero();
-        }
+        Num actualValue = indicator.getValue(index);
+        Num previousValue = indicator.getValue(index - 1);
+        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }

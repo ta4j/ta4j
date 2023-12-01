@@ -55,6 +55,7 @@ public class MedianPriceIndicator extends AbstractIndicator<Num> {
         return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(numOf(2));
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

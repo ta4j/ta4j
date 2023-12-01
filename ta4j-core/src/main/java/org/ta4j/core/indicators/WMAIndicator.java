@@ -52,7 +52,7 @@ public class WMAIndicator extends AbstractIndicator<Num> {
             return indicator.getValue(0);
         }
 
-        Num value = numOf(0);
+        Num value = zero();
         int loopLength = (index - barCount < 0) ? index + 1 : barCount;
         int actualIndex = index;
         for (int i = loopLength; i > 0; i--) {

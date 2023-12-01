@@ -66,6 +66,7 @@ public class DateTimeIndicator extends AbstractIndicator<ZonedDateTime> {
         return this.action.apply(bar);
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

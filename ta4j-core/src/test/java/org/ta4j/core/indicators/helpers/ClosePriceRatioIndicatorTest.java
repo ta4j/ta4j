@@ -23,37 +23,41 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.function.Function;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * Price variation indicator.
- * 
- * <pre>
- * PriceVariation = currentBarClosePrice / previousBarClosePrice
- * </pre>
- */
-public class PriceVariationIndicator extends AbstractIndicator<Num> {
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-    /**
-     * Constructor.
-     * 
-     * @param series the bar series
-     */
-    public PriceVariationIndicator(BarSeries series) {
-        super(series);
+public class ClosePriceRatioIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private ClosePriceRatioIndicator variationIndicator;
+
+    private BarSeries barSeries;
+
+    public ClosePriceRatioIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
-        Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
-        return currentBarClosePrice.dividedBy(previousBarClosePrice);
+    @Before
+    public void setUp() {
+        barSeries = new MockBarSeries(numFunction);
+        variationIndicator = new ClosePriceRatioIndicator(barSeries);
     }
 
-    @Override
-    public int getUnstableBars() {
-        return 0;
+    @Test
+    public void indicatorShouldRetrieveBarVariation() {
+        assertNumEquals(1, variationIndicator.getValue(0));
+        for (int i = 1; i < 10; i++) {
+            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
+            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
+        }
     }
 }

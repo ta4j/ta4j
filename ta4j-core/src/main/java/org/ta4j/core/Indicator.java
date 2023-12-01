@@ -45,7 +45,10 @@ public interface Indicator<T> {
     T getValue(int index);
 
     /**
-     * @return the number of bars up to which the indicator calculates wrong values
+     * Returns the number of bars up to which {@code this} Indicator calculates
+     * wrong values.
+     * 
+     * @return unstable bars
      */
     int getUnstableBars();
 

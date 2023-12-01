@@ -23,41 +23,50 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.function.Function;
-import org.junit.Before;
-import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+/**
+ * Calculates the difference between the current and the previous close price.
+ * 
+ * <pre>
+ * ClosePriceDifference = currentBarClosePrice - previousBarClosePrice
+ * </pre>
+ */
+public class ClosePriceDifferenceIndicator extends AbstractIndicator<Num> {
 
-public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    private PriceVariationIndicator variationIndicator;
-
-    private BarSeries barSeries;
-
-    public PriceVariationIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    /**
+     * Constructor.
+     *
+     * @param series the bar series
+     */
+    public ClosePriceDifferenceIndicator(BarSeries series) {
+        super(series);
     }
 
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        variationIndicator = new PriceVariationIndicator(barSeries);
+    /**
+     * Calculates the difference between the close prices of the current bar and the
+     * previous bar.
+     *
+     * @param index the index of the current bar
+     * @return the difference between the close prices
+     */
+    @Override
+    protected Num calculate(int index) {
+        // Get the close price of the previous bar
+        Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
+
+        // Get the close price of the current bar
+        Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
+
+        // Calculate the difference between the close prices
+        return currentBarClosePrice.minus(previousBarClosePrice);
     }
 
-    @Test
-    public void indicatorShouldRetrieveBarVariation() {
-        assertNumEquals(1, variationIndicator.getValue(0));
-        for (int i = 1; i < 10; i++) {
-            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
-            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
-            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
-        }
+    /** @return {@code 1} */
+    @Override
+    public int getUnstableBars() {
+        return 1;
     }
 }

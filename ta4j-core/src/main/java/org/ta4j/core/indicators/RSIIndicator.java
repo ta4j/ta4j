@@ -57,11 +57,7 @@ public class RSIIndicator extends AbstractIndicator<Num> {
         Num averageGain = averageGainIndicator.getValue(index);
         Num averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
-            if (averageGain.isZero()) {
-                return zero();
-            } else {
-                return hundred();
-            }
+            return averageGain.isZero() ? zero() : hundred();
         }
         Num relativeStrength = averageGain.dividedBy(averageLoss);
         // compute relative strength index

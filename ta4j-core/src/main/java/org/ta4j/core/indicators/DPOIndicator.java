@@ -75,7 +75,6 @@ public class DPOIndicator extends AbstractIndicator<Num> {
         final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
         final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
                 timeFrame);
-
         this.indicatorMinusPreviousSMAIndicator = CombineIndicator.minus(price, previousSimpleMovingAverage);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }

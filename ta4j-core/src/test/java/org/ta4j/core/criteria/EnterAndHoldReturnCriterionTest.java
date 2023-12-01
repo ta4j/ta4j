@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
 import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.*;
@@ -39,6 +40,21 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
     public EnterAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
         super(params -> params.length == 0 ? new EnterAndHoldReturnCriterion()
                 : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFunction);
+    }
+
+    @Test
+    public void calculateWithEmpty() {
+        MockBarSeries series = new MockBarSeries(numFunction, List.of());
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        AnalysisCriterion buyAndHold = getCriterion();
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+
+        Num buyAndHoldResult = buyAndHold.calculate(series, tradingRecord);
+        Num sellAndHoldResult = sellAndHold.calculate(series, tradingRecord);
+
+        assertNumEquals(1, buyAndHoldResult);
+        assertNumEquals(1, sellAndHoldResult);
+
     }
 
     @Test

@@ -54,15 +54,14 @@ public class GainIndicator extends AbstractIndicator<Num> {
         if (index == 0) {
             return zero();
         }
-        if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index).minus(indicator.getValue(index - 1));
-        } else {
-            return zero();
-        }
+        Num actualValue = indicator.getValue(index);
+        Num previousValue = indicator.getValue(index - 1);
+        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue) : zero();
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }

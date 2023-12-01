@@ -38,6 +38,7 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
+    private final Num two;
     private final Num k;
     private final int lag;
 
@@ -51,7 +52,8 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
         super(indicator, new NativeRecursiveIndicatorValueCache<>(indicator));
         this.indicator = indicator;
         this.barCount = barCount;
-        this.k = numOf(2).dividedBy(numOf(barCount + 1));
+        this.two = numOf(2);
+        this.k = two.dividedBy(numOf(barCount + 1));
         this.lag = (barCount - 1) / 2;
     }
 
@@ -66,7 +68,7 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
             return indicator.getValue(0);
         }
         Num zlemaPrev = getValue(index - 1);
-        return k.multipliedBy(numOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
+        return k.multipliedBy(two.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
                 .plus(one().minus(k).multipliedBy(zlemaPrev));
     }
 

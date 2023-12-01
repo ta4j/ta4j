@@ -190,6 +190,7 @@ public class BooleanTransformIndicator extends AbstractIndicator<Boolean> {
         return false;
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

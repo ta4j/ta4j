@@ -230,7 +230,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the net profit of the position if it is closed.
+     * Calculates the net profit of the position if it is closed. The net profit
+     * includes any trading costs.
      *
      * @return the profit or loss of the position
      */
@@ -244,7 +245,7 @@ public class Position implements Serializable {
 
     /**
      * Calculates the net profit of the position. If it is open, calculates the
-     * profit until the final bar.
+     * profit until the final bar. The net profit includes any trading costs.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -259,7 +260,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross profit of the position if it is closed.
+     * Calculates the gross profit of the position if it is closed. The gross profit
+     * excludes any trading costs.
      *
      * @return the gross profit of the position
      */
@@ -272,7 +274,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross profit of the position.
+     * Calculates the gross profit of the position. The gross profit excludes any
+     * trading costs.
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
@@ -294,9 +297,11 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross return of the position if it is closed.
+     * Calculates the gross return of the position if it is closed. The gross return
+     * excludes any trading costs (and includes the base).
      *
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(Num)
      */
     public Num getGrossReturn() {
         if (isOpened()) {
@@ -308,11 +313,12 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross return of the position, if it exited at the provided
-     * price.
+     * price. The gross return excludes any trading costs (and includes the base).
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(Num finalPrice) {
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
@@ -321,10 +327,12 @@ public class Position implements Serializable {
     /**
      * Calculates the gross return of the position. If either the entry or exit
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
+     * The gross return excludes any trading costs (and includes the base).
      *
      * @param barSeries
      * @return the gross return in percent with entry and exit prices from the
      *         barSeries
+     * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
