@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
-public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
+public class ChandelierExitLongIndicator extends AbstractIndicator<Num> {
 
     private final HighestValueIndicator high;
     private final ATRIndicator atr;

@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,14 +34,14 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
- * 
+ *
  * <pre>
  * y = slope * x + intercept
  * </pre>
- * 
+ *
  * @see http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
-public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
+public class SimpleLinearRegressionIndicator extends AbstractIndicator<Num> {
 
     /**
      * The type for the outcome of the {@link SimpleLinearRegressionIndicator}.

@@ -23,11 +23,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.time.ZonedDateTime;
 import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -38,6 +35,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

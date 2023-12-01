@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  *      https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma
  *      </a>
  */
-public class DistanceFromMAIndicator extends CachedIndicator<Num> {
+public class DistanceFromMAIndicator extends AbstractIndicator<Num> {
     private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(
             Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
                     WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,

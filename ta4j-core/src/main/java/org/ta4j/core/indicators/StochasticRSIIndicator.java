@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * Stoch RSI = (RSI - MinimumRSIn) / (MaximumRSIn - MinimumRSIn)
  * </pre>
  */
-public class StochasticRSIIndicator extends CachedIndicator<Num> {
+public class StochasticRSIIndicator extends AbstractIndicator<Num> {
 
     private final RSIIndicator rsi;
     private final LowestValueIndicator minRsi;

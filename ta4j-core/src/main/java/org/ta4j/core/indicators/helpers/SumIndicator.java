@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * Sum = summand0 + summand1 + ... + summandN
  * </pre>
  */
-public class SumIndicator extends CachedIndicator<Num> {
+public class SumIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num>[] summands;
 

@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 /**
  * Stochastic oscillator D.
  */
-public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
+public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
 

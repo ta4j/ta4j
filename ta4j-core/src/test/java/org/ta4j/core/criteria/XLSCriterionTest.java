@@ -24,7 +24,6 @@
 package org.ta4j.core.criteria;
 
 import java.util.function.Function;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalCriterionTest;
 import org.ta4j.core.TradingRecord;

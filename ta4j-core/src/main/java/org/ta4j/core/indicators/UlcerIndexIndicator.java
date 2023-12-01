@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>
  */
-public class UlcerIndexIndicator extends CachedIndicator<Num> {
+public class UlcerIndexIndicator extends AbstractIndicator<Num> {
 
     private final Num hundred;
     private final Num zero;

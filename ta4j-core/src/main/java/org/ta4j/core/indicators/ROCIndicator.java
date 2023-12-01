@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/pricerateofchange.asp">https://www.investopedia.com/terms/p/pricerateofchange.asp</a>
  */
-public class ROCIndicator extends CachedIndicator<Num> {
+public class ROCIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

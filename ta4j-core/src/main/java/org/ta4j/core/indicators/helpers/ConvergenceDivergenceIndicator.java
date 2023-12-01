@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.num.Num;
@@ -35,7 +35,7 @@ import org.ta4j.core.rules.IsRisingRule;
 /**
  * Convergence-Divergence indicator.
  */
-public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
+public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
 
     /**
      * Select the type of convergence or divergence.
@@ -165,7 +165,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type, double minStrength, double minSlope) {
-        super(ref);
+        super(ref.getBarSeries());
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;
@@ -185,7 +185,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type) {
-        super(ref);
+        super(ref.getBarSeries());
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;
@@ -205,7 +205,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceStrictType strictType) {
-        super(ref);
+        super(ref.getBarSeries());
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;

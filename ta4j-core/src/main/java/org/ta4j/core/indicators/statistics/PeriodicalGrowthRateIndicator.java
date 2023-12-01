@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -62,7 +62,7 @@ import org.ta4j.core.num.Num;
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
  * </ul>
  */
-public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
+public class PeriodicalGrowthRateIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

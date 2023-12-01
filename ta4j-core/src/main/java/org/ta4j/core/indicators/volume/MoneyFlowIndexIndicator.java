@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -41,7 +41,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * "https://school.stockcharts.com/doku.php?id=technical_indicators:money_flow_index_mfi"></a>
  * </p>
  */
-public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
+public class MoneyFlowIndexIndicator extends AbstractIndicator<Num> {
 
     private final PreviousValueIndicator previousTypicalPrice;
     private final TypicalPriceIndicator typicalPrice;

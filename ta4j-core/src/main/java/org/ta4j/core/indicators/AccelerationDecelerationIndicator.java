@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 /**
  * Acceleration-deceleration indicator.
  */
-public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
+public class AccelerationDecelerationIndicator extends AbstractIndicator<Num> {
 
     private final AwesomeOscillatorIndicator awesome;
     private final SMAIndicator sma;

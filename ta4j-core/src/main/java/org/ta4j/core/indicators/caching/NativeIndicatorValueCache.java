@@ -21,27 +21,18 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.caching;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 
-/**
- * Cached {@link Indicator indicator}.
- *
- * <p>
- * Caches the calculated results of the indicator to avoid calculating the same
- * index of the indicator twice. The caching drastically speeds up access to
- * indicator values. Caching is especially recommended when indicators calculate
- * their values based on the values of other indicators. Such nested indicators
- * can call {@link #getValue(int)} multiple times without the need to
- * {@link #calculate(int)} again.
- */
-public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
+public class NativeIndicatorValueCache<T> implements IndicatorValueCache<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(NativeIndicatorValueCache.class);
 
     /** List of cached results. */
     private final List<T> results;
@@ -52,40 +43,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected int highestResultIndex = -1;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    protected CachedIndicator(BarSeries series) {
-        super(series);
-        int limit = series.getMaximumBarCount();
+    public NativeIndicatorValueCache(IndicatorValueCacheConfig indicatorValueCacheConfig) {
+        int limit = indicatorValueCacheConfig.getMaximumSize();
         this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
     }
 
-    /**
-     * Constructor.
-     *
-     * @param indicator a related indicator (with a bar series)
-     */
-    protected CachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
-    }
-
-    /**
-     * @param index the bar index
-     * @return the value of the indicator
-     */
-    protected abstract T calculate(int index);
-
     @Override
-    public synchronized T getValue(int index) {
-        BarSeries series = getBarSeries();
+    public T get(CacheKeyHolder keyHolder, Function<CacheKeyHolder, T> mappingFunction) {
+        BarSeries series = keyHolder.getBarSeries();
+        int index = keyHolder.getIndex();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
             // (e.g. simple computation of the value)
             // --> Calculating the value
-            T result = calculate(index);
+            T result = mappingFunction.apply(keyHolder);
             if (log.isTraceEnabled()) {
                 log.trace("{}({}): {}", this, index, result);
             }
@@ -101,7 +72,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (index < removedBarsCount) {
             // Result already removed from cache
             if (log.isTraceEnabled()) {
-                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                log.info("{}: result from bar {} already removed from cache, use {}-th instead",
                         getClass().getSimpleName(), index, removedBarsCount);
             }
             increaseLengthTo(removedBarsCount, maximumResultCount);
@@ -111,26 +82,26 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // It should be "result = calculate(removedBarsCount);".
                 // We use "result = calculate(0);" as a workaround
                 // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
+                result = mappingFunction.apply(BaseCacheKeyHolder.of(0, keyHolder.getBar(), keyHolder.getBarSeries()));
                 results.set(0, result);
             }
         } else {
             if (index == series.getEndIndex()) {
                 // Don't cache result if last bar
-                result = calculate(index);
+                result = mappingFunction.apply(keyHolder);
             } else {
                 increaseLengthTo(index, maximumResultCount);
                 if (index > highestResultIndex) {
                     // Result not calculated yet
                     highestResultIndex = index;
-                    result = calculate(index);
+                    result = mappingFunction.apply(keyHolder);
                     results.set(results.size() - 1, result);
                 } else {
                     // Result covered by current cache
                     int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
                     result = results.get(resultInnerIndex);
                     if (result == null) {
-                        result = calculate(index);
+                        result = mappingFunction.apply(keyHolder);
                         results.set(resultInnerIndex, result);
                     }
                 }
@@ -141,6 +112,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
+    }
+
+    @Override
+    public void put(CacheKeyHolder key, T result) {
+        throw new UnsupportedOperationException("Cannot manually put values in a native cache");
+    }
+
+    @Override
+    public Map<Object, T> getValues() {
+        Map<Object, T> resultMap = new HashMap<>();
+        for (int i = 0; i < results.size(); i++) {
+            resultMap.put(i, results.get(i));
+        }
+        return resultMap;
+    }
+
+    @Override
+    public void clear() {
+
     }
 
     /**

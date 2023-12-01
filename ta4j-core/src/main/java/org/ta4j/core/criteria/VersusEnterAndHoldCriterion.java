@@ -23,12 +23,8 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
+import org.ta4j.core.*;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**

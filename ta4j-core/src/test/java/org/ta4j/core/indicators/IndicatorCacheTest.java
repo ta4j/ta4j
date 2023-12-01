@@ -23,23 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.util.Arrays;
 import java.util.function.Function;
-
+import java.util.stream.IntStream;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -47,11 +37,14 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class IndicatorCacheTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public CachedIndicatorTest(Function<Number, Num> numFunction) {
+    public IndicatorCacheTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -182,6 +175,36 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // (4996 + 4997 + 4998 + 4999 + 5) / 5
         assertNumEquals(3999, smaIndicator.getValue(barSeries.getEndIndex()));
 
+    }
+
+    @Test
+    public void getCachedValuesTest() {
+        var barSeries = new MockBarSeries(numFunction);
+        var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
+        var cachedValues = smaIndicator.getCache().getValues();
+
+        assertTrue(cachedValues.isEmpty());
+
+        IntStream.range(0, 4).forEach(smaIndicator::getValue);
+
+        assertFalse(cachedValues.isEmpty());
+        assertEquals(4, cachedValues.size());
+        assertNumEquals(1, cachedValues.get(barSeries.getBar(0).getEndTime()));
+        assertNumEquals(1.5, cachedValues.get(barSeries.getBar(1).getEndTime()));
+        assertNumEquals(2, cachedValues.get(barSeries.getBar(2).getEndTime()));
+        assertNumEquals(2.5, cachedValues.get(barSeries.getBar(3).getEndTime()));
+
+        var key = barSeries.getBar(1).getEndTime();
+        assertThrows(UnsupportedOperationException.class, () -> cachedValues.put(key, numOf(1000)));
+        assertThrows(UnsupportedOperationException.class, () -> cachedValues.remove(key));
+
+        smaIndicator.clearCache();
+
+        assertTrue(smaIndicator.getCache().getValues().isEmpty());
+
+        smaIndicator.disableCache();
+
+        assertEquals(NoIndicatorValueCache.class, smaIndicator.getCache().getClass());
     }
 
 }

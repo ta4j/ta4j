@@ -23,20 +23,19 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -48,7 +47,7 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<Bar> bars = new ArrayList<>();
         // open, close, high, low
         bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
         bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
@@ -71,7 +70,7 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, numFunction));
         bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test

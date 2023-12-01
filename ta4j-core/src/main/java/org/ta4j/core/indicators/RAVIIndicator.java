@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * To preserve trend direction, default calculation does not use absolute value.
  */
-public class RAVIIndicator extends CachedIndicator<Num> {
+public class RAVIIndicator extends AbstractIndicator<Num> {
 
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;

@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
  *      http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
-public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
+public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
 
     /** Lower shadow. */
     private final LowerShadowIndicator lowerShadowInd;

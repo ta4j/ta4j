@@ -64,6 +64,9 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildAndAddData() {
+
+        BaseBarSeries baseBarSeries = new BaseBarSeries("");
+
         BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").build();
 
         ZonedDateTime endTime = ZonedDateTime.now();

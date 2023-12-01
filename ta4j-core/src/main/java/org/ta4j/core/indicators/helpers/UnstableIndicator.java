@@ -24,14 +24,14 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
  * Indicator that returns {@link NaN#NaN NaN} in unstable bars.
  */
-public class UnstableIndicator extends CachedIndicator<Num> {
+public class UnstableIndicator extends AbstractIndicator<Num> {
 
     private final int unstableBars;
     private final Indicator<Num> indicator;

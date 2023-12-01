@@ -23,17 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
@@ -41,6 +37,9 @@ import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -57,11 +56,11 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         MockBarSeries mockBarSeries = new MockBarSeries(bars);
         mockBarSeries.setMaximumBarCount(3);
 
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(1), 75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(2), 79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(3), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(4), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(5), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusMinutes(1), 75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusMinutes(2), 79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusMinutes(3), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusMinutes(4), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
+        mockBarSeries.addBar(new MockBar(now.plusMinutes(5), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
 

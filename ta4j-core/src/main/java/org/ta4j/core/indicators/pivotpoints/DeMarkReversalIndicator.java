@@ -28,7 +28,8 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.util.List;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,7 +39,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
+public class DeMarkReversalIndicator extends AbstractIndicator<Num> {
 
     private final DeMarkPivotPointIndicator pivotPointIndicator;
     private final DeMarkPivotLevel level;
@@ -59,7 +60,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
      *                            (RESISTANT, SUPPORT)
      */
     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
-        super(pivotPointIndicator);
+        super(pivotPointIndicator, new NativeRecursiveIndicatorValueCache<>(pivotPointIndicator));
         this.pivotPointIndicator = pivotPointIndicator;
         this.level = level;
         this.two = numOf(2);

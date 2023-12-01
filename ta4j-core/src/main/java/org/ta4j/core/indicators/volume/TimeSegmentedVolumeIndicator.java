@@ -24,9 +24,8 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceDifferenceIndicator;
-import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
@@ -45,7 +44,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * @see <a href="https://www.investopedia.com/terms/t/tsv.asp">Time Segmented
  *      Volume (TSV)</a>
  */
-public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
+public class TimeSegmentedVolumeIndicator extends AbstractIndicator<Num> {
     private final ClosePriceDifferenceIndicator closePriceDifference;
     private final int barCount;
 

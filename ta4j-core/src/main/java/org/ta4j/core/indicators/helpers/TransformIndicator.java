@@ -27,7 +27,7 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  *          calculations this indicator converts {@link Num DecimalNum} to
  *          {@link Double double}
  */
-public class TransformIndicator extends CachedIndicator<Num> {
+public class TransformIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final UnaryOperator<Num> transformationFunction;

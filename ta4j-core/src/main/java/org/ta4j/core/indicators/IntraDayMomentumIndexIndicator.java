@@ -39,7 +39,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * "https://library.tradingtechnologies.com/trade/chrt-ti-intraday-momentum-index.html"></a>
  * </p>
  */
-public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
+public class IntraDayMomentumIndexIndicator extends AbstractIndicator<Num> {
     private final SMAIndicator averageCloseOpenDiff;
     private final SMAIndicator averageOpenCloseDiff;
 

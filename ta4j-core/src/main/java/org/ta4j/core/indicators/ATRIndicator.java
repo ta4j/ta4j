@@ -58,7 +58,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public Num getValue(int index) {
+    public Num calculate(int index) {
         return averageTrueRangeIndicator.getValue(index);
     }
 

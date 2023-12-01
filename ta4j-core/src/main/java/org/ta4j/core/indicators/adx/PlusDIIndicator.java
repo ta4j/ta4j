@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class PlusDIIndicator extends CachedIndicator<Num> {
+public class PlusDIIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final ATRIndicator atrIndicator;

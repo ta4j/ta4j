@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.donchian;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
-public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
+public class DonchianChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final DonchianChannelLowerIndicator lower;

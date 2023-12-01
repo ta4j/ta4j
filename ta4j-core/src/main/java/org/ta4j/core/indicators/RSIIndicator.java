@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Computed using original Welles Wilder formula.
  */
-public class RSIIndicator extends CachedIndicator<Num> {
+public class RSIIndicator extends AbstractIndicator<Num> {
 
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;

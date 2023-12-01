@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
  */
-public class CoppockCurveIndicator extends CachedIndicator<Num> {
+public class CoppockCurveIndicator extends AbstractIndicator<Num> {
 
     private final WMAIndicator wma;
 

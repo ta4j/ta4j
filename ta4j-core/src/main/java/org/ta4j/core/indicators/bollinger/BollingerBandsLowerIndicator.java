@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * Sell - Occurs when the price line crosses from above to below the Upper
  * Bollinger Band.
  */
-public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
+public class BollingerBandsLowerIndicator extends AbstractIndicator<Num> {
 
     private final BollingerBandsMiddleIndicator bbm;
     private final Indicator<Num> indicator;

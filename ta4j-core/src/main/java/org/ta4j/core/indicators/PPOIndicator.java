@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/ppo.asp">https://www.investopedia.com/terms/p/ppo.asp</a>
  */
-public class PPOIndicator extends CachedIndicator<Num> {
+public class PPOIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;

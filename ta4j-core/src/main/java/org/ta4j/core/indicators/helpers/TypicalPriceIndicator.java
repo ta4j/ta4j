@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  * TypicalPrice = (highPrice + lowPrice + closePrice) / 3
  * </pre>
  */
-public class TypicalPriceIndicator extends CachedIndicator<Num> {
+public class TypicalPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.

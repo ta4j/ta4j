@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/b/bullishharami.asp">
  *      http://www.investopedia.com/terms/b/bullishharami.asp</a>
  */
-public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
+public class BullishHaramiIndicator extends AbstractIndicator<Boolean> {
 
     /**
      * Constructor.

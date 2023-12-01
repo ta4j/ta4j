@@ -23,11 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-
 import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
@@ -35,6 +31,9 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

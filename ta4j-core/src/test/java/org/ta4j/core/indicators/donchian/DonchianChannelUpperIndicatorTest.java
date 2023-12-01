@@ -23,14 +23,11 @@
  */
 package org.ta4j.core.indicators.donchian;
 
-import static org.junit.Assert.assertEquals;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +37,8 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertEquals;
 
 public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 

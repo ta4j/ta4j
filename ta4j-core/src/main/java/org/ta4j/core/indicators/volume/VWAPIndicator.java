@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://en.wikipedia.org/wiki/Volume-weighted_average_price">
  *      https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
  */
-public class VWAPIndicator extends CachedIndicator<Num> {
+public class VWAPIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> typicalPrice;

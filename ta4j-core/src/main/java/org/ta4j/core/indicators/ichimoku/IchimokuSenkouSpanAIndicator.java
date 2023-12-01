@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
+public class IchimokuSenkouSpanAIndicator extends AbstractIndicator<Num> {
 
     /** The Tenkan-sen indicator. */
     private final IchimokuTenkanSenIndicator conversionLine;

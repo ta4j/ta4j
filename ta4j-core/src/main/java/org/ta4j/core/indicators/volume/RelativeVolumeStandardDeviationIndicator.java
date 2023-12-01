@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
@@ -48,7 +48,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      "https://www.tradingview.com/script/Eize4T9L-Relative-Volume-Standard-Deviation/">Relative
  *      Volume Standard Deviation</a>
  */
-public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Num> {
+public class RelativeVolumeStandardDeviationIndicator extends AbstractIndicator<Num> {
 
     private final StandardDeviationIndicator volumeStandardDeviation;
     private final SMAIndicator averageVolume;

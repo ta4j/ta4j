@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average</a>
  */
-public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
+public class KAMAIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> price;
     private final int barCountEffectiveRatio;
@@ -50,7 +51,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCountSlow           the time frame slow (usually 30)
      */
     public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
-        super(price);
+        super(price, new NativeRecursiveIndicatorValueCache<>(price));
         this.price = price;
         this.barCountEffectiveRatio = barCountEffectiveRatio;
         this.fastest = numOf(2).dividedBy(numOf(barCountFast + 1));

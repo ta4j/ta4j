@@ -27,7 +27,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
-public class AroonDownIndicator extends CachedIndicator<Num> {
+public class AroonDownIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final LowestValueIndicator lowestLowPriceIndicator;

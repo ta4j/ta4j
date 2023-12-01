@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Part of the Directional Movement System.
  */
-public class DXIndicator extends CachedIndicator<Num> {
+public class DXIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final PlusDIIndicator plusDIIndicator;

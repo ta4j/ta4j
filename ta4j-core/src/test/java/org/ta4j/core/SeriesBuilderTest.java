@@ -23,18 +23,17 @@
  */
 package org.ta4j.core;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
-
 import java.time.ZonedDateTime;
 import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
 public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 

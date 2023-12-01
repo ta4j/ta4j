@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class LinearBorrowingCostModelTest {
 

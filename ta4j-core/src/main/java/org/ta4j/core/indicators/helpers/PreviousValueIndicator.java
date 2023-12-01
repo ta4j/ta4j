@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * If the (n-th) previous index is below the first index from the bar series,
  * then {@link NaN#NaN} is returned.
  */
-public class PreviousValueIndicator extends CachedIndicator<Num> {
+public class PreviousValueIndicator extends AbstractIndicator<Num> {
 
     private final int n;
     private final Indicator<Num> indicator;

@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
  *      https://school.stockcharts.com/doku.php?id=technical_indicators:know_sure_thing_kst
  *      </a>
  */
-public class KSTIndicator extends CachedIndicator<Num> {
+public class KSTIndicator extends AbstractIndicator<Num> {
 
     private final SMAIndicator RCMA1;
     private final SMAIndicator RCMA2;

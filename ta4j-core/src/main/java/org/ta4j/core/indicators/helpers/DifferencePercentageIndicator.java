@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * {@code 0} or not specified, only the percentage difference from the previous
  * value is returned.
  */
-public class DifferencePercentageIndicator extends CachedIndicator<Num> {
+public class DifferencePercentageIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;

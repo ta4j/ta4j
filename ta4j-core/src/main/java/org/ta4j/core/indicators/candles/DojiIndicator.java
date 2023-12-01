@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
  *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
-public class DojiIndicator extends CachedIndicator<Boolean> {
+public class DojiIndicator extends AbstractIndicator<Boolean> {
 
     /** Body height. */
     private final Indicator<Num> bodyHeightInd;

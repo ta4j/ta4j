@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
-public class RunningTotalIndicator extends CachedIndicator<Num> {
+public class RunningTotalIndicator extends AbstractIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
 

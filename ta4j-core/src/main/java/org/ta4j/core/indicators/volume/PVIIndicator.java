@@ -25,7 +25,8 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,7 +38,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/p/pvi.asp">
  *      http://www.investopedia.com/terms/p/pvi.asp</a>
  */
-public class PVIIndicator extends RecursiveCachedIndicator<Num> {
+public class PVIIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
@@ -45,7 +46,7 @@ public class PVIIndicator extends RecursiveCachedIndicator<Num> {
      * @param series the bar series
      */
     public PVIIndicator(BarSeries series) {
-        super(series);
+        super(series, new NativeRecursiveIndicatorValueCache<>(series));
     }
 
     @Override

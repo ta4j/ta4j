@@ -27,7 +27,6 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.Num;
@@ -48,7 +47,21 @@ public class MockBarSeries extends BaseBarSeries {
     }
 
     public MockBarSeries(List<Bar> bars) {
-        super(bars);
+        this(bars, false);
+    }
+
+    public MockBarSeries(List<Bar> bars, boolean ignoreTimes) {
+        super(ignoreTimes ? bars : withCorrectTime(bars));
+    }
+
+    private static List<Bar> withCorrectTime(List<Bar> bars) {
+        final List<Bar> correctedBars = new ArrayList<>();
+        final ZonedDateTime now = ZonedDateTime.now();
+        int counter = 1;
+        for (Bar b : bars) {
+            correctedBars.add(new MockBar(b, now.plusSeconds(counter++)));
+        }
+        return correctedBars;
     }
 
     public MockBarSeries(Function<Number, Num> nf, double[] data, ZonedDateTime[] times) {

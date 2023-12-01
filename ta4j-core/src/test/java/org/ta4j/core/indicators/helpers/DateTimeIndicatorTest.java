@@ -23,14 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.Assert.assertEquals;
-
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -39,6 +36,8 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertEquals;
 
 public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -52,7 +51,7 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     public void test() {
         ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
         List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
-        BarSeries series = new MockBarSeries(bars);
+        BarSeries series = new MockBarSeries(bars, true);
         DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
         assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
     }

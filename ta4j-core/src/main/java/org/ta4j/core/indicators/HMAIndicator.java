@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://alanhull.com/hull-moving-average">
  *      http://alanhull.com/hull-moving-average</a>
  */
-public class HMAIndicator extends CachedIndicator<Num> {
+public class HMAIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final WMAIndicator sqrtWma;

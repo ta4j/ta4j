@@ -23,13 +23,6 @@
  */
 package org.ta4j.core.num;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
-import static org.ta4j.core.num.NaN.NaN;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -37,9 +30,15 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Properties;
 import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumNotEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class NumTest extends AbstractIndicatorTest<Object, Num> {
 

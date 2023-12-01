@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *
  * @see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
-public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
+public class AwesomeOscillatorIndicator extends AbstractIndicator<Num> {
 
     private final SMAIndicator sma5;
     private final SMAIndicator sma34;

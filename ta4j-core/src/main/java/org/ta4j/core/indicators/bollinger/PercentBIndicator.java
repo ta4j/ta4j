@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce</a>
  */
-public class PercentBIndicator extends CachedIndicator<Num> {
+public class PercentBIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final BollingerBandsUpperIndicator bbu;

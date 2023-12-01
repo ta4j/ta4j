@@ -48,7 +48,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
  */
-public class DPOIndicator extends CachedIndicator<Num> {
+public class DPOIndicator extends AbstractIndicator<Num> {
 
     private final CombineIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;

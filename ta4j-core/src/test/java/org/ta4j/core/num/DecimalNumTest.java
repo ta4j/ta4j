@@ -23,27 +23,20 @@
  */
 package org.ta4j.core.num;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.ta4j.core.TestUtils.*;
 
 public class DecimalNumTest {
 

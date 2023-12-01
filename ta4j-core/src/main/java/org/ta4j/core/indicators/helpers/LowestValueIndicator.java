@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the lowest indicator value from the bar series within the bar count.
  */
-public class LowestValueIndicator extends CachedIndicator<Num> {
+public class LowestValueIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
