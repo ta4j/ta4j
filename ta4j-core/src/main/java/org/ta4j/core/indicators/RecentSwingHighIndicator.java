@@ -23,9 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.NaN;
 import static org.ta4j.core.num.NaN.NaN;
 import org.ta4j.core.num.Num;
 
@@ -34,74 +32,123 @@ import org.ta4j.core.num.Num;
  */
 public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
-    /**
-     * A swing high is a bar (or sequence of bars) with a higher high than the bars
-     * both before and after it. Defines the number of bars to consider on each side
-     * (e.g., 2 bars on each side).
-     */
-    private final int surroundingBars;
+    private final int surroundingLowerBars;
+    private final int allowedEqualBars;
 
     /**
-     * * Full constructor
+     * Constructs a RecentSwingHighIndicator
      *
-     * @param series
-     * @param surroundingBars
+     * @param series               The BarSeries to be analyzed.
+     * @param surroundingLowerBars The number of bars to consider on each side that
+     *                             must have lower highs to identify a swing high.
+     * @param allowedEqualBars     the number of bars on each side that can have
+     *                             equal highs and the swing high still be
+     *                             considered valid
+     * @throws IllegalArgumentException if surroundingLowerBars is less than or
+     *                                  equal to 0.
+     * @throws IllegalArgumentException if allowedEqualBars is less than 0.
      */
-    public RecentSwingHighIndicator(BarSeries series, int surroundingBars) {
+    public RecentSwingHighIndicator(BarSeries series, int surroundingLowerBars, int allowedEqualBars) {
         super(series);
 
-        if (surroundingBars <= 0) {
-            throw new IllegalArgumentException("surroundingBars must be greater than 0");
+        if (surroundingLowerBars <= 0) {
+            throw new IllegalArgumentException("surroundingLowerBars must be greater than 0");
         }
-        this.surroundingBars = surroundingBars;
+        if (allowedEqualBars < 0) {
+            throw new IllegalArgumentException("allowedEqualBars must be 0 or greater");
+        }
+        this.surroundingLowerBars = surroundingLowerBars;
+        this.allowedEqualBars = allowedEqualBars;
     }
 
     /**
-     * * Convenience constructor defaulting surroundingBars to 2
+     * * Constructs a RecentSwingHighIndicator with the specified BarSeries and
+     * surrounding lower bars count and a default allowed equal bars count of 0
      *
      * @param series
+     * @param surroundingLowerBars
      */
-    public RecentSwingHighIndicator(BarSeries series) {
-        this(series, 2);
+    public RecentSwingHighIndicator(BarSeries series, int surroundingLowerBars) {
+        this(series, surroundingLowerBars, 0);
     }
 
     /**
-     * Calculates the value of the most recent swing high
+     * Constructs a RecentSwingHighIndicator with the specified BarSeries, a default
+     * surrounding lower bars count of 2, and a default allowed equal bars count of
+     * 0
      *
-     * @param index the bar index
-     * @return the value of the most recent swing high, otherwise {@link NaN}
+     * @param series The BarSeries to be analyzed.
+     */
+    public RecentSwingHighIndicator(BarSeries series) {
+        this(series, 2, 0);
+    }
+
+    /**
+     * Validates if the specified bar at currentIndex, considering the direction,
+     * meets the criteria for being a swing high.
+     *
+     * @param currentIndex The index of the current bar.
+     * @param direction    The direction for comparison (-1 for previous bars, 1 for
+     *                     following bars).
+     * @return true if the bar at currentIndex is a swing high considering the
+     *         specified direction; false otherwise.
+     */
+    private boolean validateBars(int currentIndex, int direction) {
+        Num currentHighPrice = getBarSeries().getBar(currentIndex).getHighPrice();
+        int lowerBarsCount = 0;
+        int equalBarsCount = 0;
+
+        for (int i = currentIndex + direction; i >= getBarSeries().getBeginIndex()
+                && i <= getBarSeries().getEndIndex(); i += direction) {
+            Num comparisonHighPrice = getBarSeries().getBar(i).getHighPrice();
+
+            if (currentHighPrice.isEqual(comparisonHighPrice)) {
+                equalBarsCount++;
+
+                if (equalBarsCount > allowedEqualBars) {
+                    return false;
+                }
+            } else if (currentHighPrice.isGreaterThan(comparisonHighPrice)) {
+                lowerBarsCount++;
+                if (lowerBarsCount == surroundingLowerBars) {
+                    return true;
+                }
+            } else {
+                break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Calculates the most recent swing high value up to the specified index.
+     *
+     * @param index The bar index up to which the calculation is done.
+     * @return The value of the most recent swing high if it exists; NaN otherwise.
      */
     @Override
     protected Num calculate(int index) {
-        if (index < surroundingBars) {
+        if (index < surroundingLowerBars) {
             return NaN;
         }
 
-        int endIndex = getBarSeries().getEndIndex();
-
-        for (int i = Math.min(index - 1, endIndex); i >= surroundingBars; i--) {
-            boolean isSwingHigh = true;
-            Bar currentBar = getBarSeries().getBar(i);
-
-            for (int j = 1; j <= surroundingBars; j++) {
-                if (i + j > endIndex || i - j < 0
-                        || currentBar.getHighPrice().isLessThan(getBarSeries().getBar(i - j).getHighPrice())
-                        || currentBar.getHighPrice().isLessThan(getBarSeries().getBar(i + j).getHighPrice())) {
-                    isSwingHigh = false;
-                    break;
-                }
-            }
-
-            if (isSwingHigh) {
-                return currentBar.getHighPrice();
+        for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
+            if (validateBars(i, -1) && validateBars(i, 1)) {
+                return getBarSeries().getBar(i).getHighPrice();
             }
         }
 
         return NaN;
     }
 
+    /**
+     * Returns the number of unstable bars as defined by the surroundingBars
+     * parameter.
+     *
+     * @return The number of unstable bars.
+     */
     @Override
     public int getUnstableBars() {
-        return surroundingBars;
+        return surroundingLowerBars;
     }
 }
