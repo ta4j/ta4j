@@ -63,6 +63,13 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         bars.add(new MockBar(14, 14, 14, 14, numFunction)); // 9 - Higher swing high
         bars.add(new MockBar(13, 13, 13, 13, numFunction)); // 10 - Normal movement
         bars.add(new MockBar(12, 12, 12, 12, numFunction)); // 11 - Down movement
+        bars.add(new MockBar(13, 13, 13, 13, numFunction)); // 12 - Up movement
+        bars.add(new MockBar(15, 15, 15, 15, numFunction)); // 13 - New potential swing high
+        bars.add(new MockBar(13, 13, 13, 13, numFunction)); // 14 - Down movement
+        bars.add(new MockBar(15, 15, 15, 15, numFunction)); // 15 - Equal high to swing high
+        bars.add(new MockBar(13, 13, 13, 13, numFunction)); // 16 - Down movement
+        bars.add(new MockBar(15, 15, 15, 15, numFunction)); // 17 - Equal high to swing high
+        bars.add(new MockBar(13, 13, 13, 13, numFunction)); // 18 - Down movement
 
         this.series = new MockBarSeries(bars);
     }
@@ -83,6 +90,13 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         assertNumEquals(14, swingHighIndicator.getValue(9));
         assertNumEquals(14, swingHighIndicator.getValue(10));
         assertNumEquals(14, swingHighIndicator.getValue(11));
+        assertNumEquals(14, swingHighIndicator.getValue(12));
+        assertNumEquals(15, swingHighIndicator.getValue(13));
+        assertNumEquals(15, swingHighIndicator.getValue(14));
+        assertNumEquals(15, swingHighIndicator.getValue(15));
+        assertNumEquals(15, swingHighIndicator.getValue(16));
+        assertNumEquals(15, swingHighIndicator.getValue(17));
+        assertNumEquals(15, swingHighIndicator.getValue(18));
     }
 
     @Test
@@ -101,6 +115,13 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         assertNumEquals(14, swingHighIndicator.getValue(9));
         assertNumEquals(14, swingHighIndicator.getValue(10));
         assertNumEquals(14, swingHighIndicator.getValue(11));
+        assertNumEquals(14, swingHighIndicator.getValue(12));
+        assertNumEquals(15, swingHighIndicator.getValue(13));
+        assertNumEquals(15, swingHighIndicator.getValue(14));
+        assertNumEquals(15, swingHighIndicator.getValue(15));
+        assertNumEquals(15, swingHighIndicator.getValue(16));
+        assertNumEquals(15, swingHighIndicator.getValue(17));
+        assertNumEquals(15, swingHighIndicator.getValue(18));
     }
 
     @Test
@@ -119,6 +140,13 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         assertNumEquals(14, swingHighIndicator.getValue(9));
         assertNumEquals(14, swingHighIndicator.getValue(10));
         assertNumEquals(14, swingHighIndicator.getValue(11));
+        assertNumEquals(14, swingHighIndicator.getValue(12));
+        assertNumEquals(14, swingHighIndicator.getValue(13));
+        assertNumEquals(14, swingHighIndicator.getValue(14));
+        assertNumEquals(14, swingHighIndicator.getValue(15));
+        assertNumEquals(14, swingHighIndicator.getValue(16));
+        assertNumEquals(14, swingHighIndicator.getValue(17));
+        assertNumEquals(14, swingHighIndicator.getValue(18));
     }
 
     @Test

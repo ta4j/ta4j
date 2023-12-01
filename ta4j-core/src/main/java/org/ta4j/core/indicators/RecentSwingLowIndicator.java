@@ -36,17 +36,20 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
     private final int allowedEqualBars;
 
     /**
-     * Constructs a RecentSwingLowIndicator with the specified BarSeries and
-     * surrounding bars count.
+     * Constructs a RecentSwingLowIndicator
      *
      * @param series                The BarSeries to be analyzed.
-     * @param surroundingHigherBars The number of bars to consider on each side that
-     *                              must have higher lows to identify a swing low.
-     * @param allowedEqualBars      the number of bars on each side that can have
-     *                              equal lows and the swing low still be considered
-     *                              valid
-     * @throws IllegalArgumentException if surroundingHigherBars is less than or
+     * @param surroundingHigherBars For a bar to be identified as a swing low, it
+     *                              must have a lower low than this number of bars
+     *                              both immediately preceding and immediately
+     *                              following
+     * @param allowedEqualBars      For a looser definition of swing low, instead of
+     *                              requiring the surrounding bars to be strictly
+     *                              higher lows we allow this number of equal lows
+     *                              to either side (i.e. flat-ish valley)
+     * @throws IllegalArgumentException if surroundingLowerBars is less than or
      *                                  equal to 0.
+     * @throws IllegalArgumentException if allowedEqualBars is less than 0.
      */
     public RecentSwingLowIndicator(BarSeries series, int surroundingHigherBars, int allowedEqualBars) {
         super(series);

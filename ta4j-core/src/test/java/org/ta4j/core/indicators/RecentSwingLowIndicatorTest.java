@@ -63,6 +63,15 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
         bars.add(new MockBar(6, 6, 6, 6, numFunction)); // 9 - Lower swing low
         bars.add(new MockBar(7, 7, 7, 7, numFunction)); // 10 - Normal movement
         bars.add(new MockBar(8, 8, 8, 8, numFunction)); // 11 - Up movement
+        bars.add(new MockBar(5, 5, 5, 5, numFunction)); // 12 - New potential swing low
+        bars.add(new MockBar(6, 6, 6, 6, numFunction)); // 13 - Up movement
+        bars.add(new MockBar(5, 5, 5, 5, numFunction)); // 14 - Equal to swing low
+        bars.add(new MockBar(5, 5, 5, 5, numFunction)); // 15 - Equal to swing low
+        bars.add(new MockBar(6, 6, 6, 6, numFunction)); // 16 - Up movement
+        bars.add(new MockBar(5, 5, 5, 5, numFunction)); // 17 - Equal to swing low
+        bars.add(new MockBar(6, 6, 6, 6, numFunction)); // 18 - Up movement
+        bars.add(new MockBar(6, 6, 6, 6, numFunction)); // 19 - Up movement
+
         this.series = new MockBarSeries(bars);
     }
 
@@ -96,6 +105,14 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(6, swingLowIndicator.getValue(9));
         assertNumEquals(6, swingLowIndicator.getValue(10));
         assertNumEquals(6, swingLowIndicator.getValue(11));
+        assertNumEquals(5, swingLowIndicator.getValue(12));
+        assertNumEquals(5, swingLowIndicator.getValue(13));
+        assertNumEquals(5, swingLowIndicator.getValue(14));
+        assertNumEquals(5, swingLowIndicator.getValue(15));
+        assertNumEquals(5, swingLowIndicator.getValue(16));
+        assertNumEquals(5, swingLowIndicator.getValue(17));
+        assertNumEquals(5, swingLowIndicator.getValue(18));
+        assertNumEquals(5, swingLowIndicator.getValue(19));
     }
 
     @Test
@@ -112,6 +129,14 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(6, swingLowIndicator.getValue(9));
         assertNumEquals(6, swingLowIndicator.getValue(10));
         assertNumEquals(6, swingLowIndicator.getValue(11));
+        assertNumEquals(6, swingLowIndicator.getValue(12));
+        assertNumEquals(6, swingLowIndicator.getValue(13));
+        assertNumEquals(6, swingLowIndicator.getValue(14));
+        assertNumEquals(6, swingLowIndicator.getValue(15));
+        assertNumEquals(6, swingLowIndicator.getValue(16));
+        assertNumEquals(6, swingLowIndicator.getValue(17));
+        assertNumEquals(6, swingLowIndicator.getValue(18));
+        assertNumEquals(6, swingLowIndicator.getValue(19));
     }
 
     @Test
@@ -128,6 +153,14 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(6, swingLowIndicator.getValue(9));
         assertNumEquals(6, swingLowIndicator.getValue(10));
         assertNumEquals(6, swingLowIndicator.getValue(11));
+        assertNumEquals(6, swingLowIndicator.getValue(12));
+        assertNumEquals(6, swingLowIndicator.getValue(13));
+        assertNumEquals(6, swingLowIndicator.getValue(14));
+        assertNumEquals(6, swingLowIndicator.getValue(15));
+        assertNumEquals(6, swingLowIndicator.getValue(16));
+        assertNumEquals(6, swingLowIndicator.getValue(17));
+        assertNumEquals(6, swingLowIndicator.getValue(18));
+        assertNumEquals(6, swingLowIndicator.getValue(19));
     }
 
     @Test
@@ -144,6 +177,14 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(6, swingLowIndicator.getValue(9));
         assertNumEquals(6, swingLowIndicator.getValue(10));
         assertNumEquals(6, swingLowIndicator.getValue(11));
+        assertNumEquals(5, swingLowIndicator.getValue(12));
+        assertNumEquals(5, swingLowIndicator.getValue(13));
+        assertNumEquals(5, swingLowIndicator.getValue(14));
+        assertNumEquals(5, swingLowIndicator.getValue(15));
+        assertNumEquals(5, swingLowIndicator.getValue(16));
+        assertNumEquals(5, swingLowIndicator.getValue(17));
+        assertNumEquals(5, swingLowIndicator.getValue(18));
+        assertNumEquals(5, swingLowIndicator.getValue(19));
     }
 
     @Test(expected = IllegalArgumentException.class)

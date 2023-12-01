@@ -39,11 +39,14 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
      * Constructs a RecentSwingHighIndicator
      *
      * @param series               The BarSeries to be analyzed.
-     * @param surroundingLowerBars The number of bars to consider on each side that
-     *                             must have lower highs to identify a swing high.
-     * @param allowedEqualBars     the number of bars on each side that can have
-     *                             equal highs and the swing high still be
-     *                             considered valid
+     * @param surroundingLowerBars For a bar to be identified as a swing high, it
+     *                             must have a higher high than this number of bars
+     *                             both immediately preceding and immediately
+     *                             following
+     * @param allowedEqualBars     For a looser definition of peak, instead of
+     *                             requiring the surrounding bars to be strictly
+     *                             lower highs we allow this number of equal highs
+     *                             to either side (i.e. flat-ish peak or plateau)
      * @throws IllegalArgumentException if surroundingLowerBars is less than or
      *                                  equal to 0.
      * @throws IllegalArgumentException if allowedEqualBars is less than 0.
