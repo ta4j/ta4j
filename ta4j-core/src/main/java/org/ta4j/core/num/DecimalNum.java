@@ -49,6 +49,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class DecimalNum implements Num {
 
+    private static final long serialVersionUID = 387498017007756808L;
+
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
 
