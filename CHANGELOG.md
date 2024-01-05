@@ -47,6 +47,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 - **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
+- **Num** implements Serializable
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
