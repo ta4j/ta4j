@@ -43,6 +43,6 @@ public interface TradeExecutionModel {
      * @param barSeries     the bar series
      * @param amount        the trade amount
      */
-    void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount);
+    void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount,boolean isPyramidTrading,EntryType type);
 
 }

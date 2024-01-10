@@ -152,7 +152,7 @@ public class TradingBotOnMovingBarSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
-                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
+                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10),false); //Original no pyramid test--> Should made a pyramid test also 
                 if (entered) {
                     Trade entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
@@ -161,7 +161,7 @@ public class TradingBotOnMovingBarSeries {
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
-                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
+                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10),false);//Original no pyramid test--> Should made a pyramid test also 
                 if (exited) {
                     Trade exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()

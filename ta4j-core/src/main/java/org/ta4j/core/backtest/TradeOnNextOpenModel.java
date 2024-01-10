@@ -39,10 +39,10 @@ import org.ta4j.core.num.Num;
 public class TradeOnNextOpenModel implements TradeExecutionModel {
 
     @Override
-    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount,boolean isPyramidTrading,EntryType type) {
         int indexOfExecutedBar = index + 1;
         if (indexOfExecutedBar <= barSeries.getEndIndex()) {
-            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
+            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount,isPyramidTrading,type);
         }
     }
 

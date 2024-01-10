@@ -31,6 +31,7 @@ import java.util.Objects;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.EntryType;
 import org.ta4j.core.num.Num;
 
 /**
@@ -166,8 +167,9 @@ public class Position implements Serializable {
      * @return the trade
      * @see #operate(int, Num, Num)
      */
+    @Deprecated
     public Trade operate(int index) {
-        return operate(index, NaN, NaN);
+        return operate(index, NaN, NaN,null);
     }
 
     /**
@@ -179,16 +181,16 @@ public class Position implements Serializable {
      * @return the trade
      * @throws IllegalStateException if {@link #isOpened()} and index < entry.index
      */
-    public Trade operate(int index, Num price, Num amount) {
+    public Trade operate(int index, Num price, Num amount,EntryType type) {
         Trade trade = null;
-        if (isNew()) {
+        if (type==EntryType.BUY) {
             trade = new Trade(index, startingType, price, amount, transactionCostModel);
             entry = trade;
-        } else if (isOpened()) {
+        } else if (type==EntryType.SELL) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            trade = new Trade(index, startingType.complementType(), price, amount, transactionCostModel);
+            trade = new Trade(index,  startingType.complementType(), price, amount, transactionCostModel);
             exit = trade;
         }
         return trade;
@@ -287,7 +289,7 @@ public class Position implements Serializable {
             grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
         } else {
             grossProfit = exit.getValue().minus(entry.getValue());
-        }
+         }
 
         // Profits of long position are losses of short
         if (entry.isSell()) {

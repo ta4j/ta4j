@@ -1,0 +1,16 @@
+#Filename
+ta4J_modified_evch_ai_2_10_1_blackrock_signed.jar
+#Algorithm                                                                                                                                                       
+SHA256   
+#Hash File 
+81B13150187D00A030C2D1748D52A438D62B2DF85D5322E1A07B1AC9C3C5CD04  
+#Lic
+MIT 
+#Date
+20230908
+#RefUrl
+https://github.com/wesssup/ta4j
+#Jira
+EVCH-91239
+#Project 
+BLACKROCK

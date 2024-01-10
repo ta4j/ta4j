@@ -39,8 +39,9 @@ import org.ta4j.core.num.Num;
 public class TradeOnCurrentCloseModel implements TradeExecutionModel {
 
     @Override
-    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
+    public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount,boolean isPyramidTrading,EntryType type) {
+        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount,isPyramidTrading,type);
     }
+ 
 
 }

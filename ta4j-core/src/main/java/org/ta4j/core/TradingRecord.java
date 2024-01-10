@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.backtest.EntryType;
 import org.ta4j.core.num.Num;
 
 /**
@@ -60,7 +61,7 @@ public interface TradingRecord extends Serializable {
      * @param index the index to place the trade
      */
     default void operate(int index) {
-        operate(index, NaN, NaN);
+        operate(index, NaN, NaN,false,null);
     }
 
     /**
@@ -70,7 +71,7 @@ public interface TradingRecord extends Serializable {
      * @param price  the trade price per asset
      * @param amount the trade amount
      */
-    void operate(int index, Num price, Num amount);
+    void operate(int index, Num price, Num amount,boolean isPyramidTrading,EntryType type);
 
     /**
      * Places an entry trade in the trading record.
@@ -79,7 +80,7 @@ public interface TradingRecord extends Serializable {
      * @return true if the entry has been placed, false otherwise
      */
     default boolean enter(int index) {
-        return enter(index, NaN, NaN);
+        return enter(index, NaN, NaN,false);
     }
 
     /**
@@ -90,7 +91,7 @@ public interface TradingRecord extends Serializable {
      * @param amount the trade amount
      * @return true if the entry has been placed, false otherwise
      */
-    boolean enter(int index, Num price, Num amount);
+    boolean enter(int index, Num price, Num amount,boolean isPyramidTrading);
 
     /**
      * Places an exit trade in the trading record.
@@ -99,7 +100,7 @@ public interface TradingRecord extends Serializable {
      * @return true if the exit has been placed, false otherwise
      */
     default boolean exit(int index) {
-        return exit(index, NaN, NaN);
+        return exit(index, NaN, NaN,false);
     }
 
     /**
@@ -110,7 +111,7 @@ public interface TradingRecord extends Serializable {
      * @param amount the trade amount
      * @return true if the exit has been placed, false otherwise
      */
-    boolean exit(int index, Num price, Num amount);
+    boolean exit(int index, Num price, Num amount,boolean isPyramidTrading);
 
     /**
      * @return true if no position is open, false otherwise
@@ -197,4 +198,6 @@ public interface TradingRecord extends Serializable {
     default int getEndIndex(BarSeries series) {
         return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
     }
+
+	List<Trade> getAllTrades();
 }
