@@ -44,8 +44,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
-            return pnl;
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
         }
         return series.zero();
     }
