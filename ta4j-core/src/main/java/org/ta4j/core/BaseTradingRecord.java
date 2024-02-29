@@ -73,10 +73,10 @@ public class BaseTradingRecord implements TradingRecord {
     private Position currentPosition;
 
     /** The cost model for transactions of the asset. */
-    private final CostModel transactionCostModel;
+    private final transient CostModel transactionCostModel;
 
     /** The cost model for holding asset (e.g. borrowing). */
-    private final CostModel holdingCostModel;
+    private final transient CostModel holdingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
     public BaseTradingRecord() {
