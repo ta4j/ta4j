@@ -109,11 +109,9 @@ public class BacktestExecutor {
      * @return a list of TradingStatements
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
-        List<TradingStatement> tradingStatements = strategies.parallelStream().map(strategy -> {
+        return strategies.parallelStream().map(strategy -> {
             TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
             return tradingStatementGenerator.generate(strategy, tradingRecord, seriesManager.getBarSeries());
         }).collect(Collectors.toList());
-
-        return tradingStatements;
     }
 }
