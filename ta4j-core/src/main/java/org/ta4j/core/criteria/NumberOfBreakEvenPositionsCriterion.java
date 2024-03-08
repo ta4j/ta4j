@@ -49,7 +49,7 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
     }
 
     private boolean isBreakEvenPosition(Position position) {
-        return position.isClosed() ? position.getProfit().isZero() : false;
+        return position.isClosed() && position.getProfit().isZero();
     }
 
     /** The lower the criterion value, the better. */
