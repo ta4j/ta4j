@@ -36,17 +36,18 @@ import org.ta4j.core.num.Num;
 
 public class CrossedDownIndicatorRuleTest {
 
-    private CrossedDownIndicatorRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
-        rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+        series = new BaseBarSeries();
     }
 
     @Test
     public void isSatisfied() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
+        CrossedDownIndicatorRule rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));
@@ -55,5 +56,30 @@ public class CrossedDownIndicatorRuleTest {
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
         assertFalse(rule.isSatisfied(7));
+    }
+
+    @Test
+    public void onlyThresholdBetweenFirstBarAndLastBar() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 11, 10, 10, 9);
+        CrossedDownIndicatorRule rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+    }
+
+    @Test
+    public void repeatedlyHittingThresholdAfterCrossDown() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 11, 10, 9, 10, 9, 10, 9);
+        CrossedDownIndicatorRule rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertTrue("first cross down", rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
     }
 }
