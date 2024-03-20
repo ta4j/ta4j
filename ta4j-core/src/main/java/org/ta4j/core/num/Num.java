@@ -319,15 +319,6 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
-     * Converts this {@code Num} to a {@code double}.
-     *
-     * @return this {@code Num} converted to a {@code double}
-     */
-    default double doubleValue() {
-        return getDelegate().doubleValue();
-    }
-
-    /**
      * Converts this {@code Num} to an {@code integer}.
      *
      * @return this {@code Num} converted to an {@code integer}
@@ -352,6 +343,31 @@ public interface Num extends Comparable<Num>, Serializable {
      */
     default float floatValue() {
         return getDelegate().floatValue();
+    }
+
+    /**
+     * Converts this {@code Num} to a {@code double}.
+     *
+     * @return this {@code Num} converted to a {@code double}
+     */
+    default double doubleValue() {
+        return getDelegate().doubleValue();
+    }
+
+    /**
+     * Converts this {@code Num} to a {@code BigDecimal}.
+     *
+     * @return this {@code Num} converted to a {@code BigDecimal}
+     */
+    default BigDecimal bigDecimalValue() {
+        Number num = getDelegate();
+        if (num instanceof BigDecimal) {
+            return (BigDecimal) num;
+        } else if (num instanceof Double) {
+            Double doubleNum = (Double) num;
+            return doubleNum.isNaN() || doubleNum.isInfinite() ? null : BigDecimal.valueOf(doubleNum);
+        }
+        return null;
     }
 
     @Override
