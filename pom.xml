@@ -143,9 +143,9 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
 				<configuration>
-					<source>22</source>
-					<target>22</target>
-					<release>22</release>
+					<source>21</source>
+					<target>21</target>
+					<release>21</release>
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
 				</configuration>
