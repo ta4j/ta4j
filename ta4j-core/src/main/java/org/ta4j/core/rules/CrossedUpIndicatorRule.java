@@ -85,4 +85,11 @@ public class CrossedUpIndicatorRule extends AbstractRule {
     public Indicator<Num> getUp() {
         return cross.getUp();
     }
+
+    @Override
+    public String toString() {
+        return "CrossedUpIndicatorRule{" +
+                "cross=" + cross +
+                '}';
+    }
 }

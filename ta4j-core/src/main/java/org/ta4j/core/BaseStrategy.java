@@ -207,4 +207,15 @@ public class BaseStrategy implements Strategy {
             log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
         }
     }
+
+    @Override
+    public String toString() {
+        return "BaseStrategy{" +
+                "className='" + className + '\'' +
+                ", name='" + name + '\'' +
+                ", entryRule=" + entryRule +
+                ", exitRule=" + exitRule +
+                ", unstableBars=" + unstableBars +
+                '}';
+    }
 }

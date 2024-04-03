@@ -85,4 +85,11 @@ public class CrossedDownIndicatorRule extends AbstractRule {
     public Indicator<Num> getUp() {
         return cross.getUp();
     }
+
+    @Override
+    public String toString() {
+        return "CrossedDownIndicatorRule{" +
+                "cross=" + cross +
+                '}';
+    }
 }
