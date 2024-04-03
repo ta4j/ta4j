@@ -41,7 +41,6 @@ public class SMAIndicator extends CachedIndicator<Num> {
     // serial access detection
     private int previousIndex = -1;
 
-
     /**
      * Constructor.
      * 
@@ -65,14 +64,12 @@ public class SMAIndicator extends CachedIndicator<Num> {
         return slowPath(index);
     }
 
-
     private Num fastPath(final int index) {
         var newSum = partialSum(index);
         final int realBarCount = Math.min(barCount, index + 1);
         updatePartialSum(index, newSum);
         return newSum.dividedBy(numOf(realBarCount));
     }
-
 
     private Num slowPath(final int index) {
         Num sum = zero();
@@ -85,12 +82,10 @@ public class SMAIndicator extends CachedIndicator<Num> {
         return sum.dividedBy(numOf(realBarCount));
     }
 
-
     private void updatePartialSum(final int index, final Num sum) {
         previousIndex = index;
         previousSum = sum;
     }
-
 
     private Num partialSum(int index) {
         var sum = this.previousSum.plus(indicator.getValue(index));
@@ -101,7 +96,6 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
         return sum;
     }
-
 
     /** @return {@link #barCount} */
     @Override

@@ -36,6 +36,7 @@ import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -72,6 +73,21 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(10d / 3, indicator.getValue(10));
         assertNumEquals(10d / 3, indicator.getValue(11));
         assertNumEquals(3, indicator.getValue(12));
+    }
+
+    @Test
+    public void usingBarCount3UsingClosePriceMovingSerie() {
+        data.setMaximumBarCount(13);
+        data.addBar(new MockBar(5., numFunction));
+
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
+
+        // unstable bars skipped, unpredictable results
+        assertNumEquals((3d + 4d + 3d) / 3, indicator.getValue(data.getBeginIndex() + 3));
+        assertNumEquals((4d + 3d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 4));
+        assertNumEquals((3d + 4d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 5));
+        assertNumEquals((4d + 5d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 6));
+        assertNumEquals((3d + 2d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 12));
     }
 
     @Test
