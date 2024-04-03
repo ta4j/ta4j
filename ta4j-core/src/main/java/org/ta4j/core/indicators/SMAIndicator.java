@@ -36,7 +36,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private Num previsouSum = zero();
+    private Num previousSum = zero();
 
     // serial access detection
     private int previousIndex = -1;
@@ -88,12 +88,12 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     private void updatePartialSum(final int index, final Num sum) {
         previousIndex = index;
-        previsouSum = sum;
+        previousSum = sum;
     }
 
 
     private Num partialSum(int index) {
-        var sum = this.previsouSum.plus(indicator.getValue(index));
+        var sum = this.previousSum.plus(indicator.getValue(index));
 
         if (index >= barCount) {
             return sum.minus(indicator.getValue(index - barCount));
