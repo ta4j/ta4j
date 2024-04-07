@@ -57,10 +57,11 @@ public class DXIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num pdiValue = plusDIIndicator.getValue(index);
         Num mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(zero())) {
+        final var sum = pdiValue.plus(mdiValue);
+        if (sum.equals(zero())) {
             return zero();
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(hundred());
+        return pdiValue.minus(mdiValue).abs().dividedBy(sum).multipliedBy(hundred());
     }
 
     @Override
