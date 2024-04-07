@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * Part of the Directional Movement System.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
+ *      "https://www.investopedia.com/articles/trading/07/adx-trend-indicator.asp">https://www.investopedia.com/articles/trading/07/adx-trend-indicator.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 

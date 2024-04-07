@@ -63,7 +63,11 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
+        final var atrIndicatorValue = atrIndicator.getValue(index);
+        if (atrIndicatorValue.equals(zero())) {
+            return zero();
+        }
+        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicatorValue).multipliedBy(numOf(100));
     }
 
     @Override

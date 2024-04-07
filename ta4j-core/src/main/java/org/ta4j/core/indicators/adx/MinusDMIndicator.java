@@ -58,7 +58,7 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
         if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(zero())) {
             return downMove;
         } else {
-            return numOf(0);
+            return zero();
         }
     }
 

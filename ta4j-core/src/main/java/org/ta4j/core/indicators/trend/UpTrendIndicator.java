@@ -21,56 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.trend;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
 
-/**
- * DX indicator.
- * 
- * <p>
- * Part of the Directional Movement System.
- */
-public class DXIndicator extends CachedIndicator<Num> {
+public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
-    private final int barCount;
-    private final PlusDIIndicator plusDIIndicator;
+    private static final int UNSTABLE_BARS = 5;
+
+    private final ADXIndicator directionStrengthIndicator;
     private final MinusDIIndicator minusDIIndicator;
+    private final PlusDIIndicator plusDIIndicator;
 
-    /**
-     * Constructor.
-     * 
-     * @param series   the bar series
-     * @param barCount the bar count for {@link #plusDIIndicator} and
-     *                 {@link #minusDIIndicator}
-     */
-    public DXIndicator(BarSeries series, int barCount) {
+    public UpTrendIndicator(final BarSeries series) {
         super(series);
-        this.barCount = barCount;
-        this.plusDIIndicator = new PlusDIIndicator(series, barCount);
-        this.minusDIIndicator = new MinusDIIndicator(series, barCount);
+        this.directionStrengthIndicator = new ADXIndicator(series, UNSTABLE_BARS);
+        this.minusDIIndicator = new MinusDIIndicator(series, UNSTABLE_BARS);
+        this.plusDIIndicator = new PlusDIIndicator(series, UNSTABLE_BARS);
     }
 
     @Override
-    protected Num calculate(int index) {
-        Num pdiValue = plusDIIndicator.getValue(index);
-        Num mdiValue = minusDIIndicator.getValue(index);
-        final var sum = pdiValue.plus(mdiValue);
-        if (sum.equals(zero())) {
-            return zero();
-        }
-        return pdiValue.minus(mdiValue).abs().dividedBy(sum).multipliedBy(hundred());
+    public Boolean getValue(final int index) {
+        // calculate trend excluding this bar
+        final var previousIndex = index - 1;
+        return this.directionStrengthIndicator.getValue(index).isGreaterThan(numOf(25))
+                && this.minusDIIndicator.getValue(previousIndex)
+                        .isLessThan(this.plusDIIndicator.getValue(previousIndex));
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return UNSTABLE_BARS;
     }
 }
