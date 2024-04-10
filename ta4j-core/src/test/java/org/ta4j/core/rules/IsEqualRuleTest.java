@@ -28,11 +28,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class IsEqualRuleTest {
 
@@ -40,9 +37,9 @@ public class IsEqualRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
-        rule = new IsEqualRule(indicator, series.numOf(20));
+        var series = new MockBarSeriesBuilder().build();
+        var indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
+        rule = new IsEqualRule(indicator, series.numFactory().numOf(20));
     }
 
     @Test

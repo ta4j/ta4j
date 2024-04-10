@@ -32,6 +32,7 @@ import java.util.function.Function;
 
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link Bar}.
@@ -50,16 +51,16 @@ public class BaseBar implements Bar {
     private final ZonedDateTime endTime;
 
     /** The open price of the bar period. */
-    private Num openPrice = null;
+    private Num openPrice;
 
     /** The high price of the bar period. */
-    private Num highPrice = null;
+    private Num highPrice;
 
     /** The low price of the bar period. */
-    private Num lowPrice = null;
+    private Num lowPrice;
 
     /** The close price of the bar period. */
-    private Num closePrice = null;
+    private Num closePrice;
 
     /** The total traded volume of the bar period. */
     private Num volume;
@@ -73,17 +74,17 @@ public class BaseBar implements Bar {
     /**
      * Constructor.
      *
-     * @param timePeriod  the time period
-     * @param endTime     the end time of the bar period
-     * @param numFunction the numbers precision
+     * @param timePeriod the time period
+     * @param endTime    the end time of the bar period
+     * @param numFactory the numbers factory
      */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Function<Number, Num> numFunction) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, NumFactory numFactory) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
-        this.volume = numFunction.apply(0);
-        this.amount = numFunction.apply(0);
+        this.volume = numFactory.numOf(0);
+        this.amount = numFactory.numOf(0);
     }
 
     /**
@@ -138,94 +139,6 @@ public class BaseBar implements Bar {
         this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
                 numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
                 numFunction.apply(amount), trades);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar period
-     * @param openPrice  the open price of the bar period
-     * @param highPrice  the highest price of the bar period
-     * @param lowPrice   the lowest price of the bar period
-     * @param closePrice the close price of the bar period
-     * @param volume     the total traded volume of the bar period
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
-            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, BigDecimal.ZERO);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar period
-     * @param openPrice  the open price of the bar period
-     * @param highPrice  the highest price of the bar period
-     * @param lowPrice   the lowest price of the bar period
-     * @param closePrice the close price of the bar period
-     * @param volume     the total traded volume of the bar period
-     * @param amount     the total traded amount of the bar period
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
-            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, DecimalNum::valueOf);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param timePeriod  the time period
-     * @param endTime     the end time of the bar period
-     * @param openPrice   the open price of the bar period
-     * @param highPrice   the highest price of the bar period
-     * @param lowPrice    the lowest price of the bar period
-     * @param closePrice  the close price of the bar period
-     * @param volume      the total traded volume of the bar period
-     * @param amount      the total traded amount of the bar period
-     * @param trades      the number of trades of the bar period
-     * @param numFunction the numbers precision
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
-            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, long trades,
-            Function<Number, Num> numFunction) {
-        this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
-                numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
-                numFunction.apply(amount), trades);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar period
-     * @param openPrice  the open price of the bar period
-     * @param highPrice  the highest price of the bar period
-     * @param lowPrice   the lowest price of the bar period
-     * @param closePrice the close price of the bar period
-     * @param volume     the total traded volume of the bar period
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
-            String closePrice, String volume) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, "0");
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar period
-     * @param openPrice  the open price of the bar period
-     * @param highPrice  the highest price of the bar period
-     * @param lowPrice   the lowest price of the bar period
-     * @param closePrice the close price of the bar period
-     * @param volume     the total traded volume of the bar period
-     * @param amount     the total traded amount of the bar period
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
-            String closePrice, String volume, String amount) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, "0", DecimalNum::valueOf);
     }
 
     /**
@@ -293,38 +206,6 @@ public class BaseBar implements Bar {
         this.volume = volume;
         this.amount = amount;
         this.trades = trades;
-    }
-
-    /**
-     * @return the {@link BaseBarBuilder} to build a new {@code BaseBar}
-     */
-    public static BaseBarBuilder builder() {
-        return new BaseBarBuilder();
-    }
-
-    /**
-     * @param <T>   the type of the clazz
-     * @param num   any instance of Num to determine its Num function; with this, we
-     *              can convert a {@link Number} of type {@code T} to a {@link Num
-     *              Num implementation}
-     * @param clazz any type convertable to Num
-     * @return the {@link BaseBarConvertibleBuilder} to build a new {@code BaseBar}
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> BaseBarConvertibleBuilder<T> builder(Num num, Class<T> clazz) {
-        return new BaseBarConvertibleBuilder<>((Function<T, Num>) num.function());
-    }
-
-    /**
-     * @param <T>                the type of the clazz
-     * @param conversionFunction any Num function; with this, we can convert a
-     *                           {@link Number} of type {@code T} to a {@link Num
-     *                           Num implementation}
-     * @param clazz              any type convertable to Num
-     * @return the {@link BaseBarConvertibleBuilder} to build a new {@code BaseBar}
-     */
-    public static <T> BaseBarConvertibleBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
-        return new BaseBarConvertibleBuilder<>(conversionFunction);
     }
 
     /**

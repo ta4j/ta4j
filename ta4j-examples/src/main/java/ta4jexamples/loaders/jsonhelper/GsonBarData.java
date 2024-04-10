@@ -40,7 +40,7 @@ public class GsonBarData {
     private Number amount;
 
     public static GsonBarData from(Bar bar) {
-        GsonBarData result = new GsonBarData();
+        var result = new GsonBarData();
         result.endTime = bar.getEndTime().toInstant().toEpochMilli();
         result.openPrice = bar.getOpenPrice().getDelegate();
         result.highPrice = bar.getHighPrice().getDelegate();
@@ -52,8 +52,16 @@ public class GsonBarData {
     }
 
     public void addTo(BaseBarSeries barSeries) {
-        Instant endTimeInstant = Instant.ofEpochMilli(endTime);
-        ZonedDateTime endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
-        barSeries.addBar(endBarTime, openPrice, highPrice, lowPrice, closePrice, volume, amount);
+        var endTimeInstant = Instant.ofEpochMilli(endTime);
+        var endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
+        barSeries.addBar(barSeries.barBuilder()
+                .endTime(endBarTime)
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
+                .closePrice(closePrice)
+                .volume(volume)
+                .amount(amount)
+                .build());
     }
 }

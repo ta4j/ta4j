@@ -41,7 +41,6 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
-    private final Num hundred;
     private Num lastNotification;
 
     /**
@@ -50,7 +49,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
-        this(indicator, indicator.zero());
+        this(indicator, indicator.getBarSeries().numFactory().zero());
     }
 
     /**
@@ -60,7 +59,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param percentageThreshold the threshold percentage
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
-        this(indicator, indicator.numOf(percentageThreshold));
+        this(indicator, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
     }
 
     /**
@@ -73,7 +72,6 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
-        this.hundred = hundred();
     }
 
     @Override
@@ -125,6 +123,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     private Num fractionToPercentage(Num changeFraction) {
+        final var hundred = getBarSeries().numFactory().hundred();
         return changeFraction.multipliedBy(hundred).minus(hundred);
     }
 }

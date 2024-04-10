@@ -51,13 +51,14 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sum = numFactory.zero();
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(numOf(realBarCount));
+        return sum.dividedBy(numFactory.numOf(realBarCount));
     }
 
     /** @return {@link #barCount} */

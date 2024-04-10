@@ -25,32 +25,31 @@ package org.ta4j.core.indicators.statistics;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public VarianceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public VarianceIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
     }
 
     @Test
     public void varianceUsingBarCount4UsingClosePrice() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
+        var var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
 
         assertNumEquals(0, var.getValue(0));
         assertNumEquals(0.25, var.getValue(1));
@@ -67,20 +66,20 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void firstValueShouldBeZero() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
+        var var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
         assertNumEquals(0, var.getValue(0));
     }
 
     @Test
     public void varianceShouldBeZeroWhenBarCountIs1() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
+        var var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, var.getValue(3));
         assertNumEquals(0, var.getValue(8));
     }
 
     @Test
     public void varianceUsingBarCount2UsingClosePrice() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
+        var var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
 
         assertNumEquals(0, var.getValue(0));
         assertNumEquals(0.25, var.getValue(1));

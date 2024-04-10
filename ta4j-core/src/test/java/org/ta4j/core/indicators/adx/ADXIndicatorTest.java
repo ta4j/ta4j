@@ -26,8 +26,6 @@ package org.ta4j.core.indicators.adx;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
@@ -36,14 +34,15 @@ import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private final ExternalIndicatorTest xls;
 
-    public ADXIndicatorTest(Function<Number, Num> nf) throws Exception {
-        super((data, params) -> new ADXIndicator((BarSeries) data, (int) params[0], (int) params[1]), nf);
-        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, numFunction);
+    public ADXIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new ADXIndicator(data, (int) params[0], (int) params[1]), numFactory);
+        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, this.numFactory);
     }
 
     @Test

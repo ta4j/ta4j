@@ -42,7 +42,8 @@ import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.IsEqualRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -54,21 +55,44 @@ public class CompareNumTypes {
     public static void main(String args[]) {
         BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
         BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ")
-                .withNumTypeOf(DoubleNum::valueOf)
+                .withNumFactory(new DoubleNumFactory())
                 .build();
         BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32")
-                .withNumTypeOf(DecimalNum::valueOf)
+                .withNumFactory(new DecimalNumFactory())
                 .build();
         BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256")
-                .withNumTypeOf(number -> DecimalNum.valueOf(number.toString(), 256))
+                .withNumFactory(new DecimalNumFactory() {
+                    @Override
+                    public Num numOf(final Number number) {
+                        return DecimalNum.valueOf(number.toString(), 256);
+                    }
+                })
                 .build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(NUMBARS - i);
-            seriesD.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
-            seriesP.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
-            seriesPH.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
+            seriesD.addBar(seriesD.barBuilder()
+                    .endTime(date)
+                    .openPrice(randoms[i])
+                    .closePrice(randoms[i] + 21)
+                    .highPrice(randoms[i] - 21)
+                    .lowPrice(randoms[i] - 5)
+                    .build());
+            seriesP.addBar(seriesP.barBuilder()
+                    .endTime(date)
+                    .openPrice(randoms[i])
+                    .closePrice(randoms[i] + 21)
+                    .highPrice(randoms[i] - 21)
+                    .lowPrice(randoms[i] - 5)
+                    .build());
+            seriesPH.addBar(seriesPH.barBuilder()
+                    .endTime(date)
+                    .openPrice(randoms[i])
+                    .closePrice(randoms[i] + 21)
+                    .highPrice(randoms[i] - 21)
+                    .lowPrice(randoms[i] - 5)
+                    .build());
         }
         Num D = DecimalNum.valueOf(test(seriesD).toString(), 256);
         Num P = DecimalNum.valueOf(test(seriesP).toString(), 256);

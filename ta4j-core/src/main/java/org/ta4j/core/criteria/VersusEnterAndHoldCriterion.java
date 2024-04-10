@@ -94,8 +94,8 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
         TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
-        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.one());
-        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.one());
+        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
+        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
         return fakeRecord;
     }
 

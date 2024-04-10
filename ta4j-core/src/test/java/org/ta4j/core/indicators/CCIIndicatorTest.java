@@ -25,16 +25,13 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.ArrayList;
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -42,29 +39,28 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             23.91, 23.81, 23.92, 23.74, 24.68, 24.94, 24.93, 25.10, 25.12, 25.20, 25.06, 24.50, 24.31, 24.57, 24.62,
             24.49, 24.37, 24.41, 24.35, 23.75, 24.09 };
 
-    private MockBarSeries series;
+    private BarSeries series;
 
     /**
      * Constructor.
      * 
-     * @param function
+     * @param numFactory
      */
-    public CCIIndicatorTest(Function<Number, Num> function) {
-        super(function);
+    public CCIIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        ArrayList<Bar> bars = new ArrayList<Bar>();
-        for (Double price : typicalPrices) {
-            bars.add(new MockBar(price, price, price, price, numFunction));
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (var price : typicalPrices) {
+            series.barBuilder().openPrice(price).closePrice(price).highPrice(price).lowPrice(price).add();
         }
-        series = new MockBarSeries(bars);
     }
 
     @Test
     public void getValueWhenBarCountIs20() {
-        CCIIndicator cci = new CCIIndicator(series, 20);
+        var cci = new CCIIndicator(series, 20);
 
         // Incomplete time frame
         assertNumEquals(0, cci.getValue(0));

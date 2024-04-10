@@ -40,6 +40,7 @@ import java.util.function.Function;
  */
 public interface Num extends Comparable<Num>, Serializable {
 
+    // TODO remove constants
     /**
      * @return the Num of 0
      */

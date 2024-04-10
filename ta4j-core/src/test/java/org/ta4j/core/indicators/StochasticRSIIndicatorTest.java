@@ -26,24 +26,23 @@ package org.ta4j.core.indicators;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
     private final ExternalIndicatorTest xls;
 
-    public StochasticRSIIndicatorTest(Function<Number, Num> numFunction) {
-        super((data, params) -> new StochasticRSIIndicator(data, (int) params[0]), numFunction);
-        xls = new XLSIndicatorTest(this.getClass(), "AAPL_StochRSI.xls", 15, numFunction);
+    public StochasticRSIIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new StochasticRSIIndicator(data, (int) params[0]), numFactory);
+        xls = new XLSIndicatorTest(this.getClass(), "AAPL_StochRSI.xls", 15, numFactory);
     }
 
     @Test
@@ -59,14 +58,15 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07,
-                50.01, 50.14, 50.22, 50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20, 51.30,
-                51.10);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
+                        50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20, 51.30, 51.10)
+                .build();
     }
 
     @Test
     public void stochasticRSI() {
-        StochasticRSIIndicator srsi = new StochasticRSIIndicator(data, 14);
+        var srsi = new StochasticRSIIndicator(data, 14);
         assertNumEquals(1, srsi.getValue(15));
         assertNumEquals(0.9460, srsi.getValue(16));
         assertNumEquals(1, srsi.getValue(17));
