@@ -77,7 +77,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
     public PivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
         super(series);
         this.timeLevel = timeLevel;
-        this.three = series.numOf(3);
+        this.three = series.numFactory().numOf(3);
     }
 
     @Override

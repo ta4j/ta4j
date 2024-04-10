@@ -45,7 +45,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = zero();
+        Num sum = getBarSeries().numFactory().zero();
         for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }

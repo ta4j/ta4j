@@ -41,7 +41,6 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Properties;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -50,8 +49,8 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     public static final int HIGH_PRECISION = 128;
 
-    public NumTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public NumTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
@@ -353,7 +352,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     @Test
     public void testSerialization() throws Exception {
-        Num numVal = numFunction.apply(1.3);
+        Num numVal = numFactory.numOf(1.3);
         serializeDeserialize(numVal);
     }
 

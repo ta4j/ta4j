@@ -28,8 +28,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class SumIndicatorTest {
 
@@ -37,12 +36,14 @@ public class SumIndicatorTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, series.numOf(6));
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, series.numOf(-2.0), series.numOf(0.00),
-                series.numOf(1.00), series.numOf(2.53), series.numOf(5.87), series.numOf(6.00), series.numOf(10.0));
-        FixedIndicator<Num> mockIndicator2 = new FixedIndicator<Num>(series, series.numOf(0), series.numOf(1),
-                series.numOf(2), series.numOf(3), series.numOf(10), series.numOf(-42), series.numOf(-1337));
+        BarSeries series = new MockBarSeriesBuilder().build();
+        var constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(6));
+        var mockIndicator = new FixedIndicator<>(series, series.numFactory().numOf(-2.0),
+                series.numFactory().numOf(0.00), series.numFactory().numOf(1.00), series.numFactory().numOf(2.53),
+                series.numFactory().numOf(5.87), series.numFactory().numOf(6.00), series.numFactory().numOf(10.0));
+        var mockIndicator2 = new FixedIndicator<>(series, series.numFactory().numOf(0), series.numFactory().numOf(1),
+                series.numFactory().numOf(2), series.numFactory().numOf(3), series.numFactory().numOf(10),
+                series.numFactory().numOf(-42), series.numFactory().numOf(-1337));
         sumIndicator = new SumIndicator(constantIndicator, mockIndicator, mockIndicator2);
     }
 

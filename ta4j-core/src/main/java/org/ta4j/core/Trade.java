@@ -104,7 +104,7 @@ public class Trade implements Serializable {
      * @param type   the trade type
      */
     protected Trade(int index, BarSeries series, TradeType type) {
-        this(index, series, type, series.one());
+        this(index, series, type, series.numFactory().one());
     }
 
     /**

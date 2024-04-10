@@ -25,24 +25,20 @@ package org.ta4j.core;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNumFactory;
 
-public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class SeriesBuilderTest {
 
-    public SeriesBuilderTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
-
-    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction);
+    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder()
+            .withNumFactory(new DecimalNumFactory());
 
     @Test
     public void testBuilder() {
@@ -50,19 +46,51 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
                                                                                  // BigDecimal as delegate
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumTypeOf(DoubleNum.class)
+                .withNumFactory(new DoubleNumFactory())
                 .withName("useDoubleNum")
                 .build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumTypeOf(DecimalNum.class)
+                .withNumFactory(new DecimalNumFactory())
                 .withName("usePrecisionNum")
                 .build();
 
         for (int i = 1000; i >= 0; i--) {
-            defaultSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            defaultSeriesName.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            doubleSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            precisionSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
+            defaultSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            defaultSeriesName.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            doubleSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            precisionSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
         }
 
         assertNumEquals(0, defaultSeries.getBar(1000).getClosePrice());
@@ -74,16 +102,13 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testNumFunctions() {
-        BarSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
-        assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
-
-        BarSeries seriesB = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
-        assertNumEquals(seriesB.numOf(12), DecimalNum.valueOf(12));
+        BarSeries series = seriesBuilder.withNumFactory(new DoubleNumFactory()).build();
+        assertNumEquals(series.numFactory().numOf(12), DoubleNum.valueOf(12));
     }
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
-        assertNumNotEquals(series.numOf(12), DoubleNum.valueOf(12));
+        BarSeries series = seriesBuilder.withNumFactory(new DecimalNumFactory()).build();
+        assertNumEquals(series.numFactory().numOf(12), DecimalNum.valueOf(12));
     }
 }

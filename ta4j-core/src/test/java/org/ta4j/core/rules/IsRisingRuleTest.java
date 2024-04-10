@@ -29,10 +29,8 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
 
 public class IsRisingRuleTest {
 
@@ -40,8 +38,8 @@ public class IsRisingRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3);
+        BarSeries series = new BaseBarSeriesBuilder().build();
+        var indicator = new FixedDecimalIndicator(series, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3);
         rule = new IsRisingRule(indicator, 3);
     }
 

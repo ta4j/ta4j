@@ -25,53 +25,47 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public WilliamsRIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public WilliamsRIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
-        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
-        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));
-        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04, numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10, numFunction));
-        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10, numFunction));
-        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07, numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10, numFunction));
-        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14, numFunction));
-        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20, numFunction));
-        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39, numFunction));
-        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, numFunction));
-        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, numFunction));
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        data.barBuilder().openPrice(44.98).closePrice(45.05).highPrice(45.17).lowPrice(44.96).add();
+        data.barBuilder().openPrice(45.05).closePrice(45.10).highPrice(45.15).lowPrice(44.99).add();
+        data.barBuilder().openPrice(45.11).closePrice(45.19).highPrice(45.32).lowPrice(45.11).add();
+        data.barBuilder().openPrice(45.19).closePrice(45.14).highPrice(45.25).lowPrice(45.04).add();
+        data.barBuilder().openPrice(45.12).closePrice(45.15).highPrice(45.20).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.15).closePrice(45.14).highPrice(45.20).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.13).closePrice(45.10).highPrice(45.16).lowPrice(45.07).add();
+        data.barBuilder().openPrice(45.12).closePrice(45.15).highPrice(45.22).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.15).closePrice(45.22).highPrice(45.27).lowPrice(45.14).add();
+        data.barBuilder().openPrice(45.24).closePrice(45.43).highPrice(45.45).lowPrice(45.20).add();
+        data.barBuilder().openPrice(45.43).closePrice(45.44).highPrice(45.50).lowPrice(45.39).add();
+        data.barBuilder().openPrice(45.43).closePrice(45.55).highPrice(45.60).lowPrice(45.35).add();
+        data.barBuilder().openPrice(45.58).closePrice(45.55).highPrice(45.61).lowPrice(45.39).add();
 
-        data = new BaseBarSeries(bars);
     }
 
     @Test
     public void williamsRUsingBarCount5UsingClosePrice() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new HighPriceIndicator(data),
+        var wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new HighPriceIndicator(data),
                 new LowPriceIndicator(data));
 
         assertNumEquals(-47.2222, wr.getValue(4));
@@ -86,7 +80,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void williamsRUsingBarCount10UsingClosePrice() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new HighPriceIndicator(data),
+        var wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new HighPriceIndicator(data),
                 new LowPriceIndicator(data));
 
         assertNumEquals(-4.0816, wr.getValue(9));
@@ -98,7 +92,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void valueLessThenBarCount() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new HighPriceIndicator(data),
+        var wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new HighPriceIndicator(data),
                 new LowPriceIndicator(data));
 
         assertNumEquals(-100d * (0.12 / 0.21), wr.getValue(0));

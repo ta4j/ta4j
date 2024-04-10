@@ -46,7 +46,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.multiplier = numOf(multiplier);
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
     }
 
     @Override

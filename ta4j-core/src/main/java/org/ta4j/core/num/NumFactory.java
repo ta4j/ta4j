@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,40 +21,60 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.num;
 
-import static junit.framework.TestCase.assertEquals;
+public interface NumFactory {
 
-import java.util.function.Function;
+    /**
+     * @return the Num of -1
+     */
+    Num minusOne();
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+    /**
+     * @return the Num of 0
+     */
+    Num zero();
 
-public class NumndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    /**
+     * @return the Num of 1
+     */
+    Num one();
 
-    private NumIndicator closePrice;
-    private BarSeries barSeries;
+    /**
+     * @return the Num of 2
+     */
+    Num two();
 
-    public NumndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
+    /**
+     * @return the Num of 3
+     */
+    Num three();
 
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        closePrice = new NumIndicator(barSeries, Bar::getClosePrice);
-    }
+    /**
+     * @return the Num of 100
+     */
+    Num hundred();
 
-    @Test
-    public void indicatorShouldRetrieveBarClosePrice() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
-        }
-    }
+    /**
+     * @return the Num of 100
+     */
+    Num thousand();
+
+    /**
+     * Transforms a {@link Number} into the {@link Num implementation} used by this
+     * bar series
+     *
+     * @param number a {@link Number} implementing object.
+     * @return the corresponding value as a Num implementing object
+     */
+    Num numOf(Number number);
+
+    /**
+     * Transforms a {@link Number} into the {@link Num implementation} used by this
+     * bar series
+     *
+     * @param number as string
+     * @return the corresponding value as a Num implementing object
+     */
+    Num numOf(String number);
 }

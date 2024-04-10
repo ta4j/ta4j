@@ -33,10 +33,10 @@ import static org.ta4j.core.num.NaN.NaN;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 public class TradeTest {
@@ -72,8 +72,8 @@ public class TradeTest {
 
     @Test
     public void initializeWithCostsTest() {
-        CostModel transactionCostModel = new LinearTransactionCostModel(0.05);
-        Trade trade = new Trade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
+        var transactionCostModel = new LinearTransactionCostModel(0.05);
+        var trade = new Trade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
         Num expectedRawPrice = DoubleNum.valueOf(100);
@@ -88,7 +88,9 @@ public class TradeTest {
 
     @Test
     public void testReturnBarSeriesCloseOnNaN() {
-        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95, 100, 80, 85, 130);
+        var series = new MockBarSeriesBuilder().withNumFactory(new DoubleNumFactory())
+                .withData(100, 95, 100, 80, 85, 130)
+                .build();
         Trade trade = new Trade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }

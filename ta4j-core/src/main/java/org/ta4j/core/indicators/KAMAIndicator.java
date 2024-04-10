@@ -53,8 +53,10 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         super(price);
         this.price = price;
         this.barCountEffectiveRatio = barCountEffectiveRatio;
-        this.fastest = numOf(2).dividedBy(numOf(barCountFast + 1));
-        this.slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
+        final var numFactory = getBarSeries().numFactory();
+        final var two = numFactory.two();
+        this.fastest = two.dividedBy(numFactory.numOf(barCountFast + 1));
+        this.slowest = two.dividedBy(numFactory.numOf(barCountSlow + 1));
     }
 
     /**
@@ -86,7 +88,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          */
         int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
-        Num volatility = zero();
+        Num volatility = getBarSeries().numFactory().zero();
         for (int i = startChangeIndex; i < index; i++) {
             volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
         }

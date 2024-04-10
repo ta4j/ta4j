@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -36,21 +35,21 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
-    public EnterAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
+    public EnterAndHoldReturnCriterionTest(NumFactory numFactory) {
         super(params -> params.length == 0 ? new EnterAndHoldReturnCriterion()
-                : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFunction);
+                : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFactory);
     }
 
     @Test
     public void calculateWithEmpty() {
-        MockBarSeries series = new MockBarSeries(numFunction, List.of());
-        TradingRecord tradingRecord = new BaseTradingRecord();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(List.of()).build();
+        var tradingRecord = new BaseTradingRecord();
         AnalysisCriterion buyAndHold = getCriterion();
         AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
 
@@ -64,8 +63,10 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithGainPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion();
@@ -77,8 +78,8 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion();
@@ -90,7 +91,7 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
@@ -101,7 +102,7 @@ public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnePositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105).build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(105d / 100, buyAndHold.calculate(series, position));

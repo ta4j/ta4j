@@ -53,7 +53,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, Position position) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(numOf(1)));
+        values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().one()));
 
         calculate(position);
         fillToTheEnd(barSeries.getEndIndex());
@@ -79,7 +79,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(one()));
+        values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
 
         calculate(tradingRecord, finalIndex);
         fillToTheEnd(finalIndex);
@@ -102,11 +102,6 @@ public class CashFlow implements Indicator<Num> {
     @Override
     public BarSeries getBarSeries() {
         return barSeries;
-    }
-
-    @Override
-    public Num numOf(Number number) {
-        return barSeries.numOf(number);
     }
 
     /**

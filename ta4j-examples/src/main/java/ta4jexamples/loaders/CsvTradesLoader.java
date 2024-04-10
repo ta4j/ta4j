@@ -35,13 +35,9 @@ import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import com.opencsv.CSVReader;
 
 /**
  * This class builds a Ta4j bar series from a CSV file containing trades.
@@ -58,14 +54,14 @@ public class CsvTradesLoader {
                 .getResourceAsStream("bitstamp_trades_from_20131125_usd.csv");
         List<String[]> lines = null;
         assert stream != null;
-        try (CSVReader csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
+        try (final var csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
         } catch (Exception ioe) {
             Logger.getLogger(CsvTradesLoader.class.getName()).log(Level.SEVERE, "Unable to load trades from CSV", ioe);
         }
 
-        BarSeries series = new BaseBarSeries();
+        var series = new BaseBarSeriesBuilder().build();
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -106,11 +102,10 @@ public class CsvTradesLoader {
         ZonedDateTime barEndTime = beginTime;
         ListIterator<String[]> iterator = lines.listIterator();
         // line number of trade data
-        int i = 0;
         do {
             // build a bar
             barEndTime = barEndTime.plus(barDuration);
-            Bar bar = new BaseBar(barDuration, barEndTime, series.function());
+            var bar = series.barBuilder().timePeriod(barDuration).endTime(barEndTime).build();
             do {
                 // get a trade
                 String[] tradeLine = iterator.next();
@@ -119,8 +114,8 @@ public class CsvTradesLoader {
                 // if the trade happened during the bar
                 if (bar.inPeriod(tradeTimeStamp)) {
                     // add the trade to the bar
-                    Num tradePrice = series.numOf(Double.parseDouble(tradeLine[1]));
-                    Num tradeVolume = series.numOf(Double.parseDouble(tradeLine[2]));
+                    Num tradePrice = series.numFactory().numOf(Double.parseDouble(tradeLine[1]));
+                    Num tradeVolume = series.numFactory().numOf(Double.parseDouble(tradeLine[2]));
                     bar.addTrade(tradeVolume, tradePrice);
                 } else {
                     // the trade happened after the end of the bar
@@ -128,7 +123,6 @@ public class CsvTradesLoader {
                     // this break will drop us after the inner "while", skipping the increment
                     break;
                 }
-                i++;
             } while (iterator.hasNext());
             // if the bar has any trades add it to the bars list
             // this is where the break drops to

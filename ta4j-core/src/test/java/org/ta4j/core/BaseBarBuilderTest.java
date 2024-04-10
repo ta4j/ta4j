@@ -28,16 +28,16 @@ import static org.junit.Assert.assertEquals;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BaseBarBuilderTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BaseBarBuilderTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
