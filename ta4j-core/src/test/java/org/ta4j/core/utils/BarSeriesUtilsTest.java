@@ -282,21 +282,46 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void convertBarSeriesTest() {
-        final BarSeries decimalBarSeries = new MockBarSeriesBuilder()
-                .withMaxBarCount(100)
-                .withNumFactory(new DecimalNumFactory())
+        final BarSeries decimalBarSeries = new MockBarSeriesBuilder().withMaxBarCount(100)
+                .withNumFactory(DecimalNumFactory.getInstance())
                 .withName("useDecimalNum")
                 .build();
 
-        decimalBarSeries.barBuilder().openPrice(1d).closePrice(2d).highPrice(4d).lowPrice(5d).volume(0d).amount(0).trades(7).add();
-        decimalBarSeries.barBuilder().openPrice(1d).closePrice(1d).highPrice(1d).lowPrice(1d).volume(1d).amount(0).trades(1).add();
-        decimalBarSeries.barBuilder().openPrice(2d).closePrice(2d).highPrice(2d).lowPrice(2d).volume(2d).amount(0).trades(2).add();
+        decimalBarSeries.barBuilder()
+                .openPrice(1d)
+                .closePrice(2d)
+                .highPrice(4d)
+                .lowPrice(5d)
+                .volume(0d)
+                .amount(0)
+                .trades(7)
+                .add();
+        decimalBarSeries.barBuilder()
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .volume(1d)
+                .amount(0)
+                .trades(1)
+                .add();
+        decimalBarSeries.barBuilder()
+                .openPrice(2d)
+                .closePrice(2d)
+                .highPrice(2d)
+                .lowPrice(2d)
+                .volume(2d)
+                .amount(0)
+                .trades(2)
+                .add();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
-        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, new DoubleNumFactory());
+        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries,
+                new DoubleNumFactory());
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
-        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, new DecimalNumFactory());
+        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
+                DecimalNumFactory.getInstance());
 
         assertEquals(DecimalNum.class, decimalBarSeries.getFirstBar().getClosePrice().getClass());
         assertEquals(DoubleNum.class, decimalToDoubleSeries.getFirstBar().getClosePrice().getClass());

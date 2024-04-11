@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.util.List;
 
 import org.junit.runner.RunWith;
@@ -59,7 +56,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<NumFactory> function() {
-        return List.of(new DoubleNumFactory(), new DecimalNumFactory());
+        return List.of(new DoubleNumFactory(), DecimalNumFactory.getInstance());
     }
 
     private final IndicatorFactory<D, I> factory;
@@ -103,10 +100,4 @@ public abstract class AbstractIndicatorTest<D, I> {
     protected Num numOf(Number n) {
         return numFactory.numOf(n);
     }
-
-    public Num numOf(String string, int precision) {
-        var mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        return this.numOf(new BigDecimal(string, mathContext));
-    }
-
 }

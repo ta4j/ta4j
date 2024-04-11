@@ -47,7 +47,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
     @Test
     public void testAtLeastOneBarRuleForOpenedTrade() {
         final var rule = new OpenedPositionMinimumBarCountRule(1);
-        final var series = new MockBarSeriesBuilder().withNumFactory(new DecimalNumFactory())
+        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1, 2, 3, 4)
                 .build();
         final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
@@ -61,7 +61,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
     @Test
     public void testAtLeastMoreThanOneBarRuleForOpenedTrade() {
         final var rule = new OpenedPositionMinimumBarCountRule(2);
-        final var series = new MockBarSeriesBuilder().withNumFactory(new DecimalNumFactory())
+        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1, 2, 3, 4)
                 .build();
         final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
@@ -75,7 +75,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
     @Test
     public void testAtLeastBarCountRuleForClosedTradeShouldAlwaysReturnsFalse() {
         final var rule = new OpenedPositionMinimumBarCountRule(1);
-        final var series = new MockBarSeriesBuilder().withNumFactory(new DecimalNumFactory())
+        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1, 2, 3, 4)
                 .build();
         final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));

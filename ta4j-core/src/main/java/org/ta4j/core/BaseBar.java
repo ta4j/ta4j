@@ -80,8 +80,8 @@ public class BaseBar implements Bar {
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
-    BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount, long trades) {
+    BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+            Num volume, Num amount, long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;

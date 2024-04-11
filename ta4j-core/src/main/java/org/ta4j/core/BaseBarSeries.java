@@ -245,8 +245,8 @@ public class BaseBarSeries implements BarSeries {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!numFactory.produces(bar.getClosePrice())) {
             throw new IllegalArgumentException(
-                String.format("Cannot add Bar with data type: %s to series with datatype: %s",
-                    bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+                    String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                            bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
 
         if (!this.bars.isEmpty()) {

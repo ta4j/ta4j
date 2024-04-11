@@ -73,7 +73,7 @@ public class LinearTransactionCostModel implements CostModel {
 
     @Override
     public Num calculate(Num price, Num amount) {
-        return amount.numOf(feePerPosition).multipliedBy(price).multipliedBy(amount);
+        return amount.getNumFactory().numOf(feePerPosition).multipliedBy(price).multipliedBy(amount);
     }
 
     @Override

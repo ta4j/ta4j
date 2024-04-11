@@ -22,7 +22,6 @@ public class MockBarBuilder extends BaseBarConvertibleBuilder {
     private static long countOfProducedBars;
     private Duration timePeriod;
 
-
     public MockBarBuilder(NumFactory numFactory) {
         super(numFactory);
     }

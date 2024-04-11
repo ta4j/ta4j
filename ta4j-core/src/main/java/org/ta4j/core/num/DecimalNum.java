@@ -32,7 +32,6 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,14 +52,6 @@ public final class DecimalNum implements Num {
 
     static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
-
-    public static final DecimalNum MINUS_ONE = DecimalNum.valueOf(-1);
-    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
-    public static final DecimalNum ONE = DecimalNum.valueOf(1);
-    public static final DecimalNum TWO = DecimalNum.valueOf(2);
-    public static final DecimalNum THREE = DecimalNum.valueOf(3);
-    public static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
-    public static final DecimalNum THOUSAND = DecimalNum.valueOf(1000);
 
     private final MathContext mathContext;
     private final BigDecimal delegate;
@@ -288,26 +279,6 @@ public final class DecimalNum implements Num {
         return new DecimalNum(val, precision);
     }
 
-    @Override
-    public Num zero() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? ZERO : function().apply(0);
-    }
-
-    @Override
-    public Num one() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? ONE : function().apply(1);
-    }
-
-    @Override
-    public Num hundred() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? HUNDRED : function().apply(100);
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return (number -> DecimalNum.valueOf(number.toString(), mathContext.getPrecision()));
-    }
-
     /**
      * Returns the underlying {@link BigDecimal} delegate.
      *
@@ -316,6 +287,11 @@ public final class DecimalNum implements Num {
     @Override
     public BigDecimal getDelegate() {
         return delegate;
+    }
+
+    @Override
+    public NumFactory getNumFactory() {
+        return DecimalNumFactory.getInstance(mathContext.getPrecision());
     }
 
     /**
