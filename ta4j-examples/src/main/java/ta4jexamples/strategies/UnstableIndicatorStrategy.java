@@ -26,11 +26,9 @@ package ta4jexamples.strategies;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
@@ -80,10 +78,16 @@ public class UnstableIndicatorStrategy {
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
-        BarSeries series = new BaseBarSeriesBuilder()
-                .withBars(closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0))
-                        .collect(Collectors.toList()))
-                .build();
+        BarSeries series = new BaseBarSeriesBuilder().build();
+
+        closePrices.forEach(close -> series.barBuilder()
+                .timePeriod(MINUTE)
+                .endTime(TIME)
+                .openPrice(0)
+                .closePrice(close)
+                .highPrice(0)
+                .lowPrice(0)
+                .add());
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);

@@ -69,6 +69,7 @@ public class BuildBarSeries {
 
     private static void addBars(final BarSeries series, final ZonedDateTime endTime) {
         series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
                 .openPrice(105.42)
                 .highPrice(112.99)
@@ -77,6 +78,7 @@ public class BuildBarSeries {
                 .volume(1337)
                 .build());
         series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(1))
                 .openPrice(111.43)
                 .highPrice(112.83)
@@ -85,6 +87,7 @@ public class BuildBarSeries {
                 .volume(1234)
                 .build());
         series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(2))
                 .openPrice(107.90)
                 .highPrice(117.50)
@@ -95,7 +98,9 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithDouble() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").withNumFactory(new DoubleNumFactory()).build();
+        var series = new BaseBarSeriesBuilder().withName("mySeries")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
 
         var endTime = ZonedDateTime.now();
         addBars(series, endTime);
@@ -104,7 +109,9 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithBigDecimal() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").withNumFactory(new DecimalNumFactory()).build();
+        var series = new BaseBarSeriesBuilder().withName("mySeries")
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         addBars(series, endTime);
@@ -124,7 +131,9 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyDoubleNum() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").withNumFactory(new DoubleNumFactory()).build();
+        var series = new BaseBarSeriesBuilder().withName("mySeries")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
         ZonedDateTime endTime = ZonedDateTime.now();
         addBars(series, endTime);
         // ...
@@ -133,7 +142,9 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyAndAddBarManually() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").withNumFactory(new DoubleNumFactory()).build();
+        var series = new BaseBarSeriesBuilder().withName("mySeries")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
 
         // create bars and add them to the series. The bars have the same Num type
         // as the series
