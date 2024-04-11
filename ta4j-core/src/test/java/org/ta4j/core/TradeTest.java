@@ -88,7 +88,7 @@ public class TradeTest {
 
     @Test
     public void testReturnBarSeriesCloseOnNaN() {
-        var series = new MockBarSeriesBuilder().withNumFactory(new DoubleNumFactory())
+        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
         Trade trade = new Trade(1, TradeType.BUY, NaN);

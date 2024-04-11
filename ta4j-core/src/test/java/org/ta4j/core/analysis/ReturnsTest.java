@@ -42,7 +42,7 @@ import org.ta4j.core.num.NumFactory;
 
 public class ReturnsTest {
 
-    private NumFactory numFactory = new DoubleNumFactory();
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
     public void returnSize() {

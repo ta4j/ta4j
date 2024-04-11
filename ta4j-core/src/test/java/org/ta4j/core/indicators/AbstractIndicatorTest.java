@@ -56,7 +56,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<NumFactory> function() {
-        return List.of(new DoubleNumFactory(), DecimalNumFactory.getInstance());
+        return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }
 
     private final IndicatorFactory<D, I> factory;

@@ -312,7 +312,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         BigDecimal numBD = BigDecimal.valueOf(Double.MAX_VALUE)
                 .multiply(BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE));
         if (numOf(0).getClass().equals(DoubleNum.class)) {
-            Num sqrt = new DoubleNumFactory().numOf(numBD).sqrt(100000);
+            Num sqrt = DoubleNumFactory.getInstance().numOf(numBD).sqrt(100000);
             assertEquals("Infinity", sqrt.toString());
         } else if (numOf(0).getClass().equals(DecimalNum.class)) {
             Num sqrt = DecimalNumFactory.getInstance(100000).numOf(numBD).sqrt(100000);

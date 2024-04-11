@@ -78,7 +78,7 @@ public class DecimalNumTest {
     // auto-set precision based on length of SUPER_PRECISION_STRING (120)
     private final NumFactory precisionFunc = DecimalNumFactory.getInstance(120);
     private final NumFactory precision32Func = DecimalNumFactory.getInstance(32);
-    private final NumFactory doubleFunc = new DoubleNumFactory();
+    private final NumFactory doubleFunc = DoubleNumFactory.getInstance();
     private final NumFactory lowPrecisionFunc = DecimalNumFactory.getInstance(3);
 
     private BarSeries superPrecisionSeries;

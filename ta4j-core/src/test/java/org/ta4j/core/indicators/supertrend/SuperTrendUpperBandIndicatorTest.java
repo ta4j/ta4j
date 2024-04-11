@@ -36,7 +36,7 @@ public class SuperTrendUpperBandIndicatorTest {
 
     private BarSeries data;
 
-    private NumFactory numFactory = new DoubleNumFactory();
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Before
     public void setUp() {
