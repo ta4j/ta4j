@@ -32,14 +32,12 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
@@ -284,28 +282,21 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void convertBarSeriesTest() {
-
-        final Function<Number, Num> decimalNumFunction = DecimalNum::valueOf;
-
-        final List<Bar> bars = new ArrayList<>();
-        this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
-        bars.add(new MockBar(this.time, 1d, 2d, 3d, 4d, 5d, 0d, 7, decimalNumFunction));
-        bars.add(new MockBar(this.time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction));
-        bars.add(new MockBar(this.time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, decimalNumFunction));
-
-        final BarSeries decimalBarSeries = new BaseBarSeriesBuilder().withBars(bars)
+        final BarSeries decimalBarSeries = new MockBarSeriesBuilder()
                 .withMaxBarCount(100)
                 .withNumFactory(new DecimalNumFactory())
                 .withName("useDecimalNum")
                 .build();
 
+        decimalBarSeries.barBuilder().openPrice(1d).closePrice(2d).highPrice(4d).lowPrice(5d).volume(0d).amount(0).trades(7).add();
+        decimalBarSeries.barBuilder().openPrice(1d).closePrice(1d).highPrice(1d).lowPrice(1d).volume(1d).amount(0).trades(1).add();
+        decimalBarSeries.barBuilder().openPrice(2d).closePrice(2d).highPrice(2d).lowPrice(2d).volume(2d).amount(0).trades(2).add();
+
         // convert barSeries with DecimalNum to barSeries with DoubleNum
-        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries,
-                new DoubleNumFactory());
+        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, new DoubleNumFactory());
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
-        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
-                new DecimalNumFactory());
+        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, new DecimalNumFactory());
 
         assertEquals(DecimalNum.class, decimalBarSeries.getFirstBar().getClosePrice().getClass());
         assertEquals(DoubleNum.class, decimalToDoubleSeries.getFirstBar().getClosePrice().getClass());

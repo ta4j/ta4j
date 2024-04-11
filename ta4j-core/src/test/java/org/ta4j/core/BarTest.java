@@ -100,16 +100,17 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void equals() {
-        Bar bar1 = new BaseBar(Duration.ofHours(1), endTime, numFactory);
-        Bar bar2 = new BaseBar(Duration.ofHours(1), endTime, numFactory);
+        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1, bar2);
+        assertFalse(bar1 == bar2);
     }
 
     @Test
     public void hashCode2() {
-        Bar bar1 = new BaseBar(Duration.ofHours(1), endTime, numFactory);
-        Bar bar2 = new BaseBar(Duration.ofHours(1), endTime, numFactory);
+        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
     }

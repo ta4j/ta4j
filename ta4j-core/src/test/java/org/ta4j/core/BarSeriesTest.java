@@ -48,9 +48,7 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -401,13 +399,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDoubleTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(new DoubleNumFactory()).build();
-        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DecimalNum::valueOf));
+        series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1)).endTime(ZonedDateTime.now()).closePrice(new DecimalNumFactory().numOf(1)).build());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(new DecimalNumFactory()).build();
-        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
+        series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1)).endTime(ZonedDateTime.now()).closePrice(new DoubleNumFactory().numOf(1)).build());
     }
 
     @Test
