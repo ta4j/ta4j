@@ -27,8 +27,6 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.time.ZonedDateTime;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -50,7 +48,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void init() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(1))
                 .openPrice(168.28)
                 .highPrice(169.87)
                 .lowPrice(167.15)
@@ -58,7 +55,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(2))
                 .openPrice(168.84)
                 .highPrice(169.36)
                 .lowPrice(168.20)
@@ -66,7 +62,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(3))
                 .openPrice(168.88)
                 .highPrice(169.29)
                 .lowPrice(166.41)
@@ -74,7 +69,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(4))
                 .openPrice(168)
                 .highPrice(168.38)
                 .lowPrice(166.18)
@@ -82,7 +76,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(5))
                 .openPrice(166.89)
                 .highPrice(167.70)
                 .lowPrice(166.33)
@@ -90,7 +83,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(6))
                 .openPrice(165.25)
                 .highPrice(168.43)
                 .lowPrice(165.00)
@@ -98,7 +90,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(7))
                 .openPrice(168.17)
                 .highPrice(170.18)
                 .lowPrice(167.63)
@@ -106,7 +97,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(8))
                 .highPrice(170.42)
                 .lowPrice(172.15)
                 .closePrice(170.06)
@@ -114,7 +104,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(9))
                 .openPrice(172.41)
                 .highPrice(172.92)
                 .lowPrice(171.31)
@@ -122,7 +111,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(10))
                 .openPrice(171.2)
                 .highPrice(172.39)
                 .lowPrice(169.55)
@@ -130,7 +118,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(11))
                 .openPrice(170.91)
                 .highPrice(172.48)
                 .lowPrice(169.57)
@@ -138,7 +125,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(12))
                 .openPrice(171.80)
                 .highPrice(173.31)
                 .lowPrice(170.27)
@@ -146,7 +132,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(13))
                 .openPrice(173.09)
                 .highPrice(173.49)
                 .lowPrice(170.80)
@@ -154,7 +139,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(14))
                 .openPrice(172.41)
                 .highPrice(173.89)
                 .lowPrice(172.20)
@@ -162,7 +146,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(15))
                 .openPrice(173.87)
                 .highPrice(174.17)
                 .lowPrice(175.00)
@@ -170,7 +153,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(16))
                 .openPrice(173.00)
                 .highPrice(173.17)
                 .lowPrice(172.06)
@@ -178,7 +160,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(17))
                 .openPrice(172.26)
                 .highPrice(172.28)
                 .lowPrice(170.50)
@@ -186,7 +167,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(18))
                 .openPrice(170.88)
                 .highPrice(172.34)
                 .lowPrice(170.26)
@@ -194,7 +174,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(19))
                 .openPrice(171.85)
                 .highPrice(172.07)
                 .lowPrice(169.34)
@@ -202,7 +181,6 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(20))
                 .openPrice(170.75)
                 .highPrice(172.56)
                 .lowPrice(170.36)

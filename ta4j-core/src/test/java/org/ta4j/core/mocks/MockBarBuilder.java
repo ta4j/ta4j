@@ -1,6 +1,9 @@
 package org.ta4j.core.mocks;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.ta4j.core.BaseBar;
@@ -12,8 +15,13 @@ import org.ta4j.core.num.NumFactory;
  */
 public class MockBarBuilder extends BaseBarConvertibleBuilder {
 
+    private Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneId.systemDefault());
     private boolean periodSet;
     private boolean endTimeSet;
+
+    private static long countOfProducedBars;
+    private Duration timePeriod;
+
 
     public MockBarBuilder(NumFactory numFactory) {
         super(numFactory);
@@ -28,7 +36,8 @@ public class MockBarBuilder extends BaseBarConvertibleBuilder {
     @Override
     public BaseBarConvertibleBuilder timePeriod(final Duration timePeriod) {
         periodSet = true;
-        return super.timePeriod(timePeriod);
+        this.timePeriod = timePeriod;
+        return super.timePeriod(this.timePeriod);
     }
 
     @Override
@@ -38,7 +47,7 @@ public class MockBarBuilder extends BaseBarConvertibleBuilder {
         }
 
         if (!endTimeSet) {
-            endTime(ZonedDateTime.now());
+            endTime(ZonedDateTime.now(Clock.offset(clock, timePeriod.multipliedBy(++countOfProducedBars))));
         }
         return super.build();
     }
