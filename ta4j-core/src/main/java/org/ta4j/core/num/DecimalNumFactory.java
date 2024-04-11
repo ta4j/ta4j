@@ -25,66 +25,64 @@ package org.ta4j.core.num;
 
 import static org.ta4j.core.num.DecimalNum.DEFAULT_PRECISION;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class DecimalNumFactory implements NumFactory {
 
-    private final DecimalNum minusOne;
-    private final DecimalNum zero;
-    private final DecimalNum one;
-    private final DecimalNum two;
-    private final DecimalNum three;
-    private final DecimalNum hundred;
-    private final DecimalNum thousand;
+    /**
+     * prebuilt constants with defined precisions
+     */
+    private static final Map<Integer, Map<String, DecimalNum>> decimalNums = new ConcurrentHashMap<>();
+
+    /**
+     * factory singletons for specific precisions
+     */
+    private static final Map<Integer, NumFactory> factories = new ConcurrentHashMap<>();
+
     private final int precision;
 
-    public DecimalNumFactory() {
-       this(DEFAULT_PRECISION);
+    private DecimalNumFactory() {
+        this(DEFAULT_PRECISION);
     }
 
-    public DecimalNumFactory(final int precision) {
+    private DecimalNumFactory(final int precision) {
         this.precision = precision;
-        this.minusOne = DecimalNum.valueOf("-1", precision);
-        this.zero = DecimalNum.valueOf("0", precision);
-        this.one = DecimalNum.valueOf("1", precision);
-        this.two = DecimalNum.valueOf("2", precision);
-        this.three = DecimalNum.valueOf("3", precision);
-        this.hundred = DecimalNum.valueOf("100", precision);
-        this.thousand = DecimalNum.valueOf("1000", precision);
     }
-
 
     @Override
     public Num minusOne() {
-        return this.minusOne;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("-1");
     }
 
     @Override
     public Num zero() {
-        return this.zero;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("0");
     }
 
     @Override
     public Num one() {
-        return this.one;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("1");
     }
 
     @Override
     public Num two() {
-        return this.two;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("2");
     }
 
     @Override
     public Num three() {
-        return this.three;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("3");
     }
 
     @Override
     public Num hundred() {
-        return this.hundred;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("100");
     }
 
     @Override
     public Num thousand() {
-        return this.thousand;
+        return decimalNums.computeIfAbsent(this.precision, DecimalNumFactory::initConstants).get("1000");
     }
 
     @Override
@@ -95,5 +93,20 @@ public class DecimalNumFactory implements NumFactory {
     @Override
     public Num numOf(final String number) {
         return DecimalNum.valueOf(number, this.precision);
+    }
+
+    private static Map<String, DecimalNum> initConstants(final int precision) {
+        return Map.of("-1", DecimalNum.valueOf("-1", precision), "0", DecimalNum.valueOf("0", precision), "1",
+                DecimalNum.valueOf("1", precision), "2", DecimalNum.valueOf("2", precision), "3",
+                DecimalNum.valueOf("3", precision), "100", DecimalNum.valueOf("100", precision), "1000",
+                DecimalNum.valueOf("1000", precision));
+    }
+
+    public static NumFactory getInstance() {
+        return getInstance(DEFAULT_PRECISION);
+    }
+
+    public static NumFactory getInstance(final int precision) {
+        return factories.computeIfAbsent(precision, DecimalNumFactory::new);
     }
 }

@@ -85,6 +85,6 @@ public interface NumFactory {
      * @return true if made by this factory
      */
     default boolean produces(Num num) {
-       return num == null || one().getClass() == num.getClass() || num.equals(NaN.NaN);
+        return num == null || one().getClass() == num.getClass() || num.equals(NaN.NaN);
     }
 }

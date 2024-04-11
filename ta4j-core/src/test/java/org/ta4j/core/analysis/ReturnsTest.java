@@ -126,7 +126,7 @@ public class ReturnsTest {
     @Test
     public void returnsPrecision() {
         var doubleSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1.2d, 1.1d).build();
-        BarSeries precisionSeries = new MockBarSeriesBuilder().withNumFactory(new DecimalNumFactory())
+        BarSeries precisionSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1.2d, 1.1d)
                 .build();
 

@@ -24,6 +24,9 @@
 package org.ta4j.core.num;
 
 public class DoubleNumFactory implements NumFactory {
+
+    private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
+
     @Override
     public Num minusOne() {
         return DoubleNum.MINUS_ONE;
@@ -67,5 +70,9 @@ public class DoubleNumFactory implements NumFactory {
     @Override
     public Num numOf(final String number) {
         return DoubleNum.valueOf(number);
+    }
+
+    public static DoubleNumFactory getInstance() {
+        return DOUBLE_NUM_FACTORY;
     }
 }

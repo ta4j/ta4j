@@ -54,7 +54,7 @@ public class TestUtils {
      *                        {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertEquals(actual.getNumFactory().numOf(new BigDecimal(expected)), actual);
     }
 
     /**
@@ -85,7 +85,7 @@ public class TestUtils {
         if (actual.isNaN()) {
             throw new AssertionError("Expected: " + expected + " Actual: " + actual);
         }
-        assertEquals(actual.numOf(expected), actual);
+        assertEquals(actual.getNumFactory().numOf(expected), actual);
     }
 
     /**
@@ -113,7 +113,7 @@ public class TestUtils {
      *                        representation
      */
     public static void assertNumNotEquals(int unexpected, Num actual) {
-        assertNotEquals(actual.numOf(unexpected), actual);
+        assertNotEquals(actual.getNumFactory().numOf(unexpected), actual);
     }
 
     /**
@@ -159,7 +159,7 @@ public class TestUtils {
      *                        {@code String} representation
      */
     public static void assertNumNotEquals(String expected, Num actual) {
-        assertNotEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertNotEquals(actual.getNumFactory().numOf(new BigDecimal(expected)), actual);
     }
 
     /**

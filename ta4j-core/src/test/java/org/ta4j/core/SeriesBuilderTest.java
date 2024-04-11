@@ -38,7 +38,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 public class SeriesBuilderTest {
 
     private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder()
-            .withNumFactory(new DecimalNumFactory());
+            .withNumFactory(DecimalNumFactory.getInstance());
 
     @Test
     public void testBuilder() {
@@ -50,7 +50,7 @@ public class SeriesBuilderTest {
                 .withName("useDoubleNum")
                 .build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumFactory(new DecimalNumFactory())
+                .withNumFactory(DecimalNumFactory.getInstance())
                 .withName("usePrecisionNum")
                 .build();
 
@@ -108,7 +108,7 @@ public class SeriesBuilderTest {
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumFactory(new DecimalNumFactory()).build();
+        BarSeries series = seriesBuilder.withNumFactory(DecimalNumFactory.getInstance()).build();
         assertNumEquals(series.numFactory().numOf(12), DecimalNum.valueOf(12));
     }
 }

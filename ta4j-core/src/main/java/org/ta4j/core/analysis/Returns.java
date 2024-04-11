@@ -162,7 +162,7 @@ public class Returns implements Indicator<Num> {
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
         Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+        Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly

@@ -25,8 +25,6 @@ package org.ta4j.core.num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.function.Function;
-
 /**
  * Representation of {@link Double}. High performance, lower precision.
  *
@@ -93,7 +91,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(int val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -103,7 +101,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(long val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -113,7 +111,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(short val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -127,27 +125,12 @@ public class DoubleNum implements Num {
      *         value of {@code val}.
      */
     public static DoubleNum valueOf(float val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     @Override
-    public Num zero() {
-        return ZERO;
-    }
-
-    @Override
-    public Num one() {
-        return ONE;
-    }
-
-    @Override
-    public Num hundred() {
-        return HUNDRED;
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return DoubleNum::valueOf;
+    public NumFactory getNumFactory() {
+        return DoubleNumFactory.getInstance();
     }
 
     @Override

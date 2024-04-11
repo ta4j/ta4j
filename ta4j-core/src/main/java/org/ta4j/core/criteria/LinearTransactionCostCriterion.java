@@ -116,9 +116,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute trade cost
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
-        Num tradeCost = tradedAmount.zero();
+        final var numFactory = tradedAmount.getNumFactory();
+        Num tradeCost = numFactory.zero();
         if (trade != null) {
-            return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
+            return numFactory.numOf(a).multipliedBy(tradedAmount).plus(numFactory.numOf(b));
         }
         return tradeCost;
     }

@@ -28,6 +28,7 @@ import java.util.function.UnaryOperator;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -144,7 +145,8 @@ public class TransformIndicator extends CachedIndicator<Num> {
      *          underlying doubleValue method
      */
     public static TransformIndicator log(Indicator<Num> indicator) {
-        return new TransformIndicator(indicator, val -> val.numOf(Math.log(val.doubleValue())));
+        return new TransformIndicator(indicator,
+                val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())));
     }
 
     @Override

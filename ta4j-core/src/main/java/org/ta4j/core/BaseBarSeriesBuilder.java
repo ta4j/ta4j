@@ -41,7 +41,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private String name;
     private boolean constrained;
     private int maxBarCount;
-    private NumFactory numFactory = new DecimalNumFactory();
+    private NumFactory numFactory = DecimalNumFactory.getInstance();
     private BarBuilderFactory barBuilderFactory = new BaseBarBuilderFactory();
 
     /** Constructor to build a {@code BaseBarSeries}. */

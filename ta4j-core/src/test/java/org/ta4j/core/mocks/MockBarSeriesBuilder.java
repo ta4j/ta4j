@@ -34,7 +34,8 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Generates BaseBar implementations with mocked time or duration if not set by tester.
+ * Generates BaseBar implementations with mocked time or duration if not set by
+ * tester.
  */
 public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
 
