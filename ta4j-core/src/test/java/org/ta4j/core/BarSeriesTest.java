@@ -27,6 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -358,14 +359,17 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         Num adding1 = numOf(100);
         Num prevClose = defaultSeries.getBar(defaultSeries.getEndIndex() - 1).getClosePrice();
+        Num currentMax = mxPrice.getValue(defaultSeries.getEndIndex());
         Num currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
         Num currentClose = cp.getValue(defaultSeries.getEndIndex());
 
         assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
         defaultSeries.addPrice(adding1);
         assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
+        assertNull(currentMax);
         assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
-        assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
+        assertNull(currentMin);
+        assertNumEquals(adding1, mnPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new min
         assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
 
         Num adding2 = numOf(0);
