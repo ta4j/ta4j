@@ -26,6 +26,7 @@ package ta4jexamples.loaders;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -79,14 +80,16 @@ public class CsvBarsLoader {
                     double close = Double.parseDouble(line[4]);
                     double volume = Double.parseDouble(line[5]);
 
-                    series.addBar(series.barBuilder()
+                    series.barBuilder()
+                            .timePeriod(Duration.ofDays(1))
                             .endTime(date)
                             .openPrice(open)
                             .closePrice(close)
                             .highPrice(high)
                             .lowPrice(low)
                             .volume(volume)
-                            .build());
+                            .amount(0)
+                            .add();
                 }
             } catch (CsvValidationException e) {
                 Logger.getLogger(CsvBarsLoader.class.getName())

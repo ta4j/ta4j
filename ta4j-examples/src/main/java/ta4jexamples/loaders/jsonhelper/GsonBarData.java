@@ -23,6 +23,7 @@
  */
 package ta4jexamples.loaders.jsonhelper;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -54,7 +55,8 @@ public class GsonBarData {
     public void addTo(BaseBarSeries barSeries) {
         var endTimeInstant = Instant.ofEpochMilli(endTime);
         var endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
-        barSeries.addBar(barSeries.barBuilder()
+        barSeries.barBuilder()
+                .timePeriod(Duration.ofDays(1))
                 .endTime(endBarTime)
                 .openPrice(openPrice)
                 .highPrice(highPrice)
@@ -62,6 +64,6 @@ public class GsonBarData {
                 .closePrice(closePrice)
                 .volume(volume)
                 .amount(amount)
-                .build());
+                .add();
     }
 }

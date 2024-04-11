@@ -23,6 +23,7 @@
  */
 package ta4jexamples.num;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Random;
 
@@ -55,44 +56,42 @@ public class CompareNumTypes {
     public static void main(String args[]) {
         BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
         BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ")
-                .withNumFactory(new DoubleNumFactory())
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
         BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32")
-                .withNumFactory(new DecimalNumFactory())
+                .withNumFactory(DecimalNumFactory.getInstance())
                 .build();
         BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256")
-                .withNumFactory(new DecimalNumFactory() {
-                    @Override
-                    public Num numOf(final Number number) {
-                        return DecimalNum.valueOf(number.toString(), 256);
-                    }
-                })
+                .withNumFactory(DecimalNumFactory.getInstance(256))
                 .build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(NUMBARS - i);
-            seriesD.addBar(seriesD.barBuilder()
+            seriesD.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)
                     .lowPrice(randoms[i] - 5)
-                    .build());
-            seriesP.addBar(seriesP.barBuilder()
+                    .add();
+            seriesP.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)
                     .lowPrice(randoms[i] - 5)
-                    .build());
-            seriesPH.addBar(seriesPH.barBuilder()
+                    .add();
+            seriesPH.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)
                     .lowPrice(randoms[i] - 5)
-                    .build());
+                    .add();
         }
         Num D = DecimalNum.valueOf(test(seriesD).toString(), 256);
         Num P = DecimalNum.valueOf(test(seriesP).toString(), 256);
