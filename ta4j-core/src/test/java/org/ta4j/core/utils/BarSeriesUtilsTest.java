@@ -317,7 +317,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
         final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries,
-                new DoubleNumFactory());
+                DoubleNumFactory.getInstance());
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
         final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,

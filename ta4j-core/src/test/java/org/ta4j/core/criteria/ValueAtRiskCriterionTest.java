@@ -41,7 +41,7 @@ import org.ta4j.core.num.NumFactory;
 public class ValueAtRiskCriterionTest {
     private BarSeries series;
 
-    private NumFactory numFactory = new DoubleNumFactory();
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     private AnalysisCriterion getCriterion() {
         return new ValueAtRiskCriterion(0.95);

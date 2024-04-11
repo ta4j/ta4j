@@ -35,7 +35,7 @@ import org.ta4j.core.num.NumFactory;
 public class SuperTrendIndicatorTest {
 
     private BarSeries data;
-    private NumFactory numFactory = new DoubleNumFactory();
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Before
     public void setUp() {

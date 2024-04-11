@@ -46,7 +46,7 @@ public class SeriesBuilderTest {
         BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
                                                                                  // BigDecimal as delegate
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumFactory(new DoubleNumFactory())
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .withName("useDoubleNum")
                 .build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
@@ -102,7 +102,7 @@ public class SeriesBuilderTest {
 
     @Test
     public void testNumFunctions() {
-        BarSeries series = seriesBuilder.withNumFactory(new DoubleNumFactory()).build();
+        BarSeries series = seriesBuilder.withNumFactory(DoubleNumFactory.getInstance()).build();
         assertNumEquals(series.numFactory().numOf(12), DoubleNum.valueOf(12));
     }
 

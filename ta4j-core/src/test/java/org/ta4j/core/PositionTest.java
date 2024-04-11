@@ -244,14 +244,18 @@ public class PositionTest {
 
     @Test
     public void testGetGrossReturnForLongPositionsUsingBarCloseOnNaN() {
-        var series = new MockBarSeriesBuilder().withNumFactory(new DoubleNumFactory()).withData(100, 105).build();
+        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 105)
+                .build();
         Position position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
     @Test
     public void testGetGrossReturnForShortPositionsUsingBarCloseOnNaN() {
-        var series = new MockBarSeriesBuilder().withNumFactory(new DoubleNumFactory()).withData(100, 95).build();
+        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 95)
+                .build();
         Position position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }

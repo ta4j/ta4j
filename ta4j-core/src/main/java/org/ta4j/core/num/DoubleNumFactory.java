@@ -27,6 +27,10 @@ public class DoubleNumFactory implements NumFactory {
 
     private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
 
+    private DoubleNumFactory() {
+        // hidden
+    }
+
     @Override
     public Num minusOne() {
         return DoubleNum.MINUS_ONE;

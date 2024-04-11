@@ -46,7 +46,7 @@ import org.ta4j.core.num.NumFactory;
 public class ExpectedShortfallCriterionTest {
     private BarSeries series;
 
-    private NumFactory numFactory = new DoubleNumFactory();
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     private ExpectedShortfallCriterion getCriterion() {
         return new ExpectedShortfallCriterion(0.95);
