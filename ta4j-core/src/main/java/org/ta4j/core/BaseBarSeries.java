@@ -243,6 +243,12 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addBar(final Bar bar, final boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
+        if (!numFactory.produces(bar.getClosePrice())) {
+            throw new IllegalArgumentException(
+                String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                    bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+        }
+
         if (!this.bars.isEmpty()) {
             if (replace) {
                 this.bars.set(this.bars.size() - 1, bar);

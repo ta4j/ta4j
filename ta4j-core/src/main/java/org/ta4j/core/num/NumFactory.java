@@ -77,4 +77,14 @@ public interface NumFactory {
      * @return the corresponding value as a Num implementing object
      */
     Num numOf(String number);
+
+    /**
+     * Determines whether num instace has been produced by this factory
+     *
+     * @param num to test
+     * @return true if made by this factory
+     */
+    default boolean produces(Num num) {
+       return num == null || one().getClass() == num.getClass() || num.equals(NaN.NaN);
+    }
 }
