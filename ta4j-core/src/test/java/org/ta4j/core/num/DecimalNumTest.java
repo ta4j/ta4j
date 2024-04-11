@@ -74,42 +74,12 @@ public class DecimalNumTest {
 
     // override the auto-precision based on length of SUPER_PRECISION_STRING by
     // passing a precision to valueOf()
-    private final NumFactory superPrecisionFunc = new DecimalNumFactory() {
-        @Override
-        public Num numOf(final Number number) {
-            return DecimalNum.valueOf(number.toString(), 256);
-        }
-
-        @Override
-        public Num numOf(final String number) {
-            return DecimalNum.valueOf(number, 256);
-        }
-    };
+    private final NumFactory superPrecisionFunc = new DecimalNumFactory(256);
     // auto-set precision based on length of SUPER_PRECISION_STRING (120)
-    private final NumFactory precisionFunc = new DecimalNumFactory();
-    private final NumFactory precision32Func = new DecimalNumFactory() {
-        @Override
-        public Num numOf(final Number number) {
-            return DecimalNum.valueOf(number.toString(), 32);
-        }
-
-        @Override
-        public Num numOf(final String number) {
-            return DecimalNum.valueOf(number, 32);
-        }
-    };
+    private final NumFactory precisionFunc = new DecimalNumFactory(120);
+    private final NumFactory precision32Func = new DecimalNumFactory(32);
     private final NumFactory doubleFunc = new DoubleNumFactory();
-    private final NumFactory lowPrecisionFunc = new DecimalNumFactory() {
-        @Override
-        public Num numOf(final Number number) {
-            return DecimalNum.valueOf(number.toString(), 3);
-        }
-
-        @Override
-        public Num numOf(final String number) {
-            return DecimalNum.valueOf(number, 3);
-        }
-    };
+    private final NumFactory lowPrecisionFunc = new DecimalNumFactory(3);
 
     private BarSeries superPrecisionSeries;
     private BarSeries precisionSeries;

@@ -23,49 +23,77 @@
 */
 package org.ta4j.core.num;
 
+import static org.ta4j.core.num.DecimalNum.DEFAULT_PRECISION;
+
 public class DecimalNumFactory implements NumFactory {
+
+    private final DecimalNum minusOne;
+    private final DecimalNum zero;
+    private final DecimalNum one;
+    private final DecimalNum two;
+    private final DecimalNum three;
+    private final DecimalNum hundred;
+    private final DecimalNum thousand;
+    private final int precision;
+
+    public DecimalNumFactory() {
+       this(DEFAULT_PRECISION);
+    }
+
+    public DecimalNumFactory(final int precision) {
+        this.precision = precision;
+        this.minusOne = DecimalNum.valueOf("-1", precision);
+        this.zero = DecimalNum.valueOf("0", precision);
+        this.one = DecimalNum.valueOf("1", precision);
+        this.two = DecimalNum.valueOf("2", precision);
+        this.three = DecimalNum.valueOf("3", precision);
+        this.hundred = DecimalNum.valueOf("100", precision);
+        this.thousand = DecimalNum.valueOf("1000", precision);
+    }
+
+
     @Override
     public Num minusOne() {
-        return DecimalNum.MINUS_ONE;
+        return this.minusOne;
     }
 
     @Override
     public Num zero() {
-        return DecimalNum.ZERO;
+        return this.zero;
     }
 
     @Override
     public Num one() {
-        return DecimalNum.ONE;
+        return this.one;
     }
 
     @Override
     public Num two() {
-        return DecimalNum.TWO;
+        return this.two;
     }
 
     @Override
     public Num three() {
-        return DecimalNum.THREE;
+        return this.three;
     }
 
     @Override
     public Num hundred() {
-        return DecimalNum.HUNDRED;
+        return this.hundred;
     }
 
     @Override
     public Num thousand() {
-        return DecimalNum.THOUSAND;
+        return this.thousand;
     }
 
     @Override
     public Num numOf(final Number number) {
-        return DecimalNum.valueOf(number);
+        return numOf(number.toString());
     }
 
     @Override
     public Num numOf(final String number) {
-        return DecimalNum.valueOf(number);
+        return DecimalNum.valueOf(number, this.precision);
     }
 }
