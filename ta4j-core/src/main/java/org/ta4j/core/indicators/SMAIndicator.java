@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,8 +35,9 @@ import org.ta4j.core.num.Num;
  */
 public class SMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private RunningTotalIndicator previousSum;
+
 
     /**
      * Constructor.
@@ -45,20 +47,20 @@ public class SMAIndicator extends CachedIndicator<Num> {
      */
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.indicator = indicator;
+        this.previousSum = new RunningTotalIndicator(indicator,barCount);
         this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-        final var numFactory = getBarSeries().numFactory();
-        Num sum = numFactory.zero();
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            sum = sum.plus(indicator.getValue(i));
-        }
-
         final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(numFactory.numOf(realBarCount));
+        final var sum = partialSum(index);
+        return sum.dividedBy(getBarSeries().numFactory().numOf(realBarCount));
+    }
+
+
+    private Num partialSum(int index) {
+        return this.previousSum.getValue(index);
     }
 
     /** @return {@link #barCount} */

@@ -42,7 +42,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     private final ExternalIndicatorTest xls;
 
-    public SMAIndicatorTest(NumFactory numFactory) throws Exception {
+    public SMAIndicatorTest(NumFactory numFactory) {
         super((data, params) -> new SMAIndicator(data, (int) params[0]), numFactory);
         xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFactory);
     }
@@ -57,7 +57,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingBarCount3UsingClosePrice() throws Exception {
+    public void usingBarCount3UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         assertNumEquals(1, indicator.getValue(0));
@@ -76,7 +76,22 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void whenBarCountIs1ResultShouldBeIndicatorValue() throws Exception {
+    public void usingBarCount3UsingClosePriceMovingSerie() {
+        data.setMaximumBarCount(13);
+        data.barBuilder().closePrice(5.).add();
+
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
+
+        // unstable bars skipped, unpredictable results
+        assertNumEquals((3d + 4d + 3d) / 3, indicator.getValue(data.getBeginIndex() + 3));
+        assertNumEquals((4d + 3d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 4));
+        assertNumEquals((3d + 4d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 5));
+        assertNumEquals((4d + 5d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 6));
+        assertNumEquals((3d + 2d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 12));
+    }
+
+    @Test
+    public void whenBarCountIs1ResultShouldBeIndicatorValue() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
             assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));
