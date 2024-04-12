@@ -21,40 +21,12 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core;
 
-import static junit.framework.TestCase.assertEquals;
+/**
+ * A factory that provides builders of bars.
+ */
+public interface BarBuilderFactory {
 
-import java.util.function.Function;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-
-public class NumndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    private NumIndicator closePrice;
-    private BarSeries barSeries;
-
-    public NumndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
-
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        closePrice = new NumIndicator(barSeries, Bar::getClosePrice);
-    }
-
-    @Test
-    public void indicatorShouldRetrieveBarClosePrice() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
-        }
-    }
+    BaseBarConvertibleBuilder createBarBuilder(BarSeries series);
 }

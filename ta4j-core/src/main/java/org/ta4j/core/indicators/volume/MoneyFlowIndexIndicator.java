@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Money Flow Index (MFI) indicator.
@@ -71,8 +71,9 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        Num sumOfPositiveMoneyFlowVolume = zero();
-        Num sumOfNegativeMoneyFlowVolume = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sumOfPositiveMoneyFlowVolume = numFactory.zero();
+        Num sumOfNegativeMoneyFlowVolume = numFactory.zero();
 
         // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
@@ -94,10 +95,11 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         }
 
         // Calculate money flow ratio and index
-        Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(one()).dividedBy(sumOfNegativeMoneyFlowVolume.max(one()));
+        Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(numFactory.one())
+                .dividedBy(sumOfNegativeMoneyFlowVolume.max(numFactory.one()));
 
         // Calculate MFI. max function is used to prevent division by zero.
-        return hundred().minus((hundred().dividedBy((one().plus(moneyFlowRatio)))));
+        return numFactory.hundred().minus((numFactory.hundred().dividedBy((numFactory.one().plus(moneyFlowRatio)))));
     }
 
     @Override

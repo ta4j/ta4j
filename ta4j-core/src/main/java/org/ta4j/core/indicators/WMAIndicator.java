@@ -52,15 +52,16 @@ public class WMAIndicator extends CachedIndicator<Num> {
             return indicator.getValue(0);
         }
 
-        Num value = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num value = numFactory.zero();
         int loopLength = (index - barCount < 0) ? index + 1 : barCount;
         int actualIndex = index;
         for (int i = loopLength; i > 0; i--) {
-            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            value = value.plus(numFactory.numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
 
-        return value.dividedBy(numOf((loopLength * (loopLength + 1)) / 2));
+        return value.dividedBy(numFactory.numOf((loopLength * (loopLength + 1)) / 2));
     }
 
     @Override

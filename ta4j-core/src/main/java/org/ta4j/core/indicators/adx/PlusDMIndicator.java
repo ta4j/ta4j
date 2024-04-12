@@ -47,18 +47,19 @@ public class PlusDMIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        final var numFactory = getBarSeries().numFactory();
         if (index == 0) {
-            return zero();
+            return numFactory.zero();
         }
         final Bar prevBar = getBarSeries().getBar(index - 1);
         final Bar currentBar = getBarSeries().getBar(index);
 
         final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
         final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
-        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(zero())) {
+        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
             return upMove;
         } else {
-            return zero();
+            return numFactory.zero();
         }
     }
 

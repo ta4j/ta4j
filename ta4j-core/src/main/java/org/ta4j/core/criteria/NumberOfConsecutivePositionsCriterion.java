@@ -46,7 +46,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isConsecutive(position) ? series.one() : series.zero();
+        return isConsecutive(position) ? series.numFactory().one() : series.numFactory().zero();
     }
 
     @Override
@@ -69,7 +69,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
             maxConsecutive = consecutives;
         }
 
-        return series.numOf(maxConsecutive);
+        return series.numFactory().numOf(maxConsecutive);
     }
 
     /**

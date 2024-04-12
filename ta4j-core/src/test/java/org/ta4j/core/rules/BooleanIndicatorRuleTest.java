@@ -28,9 +28,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class BooleanIndicatorRuleTest {
 
@@ -38,7 +38,8 @@ public class BooleanIndicatorRuleTest {
 
     @Before
     public void setUp() {
-        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseBarSeries(), true, true, false, false, true);
+        Indicator<Boolean> indicator = new FixedIndicator<>(new MockBarSeriesBuilder().build(), true, true, false,
+                false, true);
         rule = new BooleanIndicatorRule(indicator);
     }
 

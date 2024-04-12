@@ -36,11 +36,6 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private Num previsouSum = zero();
-
-    // serial access detection
-    private int previousIndex = -1;
-
 
     /**
      * Constructor.
@@ -56,52 +51,15 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        // serial access can benefit from previous partial sums
-        // which saves a lot of CPU work for very long barCounts
-        if (previousIndex != -1 && previousIndex == index - 1) {
-            return fastPath(index);
-        }
-
-        return slowPath(index);
-    }
-
-
-    private Num fastPath(final int index) {
-        var newSum = partialSum(index);
-        final int realBarCount = Math.min(barCount, index + 1);
-        updatePartialSum(index, newSum);
-        return newSum.dividedBy(numOf(realBarCount));
-    }
-
-
-    private Num slowPath(final int index) {
-        Num sum = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sum = numFactory.zero();
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realBarCount = Math.min(barCount, index + 1);
-        updatePartialSum(index, sum);
-        return sum.dividedBy(numOf(realBarCount));
+        return sum.dividedBy(numFactory.numOf(realBarCount));
     }
-
-
-    private void updatePartialSum(final int index, final Num sum) {
-        previousIndex = index;
-        previsouSum = sum;
-    }
-
-
-    private Num partialSum(int index) {
-        var sum = this.previsouSum.plus(indicator.getValue(index));
-
-        if (index >= barCount) {
-            return sum.minus(indicator.getValue(index - barCount));
-        }
-
-        return sum;
-    }
-
 
     /** @return {@link #barCount} */
     @Override

@@ -38,7 +38,6 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
     private final BollingerBandsUpperIndicator bbu;
     private final BollingerBandsMiddleIndicator bbm;
     private final BollingerBandsLowerIndicator bbl;
-    private final Num hundred;
 
     /**
      * Constructor.
@@ -54,12 +53,14 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
         this.bbu = bbu;
         this.bbm = bbm;
         this.bbl = bbl;
-        this.hundred = bbm.getBarSeries().hundred();
     }
 
     @Override
     protected Num calculate(int index) {
-        return bbu.getValue(index).minus(bbl.getValue(index)).dividedBy(bbm.getValue(index)).multipliedBy(hundred);
+        return bbu.getValue(index)
+                .minus(bbl.getValue(index))
+                .dividedBy(bbm.getValue(index))
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override

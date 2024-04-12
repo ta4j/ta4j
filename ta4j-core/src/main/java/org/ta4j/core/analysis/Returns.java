@@ -80,7 +80,7 @@ public class Returns implements Indicator<Num> {
      * @param type      the ReturnType
      */
     public Returns(BarSeries barSeries, Position position, ReturnType type) {
-        one = barSeries.one();
+        one = barSeries.numFactory().one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
@@ -98,7 +98,7 @@ public class Returns implements Indicator<Num> {
      * @param type          the ReturnType
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
-        one = barSeries.one();
+        one = barSeries.numFactory().one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
@@ -134,11 +134,6 @@ public class Returns implements Indicator<Num> {
         return barSeries;
     }
 
-    @Override
-    public Num numOf(Number number) {
-        return barSeries.numOf(number);
-    }
-
     /**
      * @return the size of the return series.
      */
@@ -156,18 +151,18 @@ public class Returns implements Indicator<Num> {
      */
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
-        Num minusOne = barSeries.numOf(-1);
+        Num minusOne = barSeries.numFactory().numOf(-1);
         int endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            values.addAll(Collections.nCopies(begin - values.size(), barSeries.zero()));
+            values.addAll(Collections.nCopies(begin - values.size(), barSeries.numFactory().zero()));
         }
 
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
         Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+        Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
@@ -223,7 +218,8 @@ public class Returns implements Indicator<Num> {
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.zero()));
+            values.addAll(
+                    Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numFactory().zero()));
         }
     }
 }

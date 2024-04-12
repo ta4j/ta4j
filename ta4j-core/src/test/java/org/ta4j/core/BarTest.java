@@ -30,12 +30,12 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -45,15 +45,19 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ZonedDateTime endTime;
 
-    public BarTest(Function<Number, Num> numFunction) {
-        super(null, numFunction);
+    public BarTest(NumFactory numFactory) {
+        super(null, numFactory);
     }
 
     @Before
     public void setUp() {
         beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        bar = new BaseBar(Duration.ofHours(1), endTime, numFunction);
+        bar = new BaseBarConvertibleBuilder(numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(endTime)
+                .volume(0)
+                .amount(0)
+                .build();
     }
 
     @Test
@@ -96,16 +100,17 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void equals() {
-        Bar bar1 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
-        Bar bar2 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
+        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1, bar2);
+        assertFalse(bar1 == bar2);
     }
 
     @Test
     public void hashCode2() {
-        Bar bar1 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
-        Bar bar2 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
+        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
     }

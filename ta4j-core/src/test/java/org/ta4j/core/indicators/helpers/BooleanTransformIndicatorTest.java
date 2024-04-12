@@ -26,17 +26,16 @@ package org.ta4j.core.indicators.helpers;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformSimpleType;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformType;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
@@ -53,23 +52,23 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     private BooleanTransformIndicator transIsPositiveOrZero;
     private BooleanTransformIndicator transIsZero;
 
-    public BooleanTransformIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BooleanTransformIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        Num FOUR = numFunction.apply(4);
-        Num minusFOUR = numFunction.apply(-4);
-        BarSeries series = new BaseBarSeries();
+        Num FOUR = numFactory.numOf(4);
+        Num minusFOUR = numFactory.numOf(-4);
+        BarSeries series = new MockBarSeriesBuilder().build();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
 
         transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);
-        transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(3),
+        transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFactory.numOf(3),
                 BooleanTransformType.isGreaterThan);
         transIsGreaterThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
                 BooleanTransformType.isGreaterThanOrEqual);
-        transIsLessThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(10),
+        transIsLessThan = new BooleanTransformIndicator(constantIndicator, numFactory.numOf(10),
                 BooleanTransformType.isLessThan);
         transIsLessThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
                 BooleanTransformType.isLessThanOrEqual);
@@ -82,7 +81,7 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         transIsPositive = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isPositive);
         transIsPositiveOrZero = new BooleanTransformIndicator(constantIndicator,
                 BooleanTransformSimpleType.isPositiveOrZero);
-        transIsZero = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)),
+        transIsZero = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, numFactory.numOf(0)),
                 BooleanTransformSimpleType.isZero);
     }
 

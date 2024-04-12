@@ -26,8 +26,6 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,30 +34,32 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public StopGainRuleTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public StopGainRuleTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(
-                new MockBarSeries(numFunction, 100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104));
+        closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104)
+                .build());
     }
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
-        StopGainRule rule = new StopGainRule(closePrice, numOf(30));
+        var rule = new StopGainRule(closePrice, numOf(30));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -85,7 +85,7 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
-        StopGainRule rule = new StopGainRule(closePrice, numOf(10));
+        var rule = new StopGainRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
