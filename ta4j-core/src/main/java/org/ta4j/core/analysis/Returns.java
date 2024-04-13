@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
@@ -37,7 +36,7 @@ import org.ta4j.core.num.Num;
 /**
  * Allows to compute the return rate of a price time-series.
  */
-public class Returns implements Indicator<Num> {
+public class Returns {
 
     public enum ReturnType {
         LOG {
@@ -119,17 +118,14 @@ public class Returns implements Indicator<Num> {
      * @param index the bar index
      * @return the return rate value at the index-th position
      */
-    @Override
     public Num getValue(int index) {
         return values.get(index);
     }
 
-    @Override
     public int getUnstableBars() {
         return 0;
     }
 
-    @Override
     public BarSeries getBarSeries() {
         return barSeries;
     }

@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -37,7 +36,7 @@ import org.ta4j.core.num.Num;
  * Allows to follow the money cash flow involved by a list of positions over a
  * bar series.
  */
-public class CashFlow implements Indicator<Num> {
+public class CashFlow {
 
     /** The bar series. */
     private final BarSeries barSeries;
@@ -89,17 +88,14 @@ public class CashFlow implements Indicator<Num> {
      * @param index the bar index
      * @return the cash flow value at the index-th position
      */
-    @Override
     public Num getValue(int index) {
         return values.get(index);
     }
 
-    @Override
     public int getUnstableBars() {
         return 0;
     }
 
-    @Override
     public BarSeries getBarSeries() {
         return barSeries;
     }
