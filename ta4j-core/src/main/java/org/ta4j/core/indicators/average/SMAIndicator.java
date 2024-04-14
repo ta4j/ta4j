@@ -73,7 +73,7 @@ public class SMAIndicator extends AbstractIndicator<Num> {
 
     @Override
     public boolean isStable() {
-        return this.processedBars >= this.barCount;
+        return this.processedBars >= this.barCount && this.sum.isStable();
     }
 
     @Override

@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import java.util.LinkedList;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
-public class RunningTotalIndicator extends AbstractIndicator<Num> {
+public class RunningTotalIndicator extends NumericIndicator {
     private final Indicator<Num> indicator;
     private final LinkedList<Num> usedValues = new LinkedList<>();
     private final int barCount;
@@ -44,7 +44,7 @@ public class RunningTotalIndicator extends AbstractIndicator<Num> {
     private int processedBars;
 
     public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
         this.previousSum = indicator.getBarSeries().numFactory().zero();
@@ -88,6 +88,6 @@ public class RunningTotalIndicator extends AbstractIndicator<Num> {
 
     @Override
     public boolean isStable() {
-        return this.processedBars >= this.barCount;
+        return this.processedBars >= this.barCount && this.indicator.isStable();
     }
 }
