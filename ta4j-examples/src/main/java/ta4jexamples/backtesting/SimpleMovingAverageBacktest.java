@@ -37,12 +37,9 @@ import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.indicators.average.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.reports.TradingStatement;
-import org.ta4j.core.rules.OverIndicatorRule;
-import org.ta4j.core.rules.UnderIndicatorRule;
 
 public class SimpleMovingAverageBacktest {
 
@@ -95,16 +92,17 @@ public class SimpleMovingAverageBacktest {
     }
 
     private static BacktestStrategy create3DaySmaStrategy(BarSeries series) {
-        var closePrice = new ClosePriceIndicator(series);
-        var sma = new SMAIndicator(closePrice, 3);
-        return new BacktestStrategy("", new UnderIndicatorRule(sma, closePrice),
-                new OverIndicatorRule(sma, closePrice));
+        var closePrice = NumericIndicator.closePrice(series);
+        var sma = closePrice.sma( 3).cached();
+        return new BacktestStrategy("", sma.isLessThan(closePrice),
+                sma.isGreaterThan(closePrice));
     }
 
     private static BacktestStrategy create2DaySmaStrategy(BarSeries series) {
-        var closePrice = new ClosePriceIndicator(series);
-        var sma = new SMAIndicator(closePrice, 2);
-        return new BacktestStrategy("", new UnderIndicatorRule(sma, closePrice),
-                new OverIndicatorRule(sma, closePrice));
+        var closePrice = NumericIndicator.closePrice(series);
+        var sma = closePrice.sma( 2).cached();
+        return new BacktestStrategy("",
+            sma.isLessThan(closePrice),
+                sma.isGreaterThan(closePrice));
     }
 }
