@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
@@ -49,7 +49,7 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
+    public UnderIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(threshold)));
     }
@@ -60,7 +60,7 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public UnderIndicatorRule(Indicator<Num> indicator, Num threshold) {
+    public UnderIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
     }
 
@@ -70,16 +70,28 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param first  the first indicator
      * @param second the second indicator
      */
-    public UnderIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
+    public UnderIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
         this.first = first;
         this.second = second;
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = first.getValue(index).isLessThan(second.getValue(index));
-        traceIsSatisfied(index, satisfied);
+    public boolean isSatisfied(final TradingRecord tradingRecord) {
+        final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
+        traceIsSatisfied(satisfied);
         return satisfied;
+    }
+
+    @Override
+    public void refresh() {
+      this.first.refresh();
+      this.second.refresh();
+    }
+
+
+    @Override
+    public boolean isStable() {
+        return this.first.isStable() && this.second.isStable();
     }
 }

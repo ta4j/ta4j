@@ -26,6 +26,7 @@ package org.ta4j.core.criteria.pnl;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -54,7 +55,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param addBase the {@link #addBase}
      */
     public ReturnCriterion(boolean addBase) {
@@ -62,12 +63,12 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         return calculateProfit(series, position);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
                 .map(position -> calculateProfit(series, position))
@@ -88,7 +89,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
      * @param position a position
      * @return the gross return of the position
      */
-    private Num calculateProfit(BarSeries series, Position position) {
+    private Num calculateProfit(BacktestBarSeries series, Position position) {
         if (position.isClosed()) {
             return position.getGrossReturn(series);
         }

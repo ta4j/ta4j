@@ -23,15 +23,14 @@
  */
 package org.ta4j.core.reports;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestStrategy;
 
 /**
  * Generates a {@link TradingStatement} based on the provided trading record and
  * bar series.
  */
-public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
+public class TradingStatementGenerator {
 
     private final PerformanceReportGenerator performanceReportGenerator;
     private final PositionStatsReportGenerator positionStatsReportGenerator;
@@ -46,7 +45,7 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
 
     /**
      * Constructor.
-     * 
+     *
      * @param performanceReportGenerator   the {@link PerformanceReportGenerator}
      * @param positionStatsReportGenerator the {@link PositionStatsReportGenerator}
      */
@@ -56,11 +55,10 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
         this.positionStatsReportGenerator = positionStatsReportGenerator;
     }
 
-    @Override
-    public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
+    public TradingStatement generate(BacktestStrategy strategy, BacktestBarSeries series) {
+        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy.getTradeRecord(),
                 series);
-        final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord,
+        final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy.getTradeRecord(),
                 series);
         return new TradingStatement(strategy, positionStatsReport, performanceReport);
     }

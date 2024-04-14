@@ -32,10 +32,18 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -55,25 +63,29 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     private static Num diffNumInt;
     private static Num numDouble;
     private static Num diffNumDouble;
-    private static Indicator<Num> indicator;
-    private static Indicator<Num> diffIndicator;
+    private static AtomicReference<Indicator<Num>> indicator = new AtomicReference<>();
+    private static AtomicReference<Indicator<Num>> diffIndicator = new AtomicReference<>();
 
     public TestUtilsTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Before
+    public void setUp() {
         numStringDouble = numOf(bigDecimalDouble);
         diffNumStringDouble = numOf(diffBigDecimalDouble);
         numInt = numOf(aInt);
         diffNumInt = numOf(diffInt);
         numDouble = numOf(aDouble);
         diffNumDouble = numOf(diffDouble);
-        BarSeries series = randomSeries();
-        BarSeries diffSeries = randomSeries();
-        indicator = new ClosePriceIndicator(series);
-        diffIndicator = new ClosePriceIndicator(diffSeries);
+        randomSeries(diffIndicator::set);
+        randomSeries(indicator::set);
     }
 
-    private BarSeries randomSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+    private BarSeries randomSeries(Consumer<Indicator<Num>> consumer) {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withStrategy(s -> createStrategy(s, consumer))
+                .build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {
@@ -91,7 +103,14 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                     .trades(0)
                     .add();
         }
+
         return series;
+    }
+
+    private BacktestStrategy createStrategy(BacktestBarSeries series, final Consumer<Indicator<Num>> consumer) {
+        final var indicator = new ClosePriceIndicator(series);
+        consumer.accept(indicator);
+        return new MockStrategy(new MockRule(List.of(indicator)));
     }
 
     @Test
@@ -127,10 +146,22 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void testIndicator() {
-        assertIndicatorEquals(indicator, indicator);
-        assertIndicatorNotEquals(indicator, diffIndicator);
-        assertIndicatorNotEquals(diffIndicator, indicator);
-        assertIndicatorEquals(diffIndicator, diffIndicator);
+    public void testIndicatorSame() {
+        assertIndicatorEquals(indicator.get(), indicator.get());
+    }
+
+    @Test
+    public void testIndicatorDifferent1() {
+        assertIndicatorNotEquals(indicator.get(), diffIndicator.get());
+    }
+
+    @Test
+    public void testIndicatorDifferent2() {
+        assertIndicatorNotEquals(diffIndicator.get(), indicator.get());
+    }
+
+    @Test
+    public void testIndicatorSame2() {
+        assertIndicatorEquals(diffIndicator.get(), diffIndicator.get());
     }
 }

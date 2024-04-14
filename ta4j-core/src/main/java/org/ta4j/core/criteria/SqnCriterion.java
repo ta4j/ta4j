@@ -24,9 +24,9 @@
 package org.ta4j.core.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.helpers.StandardDeviationCriterion;
 import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.num.Num;
@@ -82,7 +82,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num stdDevPnl = standardDeviationCriterion.calculate(series, position);
         if (stdDevPnl.isZero()) {
             return series.numFactory().zero();
@@ -95,7 +95,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }

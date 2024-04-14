@@ -25,22 +25,27 @@ package org.ta4j.core.mocks;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
+import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Generates BaseBar implementations with mocked time or duration if not set by
- * tester.
+ * Generates BacktestBar implementations with mocked time or duration if not set
+ * by tester.
  */
-public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
+public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
 
     private List<Double> data;
     private boolean defaultData;
+    private boolean strategy;
 
     public MockBarSeriesBuilder withNumFactory(final NumFactory numFactory) {
         super.withNumFactory(numFactory);
@@ -71,16 +76,18 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
 
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
         for (int i = 0; i < data.size(); i++) {
-            series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusSeconds((data.size() + 1 - i)))
-                    .closePrice(data.get(i))
-                    .openPrice(0)
-                    .add();
+            series.barBuilder().closePrice(data.get(i)).openPrice(0).add();
         }
     }
 
     public MockBarSeriesBuilder withDefaultData() {
         this.defaultData = true;
+        return this;
+    }
+
+    public MockBarSeriesBuilder withStrategy(Function<BacktestBarSeries, BacktestStrategy> strategyFactory) {
+        this.strategy = true;
+        super.withStrategy(strategyFactory);
         return this;
     }
 
@@ -100,9 +107,11 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     @Override
-    public BaseBarSeries build() {
+    public BacktestBarSeries build() {
         withBarBuilderFactory(new MockBarBuilderFactory());
-
+        if (!strategy) {
+            withStrategy(x -> new MockStrategy(new MockRule(List.of())));
+        }
         final var series = super.build();
         if (this.data != null) {
             doublesToBars(series, this.data);

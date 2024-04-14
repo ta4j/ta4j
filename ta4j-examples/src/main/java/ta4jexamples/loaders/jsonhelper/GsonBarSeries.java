@@ -28,8 +28,8 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 
 public class GsonBarSeries {
 
@@ -47,8 +47,8 @@ public class GsonBarSeries {
         return result;
     }
 
-    public BarSeries toBarSeries() {
-        BaseBarSeries result = new BaseBarSeriesBuilder().withName(this.name).build();
+    public BacktestBarSeries toBarSeries() {
+        BacktestBarSeries result = new BacktestBarSeriesBuilder().withName(this.name).build();
         for (GsonBarData data : ohlc) {
             data.addTo(result);
         }

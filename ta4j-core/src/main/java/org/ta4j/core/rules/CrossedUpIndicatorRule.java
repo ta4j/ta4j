@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
@@ -44,7 +44,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public CrossedUpIndicatorRule(Indicator<Num> indicator, Number threshold) {
+    public CrossedUpIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
         this(indicator, indicator.getBarSeries().numFactory().numOf(threshold));
     }
 
@@ -54,7 +54,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
+    public CrossedUpIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
     }
 
@@ -64,32 +64,40 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param first  the first indicator
      * @param second the second indicator
      */
-    public CrossedUpIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
+    public CrossedUpIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
         this.cross = new CrossIndicator(second, first);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = cross.getValue(index);
-        traceIsSatisfied(index, satisfied);
+    public boolean isSatisfied(final TradingRecord tradingRecord) {
+        final boolean satisfied = this.cross.getValue();
+        traceIsSatisfied(satisfied);
         return satisfied;
     }
 
     /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
-        return cross.getLow();
+        return this.cross.getLow();
     }
 
     /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
-        return cross.getUp();
+        return this.cross.getUp();
     }
 
     @Override
     public String toString() {
-        return "CrossedUpIndicatorRule{" +
-                "cross=" + cross +
-                '}';
+        return "CrossedUpIndicatorRule{" + "cross=" + this.cross + '}';
+    }
+
+    @Override
+    public void refresh() {
+      this.cross.refresh();
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.cross.isStable();
     }
 }

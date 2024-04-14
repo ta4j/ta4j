@@ -43,6 +43,9 @@ import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockTradingRecord;
 import org.ta4j.core.num.NaN;
@@ -119,7 +122,7 @@ public class XlsTestsUtils {
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static BarSeries getSeries(Class<?> clazz, String fileName, NumFactory numFactory)
+    public static BacktestBarSeries getSeries(Class<?> clazz, String fileName, NumFactory numFactory)
             throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return getSeries(sheet, numFactory);
@@ -138,8 +141,8 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException or if the
      *                             data contains empty cells
      */
-    private static BarSeries getSeries(Sheet sheet, NumFactory numFactory) throws DataFormatException {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+    private static BacktestBarSeries getSeries(Sheet sheet, NumFactory numFactory) throws DataFormatException {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         int minInterval = Integer.MAX_VALUE;
@@ -170,7 +173,7 @@ public class XlsTestsUtils {
             Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
             ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
                     ZoneId.systemDefault());
-            series.addBar(series.barBuilder()
+            series.barBuilder()
                     .timePeriod(duration)
                     .endTime(endDateTime)
                     .openPrice(new BigDecimal(cellValues[1].formatAsString()))
@@ -179,7 +182,7 @@ public class XlsTestsUtils {
                     .closePrice(new BigDecimal(cellValues[4].formatAsString()))
                     .volume(new BigDecimal(cellValues[5].formatAsString()))
                     .amount(0)
-                    .build());
+                    .add();
         }
         return series;
     }

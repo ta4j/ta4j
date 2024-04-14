@@ -23,12 +23,14 @@
  */
 package ta4jexamples.backtesting;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 public class SimpleMovingAverageRangeBacktestTest {
 
     @Test
-    public void test() throws InterruptedException {
+    public void test() throws InterruptedException, IOException {
         SimpleMovingAverageRangeBacktest.main(null);
     }
 }

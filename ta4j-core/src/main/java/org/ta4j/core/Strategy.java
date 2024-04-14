@@ -47,105 +47,50 @@ public interface Strategy {
     Rule getExitRule();
 
     /**
-     * @param strategy the other strategy
-     * @return the AND combination of two {@link Strategy strategies}
-     */
-    Strategy and(Strategy strategy);
-
-    /**
-     * @param strategy the other strategy
-     * @return the OR combination of two {@link Strategy strategies}
-     */
-    Strategy or(Strategy strategy);
-
-    /**
-     * @param name         the name of the strategy
-     * @param strategy     the other strategy
-     * @param unstableBars the number of first bars in a bar series that this
-     *                     strategy ignores
-     * @return the AND combination of two {@link Strategy strategies}
-     */
-    Strategy and(String name, Strategy strategy, int unstableBars);
-
-    /**
-     * @param name         the name of the strategy
-     * @param strategy     the other strategy
-     * @param unstableBars the number of first bars in a bar series that this
-     *                     strategy ignores
-     * @return the OR combination of two {@link Strategy strategies}
-     */
-    Strategy or(String name, Strategy strategy, int unstableBars);
-
-    /**
      * @return the opposite of the {@link Strategy strategy}
      */
     Strategy opposite();
 
     /**
-     * @param unstableBars the number of first bars in a bar series that this
-     *                     strategy ignores
+     * Refreshes state based on last bar.
+     *
+     * Called when new bar is added to BarSeries
      */
-    void setUnstableBars(int unstableBars);
+    void refresh();
 
     /**
-     * @return unstableBars the number of first bars in a bar series that this
-     *         strategy ignores
+     * @return true if this strategy is stable at current moment, false otherwise
+     *         (unstable)
      */
-    int getUnstableBars();
+    boolean isStable();
 
     /**
-     * @param index a bar index
-     * @return true if this strategy is unstable at the provided index, false
-     *         otherwise (stable)
-     */
-    boolean isUnstableAt(int index);
-
-    /**
-     * @param index         the bar index
-     * @param tradingRecord the potentially needed trading history
-     * @return true to recommend a trade, false otherwise (no recommendation)
-     */
-    default boolean shouldOperate(int index, TradingRecord tradingRecord) {
-        Position position = tradingRecord.getCurrentPosition();
-        if (position.isNew()) {
-            return shouldEnter(index, tradingRecord);
-        } else if (position.isOpened()) {
-            return shouldExit(index, tradingRecord);
-        }
-        return false;
-    }
-
-    /**
-     * @param index the bar index
      * @return true to recommend to enter, false otherwise
      */
-    default boolean shouldEnter(int index) {
-        return shouldEnter(index, null);
+    default boolean shouldEnter() {
+        return shouldEnter(null);
     }
 
     /**
-     * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
-    default boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
+    default boolean shouldEnter(TradingRecord tradingRecord) {
+        return isStable() && getEntryRule().isSatisfied(tradingRecord);
     }
 
     /**
-     * @param index the bar index
      * @return true to recommend to exit, false otherwise
      */
-    default boolean shouldExit(int index) {
-        return shouldExit(index, null);
+    default boolean shouldExit() {
+        return shouldExit(null);
     }
 
     /**
-     * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */
-    default boolean shouldExit(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+    default boolean shouldExit(TradingRecord tradingRecord) {
+        return isStable() && getExitRule().isSatisfied(tradingRecord);
     }
 }

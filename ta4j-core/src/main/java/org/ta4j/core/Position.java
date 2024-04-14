@@ -31,6 +31,7 @@ import java.util.Objects;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -162,7 +163,6 @@ public class Position implements Serializable {
     /**
      * Operates the position at the index-th position.
      *
-     * @param index the bar index
      * @return the trade
      * @see #operate(int, Num, Num)
      */
@@ -173,11 +173,10 @@ public class Position implements Serializable {
     /**
      * Operates the position at the index-th position.
      *
-     * @param index  the bar index
      * @param price  the price
      * @param amount the amount
      * @return the trade
-     * @throws IllegalStateException if {@link #isOpened()} and index < entry.index
+     * @throws IllegalStateException if {@link #isOpened()}
      */
     public Trade operate(int index, Num price, Num amount) {
         Trade trade = null;
@@ -334,7 +333,7 @@ public class Position implements Serializable {
      *         barSeries
      * @see #getGrossReturn(Num, Num)
      */
-    public Num getGrossReturn(BarSeries barSeries) {
+    public Num getGrossReturn(BacktestBarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
         Num exitPrice = getExit().getPricePerAsset(barSeries);
         return getGrossReturn(entryPrice, exitPrice);

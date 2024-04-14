@@ -29,7 +29,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.backtest.BacktestBarSeries;
 
 public class GsonBarData {
     private long endTime;
@@ -52,7 +52,7 @@ public class GsonBarData {
         return result;
     }
 
-    public void addTo(BaseBarSeries barSeries) {
+    public void addTo(BacktestBarSeries barSeries) {
         var endTimeInstant = Instant.ofEpochMilli(endTime);
         var endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
         barSeries.barBuilder()

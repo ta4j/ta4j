@@ -35,13 +35,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 @RunWith(Parameterized.class)
-public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BaseBarConvertibleBuilderTest(NumFactory numFactory) {
+    public BacktestBarConvertibleBuilderTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -52,7 +53,7 @@ public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeri
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         final var bar = series.barBuilder()
                 .timePeriod(duration)
                 .endTime(endTime)

@@ -23,8 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import java.util.LinkedList;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,72 +35,59 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
-public class RunningTotalIndicator extends CachedIndicator<Num> {
+public class RunningTotalIndicator extends AbstractIndicator<Num> {
     private final Indicator<Num> indicator;
+    private final LinkedList<Num> usedValues = new LinkedList<>();
     private final int barCount;
     private Num previousSum;
+    private Num value;
+    private int processedBars;
 
-    // serial access detection
-    private int previousIndex = -1;
-
-    public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+    public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
+        super(indicator.getBarSeries());
         this.indicator = indicator;
         this.barCount = barCount;
         this.previousSum = indicator.getBarSeries().numFactory().zero();
     }
 
-
     @Override
-    protected Num calculate(int index) {
-        // serial access can benefit from previous partial sums
-        // which saves a lot of CPU work for very long barCounts
-        if (previousIndex != -1 && previousIndex == index - 1) {
-            return fastPath(index);
-        }
-
-        return slowPath(index);
+    public Num getValue() {
+        return this.value;
     }
 
-    private Num fastPath(final int index) {
-        var newSum = partialSum(index);
-        updatePartialSum(index, newSum);
+    protected Num calculate() {
+        final var newSum = partialSum();
         return newSum;
     }
 
-    private Num slowPath(final int index) {
-        Num sum = getBarSeries().numFactory().zero();
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            sum = sum.plus(indicator.getValue(i));
+    private Num partialSum() {
+        final var indicatorValue = this.indicator.getValue();
+        this.usedValues.addLast(indicatorValue);
+
+        var sum = this.previousSum.plus(indicatorValue);
+
+        if (this.usedValues.size() > this.barCount) {
+            sum = sum.minus(this.usedValues.removeFirst());
         }
 
-        updatePartialSum(index, sum);
-        return sum;
-    }
-
-    private void updatePartialSum(final int index, final Num sum) {
-        previousIndex = index;
-        previousSum = sum;
-    }
-
-    private Num partialSum(int index) {
-        var sum = this.previousSum.plus(indicator.getValue(index));
-
-        if (index >= barCount) {
-            return sum.minus(indicator.getValue(index - barCount));
-        }
-
+        this.previousSum = sum;
         return sum;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
 
+    @Override
+    public void refresh() {
+        this.processedBars++;
+        this.indicator.refresh();
+        this.value = calculate();
+    }
 
     @Override
-    public int getUnstableBars() {
-        return barCount;
+    public boolean isStable() {
+        return this.processedBars >= this.barCount;
     }
 }

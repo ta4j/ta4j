@@ -23,12 +23,14 @@
  */
 package ta4jexamples.loaders;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 public class CsvBarsLoaderTest {
 
     @Test
-    public void test() {
+    public void test() throws IOException {
         CsvBarsLoader.main(null);
     }
 }

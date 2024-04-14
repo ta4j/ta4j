@@ -25,10 +25,10 @@ package org.ta4j.core.num;
 
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)
- * 
+ *
  * <p>
  * Special behavior in methods such as:
- * 
+ *
  * <ul>
  * <li>{@link NaN#plus(Num)} => NaN</li>
  * <li>{@link NaN#isEqual(Num)} => true</li>

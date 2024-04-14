@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
- * 
+ *
  * <p>
  * Returns a constant value for a bar.
  */
@@ -38,7 +38,7 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      * @param t      the constant value
      */
@@ -48,14 +48,18 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
     }
 
     @Override
-    public T getValue(int index) {
+    public T getValue() {
         return value;
     }
 
-    /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public void refresh() {
+        // NOOP
+    }
+
+    @Override
+    public boolean isStable() {
+        return true;
     }
 
     @Override

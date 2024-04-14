@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +40,7 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
     private final AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num averageProfit = averageProfitCriterion.calculate(series, position);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
@@ -55,7 +55,7 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0

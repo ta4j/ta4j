@@ -33,6 +33,7 @@ import java.time.ZonedDateTime;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.backtest.BacktestBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -53,7 +54,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void setUp() {
         beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        bar = new BaseBarConvertibleBuilder(numFactory).timePeriod(Duration.ofHours(1))
+        bar = new BacktestBarConvertibleBuilder(numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(endTime)
                 .volume(0)
                 .amount(0)
@@ -100,8 +101,8 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void equals() {
-        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
-        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar1 = new BacktestBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BacktestBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1, bar2);
         assertFalse(bar1 == bar2);
@@ -109,8 +110,8 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void hashCode2() {
-        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
-        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar1 = new BacktestBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        Bar bar2 = new BacktestBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
     }

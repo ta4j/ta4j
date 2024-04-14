@@ -3,40 +3,41 @@ package org.ta4j.core;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 
+import org.ta4j.core.backtest.BacktestBarBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * A builder to build a new {@code BaseBar} with conversion from a
+ * A builder to build a new {@code BacktestBar} with conversion from a
  * {@link Number} of type {@code T} to a {@link Num Num implementation}.
  */
-public class BaseBarConvertibleBuilder extends BaseBarBuilder {
+public class BacktestBarConvertibleBuilder extends BacktestBarBuilder {
 
     private final NumFactory numFactory;
 
-    public BaseBarConvertibleBuilder(final NumFactory numFactory) {
+    public BacktestBarConvertibleBuilder(final NumFactory numFactory) {
         this.numFactory = numFactory;
     }
 
     @Override
-    public BaseBarConvertibleBuilder timePeriod(final Duration timePeriod) {
+    public BacktestBarConvertibleBuilder timePeriod(final Duration timePeriod) {
         super.timePeriod(timePeriod);
         return this;
     }
 
     @Override
-    public BaseBarConvertibleBuilder endTime(final ZonedDateTime endTime) {
+    public BacktestBarConvertibleBuilder endTime(final ZonedDateTime endTime) {
         super.endTime(endTime);
         return this;
     }
 
     @Override
-    public BaseBarConvertibleBuilder trades(final long trades) {
+    public BacktestBarConvertibleBuilder trades(final long trades) {
         super.trades(trades);
         return this;
     }
 
-    public BaseBarConvertibleBuilder trades(final String trades) {
+    public BacktestBarConvertibleBuilder trades(final String trades) {
         super.trades(Long.parseLong(trades));
         return this;
     }
@@ -46,7 +47,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder openPrice(final Number openPrice) {
+    public BacktestBarConvertibleBuilder openPrice(final Number openPrice) {
         super.openPrice(numFactory.numOf(openPrice));
         return this;
     }
@@ -56,7 +57,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder openPrice(final String openPrice) {
+    public BacktestBarConvertibleBuilder openPrice(final String openPrice) {
         super.openPrice(numFactory.numOf(openPrice));
         return this;
     }
@@ -66,7 +67,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder highPrice(final Number highPrice) {
+    public BacktestBarConvertibleBuilder highPrice(final Number highPrice) {
         super.highPrice(numFactory.numOf(highPrice));
         return this;
     }
@@ -76,7 +77,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder highPrice(final String highPrice) {
+    public BacktestBarConvertibleBuilder highPrice(final String highPrice) {
         super.highPrice(numFactory.numOf(highPrice));
         return this;
     }
@@ -86,7 +87,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder lowPrice(final Number lowPrice) {
+    public BacktestBarConvertibleBuilder lowPrice(final Number lowPrice) {
         super.lowPrice(numFactory.numOf(lowPrice));
         return this;
     }
@@ -96,7 +97,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder lowPrice(final String lowPrice) {
+    public BacktestBarConvertibleBuilder lowPrice(final String lowPrice) {
         super.lowPrice(numFactory.numOf(lowPrice));
         return this;
     }
@@ -106,7 +107,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder closePrice(final Number closePrice) {
+    public BacktestBarConvertibleBuilder closePrice(final Number closePrice) {
         super.closePrice(numFactory.numOf(closePrice));
         return this;
     }
@@ -116,7 +117,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder closePrice(final String closePrice) {
+    public BacktestBarConvertibleBuilder closePrice(final String closePrice) {
         super.closePrice(numFactory.numOf(closePrice));
         return this;
     }
@@ -126,7 +127,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder volume(final Number volume) {
+    public BacktestBarConvertibleBuilder volume(final Number volume) {
         super.volume(numFactory.numOf(volume));
         return this;
     }
@@ -136,7 +137,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder volume(final String volume) {
+    public BacktestBarConvertibleBuilder volume(final String volume) {
         super.volume(numFactory.numOf(volume));
         return this;
     }
@@ -146,7 +147,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder amount(final Number amount) {
+    public BacktestBarConvertibleBuilder amount(final Number amount) {
         super.amount(numFactory.numOf(amount));
         return this;
     }
@@ -156,13 +157,13 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarConvertibleBuilder amount(final String amount) {
+    public BacktestBarConvertibleBuilder amount(final String amount) {
         super.amount(numFactory.numOf(amount));
         return this;
     }
 
     @Override
-    public BaseBarConvertibleBuilder bindTo(final BarSeries baseBarSeries) {
+    public BacktestBarConvertibleBuilder bindTo(final BarSeries baseBarSeries) {
         super.bindTo(baseBarSeries);
         return this;
     }

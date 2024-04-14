@@ -21,51 +21,71 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
-import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Double exponential moving average indicator.
+ * Simple moving average (SMA) indicator.
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
- *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
+ *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
  */
-public class DoubleEMAIndicator extends CachedIndicator<Num> {
+public class SMAIndicator extends AbstractIndicator<Num> {
 
-    private final Num two;
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
+    private final RunningTotalIndicator sum;
+    private Num value;
+    private int processedBars;
 
     /**
      * Constructor.
      *
-     * @param indicator the indicator
+     * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.two = getBarSeries().numFactory().two();
+    public SMAIndicator(final Indicator<Num> indicator, final int barCount) {
+        super(indicator.getBarSeries());
+        this.sum = new RunningTotalIndicator(indicator, barCount);
         this.barCount = barCount;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
+    }
+
+    protected Num calculate() {
+        final var sum = partialSum();
+        return sum.dividedBy(getBarSeries().numFactory().numOf(this.barCount));
+    }
+
+    private Num partialSum() {
+        return this.sum.getValue();
     }
 
     @Override
-    protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
+    public Num getValue() {
+        if (this.value == null) {
+            throw new IllegalStateException("Indicator has not been initialized");
+        }
+
+        return this.value;
     }
 
     @Override
-    public int getUnstableBars() {
-        return barCount;
+    public boolean isStable() {
+        return this.processedBars >= this.barCount;
+    }
+
+    @Override
+    public void refresh() {
+        this.processedBars++;
+        this.sum.refresh();
+        this.value = calculate();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
+
 }

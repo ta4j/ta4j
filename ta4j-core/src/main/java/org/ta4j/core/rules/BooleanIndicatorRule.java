@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.Indicator;
 
 /**
  * Satisfied when the value of the boolean {@link Indicator indicator} is
@@ -39,15 +39,25 @@ public class BooleanIndicatorRule extends AbstractRule {
      *
      * @param indicator the boolean indicator
      */
-    public BooleanIndicatorRule(Indicator<Boolean> indicator) {
+    public BooleanIndicatorRule(final Indicator<Boolean> indicator) {
         this.indicator = indicator;
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = indicator.getValue(index);
-        traceIsSatisfied(index, satisfied);
+    public boolean isSatisfied(final TradingRecord tradingRecord) {
+        final boolean satisfied = this.indicator.getValue();
+        traceIsSatisfied(satisfied);
         return satisfied;
+    }
+
+    @Override
+    public void refresh() {
+// TODO
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.indicator.isStable();
     }
 }

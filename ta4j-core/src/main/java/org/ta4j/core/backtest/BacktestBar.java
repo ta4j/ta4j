@@ -21,19 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link Bar}.
  */
-public class BaseBar implements Bar {
+public class BacktestBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
 
@@ -80,7 +81,7 @@ public class BaseBar implements Bar {
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
-    BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+    BacktestBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
             Num volume, Num amount, long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
@@ -204,9 +205,9 @@ public class BaseBar implements Bar {
     public boolean equals(Object obj) {
         if (this == obj)
             return true;
-        if (!(obj instanceof BaseBar))
+        if (!(obj instanceof BacktestBar))
             return false;
-        final BaseBar other = (BaseBar) obj;
+        final BacktestBar other = (BacktestBar) obj;
         return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)
                 && Objects.equals(timePeriod, other.timePeriod) && Objects.equals(openPrice, other.openPrice)
                 && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)

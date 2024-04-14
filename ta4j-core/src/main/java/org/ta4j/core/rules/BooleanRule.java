@@ -50,8 +50,18 @@ public class BooleanRule extends AbstractRule {
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        traceIsSatisfied(index, satisfied);
+    public boolean isSatisfied(TradingRecord tradingRecord) {
+        traceIsSatisfied(satisfied);
         return satisfied;
+    }
+
+    @Override
+    public void refresh() {
+        // TODO
+    }
+
+    @Override
+    public boolean isStable() {
+        return true;
     }
 }

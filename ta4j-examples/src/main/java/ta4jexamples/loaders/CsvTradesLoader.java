@@ -36,7 +36,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,7 +48,7 @@ public class CsvTradesLoader {
     /**
      * @return the bar series from Bitstamp (bitcoin exchange) trades
      */
-    public static BarSeries loadBitstampSeries() {
+    public static BacktestBarSeries loadBitstampSeries() {
 
         // Reading all lines of the CSV file
         InputStream stream = CsvTradesLoader.class.getClassLoader()
@@ -61,7 +62,7 @@ public class CsvTradesLoader {
             Logger.getLogger(CsvTradesLoader.class.getName()).log(Level.SEVERE, "Unable to load trades from CSV", ioe);
         }
 
-        var series = new BaseBarSeriesBuilder().build();
+        var series = new BacktestBarSeriesBuilder().build();
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -137,7 +138,7 @@ public class CsvTradesLoader {
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tNumber of trades: "
-                + series.getBar(0).getTrades() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+        System.out.println("First bar: \n" + "\tVolume: " + series.getBar().getVolume() + "\n" + "\tNumber of trades: "
+                + series.getBar().getTrades() + "\n" + "\tClose price: " + series.getBar().getClosePrice());
     }
 }

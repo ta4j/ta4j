@@ -21,99 +21,65 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * A builder to build a new {@link BaseBarSeries}.
+ * A builder to build a new {@link BacktestBarSeries}.
  */
-public class BaseBarSeriesBuilder implements BarSeriesBuilder {
+public class BacktestBarSeriesBuilder {
 
     /** The {@link #name} for an unnamed bar series. */
     private static final String UNNAMED_SERIES_NAME = "unnamed_series";
 
     private List<Bar> bars;
     private String name;
-    private boolean constrained;
-    private int maxBarCount;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new BaseBarBuilderFactory();
+    private BarBuilderFactory barBuilderFactory = new BacktestBarBuilderFactory();
+    private List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
 
-    /** Constructor to build a {@code BaseBarSeries}. */
-    public BaseBarSeriesBuilder() {
+    /** Constructor to build a {@code BacktestBarSeries}. */
+    public BacktestBarSeriesBuilder() {
         initValues();
     }
 
     private void initValues() {
         this.bars = new ArrayList<>();
         this.name = "unnamed_series";
-        this.constrained = false;
-        this.maxBarCount = Integer.MAX_VALUE;
-    }
-
-    @Override
-    public BaseBarSeries build() {
-        int beginIndex = -1;
-        int endIndex = -1;
-        if (!bars.isEmpty()) {
-            beginIndex = 0;
-            endIndex = bars.size() - 1;
-        }
-
-        var series = new BaseBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
-                constrained, numFactory, barBuilderFactory);
-        series.setMaximumBarCount(maxBarCount);
-        initValues(); // reinitialize values for next series
-        return series;
     }
 
     /**
-     * @param constrained to set
+     * @param numFactory to set {@link BacktestBarSeries#numFactory()}
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder setConstrained(boolean constrained) {
-        this.constrained = constrained;
-        return this;
-    }
-
-    /**
-     * @param numFactory to set {@link BaseBarSeries#numFactory()}
-     * @return {@code this}
-     */
-    public BaseBarSeriesBuilder withNumFactory(NumFactory numFactory) {
+    public BacktestBarSeriesBuilder withNumFactory(NumFactory numFactory) {
         this.numFactory = numFactory;
         return this;
     }
 
     /**
-     * @param name to set {@link BaseBarSeries#getName()}
+     * @param name to set {@link BacktestBarSeries#getName()}
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder withName(String name) {
+    public BacktestBarSeriesBuilder withName(String name) {
         this.name = name;
         return this;
     }
 
     /**
-     * @param bars to set {@link BaseBarSeries#getBarData()}
+     * @param bars to set {@link BacktestBarSeries#getBarData()}
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder withBars(List<Bar> bars) {
+    public BacktestBarSeriesBuilder withBars(List<Bar> bars) {
         this.bars = bars;
-        return this;
-    }
-
-    /**
-     * @param maxBarCount to set {@link BaseBarSeries#getMaximumBarCount()}
-     * @return {@code this}
-     */
-    public BaseBarSeriesBuilder withMaxBarCount(int maxBarCount) {
-        this.maxBarCount = maxBarCount;
         return this;
     }
 
@@ -122,8 +88,27 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
      *
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder withBarBuilderFactory(final BarBuilderFactory barBuilderFactory) {
+    public BacktestBarSeriesBuilder withBarBuilderFactory(final BarBuilderFactory barBuilderFactory) {
         this.barBuilderFactory = barBuilderFactory;
         return this;
+    }
+
+    public BacktestBarSeriesBuilder withStrategy(Function<BacktestBarSeries, BacktestStrategy> strategy) {
+        this.strategies.add(strategy);
+        return this;
+    }
+
+    public BacktestBarSeriesBuilder withStrategies(
+            final List<Function<BacktestBarSeries, BacktestStrategy>> strategyFunction) {
+        strategies.addAll(strategyFunction);
+        return this;
+    }
+
+    public BacktestBarSeries build() {
+        var series = new BacktestBarSeries(name == null ? UNNAMED_SERIES_NAME : name, numFactory, barBuilderFactory,
+                strategies);
+
+        bars.forEach(bar -> series.addBar(bar));
+        return series;
     }
 }

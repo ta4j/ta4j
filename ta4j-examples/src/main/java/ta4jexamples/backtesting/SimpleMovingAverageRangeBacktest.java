@@ -23,19 +23,21 @@
  */
 package ta4jexamples.backtesting;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.backtest.BacktestStrategy;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
@@ -44,49 +46,48 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
 import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
 
-    public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+    public static void main(final String[] args) throws IOException {
 
-        int start = 3;
-        int stop = 50;
-        int step = 5;
+        final int start = 3;
+        final int stop = 3;
+        final int step = 5;
 
-        final List<Strategy> strategies = new ArrayList<>();
+        final List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
         for (int i = start; i <= stop; i += step) {
-            Strategy strategy = new BaseStrategy("Sma(" + i + ")", createEntryRule(series, i),
-                    createExitRule(series, i));
-            strategies.add(strategy);
+            final var p = i;
+            strategies.add(x -> new BacktestStrategy("Sma(" + p + ")", createEntryRule(x, p), createExitRule(x, p)));
         }
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
+
+        final var series = CsvBarsLoader.loadAppleIncSeries();
+        final var backtestExecutor = new BacktestExecutor(series);
+        final List<TradingStatement> tradingStatements = backtestExecutor.execute(new BacktestStrategy("SMA", createEntryRule(series, 3), createExitRule(series, 3)), DecimalNum.valueOf(50),
                 Trade.TradeType.BUY);
 
         LOG.info(printReport(tradingStatements));
     }
 
-    private static Rule createEntryRule(BarSeries series, int barCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+    private static Rule createEntryRule(final BarSeries series, final int barCount) {
+        final Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        final SMAIndicator sma = new SMAIndicator(closePrice, barCount);
         return new UnderIndicatorRule(sma, closePrice);
     }
 
-    private static Rule createExitRule(BarSeries series, int barCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+    private static Rule createExitRule(final BarSeries series, final int barCount) {
+        final Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        final SMAIndicator sma = new SMAIndicator(closePrice, barCount);
         return new OverIndicatorRule(sma, closePrice);
     }
 
-    private static String printReport(List<TradingStatement> tradingStatements) {
-        StringBuilder resultBuilder = new StringBuilder();
+    private static String printReport(final List<TradingStatement> tradingStatements) {
+        final StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append(System.lineSeparator());
-        for (TradingStatement statement : tradingStatements) {
+        for (final TradingStatement statement : tradingStatements) {
             resultBuilder.append(printStatementReport(statement));
             resultBuilder.append(System.lineSeparator());
         }
@@ -94,8 +95,8 @@ public class SimpleMovingAverageRangeBacktest {
         return resultBuilder.toString();
     }
 
-    private static StringBuilder printStatementReport(TradingStatement statement) {
-        StringBuilder resultBuilder = new StringBuilder();
+    private static StringBuilder printStatementReport(final TradingStatement statement) {
+        final StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("######### ")
                 .append(statement.getStrategy().getName())
                 .append(" #########")
@@ -108,8 +109,8 @@ public class SimpleMovingAverageRangeBacktest {
         return resultBuilder;
     }
 
-    private static StringBuilder printPerformanceReport(PerformanceReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
+    private static StringBuilder printPerformanceReport(final PerformanceReport report) {
+        final StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("--------- performance report ---------")
                 .append(System.lineSeparator())
                 .append("total loss: ")
@@ -127,8 +128,8 @@ public class SimpleMovingAverageRangeBacktest {
         return resultBuilder;
     }
 
-    private static StringBuilder printPositionStats(PositionStatsReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
+    private static StringBuilder printPositionStats(final PositionStatsReport report) {
+        final StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("--------- trade statistics report ---------")
                 .append(System.lineSeparator())
                 .append("loss trade count: ")

@@ -28,5 +28,5 @@ package org.ta4j.core;
  */
 public interface BarBuilderFactory {
 
-    BaseBarConvertibleBuilder createBarBuilder(BarSeries series);
+    BacktestBarConvertibleBuilder createBarBuilder(BarSeries series);
 }

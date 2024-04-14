@@ -30,13 +30,15 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.junit.Test;
+import org.ta4j.core.backtest.BacktestBar;
+import org.ta4j.core.backtest.BacktestBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BaseBarBuilderTest(NumFactory numFactory) {
+    public BacktestBarBuilderTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -46,7 +48,7 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarBuilder().timePeriod(duration)
+        final BacktestBar bar = new BacktestBarBuilder().timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))

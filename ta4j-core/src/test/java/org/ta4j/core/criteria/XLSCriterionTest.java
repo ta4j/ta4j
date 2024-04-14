@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalCriterionTest;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -36,12 +36,12 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     private final String fileName;
     private final int criterionColumn;
     private final int statesColumn;
-    private BarSeries cachedSeries = null;
+    private BacktestBarSeries cachedSeries = null;
     private final NumFactory numFactory;
 
     /**
      * Constructor.
-     * 
+     *
      * @param clazz           class containing the file resources
      * @param fileName        file name of the file containing the workbook
      * @param criterionColumn column number containing the calculated criterion
@@ -60,12 +60,12 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     /**
      * Gets the BarSeries from the XLS file. The BarSeries is cached so that
      * subsequent calls do not execute getSeries.
-     * 
+     *
      * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
     @Override
-    public BarSeries getSeries() throws Exception {
+    public BacktestBarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFactory);
         }
@@ -74,7 +74,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the final criterion value from the XLS file given the parameters.
-     * 
+     *
      * @param params criterion parameters
      * @return Num final criterion value
      * @throws Exception if getFinalCriterionValue throws IOException or
@@ -87,7 +87,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the trading record from the XLS file.
-     * 
+     *
      * @return TradingRecord from the file
      */
     @Override

@@ -41,12 +41,11 @@ public abstract class AbstractRule implements Rule {
     /**
      * Traces the {@code isSatisfied()} method calls.
      *
-     * @param index       the bar index
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
+    protected void traceIsSatisfied(boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+            log.trace("{}#isSatisfied({}): {}", className, /* TODO trace Clock */ isSatisfied);
         }
     }
 }

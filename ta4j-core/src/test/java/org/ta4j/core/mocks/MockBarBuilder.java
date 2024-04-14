@@ -6,14 +6,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarConvertibleBuilder;
+import org.ta4j.core.BacktestBarConvertibleBuilder;
+import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.num.NumFactory;
 
 /**
  * @author Lukáš Kvídera
  */
-public class MockBarBuilder extends BaseBarConvertibleBuilder {
+public class MockBarBuilder extends BacktestBarConvertibleBuilder {
 
     private Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneId.systemDefault());
     private boolean periodSet;
@@ -27,20 +27,20 @@ public class MockBarBuilder extends BaseBarConvertibleBuilder {
     }
 
     @Override
-    public BaseBarConvertibleBuilder endTime(final ZonedDateTime endTime) {
+    public BacktestBarConvertibleBuilder endTime(final ZonedDateTime endTime) {
         endTimeSet = true;
         return super.endTime(endTime);
     }
 
     @Override
-    public BaseBarConvertibleBuilder timePeriod(final Duration timePeriod) {
+    public BacktestBarConvertibleBuilder timePeriod(final Duration timePeriod) {
         periodSet = true;
         this.timePeriod = timePeriod;
         return super.timePeriod(this.timePeriod);
     }
 
     @Override
-    public BaseBar build() {
+    public BacktestBar build() {
         if (!periodSet) {
             timePeriod(Duration.ofDays(1));
         }

@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,12 +45,12 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         return isConsecutive(position) ? series.numFactory().one() : series.numFactory().zero();
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         int maxConsecutive = 0;
         int consecutives = 0;
         for (Position position : tradingRecord.getPositions()) {

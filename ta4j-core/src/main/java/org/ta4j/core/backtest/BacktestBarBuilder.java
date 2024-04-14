@@ -21,18 +21,19 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
 /**
- * A builder to build a new {@link BaseBar}.
+ * A builder to build a new {@link BacktestBar}.
  */
-public class BaseBarBuilder {
+public class BacktestBarBuilder {
 
     private Duration timePeriod;
     private ZonedDateTime endTime;
@@ -45,15 +46,15 @@ public class BaseBarBuilder {
     private long trades;
     private BarSeries baseBarSeries;
 
-    /** Constructor to build a {@code BaseBar}. */
-    public BaseBarBuilder() {
+    /** Constructor to build a {@code BacktestBar}. */
+    public BacktestBarBuilder() {
     }
 
     /**
      * @param timePeriod the time period
      * @return {@code this}
      */
-    public BaseBarBuilder timePeriod(Duration timePeriod) {
+    public BacktestBarBuilder timePeriod(Duration timePeriod) {
         this.timePeriod = timePeriod;
         return this;
     }
@@ -62,7 +63,7 @@ public class BaseBarBuilder {
      * @param endTime the end time of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder endTime(ZonedDateTime endTime) {
+    public BacktestBarBuilder endTime(ZonedDateTime endTime) {
         this.endTime = endTime;
         return this;
     }
@@ -71,7 +72,7 @@ public class BaseBarBuilder {
      * @param openPrice the open price of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder openPrice(Num openPrice) {
+    public BacktestBarBuilder openPrice(Num openPrice) {
         this.openPrice = openPrice;
         return this;
     }
@@ -80,7 +81,7 @@ public class BaseBarBuilder {
      * @param highPrice the highest price of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder highPrice(Num highPrice) {
+    public BacktestBarBuilder highPrice(Num highPrice) {
         this.highPrice = highPrice;
         return this;
     }
@@ -89,7 +90,7 @@ public class BaseBarBuilder {
      * @param lowPrice the lowest price of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder lowPrice(Num lowPrice) {
+    public BacktestBarBuilder lowPrice(Num lowPrice) {
         this.lowPrice = lowPrice;
         return this;
     }
@@ -98,7 +99,7 @@ public class BaseBarBuilder {
      * @param closePrice the close price of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder closePrice(Num closePrice) {
+    public BacktestBarBuilder closePrice(Num closePrice) {
         this.closePrice = closePrice;
         return this;
     }
@@ -107,7 +108,7 @@ public class BaseBarBuilder {
      * @param volume the total traded volume of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder volume(Num volume) {
+    public BacktestBarBuilder volume(Num volume) {
         this.volume = volume;
         return this;
     }
@@ -116,7 +117,7 @@ public class BaseBarBuilder {
      * @param amount the total traded amount of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder amount(Num amount) {
+    public BacktestBarBuilder amount(Num amount) {
         this.amount = amount;
         return this;
     }
@@ -125,18 +126,18 @@ public class BaseBarBuilder {
      * @param trades the number of trades of the bar period
      * @return {@code this}
      */
-    public BaseBarBuilder trades(long trades) {
+    public BacktestBarBuilder trades(long trades) {
         this.trades = trades;
         return this;
     }
 
-    public BaseBarBuilder bindTo(final BarSeries baseBarSeries) {
+    public BacktestBarBuilder bindTo(final BarSeries baseBarSeries) {
         this.baseBarSeries = Objects.requireNonNull(baseBarSeries);
         return this;
     }
 
-    public BaseBar build() {
-        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+    public BacktestBar build() {
+        return new BacktestBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
     }
 
     public void add() {

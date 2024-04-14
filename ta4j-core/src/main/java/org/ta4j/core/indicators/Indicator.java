@@ -23,47 +23,35 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
- * Base class for Exponential Moving Average implementations.
+ * Indicator over a {@link BarSeries bar series}.
+ *
+ * <p>
+ * Returns a value of type <b>T</b> for each index of the bar series.
+ *
+ * @param <T> the type of the returned value (Double, Boolean, etc.)
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
-
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final Num multiplier;
+public interface Indicator<T> {
 
     /**
-     * Constructor.
-     * 
-     * @param indicator  the {@link Indicator}
-     * @param barCount   the time frame
-     * @param multiplier the multiplier
+     * @return the value of the indicator
      */
-    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
-    }
+    T getValue();
 
-    @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
-        }
-        Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
-    }
+    /**
+     * @return the related bar series
+     */
+    BarSeries getBarSeries();
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
-    }
+    /**
+     * updates its state based on current bar
+     */
+    void refresh();
 
-    public int getBarCount() {
-        return barCount;
-    }
+    /**
+     * @return true if indicator is stabilized
+     */
+    boolean isStable();
 }

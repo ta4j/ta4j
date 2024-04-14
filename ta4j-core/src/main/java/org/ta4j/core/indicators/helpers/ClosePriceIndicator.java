@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Close price indicator.
- * 
+ *
  * <p>
  * Returns the close price of a bar.
  */
@@ -37,7 +37,7 @@ public class ClosePriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public ClosePriceIndicator(BarSeries series) {
@@ -45,13 +45,17 @@ public class ClosePriceIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public Num getValue(int index) {
-        return getBarSeries().getBar(index).getClosePrice();
+    public Num getValue() {
+        return getBarSeries().getBar().getClosePrice();
     }
 
-    /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public void refresh() {
+        // NOOP
+    }
+
+    @Override
+    public boolean isStable() {
+        return true;
     }
 }

@@ -24,9 +24,9 @@
 package org.ta4j.core.criteria.helpers;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -78,13 +78,13 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num average = averageCriterion.calculate(series, position);
         return standardDeviationCriterion.calculate(series, position).dividedBy(average);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }

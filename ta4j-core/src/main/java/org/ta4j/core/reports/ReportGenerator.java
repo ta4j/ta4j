@@ -23,9 +23,8 @@
  */
 package org.ta4j.core.reports;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 
 /**
  * Generic interface for generating trading reports.
@@ -41,5 +40,5 @@ public interface ReportGenerator<T> {
      * @param series        the bar series (not null)
      * @return generated report
      */
-    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
+    T generate(TradingRecord tradingRecord, BacktestBarSeries series);
 }

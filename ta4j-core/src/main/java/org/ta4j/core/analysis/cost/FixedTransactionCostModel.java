@@ -40,7 +40,7 @@ public class FixedTransactionCostModel implements CostModel {
      * Constructor for a fixed fee trading cost model.
      *
      * <pre>
-     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1) 
+     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1)
      * Cost of closed {@link Position position}: (fixedFeePerTrade * 2)
      * </pre>
      *

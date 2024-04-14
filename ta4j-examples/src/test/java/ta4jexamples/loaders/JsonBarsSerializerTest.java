@@ -30,7 +30,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -56,9 +55,9 @@ public class JsonBarsSerializerTest {
         BarSeries loadedSeries = JsonBarsSerializer.loadSeries(testFilename);
         assertEquals(initialSeriesBarCount, loadedSeries.getBarCount());
 
-        int randomIndex = ThreadLocalRandom.current().nextInt(series.getBeginIndex(), series.getEndIndex());
-        Bar randomInitialBar = series.getBar(randomIndex);
-        Bar randomNewBar = loadedSeries.getBar(randomIndex);
+        // TODO nonsense?
+        Bar randomInitialBar = series.getBar();
+        Bar randomNewBar = loadedSeries.getBar();
 
         assertEquals(randomInitialBar.getEndTime(), randomNewBar.getEndTime());
         assertEquals(randomInitialBar.getOpenPrice(), randomNewBar.getOpenPrice());

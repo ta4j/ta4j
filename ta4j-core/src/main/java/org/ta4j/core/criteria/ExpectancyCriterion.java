@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.pnl.ProfitLossRatioCriterion;
 import org.ta4j.core.num.Num;
 
@@ -48,7 +48,7 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
     private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num profitLossRatio = profitLossRatioCriterion.calculate(series, position);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
@@ -56,7 +56,7 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num profitLossRatio = profitLossRatioCriterion.calculate(series, tradingRecord);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
@@ -69,7 +69,7 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num calculate(BarSeries series, Num profitLossRatio, Num numberOfWinningPositions,
+    private Num calculate(BacktestBarSeries series, Num profitLossRatio, Num numberOfWinningPositions,
             Num numberOfAllPositions) {
         if (numberOfAllPositions.isZero() || profitLossRatio.isZero()) {
             return series.numFactory().zero();

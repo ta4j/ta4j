@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
 /**
  * A {@code TradingRecord} holds the full history/record of a trading session
  * when running a {@link Strategy strategy}. It can be used to:
- * 
+ *
  * <ul>
  * <li>analyze the performance of a {@link Strategy strategy}
  * <li>check whether some {@link Rule rules} are satisfied (while running a
@@ -57,8 +57,8 @@ public interface TradingRecord extends Serializable {
     /**
      * Places a trade in the trading record.
      *
-     * @param index the index to place the trade
      */
+    // TODO BacktestTradingRecord
     default void operate(int index) {
         operate(index, NaN, NaN);
     }
@@ -66,7 +66,6 @@ public interface TradingRecord extends Serializable {
     /**
      * Places a trade in the trading record.
      *
-     * @param index  the index to place the trade
      * @param price  the trade price per asset
      * @param amount the trade amount
      */
@@ -75,7 +74,6 @@ public interface TradingRecord extends Serializable {
     /**
      * Places an entry trade in the trading record.
      *
-     * @param index the index to place the entry
      * @return true if the entry has been placed, false otherwise
      */
     default boolean enter(int index) {
@@ -85,7 +83,6 @@ public interface TradingRecord extends Serializable {
     /**
      * Places an entry trade in the trading record.
      *
-     * @param index  the index to place the entry
      * @param price  the trade price per asset
      * @param amount the trade amount
      * @return true if the entry has been placed, false otherwise
@@ -95,7 +92,6 @@ public interface TradingRecord extends Serializable {
     /**
      * Places an exit trade in the trading record.
      *
-     * @param index the index to place the exit
      * @return true if the exit has been placed, false otherwise
      */
     default boolean exit(int index) {
@@ -105,7 +101,6 @@ public interface TradingRecord extends Serializable {
     /**
      * Places an exit trade in the trading record.
      *
-     * @param index  the index to place the exit
      * @param price  the trade price per asset
      * @param amount the trade amount
      * @return true if the exit has been placed, false otherwise

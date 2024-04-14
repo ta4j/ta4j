@@ -24,9 +24,9 @@
 package org.ta4j.core.criteria.helpers;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
@@ -72,13 +72,13 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
         return criterion.calculate(series, position).dividedBy(numberOfPositions);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }

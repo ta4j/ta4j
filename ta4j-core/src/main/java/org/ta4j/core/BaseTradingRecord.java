@@ -171,17 +171,17 @@ public class BaseTradingRecord implements TradingRecord {
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
         this(trades[0].getType(), transactionCostModel, holdingCostModel);
-        for (Trade o : trades) {
+        for (var trade : trades) {
             boolean newTradeWillBeAnEntry = currentPosition.isNew();
-            if (newTradeWillBeAnEntry && o.getType() != startingType) {
+            if (newTradeWillBeAnEntry && trade.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
                 // SELL, BUY,
                 // BUY, SELL
-                currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
+                currentPosition = new Position(trade.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Trade newTrade = currentPosition.operate(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
     }

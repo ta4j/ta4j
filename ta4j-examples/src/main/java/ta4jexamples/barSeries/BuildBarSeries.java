@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 
@@ -38,17 +38,17 @@ public class BuildBarSeries {
     private static final Logger LOG = LoggerFactory.getLogger(BuildBarSeries.class);
 
     /**
-     * Calls different functions that shows how a BaseBarSeries could be created and
-     * how Bars could be added
+     * Calls different functions that shows how a BacktestBarSeries could be created
+     * and how Bars could be added
      *
      * @param args command line arguments (ignored)
      */
     @SuppressWarnings("unused")
     public static void main(String[] args) {
         BarSeries a = buildAndAddData();
-        LOG.info("a: {}", a.getBar(0).getClosePrice().getName());
+        LOG.info("a: {}", a.getBar().getClosePrice().getName());
         a = buildAndAddData();
-        LOG.info("a: {}", a.getBar(0).getClosePrice().getName());
+        LOG.info("a: {}", a.getBar().getClosePrice().getName());
         BarSeries b = buildWithDouble();
         BarSeries c = buildWithBigDecimal();
         BarSeries d = buildManually();
@@ -57,7 +57,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildAndAddData() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").build();
+        var series = new BacktestBarSeriesBuilder().withName("mySeries").build();
 
         var endTime = ZonedDateTime.now();
         // ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
@@ -98,7 +98,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithDouble() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries")
+        var series = new BacktestBarSeriesBuilder().withName("mySeries")
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
 
@@ -109,7 +109,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithBigDecimal() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries")
+        var series = new BacktestBarSeriesBuilder().withName("mySeries")
                 .withNumFactory(DecimalNumFactory.getInstance())
                 .build();
 
@@ -121,7 +121,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManually() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries").build(); // uses BigDecimalNum
+        var series = new BacktestBarSeriesBuilder().withName("mySeries").build(); // uses BigDecimalNum
 
         ZonedDateTime endTime = ZonedDateTime.now();
         addBars(series, endTime);
@@ -131,7 +131,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyDoubleNum() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries")
+        var series = new BacktestBarSeriesBuilder().withName("mySeries")
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
         ZonedDateTime endTime = ZonedDateTime.now();
@@ -142,7 +142,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyAndAddBarManually() {
-        var series = new BaseBarSeriesBuilder().withName("mySeries")
+        var series = new BacktestBarSeriesBuilder().withName("mySeries")
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
 

@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -63,7 +62,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param factory    IndicatorFactory for building an Indicator given data and
      *                   parameters.
      * @param numFactory the factory to convert a Number into a Num implementation
@@ -87,7 +86,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Generates an Indicator from data and parameters.
-     * 
+     *
      * @param data   indicator data
      * @param params indicator parameters
      * @return Indicator<I> from data given parameters

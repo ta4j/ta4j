@@ -26,12 +26,14 @@ package org.ta4j.core;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.num.Num;
 
 /**
  * An analysis criterion. It can be used to:
- * 
+ *
  * <ul>
  * <li>analyze the performance of a {@link Strategy strategy}
  * <li>compare several {@link Strategy strategies} together
@@ -52,43 +54,43 @@ public interface AnalysisCriterion {
      * @param position the position, not null
      * @return the criterion value for the position
      */
-    Num calculate(BarSeries series, Position position);
+    Num calculate(BacktestBarSeries series, Position position);
 
     /**
      * @param series        the bar series, not null
      * @param tradingRecord the trading record, not null
      * @return the criterion value for the positions
      */
-    Num calculate(BarSeries series, TradingRecord tradingRecord);
+    Num calculate(BacktestBarSeries series, TradingRecord tradingRecord);
 
     /**
-     * @param manager    the bar series manager with entry type of BUY
-     * @param strategies a list of strategies
+     * @param backtestExecutor the bar series backtestExecutor with entry type of
+     *                         BUY
      * @return the best strategy (among the provided ones) according to the
      *         criterion
      */
-    default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
-        return chooseBest(manager, TradeType.BUY, strategies);
+    default Strategy chooseBest(BacktestExecutor backtestExecutor, List<BacktestStrategy> strategies) {
+        return chooseBest(backtestExecutor, TradeType.BUY, strategies);
     }
 
     /**
-     * @param manager    the bar series manager
-     * @param tradeType  the entry type (BUY or SELL) of the first trade in the
-     *                   trading session
-     * @param strategies a list of strategies
+     * @param backtestExecutor the bar series backtestExecutor
+     * @param tradeType        the entry type (BUY or SELL) of the first trade in
+     *                         the trading session
      * @return the best strategy (among the provided ones) according to the
      *         criterion
      */
-    default Strategy chooseBest(BarSeriesManager manager, TradeType tradeType, List<Strategy> strategies) {
+    default Strategy chooseBest(BacktestExecutor backtestExecutor, TradeType tradeType, List<BacktestStrategy> strategies) {
 
-        Strategy bestStrategy = strategies.get(0);
-        Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
+        final var tradingStatements = backtestExecutor.execute(strategies.getFirst(), tradeType);
+        BacktestStrategy bestStrategy = strategies.getFirst();
+        Num bestCriterionValue = calculate(backtestExecutor.getBarSeries(), bestStrategy.getTradeRecord());
 
-        for (int i = 1; i < strategies.size(); i++) {
-            Strategy currentStrategy = strategies.get(i);
-            Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy, tradeType));
+        for (var tradingStatement : tradingStatements) {
+            var currentStrategy = tradingStatement.getStrategy();
+            var currentCriterionValue = calculate(backtestExecutor.getBarSeries(), currentStrategy.getTradeRecord());
 
-            if (betterThan(currentCriterionValue, bestCriterionValue)) {
+            if (bestStrategy == null || betterThan(currentCriterionValue, bestCriterionValue)) {
                 bestStrategy = currentStrategy;
                 bestCriterionValue = currentCriterionValue;
             }

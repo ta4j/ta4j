@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
@@ -74,12 +74,12 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         return getTradeCost(series, position, series.numFactory().numOf(initialAmount));
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num totalCosts = series.numFactory().zero();
         Num tradedAmount = series.numFactory().numOf(initialAmount);
 
@@ -130,7 +130,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @param initialAmount the initially traded amount for the position
      * @return the absolute total cost of all trades in the position
      */
-    private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
+    private Num getTradeCost(BacktestBarSeries series, Position position, Num initialAmount) {
         Num totalTradeCost = series.numFactory().zero();
         if (position != null && position.getEntry() != null) {
             totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
