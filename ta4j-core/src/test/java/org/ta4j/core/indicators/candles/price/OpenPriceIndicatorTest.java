@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.candles.price;
 
 import static junit.framework.TestCase.assertEquals;
 
@@ -34,25 +34,26 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private ClosePriceIndicator closePrice;
+public class OpenPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    private OpenPriceIndicator openPriceIndicator;
 
     BarSeries barSeries;
 
-    public ClosePriceIndicatorTest(NumFactory numFactory) {
+    public OpenPriceIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        closePrice = new ClosePriceIndicator(barSeries);
+        this.barSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
+        this.openPriceIndicator = new OpenPriceIndicator(this.barSeries);
     }
 
     @Test
-    public void indicatorShouldRetrieveBarClosePrice() {
-        while (barSeries.advance()) {
-            assertEquals(closePrice.getValue(), barSeries.getBar().getClosePrice());
+    public void indicatorShouldRetrieveBarOpenPrice() {
+        for (int i = 0; i < 10; i++) {
+            this.barSeries.advance();
+            assertEquals(this.openPriceIndicator.getValue(), this.barSeries.getBar().getOpenPrice());
         }
     }
 }

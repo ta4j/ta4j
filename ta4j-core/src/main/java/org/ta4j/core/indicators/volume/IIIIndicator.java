@@ -24,10 +24,10 @@
 //package org.ta4j.core.indicators.volume;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 //import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -41,7 +41,7 @@
 //    private final ClosePriceIndicator closePriceIndicator;
 //    private final HighPriceIndicator highPriceIndicator;
 //    private final LowPriceIndicator lowPriceIndicator;
-//    private final VolumeIndicator volumeIndicator;
+//    private final RunningVolumeSumIndicator volumeIndicator;
 //
 //    /**
 //     * Constructor.
@@ -53,7 +53,7 @@
 //        this.closePriceIndicator = new ClosePriceIndicator(series);
 //        this.highPriceIndicator = new HighPriceIndicator(series);
 //        this.lowPriceIndicator = new LowPriceIndicator(series);
-//        this.volumeIndicator = new VolumeIndicator(series);
+//        this.volumeIndicator = new RunningVolumeSumIndicator(series);
 //    }
 //
 //    @Override

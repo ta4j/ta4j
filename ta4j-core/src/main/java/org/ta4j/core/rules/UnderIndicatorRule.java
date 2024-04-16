@@ -85,10 +85,9 @@ public class UnderIndicatorRule extends AbstractRule {
 
     @Override
     public void refresh() {
-      this.first.refresh();
-      this.second.refresh();
+        this.first.refresh();
+        this.second.refresh();
     }
-
 
     @Override
     public boolean isStable() {

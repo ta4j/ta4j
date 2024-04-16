@@ -32,8 +32,8 @@
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
 //import org.ta4j.core.num.Num;
 //import org.ta4j.core.num.NumFactory;
@@ -71,7 +71,7 @@
 //        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(11).volume(110).add();
 //        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i)).closePrice(10).volume(95).add();
 //        close = new ClosePriceIndicator(data);
-//        volume = new VolumeIndicator(data, 2);
+//        volume = new RunningVolumeSumIndicator(data, 2);
 //    }
 //
 //    @Test

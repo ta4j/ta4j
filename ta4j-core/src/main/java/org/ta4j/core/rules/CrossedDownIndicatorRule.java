@@ -78,7 +78,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     @Override
     public void refresh() {
-      this.cross.refresh();
+        this.cross.refresh();
     }
 
     @Override

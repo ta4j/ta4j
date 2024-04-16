@@ -24,7 +24,7 @@
 //package org.ta4j.core.indicators;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //
 ///**
 // * Percentage Volume Oscillator (PVO) indicator.
@@ -51,7 +51,7 @@
 //     * @param series the bar series {@link BarSeries}
 //     */
 //    public PVOIndicator(BarSeries series) {
-//        super(new VolumeIndicator(series));
+//        super(new RunningVolumeSumIndicator(series));
 //    }
 //
 //    /**
@@ -63,10 +63,10 @@
 //     * </ul>
 //     *
 //     * @param series         the bar series {@link BarSeries}.
-//     * @param volumeBarCount the bar count for the {@link VolumeIndicator}
+//     * @param volumeBarCount the bar count for the {@link RunningVolumeSumIndicator}
 //     */
 //    public PVOIndicator(BarSeries series, int volumeBarCount) {
-//        super(new VolumeIndicator(series, volumeBarCount));
+//        super(new RunningVolumeSumIndicator(series, volumeBarCount));
 //    }
 //
 //    /**
@@ -75,7 +75,7 @@
 //     * @param longBarCount  PPO long time frame.
 //     */
 //    public PVOIndicator(BarSeries series, int shortBarCount, int longBarCount) {
-//        super(new VolumeIndicator(series), shortBarCount, longBarCount);
+//        super(new RunningVolumeSumIndicator(series), shortBarCount, longBarCount);
 //    }
 //
 //    /**
@@ -85,7 +85,7 @@
 //     * @param longBarCount   PPO long time frame.
 //     */
 //    public PVOIndicator(BarSeries series, int volumeBarCount, int shortBarCount, int longBarCount) {
-//        super(new VolumeIndicator(series, volumeBarCount), shortBarCount, longBarCount);
+//        super(new RunningVolumeSumIndicator(series, volumeBarCount), shortBarCount, longBarCount);
 //    }
 //
 //}

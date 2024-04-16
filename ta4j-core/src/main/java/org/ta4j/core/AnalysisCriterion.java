@@ -80,7 +80,8 @@ public interface AnalysisCriterion {
      * @return the best strategy (among the provided ones) according to the
      *         criterion
      */
-    default Strategy chooseBest(BacktestExecutor backtestExecutor, TradeType tradeType, List<BacktestStrategy> strategies) {
+    default Strategy chooseBest(BacktestExecutor backtestExecutor, TradeType tradeType,
+            List<BacktestStrategy> strategies) {
 
         final var tradingStatements = backtestExecutor.execute(strategies.getFirst(), tradeType);
         BacktestStrategy bestStrategy = strategies.getFirst();

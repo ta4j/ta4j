@@ -88,9 +88,8 @@ public class OverIndicatorRule extends AbstractRule {
         this.second.refresh();
     }
 
-
-  @Override
-  public boolean isStable() {
-    return this.first.isStable() && this.second.isStable();
-  }
+    @Override
+    public boolean isStable() {
+        return this.first.isStable() && this.second.isStable();
+    }
 }

@@ -33,8 +33,8 @@
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
 //import org.ta4j.core.num.Num;
 //import org.ta4j.core.num.NumFactory;

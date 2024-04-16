@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.average.SMAIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 //import org.ta4j.core.num.Num;
 //
@@ -51,7 +51,7 @@
 //
 //    private final StandardDeviationIndicator volumeStandardDeviation;
 //    private final SMAIndicator averageVolume;
-//    private final VolumeIndicator volume;
+//    private final RunningVolumeSumIndicator volume;
 //    private final int barCount;
 //
 //    /**
@@ -63,7 +63,7 @@
 //    public RelativeVolumeStandardDeviationIndicator(BarSeries series, int barCount) {
 //        super(series);
 //        this.barCount = barCount;
-//        this.volume = new VolumeIndicator(series);
+//        this.volume = new RunningVolumeSumIndicator(series);
 //        this.averageVolume = new SMAIndicator(this.volume, barCount);
 //        this.volumeStandardDeviation = new StandardDeviationIndicator(volume, barCount);
 //    }

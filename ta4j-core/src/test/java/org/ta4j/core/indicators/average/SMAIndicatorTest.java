@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.average;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
@@ -36,8 +36,10 @@ import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.backtest.BacktestBarSeries;
-import org.ta4j.core.indicators.average.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.XLSIndicatorTest;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;

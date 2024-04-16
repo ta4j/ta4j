@@ -21,38 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.candles.price;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static junit.framework.TestCase.assertEquals;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
-/**
- * Abstract {@link Indicator indicator}.
- */
-public abstract class AbstractIndicator<T> implements Indicator<T> {
+public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    private HighPriceIndicator highPriceIndicator;
 
-    /** The logger. */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    private BarSeries barSeries;
 
-    private final BarSeries series;
-
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    protected AbstractIndicator(BarSeries series) {
-        this.series = series;
+    public HighPriceIndicatorTest(final NumFactory numFactory) {
+        super(numFactory);
     }
 
-    @Override
-    public BarSeries getBarSeries() {
-        return series;
+    @Before
+    public void setUp() {
+        this.barSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
+        this.highPriceIndicator = new HighPriceIndicator(this.barSeries);
+
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
+    @Test
+    public void indicatorShouldRetrieveBarHighPrice() {
+        for (int i = 0; i < 10; i++) {
+            this.barSeries.advance();
+            assertEquals(this.highPriceIndicator.getValue(), this.barSeries.getBar().getHighPrice());
+        }
     }
 }

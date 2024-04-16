@@ -33,10 +33,10 @@
 //import org.ta4j.core.indicators.average.EMAIndicator;
 //import org.ta4j.core.indicators.average.SMAIndicator;
 //import org.ta4j.core.indicators.adx.ADXIndicator;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 //import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
 //import org.ta4j.core.num.NaN;
@@ -177,7 +177,7 @@
 //        assertEquals(LowestValueIndicator.class, numericIndicator.lowest(5).delegate().getClass());
 //
 //        assertEquals(ClosePriceIndicator.class, NumericIndicator.closePrice(series).delegate().getClass());
-//        assertEquals(VolumeIndicator.class, NumericIndicator.volume(series).delegate().getClass());
+//        assertEquals(RunningVolumeSumIndicator.class, NumericIndicator.volume(series).delegate().getClass());
 //
 //        ADXIndicator adx = new ADXIndicator(series, 5);
 //        assertEquals(ADXIndicator.class, NumericIndicator.of(adx).delegate().getClass());

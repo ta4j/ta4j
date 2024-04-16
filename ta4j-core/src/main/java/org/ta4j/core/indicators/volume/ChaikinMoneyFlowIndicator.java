@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -41,7 +41,7 @@
 //public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 //
 //    private final CloseLocationValueIndicator clvIndicator;
-//    private final VolumeIndicator volumeIndicator;
+//    private final RunningVolumeSumIndicator volumeIndicator;
 //    private final int barCount;
 //
 //    /**
@@ -54,7 +54,7 @@
 //        super(series);
 //        this.barCount = barCount;
 //        this.clvIndicator = new CloseLocationValueIndicator(series);
-//        this.volumeIndicator = new VolumeIndicator(series, barCount);
+//        this.volumeIndicator = new RunningVolumeSumIndicator(series, barCount);
 //    }
 //
 //    @Override

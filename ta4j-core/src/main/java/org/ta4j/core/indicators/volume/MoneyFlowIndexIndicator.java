@@ -28,7 +28,7 @@
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 //import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -44,7 +44,7 @@
 //
 //    private final PreviousValueIndicator previousTypicalPrice;
 //    private final TypicalPriceIndicator typicalPrice;
-//    private final VolumeIndicator volume;
+//    private final RunningVolumeSumIndicator volume;
 //    private final int barCount;
 //
 //    /**
@@ -59,7 +59,7 @@
 //        // Calculating typical price and volume for the series
 //        this.typicalPrice = new TypicalPriceIndicator(series);
 //        this.previousTypicalPrice = new PreviousValueIndicator(this.typicalPrice);
-//        this.volume = new VolumeIndicator(series);
+//        this.volume = new RunningVolumeSumIndicator(series);
 //        this.barCount = barCount;
 //    }
 //

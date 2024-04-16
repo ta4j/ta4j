@@ -24,7 +24,7 @@
 //package org.ta4j.core.indicators.ichimoku;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.num.NaN;
 //import org.ta4j.core.num.Num;
 //

@@ -28,7 +28,7 @@
 //import org.junit.Before;
 //import org.junit.Test;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+//import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 //import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;

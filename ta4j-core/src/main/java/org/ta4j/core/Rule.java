@@ -78,7 +78,8 @@ public interface Rule {
     boolean isSatisfied(TradingRecord tradingRecord);
 
     /**
-     * Updates current state. Called after bar addition in live trading or after advancing to next bar in back test.
+     * Updates current state. Called after bar addition in live trading or after
+     * advancing to next bar in back test.
      */
     void refresh();
 

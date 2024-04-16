@@ -26,7 +26,7 @@
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
-//import org.ta4j.core.indicators.helpers.VolumeIndicator;
+//import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -57,7 +57,7 @@
 //        super(series);
 //        this.barCount = barCount;
 //        this.typicalPrice = new TypicalPriceIndicator(series);
-//        this.volume = new VolumeIndicator(series);
+//        this.volume = new RunningVolumeSumIndicator(series);
 //    }
 //
 //    @Override

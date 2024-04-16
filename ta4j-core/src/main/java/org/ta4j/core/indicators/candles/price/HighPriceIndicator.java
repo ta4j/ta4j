@@ -21,38 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.candles.price;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 /**
- * Abstract {@link Indicator indicator}.
+ * The high price indicator.
+ *
+ * <p>
+ * Returns the high price of a bar.
  */
-public abstract class AbstractIndicator<T> implements Indicator<T> {
-
-    /** The logger. */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
-
-    private final BarSeries series;
+public class HighPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
      *
      * @param series the bar series
      */
-    protected AbstractIndicator(BarSeries series) {
-        this.series = series;
+    public HighPriceIndicator(BarSeries series) {
+        super(series);
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return series;
+    public Num getValue() {
+        return getBarSeries().getBar().getHighPrice();
+    }
+
+    /** @return {@code 0} */
+    @Override
+    public boolean isStable() {
+        return true;
     }
 
     @Override
-    public String toString() {
-        return getClass().getSimpleName();
+    public void refresh() {
+        // NOOP
     }
 }

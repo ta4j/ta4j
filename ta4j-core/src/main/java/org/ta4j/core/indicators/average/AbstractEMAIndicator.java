@@ -32,70 +32,65 @@ import org.ta4j.core.num.Num;
  */
 public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
 
-  private final Indicator<Num> indicator;
-  private final int barCount;
-  private final Num multiplier;
+    private final Indicator<Num> indicator;
+    private final int barCount;
+    private final Num multiplier;
 
-  private Num previousValue;
-  private Num currentValue;
-  private int barsPassed;
+    private Num previousValue;
+    private Num currentValue;
+    private int barsPassed;
 
-
-  /**
-   * Constructor.
-   *
-   * @param indicator the {@link Indicator}
-   * @param barCount the time frame
-   * @param multiplier the multiplier
-   */
-  protected AbstractEMAIndicator(final Indicator<Num> indicator, final int barCount, final double multiplier) {
-    super(indicator.getBarSeries());
-    this.indicator = indicator;
-    this.barCount = barCount;
-    this.multiplier = getBarSeries().numFactory().numOf(multiplier);
-  }
-
-
-  @Override
-  public Num getValue() {
-    return this.currentValue;
-  }
-
-
-  protected Num calculate() {
-    if (this.previousValue == null) {
-      this.previousValue = this.indicator.getValue();
-      return this.previousValue;
+    /**
+     * Constructor.
+     *
+     * @param indicator  the {@link Indicator}
+     * @param barCount   the time frame
+     * @param multiplier the multiplier
+     */
+    protected AbstractEMAIndicator(final Indicator<Num> indicator, final int barCount, final double multiplier) {
+        super(indicator.getBarSeries());
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
     }
 
-    final var newValue =
-        this.indicator.getValue().minus(this.previousValue).multipliedBy(this.multiplier).plus(this.previousValue);
-    this.previousValue = newValue;
-    return newValue;
-  }
+    @Override
+    public Num getValue() {
+        return this.currentValue;
+    }
 
+    protected Num calculate() {
+        if (this.previousValue == null) {
+            this.previousValue = this.indicator.getValue();
+            return this.previousValue;
+        }
 
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
-  }
+        final var newValue = this.indicator.getValue()
+                .minus(this.previousValue)
+                .multipliedBy(this.multiplier)
+                .plus(this.previousValue);
+        this.previousValue = newValue;
+        return newValue;
+    }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
+    }
 
-  public int getBarCount() {
-    return this.barCount;
-  }
+    public int getBarCount() {
+        return this.barCount;
+    }
 
+    @Override
+    public boolean isStable() {
+        return this.barsPassed > this.barCount && this.indicator.isStable();
+    }
 
-  @Override
-  public boolean isStable() {
-    return this.barsPassed > this.barCount && this.indicator.isStable();
-  }
-
-
-  @Override
-  public void refresh() {
-    ++this.barsPassed;
-    this.indicator.refresh();
-    this.currentValue = calculate();
-  }
+    @Override
+    public void refresh() {
+        ++this.barsPassed;
+        this.indicator.refresh();
+        this.currentValue = calculate();
+    }
 }

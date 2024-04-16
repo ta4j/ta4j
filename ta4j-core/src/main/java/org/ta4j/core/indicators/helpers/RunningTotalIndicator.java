@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.LinkedList;
-
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
@@ -37,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 public class RunningTotalIndicator extends NumericIndicator {
     private final Indicator<Num> indicator;
-    private final LinkedList<Num> usedValues = new LinkedList<>();
     private final int barCount;
+    private final PreviousValueIndicator previousValue;
     private Num previousSum;
     private Num value;
     private int processedBars;
@@ -48,6 +46,7 @@ public class RunningTotalIndicator extends NumericIndicator {
         this.indicator = indicator;
         this.barCount = barCount;
         this.previousSum = indicator.getBarSeries().numFactory().zero();
+        this.previousValue = new PreviousValueIndicator(indicator, barCount);
     }
 
     @Override
@@ -62,12 +61,11 @@ public class RunningTotalIndicator extends NumericIndicator {
 
     private Num partialSum() {
         final var indicatorValue = this.indicator.getValue();
-        this.usedValues.addLast(indicatorValue);
 
         var sum = this.previousSum.plus(indicatorValue);
 
-        if (this.usedValues.size() > this.barCount) {
-            sum = sum.minus(this.usedValues.removeFirst());
+        if (this.previousValue.isStable()) {
+            sum = sum.minus(this.previousValue.getValue());
         }
 
         this.previousSum = sum;
@@ -82,7 +80,7 @@ public class RunningTotalIndicator extends NumericIndicator {
     @Override
     public void refresh() {
         this.processedBars++;
-        this.indicator.refresh();
+        this.previousValue.refresh();
         this.value = calculate();
     }
 

@@ -21,41 +21,38 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.candles.price;
 
+import static junit.framework.TestCase.assertEquals;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
-/**
- * Close price indicator.
- *
- * <p>
- * Returns the close price of a bar.
- */
-public class ClosePriceIndicator extends AbstractIndicator<Num> {
+public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    private ClosePriceIndicator closePrice;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public ClosePriceIndicator(BarSeries series) {
-        super(series);
+    BarSeries barSeries;
+
+    public ClosePriceIndicatorTest(final NumFactory numFactory) {
+        super(numFactory);
     }
 
-    @Override
-    public Num getValue() {
-        return getBarSeries().getBar().getClosePrice();
+    @Before
+    public void setUp() {
+        this.barSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
+        this.closePrice = new ClosePriceIndicator(this.barSeries);
     }
 
-    @Override
-    public void refresh() {
-        // NOOP
-    }
-
-    @Override
-    public boolean isStable() {
-        return true;
+    @Test
+    public void indicatorShouldRetrieveBarClosePrice() {
+        while (this.barSeries.advance()) {
+            assertEquals(this.closePrice.getValue(), this.barSeries.getBar().getClosePrice());
+        }
     }
 }
