@@ -1,6 +1,7 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ## 0.16 (unreleased)
+- **Added LiveIndicator for live trading side channels
 
 ### Breaking
 - **Upgraded to Java 11**
