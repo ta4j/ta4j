@@ -24,17 +24,15 @@
 package org.ta4j.core;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.num.Num;
 
 public class MockRule implements Rule {
 
-    private List<Indicator<Num>> indicators = new ArrayList<>();
+    private final List<Indicator<?>> indicators;
 
-    public MockRule(final List<Indicator<Num>> indicators) {
+    public MockRule(final List<Indicator<?>> indicators) {
         this.indicators = indicators;
     }
 
@@ -44,7 +42,7 @@ public class MockRule implements Rule {
     }
 
     @Override
-    public void refresh(ZonedDateTime tick) {
+    public void refresh(final ZonedDateTime tick) {
         this.indicators.forEach(indicator -> indicator.refresh(tick));
     }
 

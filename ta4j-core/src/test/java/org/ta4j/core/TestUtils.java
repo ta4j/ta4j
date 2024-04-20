@@ -108,6 +108,21 @@ public class TestUtils {
     }
 
     /**
+     * Verifies that the actual {@code Num} value is equal (within a positive
+     * offset) to the given {@code double} representation.
+     *
+     * @param expected the given {@code double} representation to compare the actual
+     *                 value to
+     * @param actual   the actual {@code Num} value
+     *
+     * @throws AssertionError if the actual value is not equal to the given
+     *                        {@code double} representation
+     */
+    public static void assertNumEquals(final double expected, final double actual) {
+        assertEquals(expected, actual, GENERAL_OFFSET);
+    }
+
+    /**
      * Verifies that the actual {@code Num} value is not equal to the given
      * {@code int} representation.
      *
