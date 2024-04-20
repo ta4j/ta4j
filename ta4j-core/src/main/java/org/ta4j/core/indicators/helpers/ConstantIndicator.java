@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 
@@ -42,18 +44,18 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      * @param t      the constant value
      */
-    public ConstantIndicator(BarSeries series, T t) {
+    public ConstantIndicator(final BarSeries series, final T t) {
         super(series);
         this.value = t;
     }
 
     @Override
     public T getValue() {
-        return value;
+        return this.value;
     }
 
     @Override
-    public void refresh() {
+    public void refresh(final ZonedDateTime tick) {
         // NOOP
     }
 
@@ -64,6 +66,6 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " Value: " + value;
+        return getClass().getSimpleName() + " Value: " + this.value;
     }
 }

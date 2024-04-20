@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -44,20 +46,20 @@ public class BooleanRule extends AbstractRule {
      * @param satisfied true for the rule to be always satisfied, false to be never
      *                  satisfied
      */
-    public BooleanRule(boolean satisfied) {
+    private BooleanRule(final boolean satisfied) {
         this.satisfied = satisfied;
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(TradingRecord tradingRecord) {
-        traceIsSatisfied(satisfied);
-        return satisfied;
+    public boolean isSatisfied(final TradingRecord tradingRecord) {
+        traceIsSatisfied(this.satisfied);
+        return this.satisfied;
     }
 
     @Override
-    public void refresh() {
-        // TODO
+    public void refresh(final ZonedDateTime tick) {
+        // NOOP
     }
 
     @Override

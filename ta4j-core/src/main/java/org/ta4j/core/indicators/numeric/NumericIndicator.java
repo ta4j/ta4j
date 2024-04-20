@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.numeric;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.Indicator;
@@ -58,6 +60,8 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * objects. These are also overloaded to accept both {@code Indicator<Num>} and
  * {@code Number} arguments.
  */
+
+// TODO this looks lika a nece base for each numeric indicator, not a wrapper
 public class NumericIndicator implements Indicator<Num> {
 
     /**
@@ -406,8 +410,8 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public void refresh() {
-        this.delegate.refresh();
+    public void refresh(final ZonedDateTime tick) {
+        this.delegate.refresh(tick);
     }
 
     @Override

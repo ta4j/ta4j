@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
@@ -41,6 +43,8 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     /** Lower indicator */
     private final Indicator<Num> low;
     private Boolean value;
+    private ZonedDateTime currentTick;
+
 
     /**
      * Constructor.
@@ -66,10 +70,13 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     }
 
     @Override
-    public void refresh() {
-        this.low.refresh();
-        this.up.refresh();
-        this.value = calculate();
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+            this.low.refresh(tick);
+            this.up.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
     }
 
     @Override

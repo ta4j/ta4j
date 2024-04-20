@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -37,7 +37,6 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
@@ -142,7 +141,10 @@ public class BacktestBarSeries implements BarSeries {
     public boolean advance() {
         if (canAdvance()) {
             ++this.currentBarIndex;
-            this.strategies.forEach(Strategy::refresh);
+
+            for (var strategy : strategies) {
+               strategy.refresh(getBar().getEndTime());
+            }
             return true;
         }
 

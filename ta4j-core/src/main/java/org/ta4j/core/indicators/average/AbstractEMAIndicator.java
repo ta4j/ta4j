@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators.average;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
@@ -39,6 +43,10 @@ public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
     private Num previousValue;
     private Num currentValue;
     private int barsPassed;
+
+    // LocalDateTime may be better fit
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+
 
     /**
      * Constructor.
@@ -88,9 +96,17 @@ public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh() {
-        ++this.barsPassed;
-        this.indicator.refresh();
-        this.currentValue = calculate();
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.barsPassed;
+            this.indicator.refresh(tick);
+            this.currentValue = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.barsPassed = 1;
+            this.indicator.refresh(tick);
+            this.currentValue = calculate();
+            this.currentTick = tick;
+        }
     }
 }

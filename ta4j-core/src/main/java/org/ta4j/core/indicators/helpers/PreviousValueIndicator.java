@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.LinkedList;
 
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -42,6 +45,8 @@ public class PreviousValueIndicator extends AbstractIndicator<Num> {
     private final Indicator<Num> indicator;
     private final LinkedList<Num> previousValues = new LinkedList<>();
     private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+
 
     /**
      * Constructor.
@@ -90,9 +95,12 @@ public class PreviousValueIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh() {
-        this.indicator.refresh();
-        this.value = calculate();
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+            this.indicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
     }
 
     @Override

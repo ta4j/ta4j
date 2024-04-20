@@ -42,13 +42,13 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
      *
      * @param series the bar series
      */
-    protected AbstractIndicator(BarSeries series) {
+    protected AbstractIndicator(final BarSeries series) {
         this.series = series;
     }
 
     @Override
     public BarSeries getBarSeries() {
-        return series;
+        return this.series;
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,6 +22,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.rules;
+
+import java.time.ZonedDateTime;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
@@ -88,12 +90,12 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     @Override
     public String toString() {
-        return "CrossedUpIndicatorRule{" + "cross=" + this.cross + '}';
+        return "CrossedUpIndicatorRule{cross=" + this.cross + '}';
     }
 
     @Override
-    public void refresh() {
-        this.cross.refresh();
+    public void refresh(final ZonedDateTime tick) {
+        this.cross.refresh(tick);
     }
 
     @Override

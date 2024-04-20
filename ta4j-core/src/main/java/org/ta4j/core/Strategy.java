@@ -23,6 +23,8 @@
  */
 package org.ta4j.core;
 
+import java.time.ZonedDateTime;
+
 /**
  * A {@code Strategy} (also called "trading strategy") is a pair of
  * complementary (entry and exit) {@link Rule rules}. It may recommend to enter
@@ -55,8 +57,12 @@ public interface Strategy {
      * Refreshes state based on last bar.
      *
      * Called when new bar is added to BarSeries
+     *
+     * Backtesting may rewind time to past
+     *
+     * @param tick current time
      */
-    void refresh();
+    void refresh(ZonedDateTime tick);
 
     /**
      * @return true if this strategy is stable at current moment, false otherwise

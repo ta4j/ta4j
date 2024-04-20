@@ -23,6 +23,8 @@
  */
 package org.ta4j.core;
 
+import java.time.ZonedDateTime;
+
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
  * strategy}. A trading rule can consist of a combination of other rules.
@@ -80,8 +82,12 @@ public interface Rule {
     /**
      * Updates current state. Called after bar addition in live trading or after
      * advancing to next bar in back test.
+     *
+     * Backtesting bay rewind time to past.
+     *
+     * @param tick current time
      */
-    void refresh();
+    void refresh(ZonedDateTime tick);
 
     /**
      * @return ture if results of underlying indicators are stable

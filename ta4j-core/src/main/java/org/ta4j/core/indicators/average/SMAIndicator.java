@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators.average;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
@@ -40,6 +44,8 @@ public class SMAIndicator extends AbstractIndicator<Num> {
     private final RunningTotalIndicator sum;
     private Num value;
     private int processedBars;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+
 
     /**
      * Constructor.
@@ -77,10 +83,18 @@ public class SMAIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh() {
-        this.processedBars++;
-        this.sum.refresh();
-        this.value = calculate();
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.processedBars;
+            this.sum.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.processedBars = 1;
+            this.sum.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
     }
 
     @Override

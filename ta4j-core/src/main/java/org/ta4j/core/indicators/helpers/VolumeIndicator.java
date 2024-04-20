@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
@@ -50,7 +52,7 @@ public class VolumeIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh() {
+    public void refresh(final ZonedDateTime tick) {
         // NOOP
     }
 

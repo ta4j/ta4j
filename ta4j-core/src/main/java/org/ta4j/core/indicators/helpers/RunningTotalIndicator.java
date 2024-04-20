@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
@@ -40,6 +44,8 @@ public class RunningTotalIndicator extends NumericIndicator {
     private Num previousSum;
     private Num value;
     private int processedBars;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+
 
     public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
         super(indicator);
@@ -78,10 +84,18 @@ public class RunningTotalIndicator extends NumericIndicator {
     }
 
     @Override
-    public void refresh() {
-        this.processedBars++;
-        this.previousValue.refresh();
-        this.value = calculate();
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.processedBars;
+            this.previousValue.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.processedBars = 1;
+            this.previousValue.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
     }
 
     @Override

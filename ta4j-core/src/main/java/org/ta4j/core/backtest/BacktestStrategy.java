@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.ZonedDateTime;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BaseTradingRecord;
@@ -39,9 +41,6 @@ public class BacktestStrategy implements Strategy {
     /** The logger. */
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The class name. */
-    private final String className = getClass().getSimpleName();
-
     /** The name of the strategy. */
     private final String name;
 
@@ -53,6 +52,10 @@ public class BacktestStrategy implements Strategy {
 
     /** Recording of execution of this strategy */
     private BaseTradingRecord tradingRecord;
+
+    /** Current time */
+    private ZonedDateTime currentTick;
+
 
     /**
      * Constructor.
@@ -87,7 +90,7 @@ public class BacktestStrategy implements Strategy {
 
     @Override
     public boolean isStable() {
-        return entryRule.isStable() && exitRule.isStable();
+        return this.entryRule.isStable() && this.exitRule.isStable();
     }
 
     /**
@@ -123,9 +126,10 @@ public class BacktestStrategy implements Strategy {
     }
 
     @Override
-    public void refresh() {
-        this.entryRule.refresh();
-        this.exitRule.refresh();
+    public void refresh(final ZonedDateTime tick) {
+        this.entryRule.refresh(tick);
+        this.exitRule.refresh(tick);
+      this.currentTick = tick;
     }
 
     /**
@@ -135,7 +139,7 @@ public class BacktestStrategy implements Strategy {
      */
     protected void traceShouldEnter(final boolean enter) {
         if (this.log.isTraceEnabled()) {
-            this.log.trace(">>> {}#shouldEnter({}): {}", this.className, /* TODO log Clock */ enter);
+            this.log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), this.currentTick, enter);
         }
     }
 
@@ -146,7 +150,7 @@ public class BacktestStrategy implements Strategy {
      */
     protected void traceShouldExit(final boolean exit) {
         if (this.log.isTraceEnabled()) {
-            this.log.trace(">>> {}#shouldExit({}): {}", this.className, /* TODO log Clock */ exit);
+            this.log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), this.currentTick, exit);
         }
     }
 
@@ -160,7 +164,7 @@ public class BacktestStrategy implements Strategy {
 
     @Override
     public String toString() {
-        return "BacktestStrategy{" + "className='" + this.className + '\'' + ", name='" + this.name + '\''
+        return "BacktestStrategy{" + "className='" + getClass().getSimpleName() + '\'' + ", name='" + this.name + '\''
                 + ", entryRule=" + this.entryRule + ", exitRule=" + this.exitRule + '}';
     }
 }

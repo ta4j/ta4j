@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -83,9 +85,10 @@ public class OverIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public void refresh() {
-        this.first.refresh();
-        this.second.refresh();
+    public void refresh(final ZonedDateTime tick) {
+        this.first.refresh(tick);
+        this.second.refresh(tick);
+        setCurrentTick(tick);
     }
 
     @Override

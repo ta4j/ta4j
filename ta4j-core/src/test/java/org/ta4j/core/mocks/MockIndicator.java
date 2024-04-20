@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.mocks;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
@@ -41,7 +42,7 @@ public class MockIndicator implements Indicator<Num> {
      * @param series BarSeries of the Indicator
      * @param values Indicator values
      */
-    public MockIndicator(BarSeries series, List<Num> values) {
+    public MockIndicator(final BarSeries series, final List<Num> values) {
         this.series = series;
         this.values = values;
     }
@@ -53,7 +54,7 @@ public class MockIndicator implements Indicator<Num> {
      */
     @Override
     public Num getValue() {
-        return values.get(currentIndex);
+        return this.values.get(this.currentIndex);
     }
 
     /**
@@ -63,12 +64,12 @@ public class MockIndicator implements Indicator<Num> {
      */
     @Override
     public BarSeries getBarSeries() {
-        return series;
+        return this.series;
     }
 
     @Override
-    public void refresh() {
-        ++currentIndex;
+    public void refresh(final ZonedDateTime tick) {
+        ++this.currentIndex;
     }
 
     @Override

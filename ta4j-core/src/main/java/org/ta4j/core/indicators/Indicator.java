@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,6 +22,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators;
+
+import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 
@@ -47,8 +49,16 @@ public interface Indicator<T> {
 
     /**
      * updates its state based on current bar
+     *
+     * Implementation of indicator should be aware of that it may be called multiple times for single bar.
+     * If there is extensive calculation, implementation may count on that for each bar there will be discrete time passed
+     * that may be used for caching purposes.
+     *
+     * Backtesting may rewind time to past, this event should invalidate calculated value.
+     *
+     * @param tick current time
      */
-    void refresh();
+    void refresh(ZonedDateTime tick);
 
     /**
      * @return true if indicator is stabilized

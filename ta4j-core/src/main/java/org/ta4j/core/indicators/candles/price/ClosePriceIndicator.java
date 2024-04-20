@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.candles.price;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
@@ -40,7 +42,7 @@ public class ClosePriceIndicator extends AbstractIndicator<Num> {
      *
      * @param series the bar series
      */
-    public ClosePriceIndicator(BarSeries series) {
+    public ClosePriceIndicator(final BarSeries series) {
         super(series);
     }
 
@@ -50,7 +52,7 @@ public class ClosePriceIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh() {
+    public void refresh(final ZonedDateTime tick) {
         // NOOP
     }
 
