@@ -55,7 +55,7 @@ public class BooleanIndicatorRule extends AbstractRule {
 
     @Override
     public void refresh(final ZonedDateTime tick) {
-       this.indicator.refresh(tick);
+        this.indicator.refresh(tick);
     }
 
     @Override

@@ -46,7 +46,6 @@ public class SMAIndicator extends AbstractIndicator<Num> {
     private int processedBars;
     private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
-
     /**
      * Constructor.
      *

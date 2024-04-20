@@ -50,11 +50,13 @@ public interface Indicator<T> {
     /**
      * updates its state based on current bar
      *
-     * Implementation of indicator should be aware of that it may be called multiple times for single bar.
-     * If there is extensive calculation, implementation may count on that for each bar there will be discrete time passed
-     * that may be used for caching purposes.
+     * Implementation of indicator should be aware of that it may be called multiple
+     * times for single bar. If there is extensive calculation, implementation may
+     * count on that for each bar there will be discrete time passed that may be
+     * used for caching purposes.
      *
-     * Backtesting may rewind time to past, this event should invalidate calculated value.
+     * Backtesting may rewind time to past, this event should invalidate calculated
+     * value.
      *
      * @param tick current time
      */

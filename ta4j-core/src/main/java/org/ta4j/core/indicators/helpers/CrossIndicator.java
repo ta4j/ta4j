@@ -45,7 +45,6 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     private Boolean value;
     private ZonedDateTime currentTick;
 
-
     /**
      * Constructor.
      *

@@ -24,7 +24,6 @@
 package org.ta4j.core;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -66,14 +65,15 @@ public class XlsTestsUtils {
      *                     close throws IOException
      */
     private static Sheet getSheet(Class<?> clazz, String fileName) throws IOException {
-        InputStream inputStream = clazz.getResourceAsStream(fileName);
-        if (inputStream == null) {
-            throw new IOException("Null InputStream for file " + fileName);
+        try (final var inputStream = clazz.getResourceAsStream(fileName)) {
+            if (inputStream == null) {
+                throw new IOException("Null InputStream for file " + fileName);
+            }
+            HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
+            Sheet sheet = workbook.getSheetAt(0);
+            workbook.close();
+            return sheet;
         }
-        HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
-        Sheet sheet = workbook.getSheetAt(0);
-        workbook.close();
-        return sheet;
     }
 
     /**

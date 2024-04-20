@@ -142,8 +142,8 @@ public class BacktestBarSeries implements BarSeries {
         if (canAdvance()) {
             ++this.currentBarIndex;
 
-            for (var strategy : strategies) {
-               strategy.refresh(getBar().getEndTime());
+            for (final var strategy : this.strategies) {
+                strategy.refresh(getBar().getEndTime());
             }
             return true;
         }
@@ -276,8 +276,8 @@ public class BacktestBarSeries implements BarSeries {
     }
 
     public void replaceStrategy(final BacktestStrategy strategy) {
-        strategies.clear();
-        strategies.add(strategy);
+        this.strategies.clear();
+        this.strategies.add(strategy);
     }
 
     public void replaceStrategies(final List<BacktestStrategy> strategies) {

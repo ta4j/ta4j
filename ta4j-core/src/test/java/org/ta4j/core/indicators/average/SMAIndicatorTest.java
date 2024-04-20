@@ -48,99 +48,99 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     private final ExternalIndicatorTest xls;
 
-    public SMAIndicatorTest(NumFactory numFactory) {
+    public SMAIndicatorTest(final NumFactory numFactory) {
         super((data, params) -> new SMAIndicator(data, (int) params[0]), numFactory);
-        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFactory);
+        this.xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFactory);
     }
 
     private BacktestBarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
     }
 
     @Test
     public void usingBarCount3UsingClosePrice() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
-        data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+        final Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(this.data), 3);
+        this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
-        data.advance();
+        this.data.advance();
         assertNumEquals((0d + 0d + 1d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((0d + 1d + 2d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((1d + 2d + 3d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(10d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(11d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(4, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(13d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(4, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(10d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(10d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(10d / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals(3, indicator.getValue());
     }
 
     @Test
     public void usingBarCount3UsingClosePriceMovingSerie() {
-        data.barBuilder().closePrice(5.).add();
+        this.data.barBuilder().closePrice(5.).add();
 
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
-        data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+        final Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(this.data), 3);
+        this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
         // unstable bars skipped, unpredictable results
 
-        data.advance();
+        this.data.advance();
         assertNumEquals((0d + 0d + 1d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((0d + 1d + 2d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((1d + 2d + 3d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((2d + 3d + 4d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((3d + 4d + 3d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((4d + 3d + 4d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((3d + 4d + 5d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((4d + 5d + 4d) / 3, indicator.getValue());
-        data.advance();
+        this.data.advance();
         assertNumEquals((5d + 4d + 3d) / 3, indicator.getValue());
     }
 
     @Test
     public void whenBarCountIs1ResultShouldBeIndicatorValue() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+        final Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(this.data), 1);
+        this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
-        while (data.advance()) {
-            assertEquals(data.getBar().getClosePrice(), indicator.getValue());
+        while (this.data.advance()) {
+            assertEquals(this.data.getBar().getClosePrice(), indicator.getValue());
         }
     }
 
     @Test
     public void externalData3() throws Exception {
-        final var series = xls.getSeries();
-        Indicator<Num> xlsClose = new ClosePriceIndicator(series);
+        final var series = this.xls.getSeries();
+        final Indicator<Num> xlsClose = new ClosePriceIndicator(series);
         series.addStrategy(new MockStrategy(new MockRule(List.of(xlsClose))));
 
-        var actualIndicator = getIndicator(xlsClose, 3);
-        var expectedIndicator = xls.getIndicator(3);
+        final var actualIndicator = getIndicator(xlsClose, 3);
+        final var expectedIndicator = this.xls.getIndicator(3);
         series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
 
         assertIndicatorEquals(expectedIndicator, actualIndicator);
@@ -149,11 +149,11 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void externalData1() throws Exception {
-        final var series = xls.getSeries();
-        Indicator<Num> xlsClose = new ClosePriceIndicator(series);
+        final var series = this.xls.getSeries();
+        final Indicator<Num> xlsClose = new ClosePriceIndicator(series);
 
-        var actualIndicator = getIndicator(xlsClose, 1);
-        var expectedIndicator = xls.getIndicator(1);
+        final var actualIndicator = getIndicator(xlsClose, 1);
+        final var expectedIndicator = this.xls.getIndicator(1);
 
         series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
 
@@ -163,12 +163,12 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void externalData13() throws Exception {
-        final var series = xls.getSeries();
-        Indicator<Num> xlsClose = new ClosePriceIndicator(series);
+        final var series = this.xls.getSeries();
+        final Indicator<Num> xlsClose = new ClosePriceIndicator(series);
         series.addStrategy(new MockStrategy(new MockRule(List.of(xlsClose))));
 
-        var actualIndicator = getIndicator(xlsClose, 13);
-        var expectedIndicator = xls.getIndicator(13);
+        final var actualIndicator = getIndicator(xlsClose, 13);
+        final var expectedIndicator = this.xls.getIndicator(13);
         series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
 
         assertIndicatorEquals(expectedIndicator, actualIndicator);

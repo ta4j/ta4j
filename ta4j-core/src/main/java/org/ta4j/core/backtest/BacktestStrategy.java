@@ -56,7 +56,6 @@ public class BacktestStrategy implements Strategy {
     /** Current time */
     private ZonedDateTime currentTick;
 
-
     /**
      * Constructor.
      *
@@ -129,7 +128,7 @@ public class BacktestStrategy implements Strategy {
     public void refresh(final ZonedDateTime tick) {
         this.entryRule.refresh(tick);
         this.exitRule.refresh(tick);
-      this.currentTick = tick;
+        this.currentTick = tick;
     }
 
     /**

@@ -46,7 +46,6 @@ public class RunningTotalIndicator extends NumericIndicator {
     private int processedBars;
     private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
-
     public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
         super(indicator);
         this.indicator = indicator;

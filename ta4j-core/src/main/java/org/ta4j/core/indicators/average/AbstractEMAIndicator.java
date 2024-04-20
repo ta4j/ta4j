@@ -44,9 +44,8 @@ public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
     private Num currentValue;
     private int barsPassed;
 
-    // LocalDateTime may be better fit
+    // TODO LocalDateTime may be better fit
     private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
-
 
     /**
      * Constructor.
@@ -84,10 +83,6 @@ public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + this.barCount;
-    }
-
-    public int getBarCount() {
-        return this.barCount;
     }
 
     @Override

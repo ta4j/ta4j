@@ -49,10 +49,9 @@ public abstract class AbstractRule implements Rule {
      */
     protected void traceIsSatisfied(final boolean isSatisfied) {
         if (this.log.isTraceEnabled()) {
-          this.log.trace("{}#isSatisfied({}): {}", this.className, this.currentTick, isSatisfied);
+            this.log.trace("{}#isSatisfied({}): {}", this.className, this.currentTick, isSatisfied);
         }
     }
-
 
     protected void setCurrentTick(final ZonedDateTime currentTick) {
         this.currentTick = currentTick;

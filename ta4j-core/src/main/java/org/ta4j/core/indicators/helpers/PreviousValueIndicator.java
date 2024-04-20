@@ -47,7 +47,6 @@ public class PreviousValueIndicator extends AbstractIndicator<Num> {
     private Num value;
     private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
-
     /**
      * Constructor.
      *
