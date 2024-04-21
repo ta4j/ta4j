@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,11 +49,6 @@ public interface Strategy {
     Rule getExitRule();
 
     /**
-     * @return the opposite of the {@link Strategy strategy}
-     */
-    Strategy opposite();
-
-    /**
      * Refreshes state based on last bar.
      *
      * Called when new bar is added to BarSeries
@@ -81,7 +76,7 @@ public interface Strategy {
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
-    default boolean shouldEnter(TradingRecord tradingRecord) {
+    default boolean shouldEnter(final TradingRecord tradingRecord) {
         return isStable() && getEntryRule().isSatisfied(tradingRecord);
     }
 
@@ -96,7 +91,7 @@ public interface Strategy {
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */
-    default boolean shouldExit(TradingRecord tradingRecord) {
+    default boolean shouldExit(final TradingRecord tradingRecord) {
         return isStable() && getExitRule().isSatisfied(tradingRecord);
     }
 }

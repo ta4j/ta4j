@@ -38,7 +38,6 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 
@@ -105,7 +104,7 @@ public class CsvBarsLoader {
     }
 
     public static void main(String[] args) throws IOException {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BacktestBarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());

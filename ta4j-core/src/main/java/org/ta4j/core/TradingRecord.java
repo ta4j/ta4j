@@ -25,7 +25,6 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.io.Serializable;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
@@ -41,7 +40,7 @@ import org.ta4j.core.num.Num;
  * strategy)
  * </ul>
  */
-public interface TradingRecord extends Serializable {
+public interface TradingRecord {
 
     /**
      * @return the entry type (BUY or SELL) of the first trade in the trading
@@ -173,23 +172,23 @@ public interface TradingRecord extends Serializable {
      */
     Integer getEndIndex();
 
-    /**
-     * @param series the bar series, not null
-     * @return the {@link #getStartIndex()} if not null and greater than
-     *         {@link BarSeries#getBeginIndex()}, otherwise
-     *         {@link BarSeries#getBeginIndex()}
-     */
-    default int getStartIndex(BarSeries series) {
-        return getStartIndex() == null ? series.getBeginIndex() : Math.max(getStartIndex(), series.getBeginIndex());
-    }
-
-    /**
-     * @param series the bar series, not null
-     * @return the {@link #getEndIndex()} if not null and less than
-     *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}
-     */
-    default int getEndIndex(BarSeries series) {
-        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
-    }
+// TODO   /**
+//     * @param series the bar series, not null
+//     * @return the {@link #getStartIndex()} if not null and greater than
+//     *         {@link BarSeries#getBeginIndex()}, otherwise
+//     *         {@link BarSeries#getBeginIndex()}
+//     */
+//    default int getStartIndex(BarSeries series) {
+//        return getStartIndex() == null ? series.getBeginIndex() : Math.max(getStartIndex(), series.getBeginIndex());
+//    }
+//
+//    /**
+//     * @param series the bar series, not null
+//     * @return the {@link #getEndIndex()} if not null and less than
+//     *         {@link BarSeries#getEndIndex()}, otherwise
+//     *         {@link BarSeries#getEndIndex()}
+//     */
+//    default int getEndIndex(BarSeries series) {
+//        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+//    }
 }

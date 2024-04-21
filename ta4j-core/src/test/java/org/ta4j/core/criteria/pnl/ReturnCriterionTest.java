@@ -29,7 +29,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -49,7 +49,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
 //                Trade.buyAt(3, series), Trade.sellAt(5, series));
 //
 //        // include base percentage
@@ -64,7 +64,7 @@
 //    @Test
 //    public void calculateWithLosingLongPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        // include base percentage
@@ -79,7 +79,7 @@
 //    @Test
 //    public void calculateReturnWithWinningShortPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
 //                Trade.sellAt(2, series), Trade.buyAt(5, series));
 //
 //        // include base percentage
@@ -94,7 +94,7 @@
 //    @Test
 //    public void calculateReturnWithLosingShortPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 100, 80, 85, 130).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
 //                Trade.sellAt(2, series), Trade.buyAt(5, series));
 //
 //        // include base percentage
@@ -112,11 +112,11 @@
 //
 //        // with base percentage should return 1
 //        AnalysisCriterion retWithBase = getCriterion();
-//        assertNumEquals(1d, retWithBase.calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(1d, retWithBase.calculate(series, new BackTestTradingRecord()));
 //
 //        // without base percentage should return 0
 //        AnalysisCriterion retWithoutBase = getCriterion(false);
-//        assertNumEquals(0, retWithoutBase.calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(0, retWithoutBase.calculate(series, new BackTestTradingRecord()));
 //    }
 //
 //    @Test

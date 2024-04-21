@@ -23,10 +23,26 @@
  */
 package org.ta4j.core;
 
-/**
- * A factory that provides builders of bars.
- */
-public interface BarBuilderFactory {
+import java.time.ZonedDateTime;
 
-   BarBuilder createBarBuilder(BarSeries series);
+/**
+ * @author Lukáš Kvídera
+ */
+public interface BarBuilder {
+  BarBuilder endTime(ZonedDateTime zonedDateTime);
+
+  BarBuilder openPrice(Number openPrice);
+
+  BarBuilder closePrice(Number closePrice);
+
+  BarBuilder highPrice(Number highPrice);
+
+  BarBuilder lowPrice(Number lowPrice);
+
+  BarBuilder volume(Number volume);
+
+  /**
+   * Build this bar and add him to related {@link BarSeries}
+   */
+  void add();
 }

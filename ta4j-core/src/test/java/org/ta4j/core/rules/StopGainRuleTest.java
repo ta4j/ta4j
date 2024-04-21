@@ -29,7 +29,7 @@
 //import org.junit.Before;
 //import org.junit.Test;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -55,7 +55,7 @@
 //
 //    @Test
 //    public void isSatisfiedWorksForBuy() {
-//        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+//        final var tradingRecord = new BackTestTradingRecord(Trade.TradeType.BUY);
 //        final Num tradedAmount = numOf(1);
 //
 //        // 30% stop-gain
@@ -81,7 +81,7 @@
 //
 //    @Test
 //    public void isSatisfiedWorksForSell() {
-//        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+//        final TradingRecord tradingRecord = new BackTestTradingRecord(Trade.TradeType.SELL);
 //        final Num tradedAmount = numOf(1);
 //
 //        // 30% stop-gain

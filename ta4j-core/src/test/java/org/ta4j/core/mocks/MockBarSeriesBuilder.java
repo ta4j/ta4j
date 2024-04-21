@@ -25,16 +25,14 @@ package org.ta4j.core.mocks;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
+import org.ta4j.core.StrategyFactory;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
-import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -74,7 +72,7 @@ public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
         return this;
     }
 
-    private static void doublesToBars(final BarSeries series, final List<Double> data) {
+    private static void doublesToBars(final BacktestBarSeries series, final List<Double> data) {
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder().closePrice(data.get(i)).openPrice(0).add();
         }
@@ -85,13 +83,13 @@ public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
         return this;
     }
 
-    public MockBarSeriesBuilder withStrategy(Function<BacktestBarSeries, BacktestStrategy> strategyFactory) {
+    public MockBarSeriesBuilder withStrategyFactory(final StrategyFactory strategyFactory) {
         this.strategy = true;
-        super.withStrategy(strategyFactory);
+        super.withStrategyFactory(strategyFactory);
         return this;
     }
 
-    private static void arbitraryBars(final BarSeries series) {
+    private static void arbitraryBars(final BacktestBarSeries series) {
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
                     .endTime(ZonedDateTime.now().minusMinutes((long) (5001 - i)))
@@ -109,8 +107,8 @@ public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
     @Override
     public BacktestBarSeries build() {
         withBarBuilderFactory(new MockBarBuilderFactory());
-        if (!strategy) {
-            withStrategy(x -> new MockStrategy(new MockRule(List.of())));
+        if (!this.strategy) {
+            withStrategyFactory(x -> new MockStrategy(new MockRule(List.of())));
         }
         final var series = super.build();
         if (this.data != null) {

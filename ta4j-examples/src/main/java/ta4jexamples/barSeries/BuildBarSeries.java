@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -67,8 +68,8 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static void addBars(final BarSeries series, final ZonedDateTime endTime) {
-        series.addBar(series.barBuilder()
+    private static void addBars(final BacktestBarSeries series, final ZonedDateTime endTime) {
+        series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
                 .openPrice(105.42)
@@ -76,8 +77,8 @@ public class BuildBarSeries {
                 .lowPrice(104.01)
                 .closePrice(111.42)
                 .volume(1337)
-                .build());
-        series.addBar(series.barBuilder()
+                .add();
+        series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(1))
                 .openPrice(111.43)
@@ -85,8 +86,8 @@ public class BuildBarSeries {
                 .lowPrice(107.77)
                 .closePrice(107.99)
                 .volume(1234)
-                .build());
-        series.addBar(series.barBuilder()
+                .add();
+        series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(endTime.plusDays(2))
                 .openPrice(107.90)
@@ -94,7 +95,7 @@ public class BuildBarSeries {
                 .lowPrice(107.90)
                 .closePrice(115.42)
                 .volume(4242)
-                .build());
+                .add();
     }
 
     private static BarSeries buildWithDouble() {

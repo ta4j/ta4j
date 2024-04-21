@@ -28,7 +28,7 @@
 //
 //import org.junit.Before;
 //import org.junit.Test;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
 //
@@ -39,7 +39,7 @@
 //
 //    @Before
 //    public void setUp() {
-//        tradingRecord = new BaseTradingRecord();
+//        tradingRecord = new BackTestTradingRecord();
 //    }
 //
 //    @Test

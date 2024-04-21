@@ -28,6 +28,8 @@ import org.ta4j.core.BarSeries;
 /**
  * Aggregates a {@link BarSeries} into another one.
  */
+
+// TODO BarSeries should aggregate itself
 public interface BarSeriesAggregator {
 
     /**

@@ -27,7 +27,7 @@ import static junit.framework.TestCase.assertEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
 public class OpenPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private OpenPriceIndicator openPriceIndicator;
 
-    BarSeries barSeries;
+    BacktestBarSeries barSeries;
 
     public OpenPriceIndicatorTest(final NumFactory numFactory) {
         super(numFactory);

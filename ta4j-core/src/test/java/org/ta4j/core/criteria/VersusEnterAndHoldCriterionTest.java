@@ -30,7 +30,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -49,7 +49,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
 //                Trade.buyAt(3, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
@@ -59,7 +59,7 @@
 //    @Test
 //    public void calculateOnlyWithLossPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
@@ -80,13 +80,13 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 //
 //        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
-//        assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BackTestTradingRecord()));
 //    }
 //
 //    @Test
 //    public void calculateWithAverageProfit() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN),
 //                Trade.buyAt(2, NaN, NaN), Trade.sellAt(5, NaN, NaN));
 //
 //        AnalysisCriterion buyAndHold = getCriterion(new AverageReturnPerBarCriterion());
@@ -98,7 +98,7 @@
 //    @Test
 //    public void calculateWithNumberOfBars() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion buyAndHold = getCriterion(new NumberOfBarsCriterion());

@@ -29,7 +29,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
@@ -49,7 +49,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 //        LinearTransactionCostModel transactionCost = new LinearTransactionCostModel(0.01);
 //        ZeroCostModel holdingCost = new ZeroCostModel();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
 //
 //        // entry price = 100 (cost = 100*0.01 = 1) => netPrice = 101, grossPrice = 100
 //        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
@@ -80,7 +80,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
 //                Trade.buyAt(3, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion loss = getCriterion(true);
@@ -90,7 +90,7 @@
 //    @Test
 //    public void calculateOnlyWithLossPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion loss = getCriterion(true);
@@ -100,7 +100,7 @@
 //    @Test
 //    public void calculateProfitWithShortPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(95, 100, 70, 80, 85, 100).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
 //                Trade.sellAt(2, series), Trade.buyAt(5, series));
 //
 //        AnalysisCriterion loss = getCriterion(true);

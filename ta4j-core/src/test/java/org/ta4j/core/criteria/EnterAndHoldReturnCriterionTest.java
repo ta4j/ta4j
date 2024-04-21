@@ -31,7 +31,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.Trade.TradeType;
@@ -49,7 +49,7 @@
 //    @Test
 //    public void calculateWithEmpty() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(List.of()).build();
-//        var tradingRecord = new BaseTradingRecord();
+//        var tradingRecord = new BackTestTradingRecord();
 //        AnalysisCriterion buyAndHold = getCriterion();
 //        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
 //
@@ -66,7 +66,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
 //                Trade.buyAt(3, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion buyAndHold = getCriterion();
@@ -79,7 +79,7 @@
 //    @Test
 //    public void calculateOnlyWithLossPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        AnalysisCriterion buyAndHold = getCriterion();
@@ -94,10 +94,10 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 //
 //        AnalysisCriterion buyAndHold = getCriterion();
-//        assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(0.7, buyAndHold.calculate(series, new BackTestTradingRecord()));
 //
 //        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
-//        assertNumEquals(1.3, sellAndHold.calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(1.3, sellAndHold.calculate(series, new BackTestTradingRecord()));
 //    }
 //
 //    @Test

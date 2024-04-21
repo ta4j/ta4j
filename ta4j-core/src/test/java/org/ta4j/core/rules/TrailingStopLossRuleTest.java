@@ -49,7 +49,7 @@
 //import static org.junit.Assert.assertTrue;
 //
 //import org.junit.Test;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade.TradeType;
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
 //import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
@@ -64,7 +64,7 @@
 //
 //    @Test
 //    public void isSatisfiedForBuy() {
-//        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+//        BackTestTradingRecord tradingRecord = new BackTestTradingRecord(TradeType.BUY);
 //        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 110, 120, 130, 117.00, 130, 116.99)
 //                .build());
@@ -91,7 +91,7 @@
 //
 //    @Test
 //    public void isSatisfiedForBuyForBarCount() {
-//        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+//        BackTestTradingRecord tradingRecord = new BackTestTradingRecord(TradeType.BUY);
 //        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99)
 //                .build());
@@ -120,7 +120,7 @@
 //
 //    @Test
 //    public void isSatisfiedForSell() {
-//        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
+//        BackTestTradingRecord tradingRecord = new BackTestTradingRecord(TradeType.SELL);
 //        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 90, 80, 70, 77.00, 120, 132.01)
 //                .build());
@@ -148,7 +148,7 @@
 //
 //    @Test
 //    public void isSatisfiedForSellForBarCount() {
-//        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
+//        BackTestTradingRecord tradingRecord = new BackTestTradingRecord(TradeType.SELL);
 //        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01)
 //                .build());

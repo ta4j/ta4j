@@ -27,7 +27,6 @@ import java.time.ZonedDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
@@ -51,7 +50,7 @@ public class BacktestStrategy implements Strategy {
     private final Rule exitRule;
 
     /** Recording of execution of this strategy */
-    private BaseTradingRecord tradingRecord;
+    private BackTestTradingRecord tradingRecord;
 
     /** Current time */
     private ZonedDateTime currentTick;
@@ -120,11 +119,6 @@ public class BacktestStrategy implements Strategy {
     }
 
     @Override
-    public Strategy opposite() {
-        return new BacktestStrategy("opposite(" + this.name + ")", this.exitRule, this.entryRule);
-    }
-
-    @Override
     public void refresh(final ZonedDateTime tick) {
         this.entryRule.refresh(tick);
         this.exitRule.refresh(tick);
@@ -157,8 +151,8 @@ public class BacktestStrategy implements Strategy {
         return this.tradingRecord;
     }
 
-    public void register(final BaseTradingRecord baseTradingRecord) {
-        this.tradingRecord = baseTradingRecord;
+    public void register(final BackTestTradingRecord backTestTradingRecord) {
+        this.tradingRecord = backTestTradingRecord;
     }
 
     @Override

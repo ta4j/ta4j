@@ -27,7 +27,7 @@
 //import static org.junit.Assert.assertTrue;
 //
 //import org.junit.Test;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
 //import org.ta4j.core.num.DecimalNumFactory;
@@ -50,7 +50,7 @@
 //        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
 //                .withData(1, 2, 3, 4)
 //                .build();
-//        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
+//        final var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series));
 //
 //        assertFalse(rule.isSatisfied(0, tradingRecord));
 //        assertTrue(rule.isSatisfied(1, tradingRecord));
@@ -64,7 +64,7 @@
 //        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
 //                .withData(1, 2, 3, 4)
 //                .build();
-//        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
+//        final var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series));
 //
 //        assertFalse(rule.isSatisfied(0, tradingRecord));
 //        assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -78,7 +78,7 @@
 //        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
 //                .withData(1, 2, 3, 4)
 //                .build();
-//        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+//        final var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
 //
 //        assertFalse(rule.isSatisfied(0, tradingRecord));
 //        assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -89,7 +89,7 @@
 //    @Test
 //    public void testAtLeastBarCountRuleForEmptyTradingRecordShouldAlwaysReturnsFalse() {
 //        final var rule = new OpenedPositionMinimumBarCountRule(1);
-//        final var tradingRecord = new BaseTradingRecord();
+//        final var tradingRecord = new BackTestTradingRecord();
 //
 //        assertFalse(rule.isSatisfied(0, tradingRecord));
 //        assertFalse(rule.isSatisfied(1, tradingRecord));

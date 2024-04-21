@@ -28,7 +28,7 @@
 //import static org.ta4j.core.TestUtils.assertNumEquals;
 //
 //import org.junit.Test;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.criteria.AbstractCriterionTest;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -45,7 +45,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
 //                Trade.buyAt(3, series), Trade.sellAt(5, series));
 //
 //        var avgLoss = getCriterion();
@@ -55,7 +55,7 @@
 //    @Test
 //    public void calculateOnlyWithLossPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //
 //        var avgLoss = getCriterion();
@@ -65,7 +65,7 @@
 //    @Test
 //    public void calculateProfitWithShortPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(95, 100, 70, 80, 85, 100).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
 //                Trade.sellAt(2, series), Trade.buyAt(5, series));
 //
 //        var avgLoss = getCriterion();

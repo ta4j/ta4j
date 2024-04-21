@@ -25,7 +25,6 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
@@ -44,9 +43,7 @@ import org.ta4j.core.num.Num;
  * <li>entry == SELL --> exit == BUY
  * </ul>
  */
-public class Position implements Serializable {
-
-    private static final long serialVersionUID = -5484709075767220358L;
+public class Position {
 
     /** The entry trade */
     private Trade entry;

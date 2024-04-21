@@ -30,7 +30,7 @@
 //import org.junit.Before;
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -57,7 +57,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 95, 100, 90, 95, 80, 120)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series));
 //
 //        double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
@@ -70,7 +70,7 @@
 //    @Test
 //    public void rewardRiskRatioCriterionOnlyWithGain() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(5, series));
 //        assertTrue(rrc.calculate(series, tradingRecord).isNaN());
 //    }
@@ -78,7 +78,7 @@
 //    @Test
 //    public void rewardRiskRatioCriterionWithNoPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
-//        assertTrue(rrc.calculate(series, new BaseTradingRecord()).isNaN());
+//        assertTrue(rrc.calculate(series, new BackTestTradingRecord()).isNaN());
 //    }
 //
 //    @Test
@@ -104,7 +104,7 @@
 //        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 95, 100, 90, 95, 80, 120)
 //                .build();
-//        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        final TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(3, series));
 //
 //        final Num result = rrc.calculate(series, tradingRecord);

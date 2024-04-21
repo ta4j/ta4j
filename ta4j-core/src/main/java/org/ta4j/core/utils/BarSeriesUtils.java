@@ -35,7 +35,7 @@
 //import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 //import org.ta4j.core.aggregator.BarAggregator;
 //import org.ta4j.core.aggregator.BarSeriesAggregator;
-//import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
+//import org.ta4j.core.aggregator.BacktestBarSeriesAggregator;
 //import org.ta4j.core.aggregator.DurationBarAggregator;
 //import org.ta4j.core.num.Num;
 //import org.ta4j.core.num.NumFactory;
@@ -66,7 +66,7 @@
 //     */
 //    public static BarSeries aggregateBars(BarSeries barSeries, Duration timePeriod, String aggregatedSeriesName) {
 //        final BarAggregator durationAggregator = new DurationBarAggregator(timePeriod, true);
-//        final BarSeriesAggregator seriesAggregator = new BaseBarSeriesAggregator(durationAggregator);
+//        final BarSeriesAggregator seriesAggregator = new BacktestBarSeriesAggregator(durationAggregator);
 //        return seriesAggregator.aggregate(barSeries, aggregatedSeriesName);
 //    }
 //

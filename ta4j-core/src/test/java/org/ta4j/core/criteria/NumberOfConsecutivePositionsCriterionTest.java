@@ -30,7 +30,7 @@
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
 //import org.ta4j.core.AnalysisCriterion.PositionFilter;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -49,8 +49,8 @@
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
 //
-//        assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(series, new BaseTradingRecord()));
-//        assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(series, new BackTestTradingRecord()));
+//        assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(series, new BackTestTradingRecord()));
 //    }
 //
 //    @Test
@@ -58,14 +58,14 @@
 //        var seriesLoss = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(110, 105, 100, 90, 80, 140)
 //                .build();
-//        TradingRecord tradingRecordLoss = new BaseTradingRecord(Trade.buyAt(0, seriesLoss), Trade.sellAt(2, seriesLoss),
+//        TradingRecord tradingRecordLoss = new BackTestTradingRecord(Trade.buyAt(0, seriesLoss), Trade.sellAt(2, seriesLoss),
 //                Trade.buyAt(3, seriesLoss), Trade.sellAt(4, seriesLoss));
 //        assertNumEquals(2, getCriterion(PositionFilter.LOSS).calculate(seriesLoss, tradingRecordLoss));
 //
 //        var seriesProfit = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 120, 130, 140)
 //                .build();
-//        TradingRecord tradingRecordProfit = new BaseTradingRecord(Trade.buyAt(1, seriesProfit),
+//        TradingRecord tradingRecordProfit = new BackTestTradingRecord(Trade.buyAt(1, seriesProfit),
 //                Trade.sellAt(3, seriesProfit), Trade.buyAt(3, seriesProfit), Trade.sellAt(4, seriesProfit));
 //        assertNumEquals(2, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, tradingRecordProfit));
 //    }
@@ -90,14 +90,14 @@
 //        var seriesLoss = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 90, 110, 120, 95, 105)
 //                .build();
-//        TradingRecord tradingRecordLoss = new BaseTradingRecord(Trade.sellAt(0, seriesLoss), Trade.buyAt(1, seriesLoss),
+//        TradingRecord tradingRecordLoss = new BackTestTradingRecord(Trade.sellAt(0, seriesLoss), Trade.buyAt(1, seriesLoss),
 //                Trade.sellAt(3, seriesLoss), Trade.buyAt(5, seriesLoss));
 //        assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(seriesLoss, tradingRecordLoss));
 //
 //        var seriesProfit = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecordProfit = new BaseTradingRecord(Trade.sellAt(0, seriesProfit),
+//        TradingRecord tradingRecordProfit = new BackTestTradingRecord(Trade.sellAt(0, seriesProfit),
 //                Trade.buyAt(1, seriesProfit), Trade.sellAt(3, seriesProfit), Trade.buyAt(5, seriesProfit));
 //        assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, tradingRecordProfit));
 //    }

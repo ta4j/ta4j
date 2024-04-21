@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.AnalysisCriterion;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade.TradeType;
 //import org.ta4j.core.TradingRecord;
@@ -93,7 +93,7 @@
 //    }
 //
 //    private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-//        TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
+//        TradingRecord fakeRecord = new BackTestTradingRecord(tradeType);
 //        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
 //        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
 //        return fakeRecord;

@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.num;
 
-import java.io.Serializable;
-
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
  * should be used as base for calculations.
@@ -33,7 +31,7 @@ import java.io.Serializable;
  * @see DoubleNum
  * @see DecimalNum
  */
-public interface Num extends Comparable<Num>, Serializable {
+public interface Num extends Comparable<Num> {
 
     /**
      * @return the delegate used from this {@code Num} implementation

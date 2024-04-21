@@ -29,7 +29,7 @@
 //import java.util.Collections;
 //
 //import org.junit.Test;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -48,7 +48,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(1d, 2d, 3d, 4d, 5d)
 //                .build();
-//        var cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
+//        var cashFlow = new CashFlow(sampleBarSeries, new BackTestTradingRecord());
 //        assertEquals(5, cashFlow.getSize());
 //
 //        assertNumEquals(1, cashFlow.getValue(0));
@@ -62,7 +62,7 @@
 //    @Test
 //    public void cashFlowBuyWithOnlyOnePosition() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -75,7 +75,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(2, 1, 3, 5, 6, 3, 20)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries),
 //                Trade.buyAt(3, sampleBarSeries), Trade.sellAt(4, sampleBarSeries), Trade.sellAt(5, sampleBarSeries),
 //                Trade.buyAt(6, sampleBarSeries));
 //
@@ -95,7 +95,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(1, 2, 4, 8, 16, 32)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(2, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(2, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -112,7 +112,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(1, 2, 4, 8, 16, 32)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
 //                Trade.sellAt(2, sampleBarSeries), Trade.buyAt(4, sampleBarSeries), Trade.buyAt(4, sampleBarSeries),
 //                Trade.sellAt(5, sampleBarSeries));
 //
@@ -129,7 +129,7 @@
 //    @Test
 //    public void cashFlowShortSellWith20PercentGain() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(110, 100, 90, 80).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -142,7 +142,7 @@
 //    @Test
 //    public void cashFlowShortSellWith20PercentLoss() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(90, 100, 110, 120).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -157,7 +157,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(11, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(1, sampleBarSeries), Trade.buyAt(11, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -180,7 +180,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 150, 200, 210)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, sampleBarSeries), Trade.buyAt(3, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -193,7 +193,7 @@
 //    @Test
 //    public void cashFlowShortSellBigLossWithNegativeCashFlow() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 20).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, sampleBarSeries), Trade.buyAt(1, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, sampleBarSeries), Trade.buyAt(1, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -204,7 +204,7 @@
 //    @Test
 //    public void cashFlowValueWithOnlyOnePositionAndAGapBefore() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d, 2d).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(1, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(1, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
 //
 //        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -216,7 +216,7 @@
 //    @Test
 //    public void cashFlowValueWithOnlyOnePositionAndAGapAfter() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 2d).build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //
@@ -231,7 +231,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(1d, 2d, 4d, 8d, 16d, 32d)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(1, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(1, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
 //                Trade.buyAt(4, sampleBarSeries), Trade.sellAt(5, sampleBarSeries));
 //
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
@@ -250,7 +250,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d, 6d, 7d, 8d, 5d, 6d)
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
 //                Trade.buyAt(6, sampleBarSeries), Trade.sellAt(8, sampleBarSeries), Trade.buyAt(9, sampleBarSeries),
 //                Trade.sellAt(11, sampleBarSeries));
 //
@@ -274,7 +274,7 @@
 //        sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d)
 //                .build();
-//        tradingRecord = new BaseTradingRecord(Trade.buyAt(4, sampleBarSeries), Trade.sellAt(5, sampleBarSeries),
+//        tradingRecord = new BackTestTradingRecord(Trade.buyAt(4, sampleBarSeries), Trade.sellAt(5, sampleBarSeries),
 //                Trade.buyAt(6, sampleBarSeries), Trade.sellAt(8, sampleBarSeries));
 //
 //        var flow = new CashFlow(sampleBarSeries, tradingRecord);
@@ -294,7 +294,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d)
 //                .build();
-//        var cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
+//        var cashFlow = new CashFlow(sampleBarSeries, new BackTestTradingRecord());
 //        assertNumEquals(1, cashFlow.getValue(4));
 //        assertNumEquals(1, cashFlow.getValue(7));
 //        assertNumEquals(1, cashFlow.getValue(9));
@@ -306,7 +306,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(Collections.nCopies(size, 10d))
 //                .build();
-//        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+//        var tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries),
 //                Trade.sellAt(size - 1, sampleBarSeries));
 //        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 //        assertNumEquals(1, cashFlow.getValue(size - 1));

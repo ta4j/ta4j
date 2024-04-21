@@ -38,7 +38,6 @@ import java.util.function.Consumer;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.Indicator;
@@ -63,10 +62,10 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     private static Num diffNumInt;
     private static Num numDouble;
     private static Num diffNumDouble;
-    private static AtomicReference<Indicator<Num>> indicator = new AtomicReference<>();
-    private static AtomicReference<Indicator<Num>> diffIndicator = new AtomicReference<>();
+    private static final AtomicReference<Indicator<Num>> indicator = new AtomicReference<>();
+    private static final AtomicReference<Indicator<Num>> diffIndicator = new AtomicReference<>();
 
-    public TestUtilsTest(NumFactory numFactory) {
+    public TestUtilsTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -84,7 +83,7 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries randomSeries(Consumer<Indicator<Num>> consumer) {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withStrategy(s -> createStrategy(s, consumer))
+                .withStrategyFactory(s -> createStrategy(s, consumer))
                 .build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
@@ -107,7 +106,7 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         return series;
     }
 
-    private BacktestStrategy createStrategy(BacktestBarSeries series, final Consumer<Indicator<Num>> consumer) {
+    private BacktestStrategy createStrategy(final BarSeries series, final Consumer<Indicator<Num>> consumer) {
         final var indicator = new ClosePriceIndicator(series);
         consumer.accept(indicator);
         return new MockStrategy(new MockRule(List.of(indicator)));

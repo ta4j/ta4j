@@ -23,10 +23,12 @@
  */
 package org.ta4j.core.backtest;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.num.Num;
@@ -35,8 +37,6 @@ import org.ta4j.core.num.Num;
  * Base implementation of a {@link Bar}.
  */
 public class BacktestBar implements Bar {
-
-    private static final long serialVersionUID = 8038383777467488147L;
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -81,8 +81,9 @@ public class BacktestBar implements Bar {
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
-    BacktestBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
-            Num volume, Num amount, long trades) {
+    BacktestBar(
+        final Duration timePeriod, final ZonedDateTime endTime, final Num openPrice, final Num highPrice, final Num lowPrice, final Num closePrice,
+            final Num volume, final Num amount, final long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -102,7 +103,7 @@ public class BacktestBar implements Bar {
      */
     @Override
     public Duration getTimePeriod() {
-        return timePeriod;
+        return this.timePeriod;
     }
 
     /**
@@ -111,69 +112,109 @@ public class BacktestBar implements Bar {
      */
     @Override
     public ZonedDateTime getBeginTime() {
-        return beginTime;
+        return this.beginTime;
     }
 
     @Override
     public ZonedDateTime getEndTime() {
-        return endTime;
+        return this.endTime;
     }
 
     @Override
     public Num getOpenPrice() {
-        return openPrice;
+        return this.openPrice;
     }
 
     @Override
     public Num getHighPrice() {
-        return highPrice;
+        return this.highPrice;
     }
 
     @Override
     public Num getLowPrice() {
-        return lowPrice;
+        return this.lowPrice;
     }
 
     @Override
     public Num getClosePrice() {
-        return closePrice;
+        return this.closePrice;
     }
 
     @Override
     public Num getVolume() {
-        return volume;
+        return this.volume;
     }
 
-    @Override
+
+    /**
+     * @return the total traded amount (tradePrice x tradeVolume) of the bar period
+     */
     public Num getAmount() {
-        return amount;
+        return this.amount;
     }
 
-    @Override
+    /**
+     * @return the number of trades of the bar period
+     */
     public long getTrades() {
-        return trades;
+        return this.trades;
     }
 
-    @Override
-    public void addTrade(Num tradeVolume, Num tradePrice) {
+    /**
+     * Adds a trade and updates the close price at the end of the bar period.
+     *
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the actual price per asset
+     */
+    public void addTrade(final Num tradeVolume, final Num tradePrice) {
         addPrice(tradePrice);
 
-        volume = volume.plus(tradeVolume);
-        amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
-        trades++;
+      this.volume = this.volume.plus(tradeVolume);
+      this.amount = this.amount.plus(tradeVolume.multipliedBy(tradePrice));
+      this.trades++;
     }
 
-    @Override
-    public void addPrice(Num price) {
-        if (openPrice == null) {
-            openPrice = price;
+
+
+
+    /**
+     * Updates the close price at the end of the bar period. The open, high and low
+     * prices are also updated as needed.
+     *
+     * @param price       the actual price per asset
+     * @param numFunction the numbers precision
+     */
+    void addPrice(final String price, final Function<Number, Num> numFunction) {
+        addPrice(numFunction.apply(new BigDecimal(price)));
+    }
+
+    /**
+     * Updates the close price at the end of the bar period. The open, high and low
+     * prices are also updated as needed.
+     *
+     * @param price       the actual price per asset
+     * @param numFunction the numbers precision
+     */
+    void addPrice(final Number price, final Function<Number, Num> numFunction) {
+        addPrice(numFunction.apply(price));
+    }
+
+    /**
+     * Updates the close price at the end of the bar period. The open, high and low
+     * prices are also updated as needed.
+     *
+     * @param price the actual price per asset
+     */
+    public void addPrice(final Num price) {
+        if (this.openPrice == null) {
+          this.openPrice = price;
         }
-        closePrice = price;
-        if (highPrice == null || highPrice.isLessThan(price)) {
-            highPrice = price;
+      this.closePrice = price;
+        if (this.highPrice == null || this.highPrice.isLessThan(price)) {
+          this.highPrice = price;
         }
-        if (lowPrice == null || lowPrice.isGreaterThan(price)) {
-            lowPrice = price;
+        if (this.lowPrice == null || this.lowPrice.isGreaterThan(price)) {
+          this.lowPrice = price;
         }
     }
 
@@ -181,8 +222,9 @@ public class BacktestBar implements Bar {
     public String toString() {
         return String.format(
                 "{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
-                endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.doubleValue(), openPrice.doubleValue(),
-                lowPrice.doubleValue(), highPrice.doubleValue(), volume.doubleValue());
+            this.endTime.withZoneSameInstant(ZoneId.systemDefault()),
+            this.closePrice.doubleValue(), this.openPrice.doubleValue(),
+            this.lowPrice.doubleValue(), this.highPrice.doubleValue(), this.volume.doubleValue());
     }
 
     /**
@@ -190,28 +232,31 @@ public class BacktestBar implements Bar {
      * @param endTime    the end time of the bar
      * @throws NullPointerException if one of the arguments is null
      */
-    private static void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
+    private static void checkTimeArguments(final Duration timePeriod, final ZonedDateTime endTime) {
         Objects.requireNonNull(timePeriod, "Time period cannot be null");
         Objects.requireNonNull(endTime, "End time cannot be null");
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount,
-                trades);
+        return Objects.hash(
+            this.beginTime, this.endTime, this.timePeriod, this.openPrice, this.highPrice,
+            this.lowPrice, this.closePrice, this.volume,
+            this.amount,
+            this.trades
+        );
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
         if (this == obj)
             return true;
-        if (!(obj instanceof BacktestBar))
+        if (!(obj instanceof final BacktestBar other))
             return false;
-        final BacktestBar other = (BacktestBar) obj;
-        return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)
-                && Objects.equals(timePeriod, other.timePeriod) && Objects.equals(openPrice, other.openPrice)
-                && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)
-                && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
-                && Objects.equals(amount, other.amount) && trades == other.trades;
+      return Objects.equals(this.beginTime, other.beginTime) && Objects.equals(this.endTime, other.endTime)
+               && Objects.equals(this.timePeriod, other.timePeriod) && Objects.equals(this.openPrice, other.openPrice)
+               && Objects.equals(this.highPrice, other.highPrice) && Objects.equals(this.lowPrice, other.lowPrice)
+               && Objects.equals(this.closePrice, other.closePrice) && Objects.equals(this.volume, other.volume)
+               && Objects.equals(this.amount, other.amount) && this.trades == other.trades;
     }
 }

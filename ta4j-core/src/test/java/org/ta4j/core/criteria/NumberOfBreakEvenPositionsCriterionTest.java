@@ -29,7 +29,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -48,7 +48,7 @@
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
 //
-//        assertNumEquals(0, getCriterion().calculate(series, new BaseTradingRecord()));
+//        assertNumEquals(0, getCriterion().calculate(series, new BackTestTradingRecord()));
 //    }
 //
 //    @Test
@@ -56,7 +56,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series),
 //                Trade.buyAt(1, series), Trade.sellAt(5, series));
 //
 //        assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
@@ -77,7 +77,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(3, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(3, series),
 //                Trade.sellAt(1, series), Trade.buyAt(5, series));
 //
 //        assertNumEquals(2, getCriterion().calculate(series, tradingRecord));

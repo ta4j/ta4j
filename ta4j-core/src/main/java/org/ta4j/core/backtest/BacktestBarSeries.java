@@ -24,19 +24,15 @@
 package org.ta4j.core.backtest;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.BacktestBarConvertibleBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
@@ -46,21 +42,21 @@ import org.ta4j.core.reports.TradingStatementGenerator;
 
 /**
  * Base implementation of a {@link BarSeries}.
+ *
+ * <ul>
+ *  <li>constrained between beginning and ending indices (e.g. for some backtesting cases)
+ *  <li>limited to a fixed number of bars (e.g. for actual trading)
+ * </ul>
  */
 public class BacktestBarSeries implements BarSeries {
-
-    private static final long serialVersionUID = -1878027009398790126L;
-
-    /** The logger. */
-    private final transient Logger log = LoggerFactory.getLogger(getClass());
 
     /** The name of the bar series. */
     private final String name;
 
     /** The list of bars of the bar series. */
-    private final List<Bar> bars = new ArrayList<>();
+    private final List<BacktestBar> bars = new ArrayList<>();
     private final BarBuilderFactory barBuilderFactory;
-    private final List<BacktestStrategy> strategies;
+    private final List<BacktestStrategy> strategies = new ArrayList<>(1);
 
     private final NumFactory numFactory;
 
@@ -77,15 +73,12 @@ public class BacktestBarSeries implements BarSeries {
      * @param numFactory        the factory of numbers used in series {@link Num Num
      *                          implementation}
      * @param barBuilderFactory factory for creating bars of this series
-     * @param strategies        strategies to backtest
      */
-    BacktestBarSeries(final String name, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory,
-            final List<Function<BacktestBarSeries, BacktestStrategy>> strategies) {
+    BacktestBarSeries(final String name, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
         this.name = name;
         this.numFactory = numFactory;
 
         this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
-        this.strategies = strategies.stream().map(strategy -> strategy.apply(this)).collect(Collectors.toList());
     }
 
     /**
@@ -97,7 +90,7 @@ public class BacktestBarSeries implements BarSeries {
      * @return a new list of bars with tick from startIndex (inclusive) to endIndex
      *         (exclusive)
      */
-    private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
+    private static List<BacktestBar> cut(final List<BacktestBar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
 
@@ -137,7 +130,13 @@ public class BacktestBarSeries implements BarSeries {
 
     }
 
-    @Override
+    /**
+     * Advances time to next bar.
+     *
+     * Notifies strategies to refresh their state
+     *
+     * @return true if advanced to next bar
+     */
     public boolean advance() {
         if (canAdvance()) {
             ++this.currentBarIndex;
@@ -161,8 +160,8 @@ public class BacktestBarSeries implements BarSeries {
     }
 
     @Override
-    public BacktestBarConvertibleBuilder barBuilder() {
-        return this.barBuilderFactory.createBarBuilder(this);
+    public BacktestBarBuilder barBuilder() {
+        return (BacktestBarBuilder) this.barBuilderFactory.createBarBuilder(this);
     }
 
     @Override
@@ -171,38 +170,81 @@ public class BacktestBarSeries implements BarSeries {
     }
 
     @Override
-    public Bar getBar() {
+    public BacktestBar getBar() {
         return this.bars.get(this.currentBarIndex);
     }
+
+
+    public void addBar(final Bar bar) {
+      addBar(bar,false);
+    }
+
 
     public Bar getBar(final int index) {
         return this.bars.get(index);
     }
 
-    @Override
+    /**
+     * @return the number of bars in the series
+     */
     public int getBarCount() {
         return this.bars.size();
     }
+    /**
+     * @return true if the series is empty, false otherwise
+     */
+    public boolean isEmpty() {
+        return getBarCount() == 0;
+    }
 
-    @Override
-    public List<Bar> getBarData() {
+    /**
+     * Returns the raw bar data, i.e. it returns the current list object, which is
+     * used internally to store the {@link Bar bars}. It may be:
+     *
+     * <ul>
+     * <li>a shortened bar list if a {@code maximumBarCount} has been set.
+     * <li>an extended bar list if it is a constrained bar series.
+     * </ul>
+     *
+     * <p>
+     * <b>Warning:</b> This method should be used carefully!
+     *
+     * @return the raw bar data
+     */
+    public List<BacktestBar> getBarData() {
         return this.bars;
     }
 
-    @Override
+    /**
+     * @return the begin index of the series
+     */
     public int getBeginIndex() {
         return 0;
     }
 
-    @Override
+    /**
+     * @return the end index of the series
+     */
     public int getEndIndex() {
         return this.bars.size() - 1;
     }
 
+
     /**
+     * Adds the {@code bar} at the end of the series.
+     *
+     * <p>
+     * The {@code beginIndex} is set to {@code 0} if not already initialized.<br>
+     * The {@code endIndex} is set to {@code 0} if not already initialized, or
+     * incremented if it matches the end of the series.<br>
+     * Exceeding bars are removed.
+     *
+     * @param bar     the bar to be added
+     * @param replace true to replace the latest bar. Some exchanges continuously
+     *                provide new bar data in the respective period, e.g. 1 second
+     *                in 1 minute duration.
      * @throws NullPointerException if {@code bar} is {@code null}
      */
-    @Override
     public void addBar(final Bar bar, final boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!this.numFactory.produces(bar.getClosePrice())) {
@@ -211,9 +253,13 @@ public class BacktestBarSeries implements BarSeries {
                             bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
 
+        if (!(bar instanceof BacktestBar)) {
+            throw new IllegalArgumentException("Wrong bar type: " + bar.getClosePrice().getName());
+        }
+
         if (!this.bars.isEmpty()) {
             if (replace) {
-                this.bars.set(this.bars.size() - 1, bar);
+                this.bars.set(this.bars.size() - 1, (BacktestBar) bar);
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
@@ -225,20 +271,50 @@ public class BacktestBarSeries implements BarSeries {
             }
         }
 
-        this.bars.add(bar);
+        this.bars.add((BacktestBar) bar);
     }
 
-    @Override
+
+    /**
+     * Adds a trade and updates the close price of the last bar.
+     *
+     * @param amount the traded volume
+     * @param price  the price
+     * @see BacktestBar#addTrade(Num, Num)
+     */
     public void addTrade(final Number price, final Number amount) {
         addTrade(numFactory().numOf(price), numFactory().numOf(amount));
     }
 
-    @Override
+    /**
+     * Adds a trade and updates the close price of the last bar.
+     *
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the price
+     * @see BacktestBar#addTrade(Num, Num)
+     */
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
         getLastBar().addTrade(tradeVolume, tradePrice);
     }
 
-    @Override
+
+    private BacktestBar getLastBar() {
+        return this.bars.getLast();
+    }
+
+
+    private BacktestBar getFirstBar() {
+        return this.bars.getFirst();
+    }
+
+
+    /**
+     * Updates the close price of the last bar. The open, high and low prices are
+     * also updated as needed.
+     *
+     * @param price the price for the bar
+     * @see BacktestBar#addPrice(Num)
+     */
     public void addPrice(final Num price) {
         getLastBar().addPrice(price);
     }
@@ -248,9 +324,9 @@ public class BacktestBarSeries implements BarSeries {
         if (!canAdvance()) {
             throw new IllegalArgumentException("Cannot advance further. Rewind bar series before replaying.");
         }
-        this.strategies.stream()
+        this.strategies
                 .forEach(strategy -> strategy
-                        .register(new BaseTradingRecord(tradeType, transactionCostModel, holdingCostMOdel)));
+                        .register(new BackTestTradingRecord(tradeType, transactionCostModel, holdingCostMOdel)));
 
         while (advance()) {
             // execute strategy for each bar until series is at the end
@@ -275,9 +351,9 @@ public class BacktestBarSeries implements BarSeries {
         this.strategies.add(strategy);
     }
 
-    public void replaceStrategy(final BacktestStrategy strategy) {
-        this.strategies.clear();
-        this.strategies.add(strategy);
+    public void replaceStrategy(final Strategy strategy) {
+      this.strategies.clear();
+      this.strategies.add((BacktestStrategy) strategy);
     }
 
     public void replaceStrategies(final List<BacktestStrategy> strategies) {
@@ -287,5 +363,21 @@ public class BacktestBarSeries implements BarSeries {
 
     public void rewind() {
         this.currentBarIndex = -1;
+    }
+
+    /**
+     * @return the description of the series period (e.g. "from 12:00 21/01/2014 to
+     *         12:15 21/01/2014")
+     */
+    public String getSeriesPeriodDescription() {
+        final StringBuilder sb = new StringBuilder();
+        if (!getBarData().isEmpty()) {
+            final Bar firstBar = getFirstBar();
+            final Bar lastBar = getLastBar();
+            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                .append(" - ")
+                .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        return sb.toString();
     }
 }

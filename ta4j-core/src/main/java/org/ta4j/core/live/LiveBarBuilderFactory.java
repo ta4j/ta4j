@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,35 +21,18 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.aggregator;
+package org.ta4j.core.live;
 
-import java.util.List;
-
-import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.backtest.BacktestBarSeries;
-import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 
 /**
- * Aggregates a {@link BacktestBarSeries} into another one using a
- * {@link BarAggregator}.
+ * @author Lukáš Kvídera
  */
-public class BaseBarSeriesAggregator implements BarSeriesAggregator {
-
-    private final BarAggregator barAggregator;
-
-    /**
-     * Constructor.
-     *
-     * @param barAggregator the {@link BarAggregator}
-     */
-    public BaseBarSeriesAggregator(BarAggregator barAggregator) {
-        this.barAggregator = barAggregator;
-    }
+public class LiveBarBuilderFactory implements BarBuilderFactory {
 
     @Override
-    public BarSeries aggregate(BarSeries series, String aggregatedSeriesName) {
-        final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
-        return new BacktestBarSeriesBuilder().withName(aggregatedSeriesName).withBars(aggregatedBars).build();
+    public LiveBarBuilder createBarBuilder(final BarSeries series) {
+        return new LiveBarBuilder(series);
     }
 }

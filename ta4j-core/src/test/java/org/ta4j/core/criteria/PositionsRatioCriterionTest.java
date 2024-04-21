@@ -30,7 +30,7 @@
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
 //import org.ta4j.core.AnalysisCriterion.PositionFilter;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -48,7 +48,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100d, 95d, 102d, 105d, 97d, 113d)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
 //                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 //
 //        // there are 3 positions with 2 winning positions
@@ -66,7 +66,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100d, 95d, 102d, 105d, 97d, 113d)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
 //                Trade.sellAt(3, series), Trade.buyAt(4, series));
 //
 //        // there are 3 positions with 1 winning positions

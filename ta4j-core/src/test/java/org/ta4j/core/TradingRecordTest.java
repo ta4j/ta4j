@@ -38,10 +38,10 @@
 //
 //    @Before
 //    public void setUp() {
-//        emptyRecord = new BaseTradingRecord();
-//        openedRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
+//        emptyRecord = new BackTestTradingRecord();
+//        openedRecord = new BackTestTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
 //                Trade.buyAt(7, NaN, NaN));
-//        closedRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
+//        closedRecord = new BackTestTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
 //                Trade.buyAt(7, NaN, NaN), Trade.sellAt(8, NaN, NaN));
 //    }
 //
@@ -54,7 +54,7 @@
 //
 //    @Test
 //    public void operate() {
-//        TradingRecord record = new BaseTradingRecord();
+//        TradingRecord record = new BackTestTradingRecord();
 //
 //        record.operate(1);
 //        assertTrue(record.getCurrentPosition().isOpened());

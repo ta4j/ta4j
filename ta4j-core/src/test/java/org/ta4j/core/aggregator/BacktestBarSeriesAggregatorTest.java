@@ -42,7 +42,7 @@
 //
 //public class BacktestBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 //
-//    private final BaseBarSeriesAggregator baseBarSeriesAggregator = new BaseBarSeriesAggregator(
+//    private final BacktestBarSeriesAggregator baseBarSeriesAggregator = new BacktestBarSeriesAggregator(
 //            new BarAggregatorForTest());
 //
 //    public BacktestBarSeriesAggregatorTest(NumFactory numFactory) {

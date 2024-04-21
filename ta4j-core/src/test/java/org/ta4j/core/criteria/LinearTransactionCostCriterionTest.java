@@ -29,7 +29,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.ExternalCriterionTest;
 //import org.ta4j.core.Position;
 //import org.ta4j.core.TradingRecord;
@@ -67,7 +67,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 150, 200, 100, 50, 100)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord();
+//        TradingRecord tradingRecord = new BackTestTradingRecord();
 //        Num criterion;
 //
 //        tradingRecord.operate(0);
@@ -90,7 +90,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord();
+//        TradingRecord tradingRecord = new BackTestTradingRecord();
 //        Num criterion;
 //
 //        tradingRecord.operate(0);

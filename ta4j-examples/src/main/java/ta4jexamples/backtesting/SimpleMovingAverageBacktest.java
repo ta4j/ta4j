@@ -28,7 +28,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import org.ta4j.core.BacktestBarConvertibleBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestBar;

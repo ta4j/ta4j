@@ -21,13 +21,16 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.backtest;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -35,9 +38,7 @@ import org.ta4j.core.num.Num;
 /**
  * Base implementation of a {@link TradingRecord}.
  */
-public class BaseTradingRecord implements TradingRecord {
-
-    private static final long serialVersionUID = -4436851731855891220L;
+public class BackTestTradingRecord implements TradingRecord {
 
     /** The name of the trading record. */
     private String name;
@@ -79,7 +80,7 @@ public class BaseTradingRecord implements TradingRecord {
     private final transient CostModel holdingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
-    public BaseTradingRecord() {
+    public BackTestTradingRecord() {
         this(TradeType.BUY);
     }
 
@@ -88,7 +89,7 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param name the name of the tradingRecord
      */
-    public BaseTradingRecord(String name) {
+    public BackTestTradingRecord(final String name) {
         this(TradeType.BUY);
         this.name = name;
     }
@@ -100,7 +101,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param tradeType the {@link TradeType trade type} of entries in the trading
      *                  session
      */
-    public BaseTradingRecord(String name, TradeType tradeType) {
+    public BackTestTradingRecord(final String name, final TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
         this.name = name;
     }
@@ -111,7 +112,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param tradeType the {@link TradeType trade type} of entries in the trading
      *                  session
      */
-    public BaseTradingRecord(TradeType tradeType) {
+    public BackTestTradingRecord(final TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
     }
 
@@ -124,7 +125,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      */
-    public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public BackTestTradingRecord(final TradeType entryTradeType, final CostModel transactionCostModel, final CostModel holdingCostModel) {
         this(entryTradeType, null, null, transactionCostModel, holdingCostModel);
     }
 
@@ -140,8 +141,9 @@ public class BaseTradingRecord implements TradingRecord {
      *                             borrowing)
      * @throws NullPointerException if entryTradeType is null
      */
-    public BaseTradingRecord(TradeType entryTradeType, Integer startIndex, Integer endIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    public BackTestTradingRecord(
+        final TradeType entryTradeType, final Integer startIndex, final Integer endIndex,
+            final CostModel transactionCostModel, final CostModel holdingCostModel) {
         Objects.requireNonNull(entryTradeType, "Starting type must not be null");
 
         this.startingType = entryTradeType;
@@ -149,7 +151,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.endIndex = endIndex;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
+      this.currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
     }
 
     /**
@@ -157,7 +159,7 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param trades the trades to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(Trade... trades) {
+    public BackTestTradingRecord(final Trade... trades) {
         this(new ZeroCostModel(), new ZeroCostModel(), trades);
     }
 
@@ -169,52 +171,52 @@ public class BaseTradingRecord implements TradingRecord {
      *                             borrowing)
      * @param trades               the trades to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
+    public BackTestTradingRecord(final CostModel transactionCostModel, final CostModel holdingCostModel, final Trade... trades) {
         this(trades[0].getType(), transactionCostModel, holdingCostModel);
-        for (var trade : trades) {
-            boolean newTradeWillBeAnEntry = currentPosition.isNew();
-            if (newTradeWillBeAnEntry && trade.getType() != startingType) {
+        for (final var trade : trades) {
+            final boolean newTradeWillBeAnEntry = this.currentPosition.isNew();
+            if (newTradeWillBeAnEntry && trade.getType() != this.startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
                 // SELL, BUY,
                 // BUY, SELL
-                currentPosition = new Position(trade.getType(), transactionCostModel, holdingCostModel);
+              this.currentPosition = new Position(trade.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount());
+            final Trade newTrade = this.currentPosition.operate(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
     }
 
     @Override
     public String getName() {
-        return name;
+        return this.name;
     }
 
     @Override
     public TradeType getStartingType() {
-        return startingType;
+        return this.startingType;
     }
 
     @Override
     public Position getCurrentPosition() {
-        return currentPosition;
+        return this.currentPosition;
     }
 
     @Override
-    public void operate(int index, Num price, Num amount) {
-        if (currentPosition.isClosed()) {
+    public void operate(final int index, final Num price, final Num amount) {
+        if (this.currentPosition.isClosed()) {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
-        boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        Trade newTrade = currentPosition.operate(index, price, amount);
+        final boolean newTradeWillBeAnEntry = this.currentPosition.isNew();
+        final Trade newTrade = this.currentPosition.operate(index, price, amount);
         recordTrade(newTrade, newTradeWillBeAnEntry);
     }
 
     @Override
-    public boolean enter(int index, Num price, Num amount) {
-        if (currentPosition.isNew()) {
+    public boolean enter(final int index, final Num price, final Num amount) {
+        if (this.currentPosition.isNew()) {
             operate(index, price, amount);
             return true;
         }
@@ -222,8 +224,8 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public boolean exit(int index, Num price, Num amount) {
-        if (currentPosition.isOpened()) {
+    public boolean exit(final int index, final Num price, final Num amount) {
+        if (this.currentPosition.isOpened()) {
             operate(index, price, amount);
             return true;
         }
@@ -232,51 +234,51 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public List<Position> getPositions() {
-        return positions;
+        return this.positions;
     }
 
     @Override
     public Trade getLastTrade() {
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+        if (!this.trades.isEmpty()) {
+            return this.trades.get(this.trades.size() - 1);
         }
         return null;
     }
 
     @Override
-    public Trade getLastTrade(TradeType tradeType) {
-        if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
-            return buyTrades.get(buyTrades.size() - 1);
-        } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
-            return sellTrades.get(sellTrades.size() - 1);
+    public Trade getLastTrade(final TradeType tradeType) {
+        if (TradeType.BUY == tradeType && !this.buyTrades.isEmpty()) {
+            return this.buyTrades.get(this.buyTrades.size() - 1);
+        } else if (TradeType.SELL == tradeType && !this.sellTrades.isEmpty()) {
+            return this.sellTrades.get(this.sellTrades.size() - 1);
         }
         return null;
     }
 
     @Override
     public Trade getLastEntry() {
-        if (!entryTrades.isEmpty()) {
-            return entryTrades.get(entryTrades.size() - 1);
+        if (!this.entryTrades.isEmpty()) {
+            return this.entryTrades.get(this.entryTrades.size() - 1);
         }
         return null;
     }
 
     @Override
     public Trade getLastExit() {
-        if (!exitTrades.isEmpty()) {
-            return exitTrades.get(exitTrades.size() - 1);
+        if (!this.exitTrades.isEmpty()) {
+            return this.exitTrades.get(this.exitTrades.size() - 1);
         }
         return null;
     }
 
     @Override
     public Integer getStartIndex() {
-        return startIndex;
+        return this.startIndex;
     }
 
     @Override
     public Integer getEndIndex() {
-        return endIndex;
+        return this.endIndex;
     }
 
     /**
@@ -286,39 +288,39 @@ public class BaseTradingRecord implements TradingRecord {
      * @param isEntry true if the trade is an entry, false otherwise (exit)
      * @throws NullPointerException if trade is null
      */
-    private void recordTrade(Trade trade, boolean isEntry) {
+    private void recordTrade(final Trade trade, final boolean isEntry) {
         Objects.requireNonNull(trade, "Trade should not be null");
 
         // Storing the new trade in entries/exits lists
         if (isEntry) {
-            entryTrades.add(trade);
+          this.entryTrades.add(trade);
         } else {
-            exitTrades.add(trade);
+          this.exitTrades.add(trade);
         }
 
         // Storing the new trade in trades list
-        trades.add(trade);
+      this.trades.add(trade);
         if (TradeType.BUY == trade.getType()) {
             // Storing the new trade in buy trades list
-            buyTrades.add(trade);
+          this.buyTrades.add(trade);
         } else if (TradeType.SELL == trade.getType()) {
             // Storing the new trade in sell trades list
-            sellTrades.add(trade);
+          this.sellTrades.add(trade);
         }
 
         // Storing the position if closed
-        if (currentPosition.isClosed()) {
-            positions.add(currentPosition);
-            currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
+        if (this.currentPosition.isClosed()) {
+          this.positions.add(this.currentPosition);
+          this.currentPosition = new Position(this.startingType, this.transactionCostModel, this.holdingCostModel);
         }
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
-                .append(name == null ? "" : name)
+        final StringBuilder sb = new StringBuilder().append("BackTestTradingRecord: ")
+                .append(this.name == null ? "" : this.name)
                 .append(System.lineSeparator());
-        for (Trade trade : trades) {
+        for (final Trade trade : this.trades) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();

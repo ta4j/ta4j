@@ -29,7 +29,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.AnalysisCriterion;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.criteria.AbstractCriterionTest;
@@ -47,7 +47,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numFactory().numOf(50)),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(2, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(3, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(5, series, series.numFactory().numOf(50)));
@@ -59,7 +59,7 @@
 //    @Test
 //    public void calculateOnlyWithLossPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numFactory().numOf(50)),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(1, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(2, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(5, series, series.numFactory().numOf(50)));
@@ -73,7 +73,7 @@
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(100, 105, 110, 100, 95, 105)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series, series.numFactory().numOf(50)),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(2, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(3, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(5, series, series.numFactory().numOf(50)));
@@ -85,7 +85,7 @@
 //    @Test
 //    public void calculateOnlyWithLossShortPositions() {
 //        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series, series.numFactory().numOf(50)),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(0, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(1, series, series.numFactory().numOf(50)),
 //                Trade.sellAt(2, series, series.numFactory().numOf(50)),
 //                Trade.buyAt(5, series, series.numFactory().numOf(50)));

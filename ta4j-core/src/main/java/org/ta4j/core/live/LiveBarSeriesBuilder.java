@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,45 +21,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.backtest;
-
-import java.util.ArrayList;
-import java.util.List;
+package org.ta4j.core.live;
 
 import org.ta4j.core.BarBuilderFactory;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.StrategyFactory;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 /**
  * A builder to build a new {@link BacktestBarSeries}.
  */
-public class BacktestBarSeriesBuilder {
+public class LiveBarSeriesBuilder {
 
     /** The {@link #name} for an unnamed bar series. */
     private static final String UNNAMED_SERIES_NAME = "unnamed_series";
 
-    private List<BacktestBar> bars;
     private String name;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new BacktestBarBuilderFactory();
-    private final List<StrategyFactory> strategyFactories = new ArrayList<>();
-
-    /** Constructor to build a {@code BacktestBarSeries}. */
-    public BacktestBarSeriesBuilder() {
-        initValues();
-    }
-
-    private void initValues() {
-        this.bars = new ArrayList<>();
-        this.name = "unnamed_series";
-    }
+    private BarBuilderFactory barBuilderFactory = new LiveBarBuilderFactory();
+    private StrategyFactory strategyFactory;
 
     /**
      * @param numFactory to set {@link BacktestBarSeries#numFactory()}
      * @return {@code this}
      */
-    public BacktestBarSeriesBuilder withNumFactory(final NumFactory numFactory) {
+    public LiveBarSeriesBuilder withNumFactory(final NumFactory numFactory) {
         this.numFactory = numFactory;
         return this;
     }
@@ -68,17 +56,8 @@ public class BacktestBarSeriesBuilder {
      * @param name to set {@link BacktestBarSeries#getName()}
      * @return {@code this}
      */
-    public BacktestBarSeriesBuilder withName(final String name) {
+    public LiveBarSeriesBuilder withName(final String name) {
         this.name = name;
-        return this;
-    }
-
-    /**
-     * @param bars to set {@link BacktestBarSeries#getBarData()}
-     * @return {@code this}
-     */
-    public BacktestBarSeriesBuilder withBars(final List<BacktestBar> bars) {
-        this.bars = bars;
         return this;
     }
 
@@ -87,36 +66,29 @@ public class BacktestBarSeriesBuilder {
      *
      * @return {@code this}
      */
-    public BacktestBarSeriesBuilder withBarBuilderFactory(final BarBuilderFactory barBuilderFactory) {
+    public LiveBarSeriesBuilder withBarBuilderFactory(final BarBuilderFactory barBuilderFactory) {
         this.barBuilderFactory = barBuilderFactory;
         return this;
     }
 
-    public BacktestBarSeriesBuilder withStrategyFactory(final StrategyFactory strategy) {
-        this.strategyFactories.add(strategy);
+    public LiveBarSeriesBuilder withStrategy(final StrategyFactory strategy) {
+        this.strategyFactory = strategy;
         return this;
     }
 
-    public BacktestBarSeriesBuilder withStrategyFactories(
-            final List<StrategyFactory> strategyFunction) {
-      this.strategyFactories.addAll(strategyFunction);
-        return this;
-    }
 
-    public BacktestBarSeries build() {
-        final var series = new BacktestBarSeries(
+    public BarSeries build() {
+        final var liveBarSeries = new LiveBarSeries(
             this.name == null ? UNNAMED_SERIES_NAME : this.name,
             this.numFactory,
             this.barBuilderFactory
         );
 
-        series.replaceStrategies(
-            this.strategyFactories.stream()
-                .map(strategyFactory -> strategyFactory.createStrategy(series))
-                .map(BacktestStrategy.class::cast)
-                .toList()
-        );
-        this.bars.forEach(series::addBar);
-        return series;
+        if (this.strategyFactory == null) {
+            throw new IllegalArgumentException("Strategy factory not set");
+        }
+
+        liveBarSeries.replaceStrategy(this.strategyFactory.createStrategy(liveBarSeries));
+        return liveBarSeries;
     }
 }

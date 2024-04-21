@@ -314,9 +314,9 @@
 //                .add();
 //        ;
 //
-//        BarSeries aggregated2MinSeries = new BaseBarSeriesAggregator(
+//        BarSeries aggregated2MinSeries = new BacktestBarSeriesAggregator(
 //                new DurationBarAggregator(Duration.ofMinutes(2), false)).aggregate(barSeries, "");
-//        BarSeries aggregated4MinSeries = new BaseBarSeriesAggregator(
+//        BarSeries aggregated4MinSeries = new BacktestBarSeriesAggregator(
 //                new DurationBarAggregator(Duration.ofMinutes(4), false)).aggregate(barSeries, "");
 //
 //        assertEquals(2, aggregated2MinSeries.getBarCount());

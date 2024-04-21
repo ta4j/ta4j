@@ -144,19 +144,25 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorEquals(final Indicator<Num> expected, final Indicator<Num> actual) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
-                actual.getBarSeries().getBarCount());
-        while (expected.getBarSeries().advance()) {
-            actual.getBarSeries().advance();
+        org.junit.Assert.assertEquals("Size does not match,", getBarSeries(expected).getBarCount(),
+            getBarSeries(actual).getBarCount());
+        while (getBarSeries(expected).advance()) {
+            getBarSeries(actual).advance();
 
             if (actual.isStable()) {
                 assertEquals(
                         String.format("Failed at index %s: %s",
-                                ((BacktestBarSeries) expected.getBarSeries()).getCurrentIndex(), actual),
+                                getBarSeries(expected).getCurrentIndex(), actual),
                         expected.getValue().doubleValue(), actual.getValue().doubleValue(), GENERAL_OFFSET);
             }
         }
     }
+
+
+    private static BacktestBarSeries getBarSeries(final Indicator<Num> indicator) {
+        return (BacktestBarSeries) indicator.getBarSeries();
+    }
+
 
     /**
      * Verifies that two indicators have either different size or different values
@@ -166,11 +172,11 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorNotEquals(final Indicator<Num> expected, final Indicator<Num> actual) {
-        if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
+        if ( getBarSeries(expected).getBarCount() != getBarSeries(actual).getBarCount()) {
             return;
         }
-        while (expected.getBarSeries().advance()) {
-            actual.getBarSeries().advance();
+        while (getBarSeries(expected).advance()) {
+            getBarSeries(actual).advance();
             if (Math.abs(expected.getValue().doubleValue() - actual.getValue().doubleValue()) > GENERAL_OFFSET) {
                 return;
             }
@@ -231,9 +237,9 @@ public class TestUtils {
      */
     public static void assertIndicatorEquals(final Indicator<Num> expected, final Indicator<Num> actual,
             final Num delta) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
-                actual.getBarSeries().getBarCount());
-        while (expected.getBarSeries().advance()) {
+        org.junit.Assert.assertEquals("Size does not match,",getBarSeries( expected).getBarCount(),
+            getBarSeries( actual).getBarCount());
+        while (getBarSeries(expected).advance()) {
             // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
             final Num exp = DecimalNum.valueOf(expected.getValue().toString());
@@ -253,7 +259,7 @@ public class TestUtils {
                     actString = actString.substring(0, minLen) + "..";
                 }
                 throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s",
-                        ((BacktestBarSeries) expected.getBarSeries()).getCurrentIndex(), expString, actString));
+                        getBarSeries(expected).getCurrentIndex(), expString, actString));
             }
         }
     }
@@ -268,10 +274,10 @@ public class TestUtils {
      */
     public static void assertIndicatorNotEquals(final Indicator<Num> expected, final Indicator<Num> actual,
             final Num delta) {
-        if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
+        if (getBarSeries(expected).getBarCount() != getBarSeries(actual).getBarCount()) {
             return;
         }
-        while (expected.getBarSeries().advance()) {
+        while (getBarSeries(expected).advance()) {
             final Num exp = DecimalNum.valueOf(expected.getValue().toString());
             final Num act = DecimalNum.valueOf(actual.getValue().toString());
             final Num result = exp.minus(act).abs();

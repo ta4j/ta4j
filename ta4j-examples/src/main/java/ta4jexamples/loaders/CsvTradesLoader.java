@@ -134,7 +134,7 @@ public class CsvTradesLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BacktestBarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());

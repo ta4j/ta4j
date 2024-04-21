@@ -28,9 +28,9 @@
 //
 //import org.ta4j.core.Bar;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.BacktestBarConvertibleBuilder;
+//import org.ta4j.core.backtest.BacktestBarConvertibleBuilder;
 //import org.ta4j.core.backtest.BacktestStrategy;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Strategy;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
@@ -140,7 +140,7 @@
 //        Strategy strategy = buildStrategy(series);
 //
 //        // Initializing the trading history
-//        TradingRecord tradingRecord = new BaseTradingRecord();
+//        TradingRecord tradingRecord = new BackTestTradingRecord();
 //        System.out.println("************************************************************");
 //
 //        /*

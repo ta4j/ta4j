@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.analysis.cost.CostModel;
@@ -44,9 +43,7 @@ import org.ta4j.core.num.Num;
  *
  * A {@link Position position} is a pair of complementary trades.
  */
-public class Trade implements Serializable {
-
-    private static final long serialVersionUID = -905474949010114150L;
+public class Trade {
 
     /** The type of a {@link Trade trade}. */
     public enum TradeType {

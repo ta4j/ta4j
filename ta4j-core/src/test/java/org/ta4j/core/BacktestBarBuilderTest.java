@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -48,7 +49,7 @@ public class BacktestBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BacktestBar bar = new BacktestBarBuilder().timePeriod(duration)
+        final BacktestBar bar = new BacktestBarBuilder(new MockBarSeriesBuilder().build()).timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))

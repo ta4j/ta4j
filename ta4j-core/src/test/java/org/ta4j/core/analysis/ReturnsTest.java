@@ -28,7 +28,7 @@
 //
 //import org.junit.Test;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.BaseTradingRecord;
+//import org.ta4j.core.backtest.BackTestTradingRecord;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -51,7 +51,7 @@
 //            var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                    .withData(1d, 2d, 3d, 4d, 5d)
 //                    .build();
-//            Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), type);
+//            Returns returns = new Returns(sampleBarSeries, new BackTestTradingRecord(), type);
 //            assertEquals(4, returns.getSize());
 //        }
 //    }
@@ -59,7 +59,7 @@
 //    @Test
 //    public void singleReturnPositionArith() {
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries),
 //                Trade.sellAt(1, sampleBarSeries));
 //        Returns return1 = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
 //        assertNumEquals(NaN.NaN, return1.getValue(0));
@@ -71,7 +71,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(2, 1, 3, 5, 6, 3, 20)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.buyAt(0, sampleBarSeries),
 //                Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries), Trade.sellAt(4, sampleBarSeries),
 //                Trade.sellAt(5, sampleBarSeries), Trade.buyAt(6, sampleBarSeries));
 //
@@ -91,7 +91,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d)
 //                .build();
-//        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(2, sampleBarSeries),
+//        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.sellAt(2, sampleBarSeries),
 //                Trade.buyAt(5, sampleBarSeries), Trade.buyAt(8, sampleBarSeries), Trade.sellAt(10, sampleBarSeries));
 //
 //        Returns returns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.LOG);
@@ -116,7 +116,7 @@
 //        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
 //                .withData(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d)
 //                .build();
-//        Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), Returns.ReturnType.LOG);
+//        Returns returns = new Returns(sampleBarSeries, new BackTestTradingRecord(), Returns.ReturnType.LOG);
 //        assertNumEquals(NaN.NaN, returns.getValue(0));
 //        assertNumEquals(0, returns.getValue(4));
 //        assertNumEquals(0, returns.getValue(7));
@@ -130,13 +130,13 @@
 //                .withData(1.2d, 1.1d)
 //                .build();
 //
-//        TradingRecord fullRecordDouble = new BaseTradingRecord();
+//        TradingRecord fullRecordDouble = new BackTestTradingRecord();
 //        fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(),
 //                doubleSeries.numFactory().one());
 //        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).getClosePrice(),
 //                doubleSeries.numFactory().one());
 //
-//        TradingRecord fullRecordPrecision = new BaseTradingRecord();
+//        TradingRecord fullRecordPrecision = new BackTestTradingRecord();
 //        fullRecordPrecision.enter(precisionSeries.getBeginIndex(), precisionSeries.getBar(0).getClosePrice(),
 //                precisionSeries.numFactory().one());
 //        fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).getClosePrice(),
