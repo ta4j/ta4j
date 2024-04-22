@@ -56,7 +56,7 @@
 //        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 //
 //        // Getting the close price of the bars
-//        Num firstClosePrice = series.getBar(0).getClosePrice();
+//        Num firstClosePrice = series.getBar(0).closePrice();
 //        System.out.println("First close price: " + firstClosePrice.doubleValue());
 //        // Or within an indicator:
 //        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);

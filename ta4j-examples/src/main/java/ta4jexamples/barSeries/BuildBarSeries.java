@@ -47,9 +47,9 @@ public class BuildBarSeries {
     @SuppressWarnings("unused")
     public static void main(String[] args) {
         BarSeries a = buildAndAddData();
-        LOG.info("a: {}", a.getBar().getClosePrice().getName());
+        LOG.info("a: {}", a.getBar().closePrice().getName());
         a = buildAndAddData();
-        LOG.info("a: {}", a.getBar().getClosePrice().getName());
+        LOG.info("a: {}", a.getBar().closePrice().getName());
         BarSeries b = buildWithDouble();
         BarSeries c = buildWithBigDecimal();
         BarSeries d = buildManually();

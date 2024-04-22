@@ -108,7 +108,7 @@ public class CsvBarsLoader {
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar().getVolume() + "\n" + "\tOpen price: "
-                + series.getBar().getOpenPrice() + "\n" + "\tClose price: " + series.getBar().getClosePrice());
+        System.out.println("First bar: \n" + "\tVolume: " + series.getBar().volume() + "\n" + "\tOpen price: "
+                           + series.getBar().openPrice() + "\n" + "\tClose price: " + series.getBar().closePrice());
     }
 }

@@ -65,7 +65,7 @@
 //        System.out.print("Initial bar count: " + series.getBarCount());
 //        // Limitating the number of bars to maxBarCount
 //        series.setMaximumBarCount(maxBarCount);
-//        LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();
+//        LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).closePrice();
 //        System.out.println(" (limited to " + maxBarCount + "), close price = " + LAST_BAR_CLOSE_PRICE);
 //        return series;
 //    }
@@ -152,14 +152,14 @@
 //            Thread.sleep(30); // I know...
 //            Bar newBar = generateRandomBar();
 //            System.out.println("------------------------------------------------------\n" + "Bar " + i
-//                    + " added, close price = " + newBar.getClosePrice().doubleValue());
+//                    + " added, close price = " + newBar.closePrice().doubleValue());
 //            series.addBar(newBar);
 //
 //            int endIndex = series.getEndIndex();
 //            if (strategy.shouldEnter()) {
 //                // Our strategy should enter
 //                System.out.println("Strategy should ENTER on " + endIndex);
-//                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
+//                boolean entered = tradingRecord.enter(endIndex, newBar.closePrice(), DecimalNum.valueOf(10));
 //                if (entered) {
 //                    Trade entry = tradingRecord.getLastEntry();
 //                    System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
@@ -168,7 +168,7 @@
 //            } else if (strategy.shouldExit()) {
 //                // Our strategy should exit
 //                System.out.println("Strategy should EXIT on " + endIndex);
-//                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
+//                boolean exited = tradingRecord.exit(endIndex, newBar.closePrice(), DecimalNum.valueOf(10));
 //                if (exited) {
 //                    Trade exit = tradingRecord.getLastExit();
 //                    System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()

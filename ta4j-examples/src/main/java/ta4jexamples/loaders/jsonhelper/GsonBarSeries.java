@@ -26,30 +26,28 @@ package ta4jexamples.loaders.jsonhelper;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 
 public class GsonBarSeries {
 
     private String name;
-    private List<GsonBarData> ohlc = new LinkedList<>();
+    private final List<GsonBarData> ohlc = new LinkedList<>();
 
-    public static GsonBarSeries from(BarSeries series) {
-        GsonBarSeries result = new GsonBarSeries();
+    public static GsonBarSeries from(final BacktestBarSeries series) {
+        final var result = new GsonBarSeries();
         result.name = series.getName();
-        List<Bar> barData = series.getBarData();
-        for (Bar bar : barData) {
-            GsonBarData exportableBarData = GsonBarData.from(bar);
+        final var barData = series.getBarData();
+        for (final var bar : barData) {
+            final GsonBarData exportableBarData = GsonBarData.from(bar);
             result.ohlc.add(exportableBarData);
         }
         return result;
     }
 
     public BacktestBarSeries toBarSeries() {
-        BacktestBarSeries result = new BacktestBarSeriesBuilder().withName(this.name).build();
-        for (GsonBarData data : ohlc) {
+        final BacktestBarSeries result = new BacktestBarSeriesBuilder().withName(this.name).build();
+        for (final GsonBarData data : this.ohlc) {
             data.addTo(result);
         }
         return result;

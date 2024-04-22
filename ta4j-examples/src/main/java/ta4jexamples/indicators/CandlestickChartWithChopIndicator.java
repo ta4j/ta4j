@@ -90,12 +90,12 @@
 //
 //        for (int i = 0; i < nbBars; i++) {
 //            Bar bar = series.getBar(i);
-//            dates[i] = new Date(bar.getEndTime().toEpochSecond() * 1000);
-//            opens[i] = bar.getOpenPrice().doubleValue();
-//            highs[i] = bar.getHighPrice().doubleValue();
-//            lows[i] = bar.getLowPrice().doubleValue();
-//            closes[i] = bar.getClosePrice().doubleValue();
-//            volumes[i] = bar.getVolume().doubleValue();
+//            dates[i] = new Date(bar.endTime().toEpochSecond() * 1000);
+//            opens[i] = bar.openPrice().doubleValue();
+//            highs[i] = bar.highPrice().doubleValue();
+//            lows[i] = bar.lowPrice().doubleValue();
+//            closes[i] = bar.closePrice().doubleValue();
+//            volumes[i] = bar.volume().doubleValue();
 //        }
 //
 //        return new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
@@ -113,7 +113,7 @@
 //        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
 //        for (int i = 0; i < series.getBarCount(); i++) {
 //            Bar bar = series.getBar(i);
-//            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+//            chartTimeSeries.add(new Second(new Date(bar.endTime().toEpochSecond() * 1000)),
 //                    indicator.getValue(i).doubleValue());
 //        }
 //        dataset.addSeries(chartTimeSeries);
@@ -128,7 +128,7 @@
 //            Bar bar = series.getBar(i);
 //            if (i < CHOP_INDICATOR_TIMEFRAME)
 //                continue;
-//            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+//            chartTimeSeries.add(new Second(new Date(bar.endTime().toEpochSecond() * 1000)),
 //                    indicator.getValue(i).doubleValue());
 //        }
 //        dataset.addSeries(chartTimeSeries);
@@ -206,13 +206,13 @@
 //
 //        // CHOP oscillator upper/lower threshold guidelines
 //        XYLineAnnotation lineAnnotation = new XYLineAnnotation(
-//                (double) series.getFirstBar().getBeginTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
-//                (double) series.getLastBar().getEndTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
+//                (double) series.getFirstBar().beginTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
+//                (double) series.getLastBar().endTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
 //                dashedThinLineStyle, Color.GREEN);
 //        lineAnnotation.setToolTipText("tradable below this");
 //        indicatorXYPlot.addAnnotation(lineAnnotation);
-//        lineAnnotation = new XYLineAnnotation((double) series.getFirstBar().getBeginTime().toEpochSecond() * 1000d,
-//                CHOP_UPPER_THRESHOLD, (double) series.getLastBar().getEndTime().toEpochSecond() * 1000d,
+//        lineAnnotation = new XYLineAnnotation((double) series.getFirstBar().beginTime().toEpochSecond() * 1000d,
+//                CHOP_UPPER_THRESHOLD, (double) series.getLastBar().endTime().toEpochSecond() * 1000d,
 //                CHOP_UPPER_THRESHOLD, dashedThinLineStyle, Color.RED);
 //        lineAnnotation.setToolTipText("too choppy above this");
 //        indicatorXYPlot.addAnnotation(lineAnnotation);

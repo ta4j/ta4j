@@ -35,21 +35,22 @@ import org.ta4j.core.BarSeries;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.ta4j.core.backtest.BacktestBarSeries;
 import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 public class JsonBarsSerializer {
 
     private static final Logger LOG = Logger.getLogger(JsonBarsSerializer.class.getName());
 
-    public static void persistSeries(BarSeries series, String filename) {
-        GsonBarSeries exportableSeries = GsonBarSeries.from(series);
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    public static void persistSeries(final BacktestBarSeries series, final String filename) {
+        final var exportableSeries = GsonBarSeries.from(series);
+        final var gson = new GsonBuilder().setPrettyPrinting().create();
         FileWriter writer = null;
         try {
             writer = new FileWriter(filename);
             gson.toJson(exportableSeries, writer);
             LOG.info("Bar series '" + series.getName() + "' successfully saved to '" + filename + "'");
-        } catch (IOException e) {
+        } catch (final IOException e) {
             e.printStackTrace();
             LOG.log(Level.SEVERE, "Unable to store bars in JSON", e);
         } finally {
@@ -57,31 +58,31 @@ public class JsonBarsSerializer {
                 try {
                     writer.flush();
                     writer.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
             }
         }
     }
 
-    public static BarSeries loadSeries(String filename) {
-        Gson gson = new Gson();
+    public static BarSeries loadSeries(final String filename) {
+        final Gson gson = new Gson();
         FileReader reader = null;
-        BarSeries result = null;
+        BacktestBarSeries result = null;
         try {
             reader = new FileReader(filename);
-            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+            final GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
 
             result = loadedSeries.toBarSeries();
             LOG.info("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             e.printStackTrace();
             LOG.log(Level.SEVERE, "Unable to load bars from JSON", e);
         } finally {
             try {
                 if (reader != null)
                     reader.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 e.printStackTrace();
             }
         }

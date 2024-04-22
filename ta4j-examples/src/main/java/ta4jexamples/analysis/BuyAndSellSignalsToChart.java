@@ -70,7 +70,7 @@
 //        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
 //        for (int i = 0; i < barSeries.getBarCount(); i++) {
 //            Bar bar = barSeries.getBar(i);
-//            chartTimeSeries.add(new Minute(Date.from(bar.getEndTime().toInstant())),
+//            chartTimeSeries.add(new Minute(Date.from(bar.endTime().toInstant())),
 //                    indicator.getValue(i).doubleValue());
 //        }
 //        return chartTimeSeries;
@@ -92,7 +92,7 @@
 //        for (Position position : positions) {
 //            // Buy signal
 //            double buySignalBarTime = new Minute(
-//                    Date.from(series.getBar(position.getEntry().getIndex()).getEndTime().toInstant()))
+//                    Date.from(series.getBar(position.getEntry().getIndex()).endTime().toInstant()))
 //                            .getFirstMillisecond();
 //            Marker buyMarker = new ValueMarker(buySignalBarTime);
 //            buyMarker.setPaint(Color.GREEN);
@@ -100,7 +100,7 @@
 //            plot.addDomainMarker(buyMarker);
 //            // Sell signal
 //            double sellSignalBarTime = new Minute(
-//                    Date.from(series.getBar(position.getExit().getIndex()).getEndTime().toInstant()))
+//                    Date.from(series.getBar(position.getExit().getIndex()).endTime().toInstant()))
 //                            .getFirstMillisecond();
 //            Marker sellMarker = new ValueMarker(sellSignalBarTime);
 //            sellMarker.setPaint(Color.RED);

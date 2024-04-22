@@ -72,12 +72,12 @@
 //        beginIndexes.add(beginIndex);
 //
 //        // Building the first interval before next split
-//        ZonedDateTime beginInterval = series.getFirstBar().getEndTime();
+//        ZonedDateTime beginInterval = series.getFirstBar().endTime();
 //        ZonedDateTime endInterval = beginInterval.plus(splitDuration);
 //
 //        for (int i = beginIndex; i <= endIndex; i++) {
 //            // For each bar...
-//            ZonedDateTime barTime = series.getBar(i).getEndTime();
+//            ZonedDateTime barTime = series.getBar(i).endTime();
 //            if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
 //                // Bar out of the interval
 //                if (!endInterval.isAfter(barTime)) {
@@ -111,7 +111,7 @@
 //    public static BacktestBarSeries subseries(BacktestBarSeries series, int beginIndex, Duration duration) {
 //
 //        // Calculating the sub-series interval
-//        ZonedDateTime beginInterval = null; // TODO series.getSubSeries(beginIndex, series.getEndIndex()).getEndTime();
+//        ZonedDateTime beginInterval = null; // TODO series.getSubSeries(beginIndex, series.getEndIndex()).endTime();
 //        ZonedDateTime endInterval = beginInterval.plus(duration);
 //
 //        // Checking bars belonging to the sub-series (starting at the provided index)
@@ -119,7 +119,7 @@
 //        int endIndex = series.getEndIndex();
 //        for (int i = beginIndex; i <= endIndex; i++) {
 //            // For each bar...
-//            ZonedDateTime barTime = series.getBar().getEndTime();
+//            ZonedDateTime barTime = series.getBar().endTime();
 //            if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
 //                // Bar out of the interval
 //                break;
