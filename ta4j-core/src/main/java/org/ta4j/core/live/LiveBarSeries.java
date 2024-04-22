@@ -36,7 +36,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @author Lukáš Kvídera
  */
-public class LiveBarSeries implements BarSeries {
+class LiveBarSeries implements BarSeries {
 
   private final NumFactory numFactory;
   private final String name;

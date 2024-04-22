@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -23,16 +23,43 @@
  */
 package org.ta4j.core.live;
 
-import org.ta4j.core.BarBuilderFactory;
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
 
 /**
+ * Trading contest that traces bars and respective strategy
+ *
  * @author Lukáš Kvídera
  */
-class LiveBarBuilderFactory implements BarBuilderFactory {
+public class LiveTrading {
+  private final BarSeries series;
+  private Strategy strategy;
 
-    @Override
-    public LiveBarBuilder createBarBuilder(final BarSeries series) {
-        return new LiveBarBuilder(series);
-    }
+  public LiveTrading(final BarSeries series, final Strategy strategy) {
+    this.series = series;
+    this.strategy = strategy;
+  }
+
+  public BarBuilder barBuilder() {
+    return this.series.barBuilder();
+  }
+
+  public Strategy getStrategy() {
+    return this.strategy;
+  }
+
+  public void replaceStrategy(final Strategy strategy) {
+    this.series.replaceStrategy(strategy);
+    this.strategy = strategy;
+  }
+
+
+  public boolean shouldEnter() {
+    return this.strategy.shouldEnter();
+  }
+
+  public boolean shouldExit() {
+    return this.strategy.shouldExit();
+  }
 }

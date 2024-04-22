@@ -27,6 +27,7 @@
 package org.ta4j.core.live;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import java.time.Duration;
@@ -40,9 +41,9 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class LiveBarSeriesTest extends AbstractIndicatorTest<LiveBarSeries, Num> {
+public class LiveTradingTest extends AbstractIndicatorTest<LiveBarSeries, Num> {
 
-  public LiveBarSeriesTest(final NumFactory numFactory) {
+  public LiveTradingTest(final NumFactory numFactory) {
     super(numFactory);
   }
 
@@ -50,30 +51,44 @@ public class LiveBarSeriesTest extends AbstractIndicatorTest<LiveBarSeries, Num>
   @Test
   public void testStandardFlow() {
     final var smaTest = new ArrayList<NumericIndicator>(1);
-    final var barSeries = new LiveBarSeriesBuilder()
+    final var liveTrading = new LiveTradingBuilder()
         .withNumFactory(this.numFactory)
         .withName("LiveTrading")
         .withStrategyFactory(series -> {
           final var closePrice = NumericIndicator.closePrice(series);
           final var sma = closePrice.sma(5);
           smaTest.add(sma);
-          final var entryRule = sma.crossedOver(30);
-          final var exitRule = sma.crossedUnder(30);
+          final var entryRule = sma.isGreaterThan(5);
+          final var exitRule = sma.isLessThan(11);
           return new BacktestStrategy("LiveSMA", entryRule, exitRule);
         })
         .build();
 
     assertNull(smaTest.getFirst().getValue());
 
-    final var expectedValues = new Num[] {numOf(2), numOf(4), numOf(6), numOf(8), numOf(10), numOf(10)};
+    final var expectedValues = new Num[] {numOf(2), numOf(4), numOf(6), numOf(8), numOf(10), numOf(10), numOf(10)};
+    final var expectedEntries = new boolean[] {false, false, false, false, true, true, true};
+    final var expectedExits = new boolean[] {false, false, false, false, true, true, true};
     for (int i = 0; i < 6; i++) {
-      barSeries.barBuilder()
+      liveTrading.barBuilder()
           .timePeriod(Duration.ofMinutes(1))
           .endTime(ZonedDateTime.now())
           .closePrice(10)
           .add();
-      assertEquals(expectedValues[i], smaTest.getFirst().getValue());
+      assertEquals(String.valueOf(i), expectedValues[i], smaTest.getFirst().getValue());
+      assertEquals(String.valueOf(i), expectedEntries[i], liveTrading.shouldEnter());
+      assertEquals(String.valueOf(i), expectedExits[i], liveTrading.shouldExit());
     }
+
+    // test exit rule in stable period
+    liveTrading.barBuilder()
+        .timePeriod(Duration.ofMinutes(1))
+        .endTime(ZonedDateTime.now())
+        .closePrice(100)
+        .add();
+
+    assertEquals(numOf(28), smaTest.getFirst().getValue());
+    assertFalse(liveTrading.shouldExit());
   }
 
 }

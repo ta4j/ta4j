@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -32,8 +32,9 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.num.Num;
 
 /**
- * Base implementation of a {@link Bar}.
+ * Live trading implementation of a {@link Bar}.
  */
+// TODO change to record
 public class LiveBar implements Bar {
 
   /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */

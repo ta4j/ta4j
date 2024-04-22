@@ -35,7 +35,7 @@ import org.ta4j.core.num.NumFactory;
  * A builder to build a new {@code LiveBar} with conversion from a
  * {@link Number} of type {@code T} to a {@link Num Num implementation}.
  */
-public class LiveBarBuilder implements BarBuilder {
+class LiveBarBuilder implements BarBuilder {
 
   private final NumFactory numFactory;
   private final BarSeries series;
