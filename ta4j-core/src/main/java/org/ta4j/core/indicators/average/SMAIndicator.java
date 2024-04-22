@@ -69,10 +69,6 @@ public class SMAIndicator extends AbstractIndicator<Num> {
 
     @Override
     public Num getValue() {
-        if (this.value == null) {
-            throw new IllegalStateException("Indicator has not been initialized");
-        }
-
         return this.value;
     }
 

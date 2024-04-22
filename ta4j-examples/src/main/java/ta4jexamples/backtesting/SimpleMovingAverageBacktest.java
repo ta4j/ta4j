@@ -31,6 +31,7 @@ import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestBar;
+import org.ta4j.core.backtest.BacktestBarBuilder;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.backtest.BacktestExecutor;
@@ -74,7 +75,8 @@ public class SimpleMovingAverageBacktest {
         return series;
     }
 
-    private static BacktestBar createBar(BacktestBarConvertibleBuilder barBuilder, ZonedDateTime endTime,
+    private static BacktestBar createBar(
+        BacktestBarBuilder barBuilder, ZonedDateTime endTime,
             Number openPrice, Number highPrice, Number lowPrice, Number closePrice, Number volume) {
         return barBuilder.timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
@@ -90,16 +92,16 @@ public class SimpleMovingAverageBacktest {
         return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
     }
 
-    private static BacktestStrategy create3DaySmaStrategy(BarSeries series) {
+    private static BacktestStrategy create3DaySmaStrategy(BacktestBarSeries series) {
         var closePrice = NumericIndicator.closePrice(series);
-        var sma = closePrice.sma( 3).cached();
+        var sma = closePrice.sma( 3);
         return new BacktestStrategy("", sma.isLessThan(closePrice),
                 sma.isGreaterThan(closePrice));
     }
 
     private static BacktestStrategy create2DaySmaStrategy(BarSeries series) {
         var closePrice = NumericIndicator.closePrice(series);
-        var sma = closePrice.sma( 2).cached();
+        var sma = closePrice.sma( 2);
         return new BacktestStrategy("",
             sma.isLessThan(closePrice),
                 sma.isGreaterThan(closePrice));

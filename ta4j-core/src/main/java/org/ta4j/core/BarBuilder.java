@@ -23,12 +23,15 @@
  */
 package org.ta4j.core;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 
 /**
  * @author Lukáš Kvídera
  */
 public interface BarBuilder {
+  BarBuilder timePeriod(Duration timePeriod);
+
   BarBuilder endTime(ZonedDateTime zonedDateTime);
 
   BarBuilder openPrice(Number openPrice);

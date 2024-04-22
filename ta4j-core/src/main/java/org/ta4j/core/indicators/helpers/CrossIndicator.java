@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -43,7 +45,7 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     /** Lower indicator */
     private final Indicator<Num> low;
     private Boolean value;
-    private ZonedDateTime currentTick;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.

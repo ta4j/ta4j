@@ -71,7 +71,7 @@ public class LiveBarSeriesBuilder {
         return this;
     }
 
-    public LiveBarSeriesBuilder withStrategy(final StrategyFactory strategy) {
+    public LiveBarSeriesBuilder withStrategyFactory(final StrategyFactory strategy) {
         this.strategyFactory = strategy;
         return this;
     }
