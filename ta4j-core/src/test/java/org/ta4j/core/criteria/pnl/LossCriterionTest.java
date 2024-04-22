@@ -52,15 +52,15 @@
 //        TradingRecord tradingRecord = new BackTestTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
 //
 //        // entry price = 100 (cost = 100*0.01 = 1) => netPrice = 101, grossPrice = 100
-//        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numOf(1));
+//        tradingRecord.enter(0, series.getBar(0).closePrice(), numOf(1));
 //        // exit price = 95 (cost = 95*0.01 = 0.95) => netPrice = 94.05, grossPrice = 95
-//        tradingRecord.exit(1, series.getBar(1).getClosePrice(),
+//        tradingRecord.exit(1, series.getBar(1).closePrice(),
 //                tradingRecord.getCurrentPosition().getEntry().getAmount());
 //
 //        // entry price = 100 (cost = 100*0.01 = 1) => netPrice = 101, grossPrice = 100
-//        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numOf(1));
+//        tradingRecord.enter(2, series.getBar(2).closePrice(), numOf(1));
 //        // exit price = 70 (cost = 70*0.01 = 0.70) => netPrice = 69.3, grossPrice = 70
-//        tradingRecord.exit(5, series.getBar(5).getClosePrice(),
+//        tradingRecord.exit(5, series.getBar(5).closePrice(),
 //                tradingRecord.getCurrentPosition().getEntry().getAmount());
 //
 //        // include costs, i.e. loss - costs:

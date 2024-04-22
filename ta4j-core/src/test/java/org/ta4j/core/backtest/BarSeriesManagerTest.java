@@ -109,11 +109,11 @@
 //        List<Position> positions = manager.run(strategy).getPositions();
 //        assertEquals(2, positions.size());
 //
-//        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).closePrice(), numOf(1)), positions.get(0).getExit());
 //
-//        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
-//        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
+//        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).closePrice(), numOf(1)), positions.get(1).getEntry());
+//        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).closePrice(), numOf(1)), positions.get(1).getExit());
 //    }
 //
 //    @Test
@@ -122,8 +122,8 @@
 //        List<Position> positions = manager.run(aStrategy, 0, 3).getPositions();
 //        assertEquals(1, positions.size());
 //
-//        assertEquals(Trade.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.buyAt(1, seriesForRun.getBar(1).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.sellAt(3, seriesForRun.getBar(3).closePrice(), numOf(1)), positions.get(0).getExit());
 //    }
 //
 //    @Test
@@ -132,8 +132,8 @@
 //        List<Position> positions = manager.run(aStrategy, TradeType.SELL, 0, 3).getPositions();
 //        assertEquals(1, positions.size());
 //
-//        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).closePrice(), numOf(1)), positions.get(0).getExit());
 //    }
 //
 //    @Test
@@ -149,8 +149,8 @@
 //        tradingRecord = manager.run(strategy, 0, 4);
 //        positions = tradingRecord.getPositions();
 //        assertEquals(1, positions.size());
-//        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).closePrice(), numOf(1)), positions.get(0).getExit());
 //
 //        // no trades happened within [4-4]
 //        tradingRecord = manager.run(strategy, 4, 4);
@@ -161,8 +161,8 @@
 //        tradingRecord = manager.run(strategy, 5, 8);
 //        positions = tradingRecord.getPositions();
 //        assertEquals(1, positions.size());
-//        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).closePrice(), numOf(1)), positions.get(0).getExit());
 //    }
 //
 //    @Test
@@ -199,8 +199,8 @@
 //        // 1 entry and 1 exit happened within [4-6]
 //        positions = manager.run(aStrategy, 4, 6).getPositions();
 //        assertEquals(1, positions.size());
-//        assertEquals(Trade.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-//        assertEquals(Trade.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
+//        assertEquals(Trade.buyAt(5, series.getBar(5).closePrice(), numOf(1)), positions.get(0).getEntry());
+//        assertEquals(Trade.sellAt(6, series.getBar(6).closePrice(), numOf(1)), positions.get(0).getExit());
 //
 //        // 1 entry happened within [7-7]
 //        tradingRecord = manager.run(aStrategy, 7, 7);

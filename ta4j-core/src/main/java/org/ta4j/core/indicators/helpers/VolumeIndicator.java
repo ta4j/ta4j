@@ -48,7 +48,7 @@ public class VolumeIndicator extends AbstractIndicator<Num> {
 
     @Override
     public Num getValue() {
-        return getBarSeries().getBar().getVolume();
+        return getBarSeries().getBar().volume();
     }
 
     @Override

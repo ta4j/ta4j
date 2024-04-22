@@ -41,7 +41,7 @@ public class TradeOnNextOpenModel implements TradeExecutionModel {
     public void execute(int index, TradingRecord tradingRecord, BacktestBarSeries barSeries, Num amount) {
         int indexOfExecutedBar = index + 1;
         if (indexOfExecutedBar <= barSeries.getEndIndex()) {
-            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
+            tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).openPrice(), amount);
         }
     }
 

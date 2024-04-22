@@ -134,7 +134,7 @@
 //                .closePrice(1d)
 //                .build(), true);
 //        assertEquals(1, series.getBarCount());
-//        assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().one());
+//        assertNumEquals(series.getLastBar().closePrice(), series.numFactory().one());
 //
 //        series.addBar(series.barBuilder()
 //                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1))
@@ -146,7 +146,7 @@
 //                .build(), false);
 //        assertEquals(3, series.getBarCount());
 //
-//        assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(3));
+//        assertNumEquals(series.getLastBar().closePrice(), series.numFactory().numOf(3));
 //        series.addBar(series.barBuilder()
 //                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3))
 //                .closePrice(4d)
@@ -157,7 +157,7 @@
 //                .build(), true);
 //        assertEquals(3, series.getBarCount());
 //
-//        assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(5));
+//        assertNumEquals(series.getLastBar().closePrice(), series.numFactory().numOf(5));
 //    }
 //
 //    @Test
@@ -194,18 +194,18 @@
 //        assertTrue(defaultSeries.getSeriesPeriodDescription()
 //                .endsWith(defaultSeries.getBarData()
 //                        .get(defaultSeries.getEndIndex())
-//                        .getEndTime()
+//                        .endTime()
 //                        .format(DateTimeFormatter.ISO_DATE_TIME)));
 //        assertTrue(defaultSeries.getSeriesPeriodDescription()
 //                .startsWith(defaultSeries.getBarData()
 //                        .get(defaultSeries.getBeginIndex())
-//                        .getEndTime()
+//                        .endTime()
 //                        .format(DateTimeFormatter.ISO_DATE_TIME)));
 //        // Constrained series
 //        assertTrue(subSeries.getSeriesPeriodDescription()
-//                .endsWith(defaultSeries.getBarData().get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+//                .endsWith(defaultSeries.getBarData().get(4).endTime().format(DateTimeFormatter.ISO_DATE_TIME)));
 //        assertTrue(subSeries.getSeriesPeriodDescription()
-//                .startsWith(defaultSeries.getBarData().get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+//                .startsWith(defaultSeries.getBarData().get(2).endTime().format(DateTimeFormatter.ISO_DATE_TIME)));
 //        // Empty series
 //        assertEquals("", emptySeries.getSeriesPeriodDescription());
 //    }
@@ -233,7 +233,7 @@
 //    public void modificationsOnOriginalListShouldNotAffectBarSeries() {
 //        defaultSeries.setMaximumBarCount(2);
 //        assertEquals(2, defaultSeries.getBarCount());
-//        assertNumEquals(5, defaultSeries.getBar(1).getClosePrice());
+//        assertNumEquals(5, defaultSeries.getBar(1).closePrice());
 //    }
 //
 //    @Test(expected = IndexOutOfBoundsException.class)
@@ -360,12 +360,12 @@
 //        var prevValue = new PreviousValueIndicator(cp, 1);
 //
 //        Num adding1 = numOf(100);
-//        Num prevClose = defaultSeries.getBar(defaultSeries.getEndIndex() - 1).getClosePrice();
+//        Num prevClose = defaultSeries.getBar(defaultSeries.getEndIndex() - 1).closePrice();
 //        Num currentMax = mxPrice.getValue(defaultSeries.getEndIndex());
 //        Num currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
 //        Num currentClose = cp.getValue(defaultSeries.getEndIndex());
 //
-//        assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
+//        assertNumEquals(currentClose, defaultSeries.getLastBar().closePrice());
 //        defaultSeries.addPrice(adding1);
 //        assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
 //        assertNull(currentMax);
@@ -393,11 +393,11 @@
 //                .build();
 //        series.barBuilder().closePrice(1d).volume(0).amount(0).add();
 //        series.addTrade(200, 11.5);
-//        assertNumEquals(series.numFactory().numOf(200), series.getLastBar().getVolume());
-//        assertNumEquals(series.numFactory().numOf(11.5), series.getLastBar().getClosePrice());
+//        assertNumEquals(series.numFactory().numOf(200), series.getLastBar().volume());
+//        assertNumEquals(series.numFactory().numOf(11.5), series.getLastBar().closePrice());
 //        series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
-//        assertNumEquals(series.numFactory().numOf(400), series.getLastBar().getVolume());
-//        assertNumEquals(series.numFactory().numOf(100), series.getLastBar().getClosePrice());
+//        assertNumEquals(series.numFactory().numOf(400), series.getLastBar().volume());
+//        assertNumEquals(series.numFactory().numOf(100), series.getLastBar().closePrice());
 //    }
 //
 //    @Test(expected = IllegalArgumentException.class)
@@ -443,7 +443,7 @@
 //
 //            final Bar subSeriesLastBar = subSeries.getLastBar();
 //            final Bar seriesLastBar = series.getLastBar();
-//            assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
+//            assertEquals(subSeriesLastBar.volume(), seriesLastBar.volume());
 //        });
 //    }
 //}

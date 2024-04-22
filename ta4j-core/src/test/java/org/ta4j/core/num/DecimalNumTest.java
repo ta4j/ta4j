@@ -208,22 +208,22 @@
 //
 //        assertEquals(120, ((BigDecimal) FIRST_SUPER_PRECISION_NUM.getDelegate()).precision());
 //        assertEquals(120, (((DecimalNum) FIRST_SUPER_PRECISION_NUM).getMathContext().getPrecision()));
-//        assertEquals(120, ((BigDecimal) this.superPrecisionSeries.getBar(0).getClosePrice().getDelegate()).precision());
-//        assertEquals(120, ((BigDecimal) this.precisionSeries.getBar(0).getClosePrice().getDelegate()).precision());
-//        assertEquals(17, (new BigDecimal(this.doubleSeries.getBar(0).getClosePrice().toString())).precision());
-//        assertEquals(3, (new BigDecimal(this.lowPrecisionSeries.getBar(0).getClosePrice().toString())).precision());
+//        assertEquals(120, ((BigDecimal) this.superPrecisionSeries.getBar(0).closePrice().getDelegate()).precision());
+//        assertEquals(120, ((BigDecimal) this.precisionSeries.getBar(0).closePrice().getDelegate()).precision());
+//        assertEquals(17, (new BigDecimal(this.doubleSeries.getBar(0).closePrice().toString())).precision());
+//        assertEquals(3, (new BigDecimal(this.lowPrecisionSeries.getBar(0).closePrice().toString())).precision());
 //
 //        assertNumEquals(DecimalNum.valueOf(
 //                "1.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"),
-//                this.superPrecisionSeries.getBar(0).getClosePrice());
+//                this.superPrecisionSeries.getBar(0).closePrice());
 //        assertNumEquals(DecimalNum.valueOf(
 //                "1.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"),
-//                this.precisionSeries.getBar(0).getClosePrice());
+//                this.precisionSeries.getBar(0).closePrice());
 //        assertNumEquals(DecimalNum.valueOf("1.2345678901234567890123456789012"),
-//                this.precision32Series.getBar(0).getClosePrice());
+//                this.precision32Series.getBar(0).closePrice());
 //        assertNumEquals(DecimalNum.valueOf("1.2345678901234567"),
-//                DecimalNum.valueOf(this.doubleSeries.getBar(0).getClosePrice().toString()));
-//        assertNumEquals(DecimalNum.valueOf("1.23"), this.lowPrecisionSeries.getBar(0).getClosePrice());
+//                DecimalNum.valueOf(this.doubleSeries.getBar(0).closePrice().toString()));
+//        assertNumEquals(DecimalNum.valueOf("1.23"), this.lowPrecisionSeries.getBar(0).closePrice());
 //
 //        final Indicator<Num> superPrecisionClose = new ClosePriceIndicator(this.superPrecisionSeries);
 //        final Indicator<Num> precisionClose = new ClosePriceIndicator(this.precisionSeries);

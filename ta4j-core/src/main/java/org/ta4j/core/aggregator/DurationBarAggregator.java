@@ -81,7 +81,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
         final Bar firstBar = bars.get(0);
         // get the actual time period
-        final Duration actualDur = firstBar.getTimePeriod();
+        final Duration actualDur = firstBar.timePeriod();
         // check if new timePeriod is a multiplication of actual time period
         final boolean isMultiplication = this.timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
@@ -90,13 +90,13 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
+        final Num zero = firstBar.openPrice().getNumFactory().zero();
         while (i < bars.size()) {
             BacktestBar bar = (BacktestBar) bars.get(i);
-            final ZonedDateTime beginTime = bar.getBeginTime();
-            final Num open = bar.getOpenPrice();
-            Num high = bar.getHighPrice();
-            Num low = bar.getLowPrice();
+            final ZonedDateTime beginTime = bar.beginTime();
+            final Num open = bar.openPrice();
+            Num high = bar.highPrice();
+            Num low = bar.lowPrice();
 
             Num close = null;
             Num volume = zero;
@@ -106,20 +106,20 @@ public class DurationBarAggregator implements BarAggregator {
 
             while (isInDuration(sumDur)) {
                 if (i < bars.size()) {
-                    if (!beginTimesInDuration(beginTime, bars.get(i).getBeginTime())) {
+                    if (!beginTimesInDuration(beginTime, bars.get(i).beginTime())) {
                         break;
                     }
                     bar = (BacktestBar) bars.get(i);
-                    if (high == null || bar.getHighPrice().isGreaterThan(high)) {
-                        high = bar.getHighPrice();
+                    if (high == null || bar.highPrice().isGreaterThan(high)) {
+                        high = bar.highPrice();
                     }
-                    if (low == null || bar.getLowPrice().isLessThan(low)) {
-                        low = bar.getLowPrice();
+                    if (low == null || bar.lowPrice().isLessThan(low)) {
+                        low = bar.lowPrice();
                     }
-                    close = bar.getClosePrice();
+                    close = bar.closePrice();
 
-                    if (bar.getVolume() != null) {
-                        volume = volume.plus(bar.getVolume());
+                    if (bar.volume() != null) {
+                        volume = volume.plus(bar.volume());
                     }
                     if (bar.getAmount() != null) {
                         amount = amount.plus(bar.getAmount());

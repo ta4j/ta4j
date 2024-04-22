@@ -53,7 +53,7 @@
 //    @Test
 //    public void indicatorShouldRetrieveBarLowPrice() {
 //        for (int i = 0; i < 10; i++) {
-//            assertEquals(lowPriceIndicator.getValue(i), barSeries.getBar(i).getLowPrice());
+//            assertEquals(lowPriceIndicator.getValue(i), barSeries.getBar(i).lowPrice());
 //        }
 //    }
 //}

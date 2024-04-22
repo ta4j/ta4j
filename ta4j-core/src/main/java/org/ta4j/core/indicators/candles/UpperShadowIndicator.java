@@ -52,14 +52,14 @@
 //    @Override
 //    protected Num calculate(int index) {
 //        Bar t = getBarSeries().getBar(index);
-//        final Num openPrice = t.getOpenPrice();
-//        final Num closePrice = t.getClosePrice();
+//        final Num openPrice = t.openPrice();
+//        final Num closePrice = t.closePrice();
 //        if (closePrice.isGreaterThan(openPrice)) {
 //            // Bullish
-//            return t.getHighPrice().minus(closePrice);
+//            return t.highPrice().minus(closePrice);
 //        } else {
 //            // Bearish
-//            return t.getHighPrice().minus(openPrice);
+//            return t.highPrice().minus(openPrice);
 //        }
 //    }
 //

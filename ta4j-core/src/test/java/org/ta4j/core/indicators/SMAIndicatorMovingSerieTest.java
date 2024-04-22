@@ -144,7 +144,7 @@
 //
 //        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
 //        for (int i = 0; i < data.getBarCount(); i++) {
-//            assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));
+//            assertEquals(data.getBar(i).closePrice(), indicator.getValue(i));
 //        }
 //    }
 //}

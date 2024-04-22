@@ -102,7 +102,7 @@ public class BacktestBar implements Bar {
      *         same {@code BarSeries})
      */
     @Override
-    public Duration getTimePeriod() {
+    public Duration timePeriod() {
         return this.timePeriod;
     }
 
@@ -111,37 +111,37 @@ public class BacktestBar implements Bar {
      *         {@link #timePeriod})
      */
     @Override
-    public ZonedDateTime getBeginTime() {
+    public ZonedDateTime beginTime() {
         return this.beginTime;
     }
 
     @Override
-    public ZonedDateTime getEndTime() {
+    public ZonedDateTime endTime() {
         return this.endTime;
     }
 
     @Override
-    public Num getOpenPrice() {
+    public Num openPrice() {
         return this.openPrice;
     }
 
     @Override
-    public Num getHighPrice() {
+    public Num highPrice() {
         return this.highPrice;
     }
 
     @Override
-    public Num getLowPrice() {
+    public Num lowPrice() {
         return this.lowPrice;
     }
 
     @Override
-    public Num getClosePrice() {
+    public Num closePrice() {
         return this.closePrice;
     }
 
     @Override
-    public Num getVolume() {
+    public Num volume() {
         return this.volume;
     }
 

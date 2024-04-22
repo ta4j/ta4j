@@ -87,9 +87,9 @@
 //            return NaN;
 //        }
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num low = bar.getLowPrice();
+//        Num low = bar.lowPrice();
 //        for (int i : barsOfPreviousPeriod) {
-//            low = getBarSeries().getBar(i).getLowPrice().min(low);
+//            low = getBarSeries().getBar(i).lowPrice().min(low);
 //        }
 //
 //        return x.dividedBy(getBarSeries().numFactory().two()).minus(low);
@@ -101,9 +101,9 @@
 //            return NaN;
 //        }
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num high = bar.getHighPrice();
+//        Num high = bar.highPrice();
 //        for (int i : barsOfPreviousPeriod) {
-//            high = getBarSeries().getBar(i).getHighPrice().max(high);
+//            high = getBarSeries().getBar(i).highPrice().max(high);
 //        }
 //
 //        return x.dividedBy(getBarSeries().numFactory().two()).minus(high);

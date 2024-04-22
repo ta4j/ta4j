@@ -69,7 +69,7 @@
 //        }
 //
 //        Bar bar = getBarSeries().getBar(i);
-//        Num closePrice = bar.getClosePrice();
+//        Num closePrice = bar.closePrice();
 //        Num previousValue = this.getValue(i - 1);
 //        Num lowerBand = superTrendLowerBandIndicator.getValue(i);
 //        Num upperBand = superTrendUpperBandIndicator.getValue(i);

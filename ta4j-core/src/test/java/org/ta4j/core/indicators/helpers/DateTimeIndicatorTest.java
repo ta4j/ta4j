@@ -50,7 +50,7 @@
 //        ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
 //        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 //        series.barBuilder().endTime(expectedZonedDateTime).add();
-//        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
+//        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::endTime);
 //        assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
 //    }
 //}

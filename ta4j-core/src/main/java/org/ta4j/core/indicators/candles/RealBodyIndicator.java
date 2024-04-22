@@ -52,7 +52,7 @@
 //    @Override
 //    protected Num calculate(int index) {
 //        Bar t = getBarSeries().getBar(index);
-//        return t.getClosePrice().minus(t.getOpenPrice());
+//        return t.closePrice().minus(t.openPrice());
 //    }
 //
 //    @Override

@@ -219,30 +219,30 @@
 //
 //        // bar 1 must have ohlcv (1, 6, 4, 9, 25)
 //        final Bar bar1 = bars.get(0);
-//        final Num num1 = bar1.getOpenPrice();
-//        assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(6), bar1.getHighPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(4), bar1.getLowPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(9), bar1.getClosePrice());
-//        assertNumEquals(num1.getNumFactory().numOf(33), bar1.getVolume());
+//        final Num num1 = bar1.openPrice();
+//        assertNumEquals(num1.getNumFactory().numOf(1), bar1.openPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(6), bar1.highPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(4), bar1.lowPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(9), bar1.closePrice());
+//        assertNumEquals(num1.getNumFactory().numOf(33), bar1.volume());
 //
 //        // bar 2 must have ohlcv (6, 91, 4, 10, 260)
 //        final Bar bar2 = bars.get(1);
-//        final Num num2 = bar2.getOpenPrice();
-//        assertNumEquals(num2.getNumFactory().numOf(6), bar2.getOpenPrice());
-//        assertNumEquals(num2.getNumFactory().numOf(91), bar2.getHighPrice());
-//        assertNumEquals(num2.getNumFactory().numOf(4), bar2.getLowPrice());
-//        assertNumEquals(num2.getNumFactory().numOf(10), bar2.getClosePrice());
-//        assertNumEquals(num2.getNumFactory().numOf(260), bar2.getVolume());
+//        final Num num2 = bar2.openPrice();
+//        assertNumEquals(num2.getNumFactory().numOf(6), bar2.openPrice());
+//        assertNumEquals(num2.getNumFactory().numOf(91), bar2.highPrice());
+//        assertNumEquals(num2.getNumFactory().numOf(4), bar2.lowPrice());
+//        assertNumEquals(num2.getNumFactory().numOf(10), bar2.closePrice());
+//        assertNumEquals(num2.getNumFactory().numOf(260), bar2.volume());
 //
 //        // bar 3 must have ohlcv (1d, 6d, 4d, 9d, 25)
 //        Bar bar3 = bars.get(2);
-//        Num num3 = bar3.getOpenPrice();
-//        assertNumEquals(num3.getNumFactory().numOf(4), bar3.getOpenPrice());
-//        assertNumEquals(num3.getNumFactory().numOf(991), bar3.getHighPrice());
-//        assertNumEquals(num3.getNumFactory().numOf(43), bar3.getLowPrice());
-//        assertNumEquals(num3.getNumFactory().numOf(10), bar3.getClosePrice());
-//        assertNumEquals(num3.getNumFactory().numOf(1010), bar3.getVolume());
+//        Num num3 = bar3.openPrice();
+//        assertNumEquals(num3.getNumFactory().numOf(4), bar3.openPrice());
+//        assertNumEquals(num3.getNumFactory().numOf(991), bar3.highPrice());
+//        assertNumEquals(num3.getNumFactory().numOf(43), bar3.lowPrice());
+//        assertNumEquals(num3.getNumFactory().numOf(10), bar3.closePrice());
+//        assertNumEquals(num3.getNumFactory().numOf(1010), bar3.volume());
 //    }
 //
 //    /**
@@ -258,12 +258,12 @@
 //
 //        // bar 1 must have ohlcv (1, 91, 4, 10, 293)
 //        final Bar bar1 = bars.get(0);
-//        final Num num1 = bar1.getOpenPrice();
-//        assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(91), bar1.getHighPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(4), bar1.getLowPrice());
-//        assertNumEquals(num1.getNumFactory().numOf(10), bar1.getClosePrice());
-//        assertNumEquals(num1.getNumFactory().numOf(293), bar1.getVolume());
+//        final Num num1 = bar1.openPrice();
+//        assertNumEquals(num1.getNumFactory().numOf(1), bar1.openPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(91), bar1.highPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(4), bar1.lowPrice());
+//        assertNumEquals(num1.getNumFactory().numOf(10), bar1.closePrice());
+//        assertNumEquals(num1.getNumFactory().numOf(293), bar1.volume());
 //    }
 //
 //    /**
@@ -322,17 +322,17 @@
 //        assertEquals(2, aggregated2MinSeries.getBarCount());
 //        assertEquals(2, aggregated4MinSeries.getBarCount());
 //
-//        assertNumEquals(3, aggregated2MinSeries.getBar(0).getClosePrice());
-//        assertNumEquals(3, aggregated4MinSeries.getBar(0).getClosePrice());
+//        assertNumEquals(3, aggregated2MinSeries.getBar(0).closePrice());
+//        assertNumEquals(3, aggregated4MinSeries.getBar(0).closePrice());
 //
-//        assertNumEquals(2, aggregated2MinSeries.getBar(0).getVolume());
-//        assertNumEquals(2, aggregated4MinSeries.getBar(0).getVolume());
+//        assertNumEquals(2, aggregated2MinSeries.getBar(0).volume());
+//        assertNumEquals(2, aggregated4MinSeries.getBar(0).volume());
 //
-//        assertNumEquals(1, aggregated2MinSeries.getBar(1).getClosePrice());
-//        assertNumEquals(1, aggregated4MinSeries.getBar(1).getClosePrice());
+//        assertNumEquals(1, aggregated2MinSeries.getBar(1).closePrice());
+//        assertNumEquals(1, aggregated4MinSeries.getBar(1).closePrice());
 //
-//        assertNumEquals(1, aggregated2MinSeries.getBar(1).getVolume());
-//        assertNumEquals(1, aggregated4MinSeries.getBar(1).getVolume());
+//        assertNumEquals(1, aggregated2MinSeries.getBar(1).volume());
+//        assertNumEquals(1, aggregated4MinSeries.getBar(1).volume());
 //
 //    }
 //

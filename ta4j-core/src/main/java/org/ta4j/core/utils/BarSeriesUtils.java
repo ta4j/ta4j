@@ -46,10 +46,10 @@
 //public final class BarSeriesUtils {
 //
 //    /**
-//     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
+//     * Sorts the Bars by {@link Bar#endTime()} in ascending sequence (lower
 //     * values before higher values).
 //     */
-//    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
+//    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.endTime().isAfter(b2.endTime()) ? 1 : -1;
 //
 //    private BarSeriesUtils() {
 //    }
@@ -90,9 +90,9 @@
 //            return null;
 //        for (int i = 0; i < bars.size(); i++) {
 //            Bar bar = bars.get(i);
-//            boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
-//                    && bar.getEndTime().isEqual(newBar.getEndTime())
-//                    && bar.getTimePeriod().equals(newBar.getTimePeriod());
+//            boolean isSameBar = bar.beginTime().isEqual(newBar.beginTime())
+//                    && bar.endTime().isEqual(newBar.endTime())
+//                    && bar.timePeriod().equals(newBar.timePeriod());
 //            if (isSameBar && !bar.equals(newBar))
 //                return bars.set(i, newBar);
 //        }
@@ -116,7 +116,7 @@
 //        List<Bar> bars = barSeries.getBarData();
 //        if (bars == null || bars.isEmpty())
 //            return new ArrayList<>();
-//        Duration duration = bars.iterator().next().getTimePeriod();
+//        Duration duration = bars.iterator().next().timePeriod();
 //        List<ZonedDateTime> missingBars = new ArrayList<>();
 //        for (int i = 0; i < bars.size(); i++) {
 //            Bar bar = bars.get(i);
@@ -125,15 +125,15 @@
 //                Duration incDuration = Duration.ZERO;
 //                if (nextBar != null) {
 //                    // market closing times are also treated as missing bars
-//                    while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
-//                        missingBars.add(bar.getEndTime().plus(incDuration).plus(duration));
+//                    while (nextBar.beginTime().minus(incDuration).isAfter(bar.endTime())) {
+//                        missingBars.add(bar.endTime().plus(incDuration).plus(duration));
 //                        incDuration = incDuration.plus(duration);
 //                    }
 //                }
 //            }
-//            boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
+//            boolean noFullData = bar.openPrice().isNaN() || bar.highPrice().isNaN() || bar.lowPrice().isNaN();
 //            if (noFullData) {
-//                missingBars.add(bar.getEndTime());
+//                missingBars.add(bar.endTime());
 //            }
 //        }
 //        return missingBars;
@@ -160,13 +160,13 @@
 //        for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
 //            Bar bar = bars.get(i);
 //            convertedBarSeries.barBuilder()
-//                    .timePeriod(bar.getTimePeriod())
-//                    .endTime(bar.getEndTime())
-//                    .openPrice(bar.getOpenPrice().getDelegate())
-//                    .highPrice(bar.getHighPrice().getDelegate())
-//                    .lowPrice(bar.getLowPrice().getDelegate())
-//                    .closePrice(bar.getClosePrice().getDelegate())
-//                    .volume(bar.getVolume().getDelegate())
+//                    .timePeriod(bar.timePeriod())
+//                    .endTime(bar.endTime())
+//                    .openPrice(bar.openPrice().getDelegate())
+//                    .highPrice(bar.highPrice().getDelegate())
+//                    .lowPrice(bar.lowPrice().getDelegate())
+//                    .closePrice(bar.closePrice().getDelegate())
+//                    .volume(bar.volume().getDelegate())
 //                    .amount(bar.getAmount().getDelegate())
 //                    .trades(bar.getTrades())
 //                    .add();
@@ -189,14 +189,14 @@
 //        List<Bar> bars = barSeries.getBarData();
 //        if (bars == null || bars.isEmpty())
 //            return new ArrayList<>();
-//        Duration period = bars.iterator().next().getTimePeriod();
+//        Duration period = bars.iterator().next().timePeriod();
 //        List<Bar> overlappingBars = new ArrayList<>();
 //        for (int i = 0; i < bars.size(); i++) {
 //            Bar bar = bars.get(i);
 //            Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
 //            if (nextBar != null) {
-//                if (bar.getEndTime().isAfter(nextBar.getBeginTime())
-//                        || bar.getBeginTime().plus(period).isBefore(nextBar.getBeginTime())) {
+//                if (bar.endTime().isAfter(nextBar.beginTime())
+//                        || bar.beginTime().plus(period).isBefore(nextBar.beginTime())) {
 //                    overlappingBars.add(nextBar);
 //                }
 //            }
@@ -214,7 +214,7 @@
 //        if (newBars != null && !newBars.isEmpty()) {
 //            sortBars(newBars);
 //            for (Bar bar : newBars) {
-//                if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
+//                if (barSeries.isEmpty() || bar.endTime().isAfter(barSeries.getLastBar().endTime())) {
 //                    barSeries.addBar(bar);
 //                }
 //            }
@@ -222,7 +222,7 @@
 //    }
 //
 //    /**
-//     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
+//     * Sorts the Bars by {@link Bar#endTime()} in ascending sequence (lower times
 //     * before higher times).
 //     *
 //     * @param bars the bars

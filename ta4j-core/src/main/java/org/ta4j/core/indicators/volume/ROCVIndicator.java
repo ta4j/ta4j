@@ -52,8 +52,8 @@
 //    @Override
 //    protected Num calculate(int index) {
 //        int nIndex = Math.max(index - barCount, 0);
-//        Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
-//        Num currentValue = getBarSeries().getBar(index).getVolume();
+//        Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).volume();
+//        Num currentValue = getBarSeries().getBar(index).volume();
 //        return currentValue.minus(nPeriodsAgoValue)
 //                .dividedBy(nPeriodsAgoValue)
 //                .multipliedBy(getBarSeries().numFactory().hundred());

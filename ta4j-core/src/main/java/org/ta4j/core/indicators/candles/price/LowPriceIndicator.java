@@ -48,7 +48,7 @@ public class LowPriceIndicator extends AbstractIndicator<Num> {
 
     @Override
     public Num getValue() {
-        return getBarSeries().getBar().getLowPrice();
+        return getBarSeries().getBar().lowPrice();
     }
 
     @Override

@@ -47,13 +47,13 @@
 //    @Before
 //    public void setUp() {
 //        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-//        closePrice = new NumIndicator(barSeries, Bar::getClosePrice);
+//        closePrice = new NumIndicator(barSeries, Bar::closePrice);
 //    }
 //
 //    @Test
 //    public void indicatorShouldRetrieveBarClosePrice() {
 //        for (int i = 0; i < 10; i++) {
-//            assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
+//            assertEquals(closePrice.getValue(i), barSeries.getBar(i).closePrice());
 //        }
 //    }
 //}

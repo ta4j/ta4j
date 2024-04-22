@@ -131,7 +131,7 @@ public class Trade {
         this.type = type;
         this.index = index;
         this.amount = amount;
-        setPricesAndCost(series.getBar(index).getClosePrice(), amount, transactionCostModel);
+        setPricesAndCost(series.getBar(index).closePrice(), amount, transactionCostModel);
     }
 
     /**
@@ -209,7 +209,7 @@ public class Trade {
      */
     public Num getPricePerAsset(final BacktestBarSeries barSeries) {
         if (this.pricePerAsset.isNaN()) {
-            return barSeries.getBar(this.index).getClosePrice();
+            return barSeries.getBar(this.index).closePrice();
         }
         return this.pricePerAsset;
     }

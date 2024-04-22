@@ -73,7 +73,7 @@
 //        Num currentBasic = medianPriceIndicator.getValue(index)
 //                .minus(multiplier.multipliedBy(atrIndicator.getValue(index)));
 //
-//        return currentBasic.isGreaterThan(previousValue) || bar.getClosePrice().isLessThan(previousValue) ? currentBasic
+//        return currentBasic.isGreaterThan(previousValue) || bar.closePrice().isLessThan(previousValue) ? currentBasic
 //                : previousValue;
 //    }
 //

@@ -164,7 +164,7 @@
 //        // accordingly
 //        Num lastPrice = position.getEntry().getNetPrice();
 //        for (int i = startingIndex; i < endIndex; i++) {
-//            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+//            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).closePrice(), avgCost, isLongTrade);
 //            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 //
 //            Num strategyReturn;
@@ -175,7 +175,7 @@
 //            }
 //            values.add(strategyReturn);
 //            // update base price
-//            lastPrice = barSeries.getBar(i).getClosePrice();
+//            lastPrice = barSeries.getBar(i).closePrice();
 //        }
 //
 //        // add net return at exit position
@@ -183,7 +183,7 @@
 //        if (position.getExit() != null) {
 //            exitPrice = position.getExit().getNetPrice();
 //        } else {
-//            exitPrice = barSeries.getBar(endIndex).getClosePrice();
+//            exitPrice = barSeries.getBar(endIndex).closePrice();
 //        }
 //
 //        Num strategyReturn;

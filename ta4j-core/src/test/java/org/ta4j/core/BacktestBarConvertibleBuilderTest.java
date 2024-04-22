@@ -66,15 +66,15 @@ public class BacktestBarConvertibleBuilderTest extends AbstractIndicatorTest<Bar
                 .amount(BigDecimal.valueOf(4020))
                 .build();
 
-        assertEquals(duration, bar.getTimePeriod());
-        assertEquals(beginTime, bar.getBeginTime());
-        assertEquals(endTime, bar.getEndTime());
-        assertNumEquals(numOf(101.0), bar.getOpenPrice());
-        assertNumEquals(numOf(103), bar.getHighPrice());
-        assertNumEquals(numOf(100), bar.getLowPrice());
-        assertNumEquals(numOf(102), bar.getClosePrice());
+        assertEquals(duration, bar.timePeriod());
+        assertEquals(beginTime, bar.beginTime());
+        assertEquals(endTime, bar.endTime());
+        assertNumEquals(numOf(101.0), bar.openPrice());
+        assertNumEquals(numOf(103), bar.highPrice());
+        assertNumEquals(numOf(100), bar.lowPrice());
+        assertNumEquals(numOf(102), bar.closePrice());
         assertEquals(4, bar.getTrades());
-        assertNumEquals(numOf(40), bar.getVolume());
+        assertNumEquals(numOf(40), bar.volume());
         assertNumEquals(numOf(4020), bar.getAmount());
     }
 }

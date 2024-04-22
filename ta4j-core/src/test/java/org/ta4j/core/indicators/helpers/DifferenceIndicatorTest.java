@@ -55,8 +55,8 @@
 //    public void indicatorShouldRetrieveBarDifference() {
 //        assertNumEquals(0, closePriceDifference.getValue(0));
 //        for (int i = 1; i < 10; i++) {
-//            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
-//            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+//            Num previousBarClosePrice = barSeries.getBar(i - 1).closePrice();
+//            Num currentBarClosePrice = barSeries.getBar(i).closePrice();
 //            assertEquals(closePriceDifference.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
 //        }
 //    }

@@ -73,7 +73,7 @@
 //        int startIndex = Math.max(0, index - barCount + 1);
 //        for (int i = startIndex; i <= index; i++) {
 //            Num closePriceDifferenceValue = closePriceDifference.getValue(i);
-//            Num currentVolume = getBarSeries().getBar(i).getVolume();
+//            Num currentVolume = getBarSeries().getBar(i).volume();
 //
 //            tsv = tsv.plus(closePriceDifferenceValue.multipliedBy(currentVolume));
 //        }

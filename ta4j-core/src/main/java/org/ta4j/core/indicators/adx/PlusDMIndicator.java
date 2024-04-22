@@ -66,8 +66,8 @@ public class PlusDMIndicator extends AbstractIndicator<Num> {
         final Bar prevBar = this.previousBar;
         final Bar currentBar = getBarSeries().getBar();
 
-        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
-        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
+        final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
+        final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
 
         this.previousBar = currentBar;
         if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {

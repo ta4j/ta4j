@@ -48,14 +48,14 @@
 //        if (index == 0) {
 //            return getBarSeries().numFactory().zero();
 //        }
-//        final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
-//        final Num currentClose = getBarSeries().getBar(index).getClosePrice();
+//        final Num prevClose = getBarSeries().getBar(index - 1).closePrice();
+//        final Num currentClose = getBarSeries().getBar(index).closePrice();
 //
 //        final Num obvPrev = getValue(index - 1);
 //        if (prevClose.isGreaterThan(currentClose)) {
-//            return obvPrev.minus(getBarSeries().getBar(index).getVolume());
+//            return obvPrev.minus(getBarSeries().getBar(index).volume());
 //        } else if (prevClose.isLessThan(currentClose)) {
-//            return obvPrev.plus(getBarSeries().getBar(index).getVolume());
+//            return obvPrev.plus(getBarSeries().getBar(index).volume());
 //        } else {
 //            return obvPrev;
 //        }

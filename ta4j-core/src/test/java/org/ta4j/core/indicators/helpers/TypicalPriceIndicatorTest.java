@@ -55,7 +55,7 @@
 //    public void indicatorShouldRetrieveBarHighPrice() {
 //        for (int i = 0; i < 10; i++) {
 //            Bar bar = barSeries.getBar(i);
-//            Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice()).dividedBy(numOf(3));
+//            Num typicalPrice = bar.highPrice().plus(bar.lowPrice()).plus(bar.closePrice()).dividedBy(numOf(3));
 //            assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
 //        }
 //    }

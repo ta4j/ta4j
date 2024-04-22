@@ -39,7 +39,7 @@ public class TradeOnCurrentCloseModel implements TradeExecutionModel {
 
     @Override
     public void execute(int index, TradingRecord tradingRecord, BacktestBarSeries barSeries, Num amount) {
-        tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), amount);
+        tradingRecord.operate(index, barSeries.getBar(index).closePrice(), amount);
     }
 
 }

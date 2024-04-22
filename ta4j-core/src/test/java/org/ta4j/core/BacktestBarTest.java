@@ -78,21 +78,21 @@ public class BacktestBarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         assertEquals(3, this.bar.getTrades());
         assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), this.bar.getAmount());
-        assertEquals(numOf(200), this.bar.getOpenPrice());
-        assertEquals(numOf(198), this.bar.getClosePrice());
-        assertEquals(numOf(198), this.bar.getLowPrice());
-        assertEquals(numOf(201), this.bar.getHighPrice());
-        assertEquals(numOf(9), this.bar.getVolume());
+        assertEquals(numOf(200), this.bar.openPrice());
+        assertEquals(numOf(198), this.bar.closePrice());
+        assertEquals(numOf(198), this.bar.lowPrice());
+        assertEquals(numOf(201), this.bar.highPrice());
+        assertEquals(numOf(9), this.bar.volume());
     }
 
     @Test
-    public void getTimePeriod() {
-        assertEquals(this.beginTime, this.bar.getEndTime().minus(this.bar.getTimePeriod()));
+    public void timePeriod() {
+        assertEquals(this.beginTime, this.bar.endTime().minus(this.bar.timePeriod()));
     }
 
     @Test
-    public void getBeginTime() {
-        assertEquals(this.beginTime, this.bar.getBeginTime());
+    public void beginTime() {
+        assertEquals(this.beginTime, this.bar.beginTime());
     }
 
     @Test

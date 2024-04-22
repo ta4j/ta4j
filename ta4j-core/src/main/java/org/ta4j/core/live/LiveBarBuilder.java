@@ -59,7 +59,6 @@ class LiveBarBuilder implements BarBuilder {
     return this;
   }
 
-
   public LiveBarBuilder endTime(final ZonedDateTime endTime) {
     this.endTime = endTime;
     return this;
@@ -179,6 +178,7 @@ class LiveBarBuilder implements BarBuilder {
   public LiveBar build() {
     return new LiveBar(
         this.timePeriod,
+        this.endTime.minus(this.timePeriod),
         this.endTime,
         this.openPrice,
         this.highPrice,

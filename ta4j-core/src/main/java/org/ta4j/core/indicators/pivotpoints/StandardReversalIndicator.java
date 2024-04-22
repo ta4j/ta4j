@@ -89,64 +89,64 @@
 //
 //    private Num calculateR3(List<Integer> barsOfPreviousPeriod, int index) {
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num low = bar.getLowPrice();
-//        Num high = bar.getHighPrice();
+//        Num low = bar.lowPrice();
+//        Num high = bar.highPrice();
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            low = iBar.getLowPrice().min(low);
-//            high = iBar.getHighPrice().max(high);
+//            low = iBar.lowPrice().min(low);
+//            high = iBar.highPrice().max(high);
 //        }
 //        return high.plus(two.multipliedBy((pivotPointIndicator.getValue(index).minus(low))));
 //    }
 //
 //    private Num calculateR2(List<Integer> barsOfPreviousPeriod, int index) {
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num low = bar.getLowPrice();
-//        Num high = bar.getHighPrice();
+//        Num low = bar.lowPrice();
+//        Num high = bar.highPrice();
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            low = iBar.getLowPrice().min(low);
-//            high = iBar.getHighPrice().max(high);
+//            low = iBar.lowPrice().min(low);
+//            high = iBar.highPrice().max(high);
 //        }
 //        return pivotPointIndicator.getValue(index).plus((high.minus(low)));
 //    }
 //
 //    private Num calculateR1(List<Integer> barsOfPreviousPeriod, int index) {
-//        Num low = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getLowPrice();
+//        Num low = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).lowPrice();
 //        for (int i : barsOfPreviousPeriod) {
-//            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+//            low = (getBarSeries().getBar(i).lowPrice()).min(low);
 //        }
 //        return two.multipliedBy(pivotPointIndicator.getValue(index)).minus(low);
 //    }
 //
 //    private Num calculateS1(List<Integer> barsOfPreviousPeriod, int index) {
-//        Num high = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getHighPrice();
+//        Num high = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).highPrice();
 //        for (int i : barsOfPreviousPeriod) {
-//            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
+//            high = (getBarSeries().getBar(i).highPrice()).max(high);
 //        }
 //        return two.multipliedBy(pivotPointIndicator.getValue(index)).minus(high);
 //    }
 //
 //    private Num calculateS2(List<Integer> barsOfPreviousPeriod, int index) {
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num high = bar.getHighPrice();
-//        Num low = bar.getLowPrice();
+//        Num high = bar.highPrice();
+//        Num low = bar.lowPrice();
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            high = iBar.getHighPrice().max(high);
-//            low = iBar.getLowPrice().min(low);
+//            high = iBar.highPrice().max(high);
+//            low = iBar.lowPrice().min(low);
 //        }
 //        return pivotPointIndicator.getValue(index).minus((high.minus(low)));
 //    }
 //
 //    private Num calculateS3(List<Integer> barsOfPreviousPeriod, int index) {
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num high = bar.getHighPrice();
-//        Num low = bar.getLowPrice();
+//        Num high = bar.highPrice();
+//        Num low = bar.lowPrice();
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            high = iBar.getHighPrice().max(high);
-//            low = iBar.getLowPrice().min(low);
+//            high = iBar.highPrice().max(high);
+//            low = iBar.lowPrice().min(low);
 //        }
 //        return low.minus(two.multipliedBy((high.minus(pivotPointIndicator.getValue(index)))));
 //    }

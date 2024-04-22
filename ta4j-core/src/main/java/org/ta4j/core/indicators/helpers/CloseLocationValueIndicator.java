@@ -47,9 +47,9 @@
 //
 //    protected Num calculate() {
 //        final Bar bar = getBarSeries().getBar();
-//        final Num low = bar.getLowPrice();
-//        final Num high = bar.getHighPrice();
-//        final Num close = bar.getClosePrice();
+//        final Num low = bar.lowPrice();
+//        final Num high = bar.highPrice();
+//        final Num close = bar.closePrice();
 //
 //        final Num diffHighLow = high.minus(low);
 //

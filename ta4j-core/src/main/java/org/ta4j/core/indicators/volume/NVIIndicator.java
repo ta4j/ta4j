@@ -60,9 +60,9 @@
 //        Bar previousBar = getBarSeries().getBar(index - 1);
 //        Num previousValue = getValue(index - 1);
 //
-//        if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
-//            Num currentPrice = currentBar.getClosePrice();
-//            Num previousPrice = previousBar.getClosePrice();
+//        if (currentBar.volume().isLessThan(previousBar.volume())) {
+//            Num currentPrice = currentBar.closePrice();
+//            Num previousPrice = previousBar.closePrice();
 //            Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
 //            return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
 //        }

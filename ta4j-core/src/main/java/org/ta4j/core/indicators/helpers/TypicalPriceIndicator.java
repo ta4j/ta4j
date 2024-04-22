@@ -51,9 +51,9 @@
 //    @Override
 //    protected Num calculate(int index) {
 //        final Bar bar = getBarSeries().getBar(index);
-//        final Num highPrice = bar.getHighPrice();
-//        final Num lowPrice = bar.getLowPrice();
-//        final Num closePrice = bar.getClosePrice();
+//        final Num highPrice = bar.highPrice();
+//        final Num lowPrice = bar.lowPrice();
+//        final Num closePrice = bar.closePrice();
 //        return highPrice.plus(lowPrice).plus(closePrice).dividedBy(getBarSeries().numFactory().three());
 //    }
 //

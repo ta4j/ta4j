@@ -98,15 +98,15 @@
 //        if (barsOfPreviousPeriod.isEmpty())
 //            return NaN;
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num open = getBarSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size() - 1)).getOpenPrice();
-//        Num close = bar.getClosePrice();
-//        Num high = bar.getHighPrice();
-//        Num low = bar.getLowPrice();
+//        Num open = getBarSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size() - 1)).openPrice();
+//        Num close = bar.closePrice();
+//        Num high = bar.highPrice();
+//        Num low = bar.lowPrice();
 //
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            high = iBar.getHighPrice().max(high);
-//            low = iBar.getLowPrice().min(low);
+//            high = iBar.highPrice().max(high);
+//            low = iBar.lowPrice().min(low);
 //        }
 //
 //        Num x;
@@ -158,32 +158,32 @@
 //    private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
 //        switch (timeLevel) {
 //        case DAY: // return previous day
-//            int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
+//            int prevCalendarDay = bar.endTime().minusDays(1).getDayOfYear();
 //            // skip weekend and holidays:
-//            while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
+//            while (getBarSeries().getBar(indexOfPreviousBar).endTime().getDayOfYear() != prevCalendarDay
 //                    && indexOfPreviousBar > 0) {
 //                prevCalendarDay--;
 //            }
 //            return prevCalendarDay;
 //        case WEEK: // return previous week
-//            return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+//            return bar.endTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
 //        case MONTH: // return previous month
-//            return bar.getEndTime().minusMonths(1).getMonthValue();
+//            return bar.endTime().minusMonths(1).getMonthValue();
 //        default: // return previous year
-//            return bar.getEndTime().minusYears(1).getYear();
+//            return bar.endTime().minusYears(1).getYear();
 //        }
 //    }
 //
 //    private long getPeriod(Bar bar) {
 //        switch (timeLevel) {
 //        case DAY: // return previous day
-//            return bar.getEndTime().getDayOfYear();
+//            return bar.endTime().getDayOfYear();
 //        case WEEK: // return previous week
-//            return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+//            return bar.endTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
 //        case MONTH: // return previous month
-//            return bar.getEndTime().getMonthValue();
+//            return bar.endTime().getMonthValue();
 //        default: // return previous year
-//            return bar.getEndTime().getYear();
+//            return bar.endTime().getYear();
 //        }
 //    }
 //

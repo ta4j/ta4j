@@ -54,7 +54,7 @@
 //        Num moneyFlowMultiplier = clvIndicator.getValue(index);
 //
 //        // Calculating the money flow volume
-//        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
+//        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).volume());
 //
 //        return moneyFlowVolume.plus(getValue(index - 1));
 //    }

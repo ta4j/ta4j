@@ -41,12 +41,12 @@
 //    private final Function<Bar, ZonedDateTime> action;
 //
 //    /**
-//     * Constructor to return {@link Bar#getBeginTime()} of a bar.
+//     * Constructor to return {@link Bar#beginTime()} of a bar.
 //     *
 //     * @param barSeries the bar series
 //     */
 //    public DateTimeIndicator(BarSeries barSeries) {
-//        this(barSeries, Bar::getBeginTime);
+//        this(barSeries, Bar::beginTime);
 //    }
 //
 //    /**

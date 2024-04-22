@@ -93,8 +93,8 @@
 //
 //    private Position createEnterAndHoldTrade(BarSeries series) {
 //        Position position = new Position(this.tradeType);
-//        position.operate(beginIndex, series.getFirstBar().getClosePrice(), series.numFactory().one());
-//        position.operate(endIndex, series.getLastBar().getClosePrice(), series.numFactory().one());
+//        position.operate(beginIndex, series.getFirstBar().closePrice(), series.numFactory().one());
+//        position.operate(endIndex, series.getLastBar().closePrice(), series.numFactory().one());
 //        return position;
 //    }
 //}

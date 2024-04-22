@@ -142,7 +142,7 @@ public class BacktestBarSeries implements BarSeries {
             ++this.currentBarIndex;
 
             for (final var strategy : this.strategies) {
-                strategy.refresh(getBar().getEndTime());
+                strategy.refresh(getBar().endTime());
             }
             return true;
         }
@@ -247,14 +247,14 @@ public class BacktestBarSeries implements BarSeries {
      */
     public void addBar(final Bar bar, final boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
-        if (!this.numFactory.produces(bar.getClosePrice())) {
+        if (!this.numFactory.produces(bar.closePrice())) {
             throw new IllegalArgumentException(
                     String.format("Cannot add Bar with data type: %s to series with datatype: %s",
-                            bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+                            bar.closePrice().getClass(), this.numFactory.one().getClass()));
         }
 
         if (!(bar instanceof BacktestBar)) {
-            throw new IllegalArgumentException("Wrong bar type: " + bar.getClosePrice().getName());
+            throw new IllegalArgumentException("Wrong bar type: " + bar.closePrice().getName());
         }
 
         if (!this.bars.isEmpty()) {
@@ -263,11 +263,11 @@ public class BacktestBarSeries implements BarSeries {
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
-            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
-            if (!bar.getEndTime().isAfter(seriesEndTime)) {
+            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).endTime();
+            if (!bar.endTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
-                                bar.getEndTime(), seriesEndTime));
+                                bar.endTime(), seriesEndTime));
             }
         }
 
@@ -374,9 +374,9 @@ public class BacktestBarSeries implements BarSeries {
         if (!getBarData().isEmpty()) {
             final Bar firstBar = getFirstBar();
             final Bar lastBar = getLastBar();
-            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
+            sb.append(firstBar.endTime().format(DateTimeFormatter.ISO_DATE_TIME))
                 .append(" - ")
-                .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
+                .append(lastBar.endTime().format(DateTimeFormatter.ISO_DATE_TIME));
         }
         return sb.toString();
     }

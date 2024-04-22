@@ -105,12 +105,12 @@
 //        if (barsOfPreviousPeriod.isEmpty())
 //            return NaN;
 //        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-//        Num high = bar.getHighPrice();
-//        Num low = bar.getLowPrice();
+//        Num high = bar.highPrice();
+//        Num low = bar.lowPrice();
 //        for (int i : barsOfPreviousPeriod) {
 //            Bar iBar = getBarSeries().getBar(i);
-//            high = iBar.getHighPrice().max(high);
-//            low = iBar.getLowPrice().min(low);
+//            high = iBar.highPrice().max(high);
+//            low = iBar.lowPrice().min(low);
 //        }
 //
 //        Num pivotPointValue = pivotPointIndicator.getValue(index);

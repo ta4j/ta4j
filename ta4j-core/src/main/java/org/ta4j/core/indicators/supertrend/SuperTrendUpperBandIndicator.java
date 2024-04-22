@@ -73,7 +73,7 @@
 //        Bar bar = getBarSeries().getBar(index - 1);
 //        Num previousValue = this.getValue(index - 1);
 //
-//        return currentBasic.isLessThan(previousValue) || bar.getClosePrice().isGreaterThan(previousValue) ? currentBasic
+//        return currentBasic.isLessThan(previousValue) || bar.closePrice().isGreaterThan(previousValue) ? currentBasic
 //                : previousValue;
 //    }
 //

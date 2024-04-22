@@ -61,7 +61,7 @@
 //        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:30:00-00:00", dtf)).closePrice(100).add();
 //        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:35:00-00:00", dtf)).closePrice(100).add();
 //
-//        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+//        var dateTimeIndicator = new DateTimeIndicator(series, Bar::beginTime);
 //        TimeRangeRule rule = new TimeRangeRule(
 //                Arrays.asList(new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0)),
 //                        new TimeRangeRule.TimeRange(LocalTime.of(6, 0), LocalTime.of(7, 0)),

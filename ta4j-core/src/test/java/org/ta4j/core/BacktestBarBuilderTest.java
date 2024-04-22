@@ -60,15 +60,15 @@ public class BacktestBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num
                 .amount(numOf(4020))
                 .build();
 
-        assertEquals(duration, bar.getTimePeriod());
-        assertEquals(beginTime, bar.getBeginTime());
-        assertEquals(endTime, bar.getEndTime());
-        assertEquals(numOf(101), bar.getOpenPrice());
-        assertEquals(numOf(103), bar.getHighPrice());
-        assertEquals(numOf(100), bar.getLowPrice());
-        assertEquals(numOf(102), bar.getClosePrice());
+        assertEquals(duration, bar.timePeriod());
+        assertEquals(beginTime, bar.beginTime());
+        assertEquals(endTime, bar.endTime());
+        assertEquals(numOf(101), bar.openPrice());
+        assertEquals(numOf(103), bar.highPrice());
+        assertEquals(numOf(100), bar.lowPrice());
+        assertEquals(numOf(102), bar.closePrice());
         assertEquals(4, bar.getTrades());
-        assertEquals(numOf(40), bar.getVolume());
+        assertEquals(numOf(40), bar.volume());
         assertEquals(numOf(4020), bar.getAmount());
     }
 }

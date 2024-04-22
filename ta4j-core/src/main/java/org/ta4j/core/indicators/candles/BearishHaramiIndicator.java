@@ -53,10 +53,10 @@
 //        Bar prevBar = getBarSeries().getBar(index - 1);
 //        Bar currBar = getBarSeries().getBar(index);
 //        if (prevBar.isBullish() && currBar.isBearish()) {
-//            final Num prevOpenPrice = prevBar.getOpenPrice();
-//            final Num prevClosePrice = prevBar.getClosePrice();
-//            final Num currOpenPrice = currBar.getOpenPrice();
-//            final Num currClosePrice = currBar.getClosePrice();
+//            final Num prevOpenPrice = prevBar.openPrice();
+//            final Num prevClosePrice = prevBar.closePrice();
+//            final Num currOpenPrice = currBar.openPrice();
+//            final Num currClosePrice = currBar.closePrice();
 //            return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)
 //                    && currClosePrice.isGreaterThan(prevOpenPrice) && currClosePrice.isLessThan(prevClosePrice);
 //        }

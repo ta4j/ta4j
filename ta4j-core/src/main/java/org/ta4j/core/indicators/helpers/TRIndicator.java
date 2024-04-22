@@ -57,8 +57,8 @@ public class TRIndicator extends AbstractIndicator<Num> {
 
     protected Num calculate() {
         final Bar bar = getBarSeries().getBar();
-        final Num high = bar.getHighPrice();
-        final Num low = bar.getLowPrice();
+        final Num high = bar.highPrice();
+        final Num low = bar.lowPrice();
         final Num hl = high.minus(low);
 
         if (this.previousBar == null) {
@@ -67,7 +67,7 @@ public class TRIndicator extends AbstractIndicator<Num> {
         }
 
         this.stable = true;
-        final Num previousClose = this.previousBar.getClosePrice();
+        final Num previousClose = this.previousBar.closePrice();
         final Num hc = high.minus(previousClose);
         final Num cl = previousClose.minus(low);
         this.previousBar = bar;

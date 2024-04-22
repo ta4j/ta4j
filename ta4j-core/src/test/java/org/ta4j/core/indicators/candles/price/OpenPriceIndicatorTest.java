@@ -53,7 +53,7 @@ public class OpenPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void indicatorShouldRetrieveBarOpenPrice() {
         for (int i = 0; i < 10; i++) {
             this.barSeries.advance();
-            assertEquals(this.openPriceIndicator.getValue(), this.barSeries.getBar().getOpenPrice());
+            assertEquals(this.openPriceIndicator.getValue(), this.barSeries.getBar().openPrice());
         }
     }
 }

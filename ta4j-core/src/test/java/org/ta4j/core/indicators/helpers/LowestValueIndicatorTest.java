@@ -139,9 +139,9 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             series.advance();
             if (i % 2 != 0) {
-                assertEquals(series.getBar(i - 1).getClosePrice().toString(), lowestValue.getValue().toString());
+                assertEquals(series.getBar(i - 1).closePrice().toString(), lowestValue.getValue().toString());
             } else {
-                assertEquals(series.getBar(Math.max(0, i - 1)).getClosePrice().toString(),
+                assertEquals(series.getBar(Math.max(0, i - 1)).closePrice().toString(),
                         lowestValue.getValue().toString());
             }
         }

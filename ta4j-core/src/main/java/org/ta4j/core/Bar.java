@@ -38,42 +38,42 @@ public interface Bar {
     /**
      * @return the time period of the bar
      */
-    Duration getTimePeriod();
+    Duration timePeriod();
 
     /**
      * @return the begin timestamp of the bar period
      */
-    ZonedDateTime getBeginTime();
+    ZonedDateTime beginTime();
 
     /**
      * @return the end timestamp of the bar period
      */
-    ZonedDateTime getEndTime();
+    ZonedDateTime endTime();
 
     /**
      * @return the open price of the bar period
      */
-    Num getOpenPrice();
+    Num openPrice();
 
     /**
      * @return the high price of the bar period
      */
-    Num getHighPrice();
+    Num highPrice();
 
     /**
      * @return the low price of the bar period
      */
-    Num getLowPrice();
+    Num lowPrice();
 
     /**
      * @return the close price of the bar period
      */
-    Num getClosePrice();
+    Num closePrice();
 
     /**
      * @return the total traded volume of the bar period
      */
-    Num getVolume();
+    Num volume();
 
     /**
      * @param timestamp a timestamp
@@ -81,29 +81,29 @@ public interface Bar {
      *         time of the current period, false otherwise
      */
     default boolean inPeriod(ZonedDateTime timestamp) {
-        return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
+        return timestamp != null && !timestamp.isBefore(beginTime()) && timestamp.isBefore(endTime());
     }
 
     /**
      * @return a human-friendly string of the end timestamp
      */
     default String getDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
+        return endTime().format(DateTimeFormatter.ISO_DATE_TIME);
     }
 
     /**
      * @return a even more human-friendly string of the end timestamp
      */
     default String getSimpleDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     /**
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
-        Num openPrice = getOpenPrice();
-        Num closePrice = getClosePrice();
+        Num openPrice = openPrice();
+        Num closePrice = closePrice();
         return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
     }
 
@@ -111,8 +111,8 @@ public interface Bar {
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-        Num openPrice = getOpenPrice();
-        Num closePrice = getClosePrice();
+        Num openPrice = openPrice();
+        Num closePrice = closePrice();
         return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }
 }

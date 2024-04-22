@@ -95,10 +95,10 @@
 //    private boolean isDeclining(int index) {
 //        Bar prevBar = getBarSeries().getBar(index - 1);
 //        Bar currBar = getBarSeries().getBar(index);
-//        final Num prevOpenPrice = prevBar.getOpenPrice();
-//        final Num prevClosePrice = prevBar.getClosePrice();
-//        final Num currOpenPrice = currBar.getOpenPrice();
-//        final Num currClosePrice = currBar.getClosePrice();
+//        final Num prevOpenPrice = prevBar.openPrice();
+//        final Num prevClosePrice = prevBar.closePrice();
+//        final Num currOpenPrice = currBar.openPrice();
+//        final Num currClosePrice = currBar.closePrice();
 //
 //        // Opens within the body of the previous candle
 //        return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
@@ -117,7 +117,7 @@
 //            if (prevBar.isBullish()) {
 //                // First crow case
 //                return hasVeryShortLowerShadow(index, whiteCandleIndex)
-//                        && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
+//                        && currBar.openPrice().isLessThan(prevBar.highPrice());
 //            } else {
 //                return hasVeryShortLowerShadow(index, whiteCandleIndex) && isDeclining(index);
 //            }

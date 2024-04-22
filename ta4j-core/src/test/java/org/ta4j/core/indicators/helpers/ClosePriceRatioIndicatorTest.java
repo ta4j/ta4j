@@ -55,8 +55,8 @@
 //    public void indicatorShouldRetrieveBarVariation() {
 //        assertNumEquals(1, variationIndicator.getValue(0));
 //        for (int i = 1; i < 10; i++) {
-//            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
-//            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+//            Num previousBarClosePrice = barSeries.getBar(i - 1).closePrice();
+//            Num currentBarClosePrice = barSeries.getBar(i).closePrice();
 //            assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
 //        }
 //    }

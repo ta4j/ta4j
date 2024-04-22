@@ -80,7 +80,7 @@
 //    @Override
 //    protected Num calculate(int index) {
 //        Bar currentBar = getBarSeries().getBar(index);
-//        Num closePrice = currentBar.getClosePrice();
+//        Num closePrice = currentBar.closePrice();
 //        Num maValue = movingAverage.getValue(index);
 //        return (closePrice.minus(maValue)).dividedBy(maValue);
 //    }

@@ -52,7 +52,7 @@ public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void indicatorShouldRetrieveBarClosePrice() {
         while (this.barSeries.advance()) {
-            assertEquals(this.closePrice.getValue(), this.barSeries.getBar().getClosePrice());
+            assertEquals(this.closePrice.getValue(), this.barSeries.getBar().closePrice());
         }
     }
 }

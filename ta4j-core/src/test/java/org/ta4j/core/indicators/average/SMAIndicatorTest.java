@@ -129,7 +129,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
         while (this.data.advance()) {
-            assertEquals(this.data.getBar().getClosePrice(), indicator.getValue());
+            assertEquals(this.data.getBar().closePrice(), indicator.getValue());
         }
     }
 

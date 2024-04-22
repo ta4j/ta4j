@@ -72,8 +72,8 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             this.barSeries.advance();
 
             final var result = this.barSeries.getBar()
-                    .getHighPrice()
-                    .plus(this.barSeries.getBar().getLowPrice())
+                    .highPrice()
+                    .plus(this.barSeries.getBar().lowPrice())
                     .dividedBy(this.numFactory.numOf(2));
             assertEquals(this.average.getValue(), result);
         }

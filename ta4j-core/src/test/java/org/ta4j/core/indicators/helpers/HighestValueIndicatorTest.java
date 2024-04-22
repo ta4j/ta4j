@@ -121,9 +121,9 @@
 //        // index is the biggest of (index, index-1)
 //        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
 //            if (i % 2 != 0) // current is NaN take the previous as highest
-//                assertEquals(series.getBar(i - 1).getClosePrice().toString(), highestValue.getValue(i).toString());
+//                assertEquals(series.getBar(i - 1).closePrice().toString(), highestValue.getValue(i).toString());
 //            else // current is not NaN but previous, take the current
-//                assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
+//                assertEquals(series.getBar(i).closePrice().toString(), highestValue.getValue(i).toString());
 //        }
 //    }
 //}

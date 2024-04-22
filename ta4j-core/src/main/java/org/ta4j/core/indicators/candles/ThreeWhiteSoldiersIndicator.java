@@ -95,10 +95,10 @@
 //    private boolean isGrowing(int index) {
 //        Bar prevBar = getBarSeries().getBar(index - 1);
 //        Bar currBar = getBarSeries().getBar(index);
-//        final Num prevOpenPrice = prevBar.getOpenPrice();
-//        final Num prevClosePrice = prevBar.getClosePrice();
-//        final Num currOpenPrice = currBar.getOpenPrice();
-//        final Num currClosePrice = currBar.getClosePrice();
+//        final Num prevOpenPrice = prevBar.openPrice();
+//        final Num prevClosePrice = prevBar.closePrice();
+//        final Num currOpenPrice = currBar.openPrice();
+//        final Num currClosePrice = currBar.closePrice();
 //
 //        // Opens within the body of the previous candle
 //        return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)
@@ -117,7 +117,7 @@
 //            if (prevBar.isBearish()) {
 //                // First soldier case
 //                return hasVeryShortUpperShadow(index, blackCandleIndex)
-//                        && currBar.getOpenPrice().isGreaterThan(prevBar.getLowPrice());
+//                        && currBar.openPrice().isGreaterThan(prevBar.lowPrice());
 //            } else {
 //                return hasVeryShortUpperShadow(index, blackCandleIndex) && isGrowing(index);
 //            }

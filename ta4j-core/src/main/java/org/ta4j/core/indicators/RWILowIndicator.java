@@ -70,8 +70,8 @@
 //
 //    private Num calcRWIHFor(final int index, final int n) {
 //        BarSeries series = getBarSeries();
-//        Num low = series.getBar(index).getLowPrice();
-//        Num highN = series.getBar(index + 1 - n).getHighPrice();
+//        Num low = series.getBar(index).lowPrice();
+//        Num highN = series.getBar(index + 1 - n).highPrice();
 //        Num atrN = new ATRIndicator(series, n).getValue(index);
 //        Num sqrtN = series.numFactory().numOf(n).sqrt();
 //

@@ -150,7 +150,7 @@
 //                .build();
 //
 //        final var newBar3 = this.series.barBuilder()
-//                .endTime(bar3.getEndTime())
+//                .endTime(bar3.endTime())
 //                .openPrice(1d)
 //                .closePrice(1d)
 //                .highPrice(1d)
@@ -160,7 +160,7 @@
 //                .build();
 //
 //        final Bar newBar5 = this.series.barBuilder()
-//                .endTime(bar5.getEndTime())
+//                .endTime(bar5.endTime())
 //                .openPrice(1d)
 //                .closePrice(1d)
 //                .highPrice(1d)
@@ -277,7 +277,7 @@
 //        assertEquals(missingBars.get(1), this.time.plusDays(3));
 //        assertEquals(missingBars.get(2), this.time.plusDays(6));
 //        // there must be 1 bar with invalid data (e.g. price, volume)
-//        assertEquals(missingBars.get(3), bar8.getEndTime());
+//        assertEquals(missingBars.get(3), bar8.endTime());
 //    }
 //
 //    @Test
@@ -323,9 +323,9 @@
 //        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
 //                DecimalNumFactory.getInstance());
 //
-//        assertEquals(DecimalNum.class, decimalBarSeries.getFirstBar().getClosePrice().getClass());
-//        assertEquals(DoubleNum.class, decimalToDoubleSeries.getFirstBar().getClosePrice().getClass());
-//        assertEquals(DecimalNum.class, doubleToDecimalSeries.getFirstBar().getClosePrice().getClass());
+//        assertEquals(DecimalNum.class, decimalBarSeries.getFirstBar().closePrice().getClass());
+//        assertEquals(DoubleNum.class, decimalToDoubleSeries.getFirstBar().closePrice().getClass());
+//        assertEquals(DecimalNum.class, doubleToDecimalSeries.getFirstBar().closePrice().getClass());
 //    }
 //
 //    @Test
@@ -375,7 +375,7 @@
 //        final List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(this.series);
 //
 //        // there must be 1 overlapping bars (bar1)
-//        assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
+//        assertEquals(overlappingBars.get(0).beginTime(), bar1.beginTime());
 //    }
 //
 //    @Test
@@ -425,8 +425,8 @@
 //        // add 3 bars to empty barSeries
 //        BarSeriesUtils.addBars(barSeries, bars);
 //
-//        assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
-//        assertEquals(bar2.getEndTime(), barSeries.getLastBar().getEndTime());
+//        assertEquals(bar0.endTime(), barSeries.getFirstBar().endTime());
+//        assertEquals(bar2.endTime(), barSeries.getLastBar().endTime());
 //
 //        final Bar bar3 = barSeries.barBuilder()
 //                .endTime(time.plusDays(3))
@@ -443,7 +443,7 @@
 //
 //        // add 1 bar to non empty barSeries
 //        BarSeriesUtils.addBars(barSeries, bars);
-//        assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
+//        assertEquals(bar3.endTime(), barSeries.getLastBar().endTime());
 //    }
 //
 //    @Test
@@ -497,10 +497,10 @@
 //        sortedBars.add(bar3);
 //
 //        BarSeriesUtils.sortBars(sortedBars);
-//        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-//        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-//        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-//        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+//        assertEquals(bar0.endTime(), sortedBars.get(0).endTime());
+//        assertEquals(bar1.endTime(), sortedBars.get(1).endTime());
+//        assertEquals(bar2.endTime(), sortedBars.get(2).endTime());
+//        assertEquals(bar3.endTime(), sortedBars.get(3).endTime());
 //
 //        final List<Bar> unsortedBars = new ArrayList<>();
 //        unsortedBars.add(bar3);
@@ -509,10 +509,10 @@
 //        unsortedBars.add(bar0);
 //
 //        BarSeriesUtils.sortBars(unsortedBars);
-//        assertEquals(bar0.getEndTime(), unsortedBars.get(0).getEndTime());
-//        assertEquals(bar1.getEndTime(), unsortedBars.get(1).getEndTime());
-//        assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
-//        assertEquals(bar3.getEndTime(), unsortedBars.get(3).getEndTime());
+//        assertEquals(bar0.endTime(), unsortedBars.get(0).endTime());
+//        assertEquals(bar1.endTime(), unsortedBars.get(1).endTime());
+//        assertEquals(bar2.endTime(), unsortedBars.get(2).endTime());
+//        assertEquals(bar3.endTime(), unsortedBars.get(3).endTime());
 //
 //        final List<Bar> unsortedBars2 = new ArrayList<>();
 //        unsortedBars2.add(bar2);
@@ -521,16 +521,16 @@
 //        unsortedBars2.add(bar0);
 //
 //        BarSeriesUtils.sortBars(unsortedBars2);
-//        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
-//        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
-//        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
-//        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+//        assertEquals(bar0.endTime(), unsortedBars2.get(0).endTime());
+//        assertEquals(bar1.endTime(), unsortedBars2.get(1).endTime());
+//        assertEquals(bar2.endTime(), unsortedBars2.get(2).endTime());
+//        assertEquals(bar3.endTime(), unsortedBars2.get(3).endTime());
 //
 //        Collections.shuffle(unsortedBars2);
 //        BarSeriesUtils.sortBars(unsortedBars2);
-//        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
-//        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
-//        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
-//        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+//        assertEquals(bar0.endTime(), unsortedBars2.get(0).endTime());
+//        assertEquals(bar1.endTime(), unsortedBars2.get(1).endTime());
+//        assertEquals(bar2.endTime(), unsortedBars2.get(2).endTime());
+//        assertEquals(bar3.endTime(), unsortedBars2.get(3).endTime());
 //    }
 //}

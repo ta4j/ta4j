@@ -54,7 +54,7 @@
 //        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-20T12:00:00-00:00", dtf)).add(); // 4, Fri
 //        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-21T12:00:00-00:00", dtf)).add(); // 5, Sat
 //        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-22T12:00:00-00:00", dtf)).add(); // 6, Sun
-//        var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
+//        var dateTime = new DateTimeIndicator(series, Bar::endTime);
 //        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
 //                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY);
 //

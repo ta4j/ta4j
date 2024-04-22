@@ -58,7 +58,7 @@ public class MedianPriceIndicator extends AbstractIndicator<Num> {
 
     protected Num calculate() {
         final Bar bar = getBarSeries().getBar();
-        return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(getBarSeries().numFactory().two());
+        return bar.highPrice().plus(bar.lowPrice()).dividedBy(getBarSeries().numFactory().two());
     }
 
     @Override

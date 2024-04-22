@@ -82,7 +82,7 @@ class LiveBarSeries implements BarSeries {
      this.bar = bar;
 
      if (this.strategy != null) {
-       this.strategy.refresh(bar.getEndTime());
+       this.strategy.refresh(bar.endTime());
      }
   }
 

@@ -139,7 +139,7 @@
 //        boolean is_up_trend;
 //
 //        if (index == seriesStartIndex) {
-//            lastExtreme.put(index, getBarSeries().getBar(index).getClosePrice());
+//            lastExtreme.put(index, getBarSeries().getBar(index).closePrice());
 //            lastAf.put(index, getBarSeries().numFactory().zero());
 //            isUpTrendMap.put(index, false);
 //            return sar; // no trend detection possible for the first value
@@ -230,8 +230,8 @@
 //            return false;
 //        } else {
 //            return getBarSeries().getBar(barIndex - 1)
-//                    .getClosePrice()
-//                    .isLessThan(getBarSeries().getBar(barIndex).getClosePrice());
+//                    .closePrice()
+//                    .isLessThan(getBarSeries().getBar(barIndex).closePrice());
 //        }
 //    }
 //

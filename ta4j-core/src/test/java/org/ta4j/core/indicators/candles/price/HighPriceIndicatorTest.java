@@ -27,7 +27,6 @@ import static junit.framework.TestCase.assertEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.Indicator;
@@ -55,7 +54,7 @@ public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             this.barSeries.advance();
-            assertEquals(this.highPriceIndicator.getValue(), this.barSeries.getBar().getHighPrice());
+            assertEquals(this.highPriceIndicator.getValue(), this.barSeries.getBar().highPrice());
         }
     }
 }

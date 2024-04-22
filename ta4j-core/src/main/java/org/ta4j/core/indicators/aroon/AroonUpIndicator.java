@@ -73,7 +73,7 @@
 //
 //    @Override
 //    protected Num calculate(int index) {
-//        if (getBarSeries().getBar(index).getHighPrice().isNaN())
+//        if (getBarSeries().getBar(index).highPrice().isNaN())
 //            return NaN;
 //
 //        // Getting the number of bars since the highest close price

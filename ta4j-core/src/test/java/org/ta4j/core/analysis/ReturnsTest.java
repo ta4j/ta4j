@@ -131,15 +131,15 @@
 //                .build();
 //
 //        TradingRecord fullRecordDouble = new BackTestTradingRecord();
-//        fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(),
+//        fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).closePrice(),
 //                doubleSeries.numFactory().one());
-//        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).getClosePrice(),
+//        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).closePrice(),
 //                doubleSeries.numFactory().one());
 //
 //        TradingRecord fullRecordPrecision = new BackTestTradingRecord();
-//        fullRecordPrecision.enter(precisionSeries.getBeginIndex(), precisionSeries.getBar(0).getClosePrice(),
+//        fullRecordPrecision.enter(precisionSeries.getBeginIndex(), precisionSeries.getBar(0).closePrice(),
 //                precisionSeries.numFactory().one());
-//        fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).getClosePrice(),
+//        fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).closePrice(),
 //                precisionSeries.numFactory().one());
 //
 //        // Return calculation DoubleNum vs PrecisionNum

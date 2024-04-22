@@ -79,7 +79,7 @@
 //     * @return the money flow volume for the i-th period/bar
 //     */
 //    private Num getMoneyFlowVolume(int index) {
-//        return clvIndicator.getValue(index).multipliedBy(getBarSeries().getBar(index).getVolume());
+//        return clvIndicator.getValue(index).multipliedBy(getBarSeries().getBar(index).volume());
 //    }
 //
 //    @Override
