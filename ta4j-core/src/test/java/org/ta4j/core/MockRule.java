@@ -32,6 +32,10 @@ public class MockRule implements Rule {
 
     private final List<Indicator<?>> indicators;
 
+    public MockRule(final Indicator<?>... indicators) {
+       this(List.of(indicators));
+    }
+
     public MockRule(final List<Indicator<?>> indicators) {
         this.indicators = indicators;
     }
