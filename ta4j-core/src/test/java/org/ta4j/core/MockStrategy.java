@@ -18,7 +18,7 @@ public class MockStrategy extends BacktestStrategy {
         super("mock strategy", mockRule, new MockRule(List.of()));
     }
 
-    public MockStrategy(final Indicator<?> mockIndicator) {
+    public MockStrategy(final Indicator<?>... mockIndicator) {
        this(new MockRule(mockIndicator));
     }
 }

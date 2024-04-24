@@ -103,42 +103,43 @@ public class NumericIndicator implements Indicator<Num> {
         return this.delegate;
     }
 
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return {@code this + other}, rounded as necessary
-//   */
-//  public NumericIndicator plus(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.sum(this, other));
-//  }
+  /**
+   * @param other the other indicator
+   *
+   * @return {@code this + other}, rounded as necessary
+   */
+  public NumericIndicator plus(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.sum(this, other));
+  }
 
-//  /**
-//   * @param n the other number
-//   *
-//   * @return {@code this + n}, rounded as necessary
-//   */
-//  public NumericIndicator plus(final Number n) {
-//    return plus(createConstant(n));
-//  }
+  /**
+   * @param n the other number
+   *
+   * @return {@code this + n}, rounded as necessary
+   */
+  public NumericIndicator plus(final Number n) {
+    return plus(createConstant(n));
+  }
 
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return {@code this - other}, rounded as necessary
-//   */
-//  public NumericIndicator minus(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.difference(this, other));
-//  }
-//
-//
-//  /**
-//   * @param n the other number
-//   *
-//   * @return {@code this - n}, rounded as necessary
-//   */
-//  public NumericIndicator minus(final Number n) {
-//    return minus(createConstant(n));
-//  }
+  /**
+   * @param other the other indicator
+   *
+   * @return {@code this - other}, rounded as necessary
+   */
+  public NumericIndicator minus(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.difference(this, other));
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return {@code this - n}, rounded as necessary
+   */
+  public NumericIndicator minus(final Number n) {
+    return minus(createConstant(n));
+  }
+
 //
 //
 //  /**
