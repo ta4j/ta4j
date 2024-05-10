@@ -47,7 +47,6 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
     }
 
-
     @Override
     protected Num calculate(int index) {
         // serial access can benefit from previous partial sums
@@ -94,7 +93,6 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
-
 
     @Override
     public int getUnstableBars() {

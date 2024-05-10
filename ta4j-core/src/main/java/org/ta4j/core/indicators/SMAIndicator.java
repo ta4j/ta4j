@@ -38,7 +38,6 @@ public class SMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private RunningTotalIndicator previousSum;
 
-
     /**
      * Constructor.
      * 
@@ -47,7 +46,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
      */
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.previousSum = new RunningTotalIndicator(indicator,barCount);
+        this.previousSum = new RunningTotalIndicator(indicator, barCount);
         this.barCount = barCount;
     }
 
@@ -57,7 +56,6 @@ public class SMAIndicator extends CachedIndicator<Num> {
         final var sum = partialSum(index);
         return sum.dividedBy(numOf(realBarCount));
     }
-
 
     private Num partialSum(int index) {
         return this.previousSum.getValue(index);
