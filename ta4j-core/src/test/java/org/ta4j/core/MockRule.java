@@ -52,6 +52,6 @@ public class MockRule implements Rule {
 
     @Override
     public boolean isStable() {
-        return true;
+        return this.indicators.stream().allMatch(Indicator::isStable);
     }
 }
