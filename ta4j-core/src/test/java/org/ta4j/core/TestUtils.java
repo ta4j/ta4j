@@ -47,7 +47,7 @@ public class TestUtils {
 
 
   public static void fastForward(final BacktestBarSeries data, final int bars) {
-    for (int i = 0; i < bars; i++) {
+    for (int i = 0; i < bars - 1; i++) {
       data.advance();
     }
   }

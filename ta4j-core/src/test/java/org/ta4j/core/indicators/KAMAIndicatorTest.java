@@ -73,7 +73,7 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     final var kama = new KAMAIndicator(closePrice, 10, 2, 30);
     this.data.replaceStrategy(new MockStrategy(kama));
 
-    fastForward(this.data, 9);
+    fastForward(this.data, 10);
 
     assertNext(this.data, 109.2400, kama);
     assertNext(this.data, 109.2449, kama);
