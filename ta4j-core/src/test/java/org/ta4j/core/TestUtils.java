@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.average.KAMAIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
@@ -54,7 +53,7 @@ public class TestUtils {
   }
 
 
-  public static void assertNext(final BacktestBarSeries data, final double expected, final KAMAIndicator kama) {
+  public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> kama) {
     data.advance();
     assertNumEquals(expected, kama.getValue());
   }
