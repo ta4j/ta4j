@@ -23,13 +23,17 @@
  */
 package org.ta4j.core.indicators.aroon;
 
-import static org.ta4j.core.num.NaN.NaN;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.candles.price.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,29 +42,33 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
-public class AroonDownIndicator extends CachedIndicator<Num> {
+public class AroonDownIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
-    private final LowestValueIndicator lowestLowPriceIndicator;
-    private final Indicator<Num> lowPriceIndicator;
-    private final Num hundred;
-    private final Num barCountNum;
+    private final LowestValueIndicator lowestLowValueIndicator;
+    private final Indicator<Num> lowIndicator;
+
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private int index;
+    private final ArrayList<Num> previousValues;
+    private Num value;
 
     /**
      * Constructor.
      *
-     * @param lowPriceIndicator the indicator for the low price (default
-     *                          {@link LowPriceIndicator})
-     * @param barCount          the time frame
+     * @param lowIndicator the indicator for the low price (default
+     *                     {@link LowPriceIndicator})
+     * @param barCount     the time frame
      */
-    public AroonDownIndicator(Indicator<Num> lowPriceIndicator, int barCount) {
-        super(lowPriceIndicator);
+    public AroonDownIndicator(final Indicator<Num> lowIndicator, final int barCount) {
+        super(lowIndicator.getBarSeries());
         this.barCount = barCount;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.hundred = hundred();
-        this.barCountNum = numOf(barCount);
-        // + 1 needed for last possible iteration in loop
-        this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
+        this.previousValues = new ArrayList<>(barCount);
+        for (int i = 0; i < barCount; i++) {
+          this.previousValues.add(NaN.NaN);
+        }
+        this.lowIndicator = lowIndicator;
+        this.lowestLowValueIndicator = new LowestValueIndicator(lowIndicator, barCount + 1);
     }
 
     /**
@@ -70,35 +78,61 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
      * @param series   the bar series
      * @param barCount the time frame
      */
-    public AroonDownIndicator(BarSeries series, int barCount) {
+    public AroonDownIndicator(final BarSeries series, final int barCount) {
         this(new LowPriceIndicator(series), barCount);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (getBarSeries().getBar(index).getLowPrice().isNaN())
-            return NaN;
+    protected Num calculate() {
+        final var currentLow = this.lowIndicator.getValue();
+        this.previousValues.set(getIndex(this.index), currentLow);
 
-        // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
-            if (lowPriceIndicator.getValue(i).isEqual(lowestLowPriceIndicator.getValue(index))) {
-                break;
-            }
-            nbBars++;
+        if (currentLow.isNaN()) {
+            return NaN.NaN;
         }
 
-        return numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(hundred);
+        final var lowestValue = this.lowestLowValueIndicator.getValue();
+
+        final var barCountFromLastMinimum = countBarsBetweenLows(lowestValue);
+        final var numFactory = getBarSeries().numFactory();
+        return numFactory.numOf((double)(this.barCount -  barCountFromLastMinimum) / this.barCount * 100.0);
     }
 
-    @Override
-    public int getUnstableBars() {
-        return barCount;
+    private int countBarsBetweenLows(final Num lowestValue) {
+        for (int i = getIndex(this.index), barDistance = 0; barDistance < this.barCount; barDistance++, i--) {
+            if (this.previousValues.get(getIndex(this.barCount + i)).equals(lowestValue)) {
+                return barDistance;
+            }
+        }
+        return this.barCount;
+    }
+
+    private int getIndex(final int i) {
+        return i % this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
+    }
+
+    @Override
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.index;
+            this.lowIndicator.refresh(tick);
+            this.lowestLowValueIndicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.index > this.barCount && this.lowIndicator.isStable() && this.lowestLowValueIndicator.isStable();
     }
 }

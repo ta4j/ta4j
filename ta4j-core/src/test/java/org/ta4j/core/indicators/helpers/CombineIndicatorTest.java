@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,69 +29,93 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private CombineIndicator combinePlus;
-    private CombineIndicator combineMinus;
-    private CombineIndicator combineMultiply;
-    private CombineIndicator combineDivide;
-    private CombineIndicator combineMax;
-    private CombineIndicator combineMin;
+  private CombineIndicator combinePlus;
+  private CombineIndicator combineMinus;
+  private CombineIndicator combineMultiply;
+  private CombineIndicator combineDivide;
+  private CombineIndicator combineMax;
+  private CombineIndicator combineMin;
+  private BacktestBarSeries series;
 
-    public CombineIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
 
-    @Before
-    public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
-        ConstantIndicator<Num> constantIndicatorTwo = new ConstantIndicator<>(series, numOf(2));
+  public CombineIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
 
-        combinePlus = CombineIndicator.plus(constantIndicator, constantIndicatorTwo);
-        combineMinus = CombineIndicator.minus(constantIndicator, constantIndicatorTwo);
-        combineMultiply = CombineIndicator.multiply(constantIndicator, constantIndicatorTwo);
-        combineDivide = CombineIndicator.divide(constantIndicator, constantIndicatorTwo);
-        combineMax = CombineIndicator.max(constantIndicator, constantIndicatorTwo);
-        combineMin = CombineIndicator.min(constantIndicator, constantIndicatorTwo);
-    }
 
-    @Test
-    public void testAllDefaultMathCombineFunctions() {
-        assertNumEquals(6, combinePlus.getValue(0));
-        assertNumEquals(2, combineMinus.getValue(0));
-        assertNumEquals(8, combineMultiply.getValue(0));
-        assertNumEquals(2, combineDivide.getValue(0));
-        assertNumEquals(4, combineMax.getValue(0));
-        assertNumEquals(2, combineMin.getValue(0));
-    }
+  @Before
+  public void setUp() {
+    this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
+    final var constantIndicator = new ConstantIndicator<>(this.series, numOf(4));
+    final var constantIndicatorTwo = new ConstantIndicator<>(this.series, numOf(2));
 
-    @Test
-    public void testDifferenceIndicator() {
+    this.combinePlus = CombineIndicator.plus(constantIndicator, constantIndicatorTwo);
+    this.combineMinus = CombineIndicator.minus(constantIndicator, constantIndicatorTwo);
+    this.combineMultiply = CombineIndicator.multiply(constantIndicator, constantIndicatorTwo);
+    this.combineDivide = CombineIndicator.divide(constantIndicator, constantIndicatorTwo);
+    this.combineMax = CombineIndicator.max(constantIndicator, constantIndicatorTwo);
+    this.combineMin = CombineIndicator.min(constantIndicator, constantIndicatorTwo);
+    this.series.replaceStrategy(new MockStrategy(
+        this.combinePlus,
+        this.combineMinus,
+        this.combineMultiply,
+        this.combineDivide,
+        this.combineMax,
+        this.combineMin
+    ));
+  }
 
-        Function<Number, Num> numFunction = DecimalNum::valueOf;
 
-        BarSeries series = new BaseBarSeries();
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numFunction.apply(-2.0),
-                numFunction.apply(0.00), numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87),
-                numFunction.apply(6.00), numFunction.apply(10.0));
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
-        CombineIndicator differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
+  @Test
+  public void testAllDefaultMathCombineFunctions() {
+    this.series.advance();
+    assertNumEquals(6, this.combinePlus.getValue());
+    assertNumEquals(2, this.combineMinus.getValue());
+    assertNumEquals(8, this.combineMultiply.getValue());
+    assertNumEquals(2, this.combineDivide.getValue());
+    assertNumEquals(4, this.combineMax.getValue());
+    assertNumEquals(2, this.combineMin.getValue());
+  }
 
-        assertNumEquals("8", differenceIndicator.getValue(0));
-        assertNumEquals("6", differenceIndicator.getValue(1));
-        assertNumEquals("5", differenceIndicator.getValue(2));
-        assertNumEquals("3.47", differenceIndicator.getValue(3));
-        assertNumEquals("0.13", differenceIndicator.getValue(4));
-        assertNumEquals("0", differenceIndicator.getValue(5));
-        assertNumEquals("-4", differenceIndicator.getValue(6));
-    }
+
+  @Test
+  public void testDifferenceIndicator() {
+
+    final Function<Number, Num> numFunction = DecimalNum::valueOf;
+
+    final var series = new MockBarSeriesBuilder().withDefaultData().build();
+    final var mockIndicator = new FixedIndicator<>(series, numFunction.apply(-2.0), numFunction.apply(0.00),
+        numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87), numFunction.apply(6.00),
+        numFunction.apply(10.0)
+    );
+    final var constantIndicator = new ConstantIndicator<>(series, numFunction.apply(6));
+    final var differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
+    series.replaceStrategy(new MockStrategy(constantIndicator, differenceIndicator));
+
+    series.advance();
+    assertNumEquals("8", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("6", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("5", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("3.47", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("0.13", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("0", differenceIndicator.getValue());
+    series.advance();
+    assertNumEquals("-4", differenceIndicator.getValue());
+  }
 }

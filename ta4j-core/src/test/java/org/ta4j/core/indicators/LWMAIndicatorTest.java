@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,45 +23,51 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNext;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.average.LWMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+  private BacktestBarSeries data;
 
-    public LWMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
 
-    @Before
-    public void setUp() {
-        data = new MockBarSeries(numFunction, 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79,
-                36.83);
-    }
+  public LWMAIndicatorTest(final NumFactory numFunction) {
+    super(numFunction);
+  }
 
-    @Test
-    public void lwmaUsingBarCount5UsingClosePrice() {
-        LWMAIndicator lwma = new LWMAIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals(0.0, lwma.getValue(0));
-        assertNumEquals(0.0, lwma.getValue(1));
-        assertNumEquals(0.0, lwma.getValue(2));
-        assertNumEquals(0.0, lwma.getValue(3));
-        assertNumEquals(36.0506, lwma.getValue(4));
-        assertNumEquals(35.9673, lwma.getValue(5));
-        assertNumEquals(36.0766, lwma.getValue(6));
-        assertNumEquals(36.6253, lwma.getValue(7));
-        assertNumEquals(37.1833, lwma.getValue(8));
-        assertNumEquals(37.5240, lwma.getValue(9));
-        assertNumEquals(37.4060, lwma.getValue(10));
-    }
+
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79, 36.83)
+        .build();
+  }
+
+
+  @Test
+  public void lwmaUsingBarCount5UsingClosePrice() {
+    final var lwma = new LWMAIndicator(new ClosePriceIndicator(this.data), 5);
+    this.data.replaceStrategy(new MockStrategy(lwma));
+
+    assertNext(this.data,0.0, lwma);
+    assertNext(this.data,0.0, lwma);
+    assertNext(this.data,0.0, lwma);
+    assertNext(this.data,0.0, lwma);
+    assertNext(this.data,36.0506, lwma);
+    assertNext(this.data,35.9673, lwma);
+    assertNext(this.data,36.0766, lwma);
+    assertNext(this.data,36.6253, lwma);
+    assertNext(this.data,37.1833, lwma);
+    assertNext(this.data,37.5240, lwma);
+    assertNext(this.data,37.4060, lwma);
+  }
 }

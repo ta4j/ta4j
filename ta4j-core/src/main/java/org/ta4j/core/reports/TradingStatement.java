@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.reports;
 
-import org.ta4j.core.Strategy;
+import org.ta4j.core.backtest.BacktestStrategy;
 
 /**
  * Represents a trading statement report containing position and performance
@@ -31,18 +31,18 @@ import org.ta4j.core.Strategy;
  */
 public class TradingStatement {
 
-    private final Strategy strategy;
+    private final BacktestStrategy strategy;
     private final PositionStatsReport positionStatsReport;
     private final PerformanceReport performanceReport;
 
     /**
      * Constructor.
-     * 
-     * @param strategy            the {@link Strategy}
+     *
+     * @param strategy            the {@link BacktestStrategy}
      * @param positionStatsReport the {@link PositionStatsReport}
      * @param performanceReport   the {@link PerformanceReport}
      */
-    public TradingStatement(Strategy strategy, PositionStatsReport positionStatsReport,
+    public TradingStatement(BacktestStrategy strategy, PositionStatsReport positionStatsReport,
             PerformanceReport performanceReport) {
         this.strategy = strategy;
         this.positionStatsReport = positionStatsReport;
@@ -50,7 +50,7 @@ public class TradingStatement {
     }
 
     /** @return {@link #strategy} */
-    public Strategy getStrategy() {
+    public BacktestStrategy getStrategy() {
         return strategy;
     }
 

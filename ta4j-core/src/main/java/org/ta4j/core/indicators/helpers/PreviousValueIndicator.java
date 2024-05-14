@@ -23,8 +23,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -34,17 +39,20 @@ import org.ta4j.core.num.Num;
  * If the (n-th) previous index is below the first index from the bar series,
  * then {@link NaN#NaN} is returned.
  */
-public class PreviousValueIndicator extends CachedIndicator<Num> {
+public class PreviousValueIndicator extends AbstractIndicator<Num> {
 
     private final int n;
     private final Indicator<Num> indicator;
+    private final LinkedList<Num> previousValues = new LinkedList<>();
+    private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.
      *
      * @param indicator the indicator from which to calculate the previous value
      */
-    public PreviousValueIndicator(Indicator<Num> indicator) {
+    public PreviousValueIndicator(final Indicator<Num> indicator) {
         this(indicator, 1);
     }
 
@@ -54,8 +62,8 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator from which to calculate the previous value
      * @param n         parameter defines the previous n-th value
      */
-    public PreviousValueIndicator(Indicator<Num> indicator, int n) {
-        super(indicator);
+    public PreviousValueIndicator(final Indicator<Num> indicator, final int n) {
+        super(indicator.getBarSeries());
         if (n < 1) {
             throw new IllegalArgumentException("n must be positive number, but was: " + n);
         }
@@ -63,21 +71,39 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
     }
 
-    @Override
-    protected Num calculate(int index) {
-        int previousIndex = index - n;
-        return previousIndex < 0 ? NaN.NaN : indicator.getValue(previousIndex);
-    }
+    protected Num calculate() {
+        final var currentValue = this.indicator.getValue();
+        this.previousValues.addLast(currentValue);
 
-    /** @return {@link #n} */
-    @Override
-    public int getUnstableBars() {
-        return n;
+        if (this.previousValues.size() > this.n) {
+            return this.previousValues.removeFirst();
+        }
+
+        return getBarSeries().numFactory().zero();
     }
 
     @Override
     public String toString() {
-        final String nInfo = n == 1 ? "" : "(" + n + ")";
+        final String nInfo = this.n == 1 ? "" : "(" + this.n + ")";
         return getClass().getSimpleName() + nInfo + "[" + this.indicator + "]";
+    }
+
+    @Override
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+            this.indicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.previousValues.size() == this.n;
     }
 }

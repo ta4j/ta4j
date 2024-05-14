@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,7 +23,10 @@
  */
 package org.ta4j.core.indicators;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
 
@@ -32,53 +35,46 @@ import org.ta4j.core.num.Num;
  */
 public class ATRIndicator extends AbstractIndicator<Num> {
 
-    private final TRIndicator trIndicator;
     private final MMAIndicator averageTrueRangeIndicator;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the time frame
      */
-    public ATRIndicator(BarSeries series, int barCount) {
+    public ATRIndicator(final BarSeries series, final int barCount) {
         this(new TRIndicator(series), barCount);
     }
 
     /**
      * Constructor.
-     * 
+     *
      * @param tr       the {@link TRIndicator}
      * @param barCount the time frame
      */
-    public ATRIndicator(TRIndicator tr, int barCount) {
+    public ATRIndicator(final TRIndicator tr, final int barCount) {
         super(tr.getBarSeries());
-        this.trIndicator = tr;
         this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
     }
 
     @Override
-    public Num getValue(int index) {
-        return averageTrueRangeIndicator.getValue(index);
+    public Num getValue() {
+        return this.averageTrueRangeIndicator.getValue();
     }
 
     @Override
-    public int getUnstableBars() {
-        return getBarCount();
+    public void refresh(final ZonedDateTime tick) {
+        this.averageTrueRangeIndicator.refresh(tick);
     }
 
-    /** @return the {@link #trIndicator} */
-    public TRIndicator getTRIndicator() {
-        return trIndicator;
-    }
-
-    /** @return the bar count of {@link #averageTrueRangeIndicator} */
-    public int getBarCount() {
-        return averageTrueRangeIndicator.getBarCount();
+    @Override
+    public boolean isStable() {
+        return this.averageTrueRangeIndicator.isStable();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + getBarCount();
+        return getClass().getSimpleName() + " " + this.averageTrueRangeIndicator;
     }
 }

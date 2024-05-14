@@ -23,14 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.math.BigDecimal;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
 /**
  * A fixed {@code Num} indicator.
- * 
+ *
  * <p>
  * Returns constant {@link Num} values for a bar.
  */
@@ -42,10 +40,10 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param series the bar series
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(BarSeries series, double... values) {
+    public FixedDecimalIndicator(final BarSeries series, final double... values) {
         super(series);
-        for (double value : values) {
-            addValue(numOf(value));
+        for (final var value : values) {
+            addValue(getBarSeries().numFactory().numOf(value));
         }
     }
 
@@ -55,10 +53,10 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param series the bar series
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(BarSeries series, String... values) {
+    public FixedDecimalIndicator(final BarSeries series, final String... values) {
         super(series);
-        for (String value : values) {
-            addValue(numOf(new BigDecimal(value)));
+        for (final var value : values) {
+            addValue(getBarSeries().numFactory().numOf(value));
         }
     }
 }

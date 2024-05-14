@@ -23,22 +23,21 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.CriterionFactory;
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractCriterionTest {
 
-    protected final Function<Number, Num> numFunction;
+    protected final NumFactory numFactory;
     protected final OpenedPositionUtils openedPositionUtils = new OpenedPositionUtils();
     private final CriterionFactory factory;
 
@@ -48,14 +47,14 @@ public abstract class AbstractCriterionTest {
      * @param factory CriterionFactory for building an AnalysisCriterion given
      *                parameters
      */
-    public AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
+    public AbstractCriterionTest(CriterionFactory factory, NumFactory numFactory) {
         this.factory = factory;
-        this.numFunction = numFunction;
+        this.numFactory = numFactory;
     }
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
-    public static List<Function<Number, Num>> function() {
-        return Arrays.asList(DoubleNum::valueOf, DecimalNum::valueOf);
+    public static List<NumFactory> function() {
+        return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }
 
     /**
@@ -69,7 +68,7 @@ public abstract class AbstractCriterionTest {
     }
 
     public Num numOf(Number n) {
-        return numFunction.apply(n);
+        return numFactory.numOf(n);
     }
 
 }

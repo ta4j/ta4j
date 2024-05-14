@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
 import org.ta4j.core.num.Num;
@@ -39,27 +39,27 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
     private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
         if (numberOfLosingPositions.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num grossLoss = grossLossCriterion.calculate(series, position);
         if (grossLoss.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         return grossLoss.dividedBy(numberOfLosingPositions);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfLosingPositions.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
         if (grossLoss.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         return grossLoss.dividedBy(numberOfLosingPositions);
     }

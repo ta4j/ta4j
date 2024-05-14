@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,13 +37,15 @@ import org.ta4j.core.num.Num;
  * <p>
  * Boolean indicator that monitors the crossing of two indicators.
  */
-public class CrossIndicator extends CachedIndicator<Boolean> {
+public class CrossIndicator extends AbstractIndicator<Boolean> {
 
     /** Upper indicator */
     private final Indicator<Num> up;
 
     /** Lower indicator */
     private final Indicator<Num> low;
+    private Boolean value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.
@@ -47,45 +53,50 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
      * @param up  the upper indicator
      * @param low the lower indicator
      */
-    public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
+    public CrossIndicator(final Indicator<Num> up, final Indicator<Num> low) {
         // TODO: check if up series is equal to low series
-        super(up);
+        super(up.getBarSeries());
         this.up = up;
         this.low = low;
     }
 
-    @Override
-    protected Boolean calculate(int index) {
-
-        int i = index;
-        if (i == 0 || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {
-            return false;
-        }
-
-        do {
-            i--;
-        } while (i > 0 && up.getValue(i).isEqual(low.getValue(i)));
-
-        return up.getValue(i).isGreaterThan(low.getValue(i));
+    protected Boolean calculate() {
+        // TODO previous value should be opposite or equal
+        return this.up.getValue().isGreaterThan(this.low.getValue());
     }
 
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public Boolean getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+            this.low.refresh(tick);
+            this.up.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.up.isStable() && this.low.isStable();
     }
 
     /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
-        return low;
+        return this.low;
     }
 
     /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
-        return up;
+        return this.up;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " " + low + " " + up;
+        return getClass().getSimpleName() + " " + this.low + " " + this.up;
     }
 }

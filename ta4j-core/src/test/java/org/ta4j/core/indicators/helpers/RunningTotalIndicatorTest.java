@@ -25,34 +25,42 @@ package org.ta4j.core.indicators.helpers;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private BacktestBarSeries data;
 
-    public RunningTotalIndicatorTest(Function<Number, Num> function) {
-        super((data, params) -> new RunningTotalIndicator(data, (int) params[0]), function);
+    public RunningTotalIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new RunningTotalIndicator(data, (int) params[0]), numFactory);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 5);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
     }
 
     @Test
     public void calculate() {
         Indicator<Num> runningTotal = getIndicator(new ClosePriceIndicator(data), 3);
-        double[] expected = new double[] { 1.0, 3.0, 6.0, 9.0, 12.0 };
+        data.addStrategy(new MockStrategy(new MockRule(List.of(runningTotal))));
+
+        double[] expected = new double[] { 1.0, 3.0, 6.0, 9.0, 12.0, 15.0 };
         for (int i = 0; i < expected.length; i++) {
-            assertNumEquals(expected[i], runningTotal.getValue(i));
+            data.advance();
+            assertNumEquals(expected[i], runningTotal.getValue());
         }
     }
 }

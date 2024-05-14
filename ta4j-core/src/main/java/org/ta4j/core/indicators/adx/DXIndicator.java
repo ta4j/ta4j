@@ -23,53 +23,74 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * DX indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  */
-public class DXIndicator extends CachedIndicator<Num> {
+public class DXIndicator extends AbstractIndicator<Num> {
 
-    private final int barCount;
     private final PlusDIIndicator plusDIIndicator;
     private final MinusDIIndicator minusDIIndicator;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private Num value;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link #plusDIIndicator} and
      *                 {@link #minusDIIndicator}
      */
-    public DXIndicator(BarSeries series, int barCount) {
+    public DXIndicator(final BarSeries series, final int barCount) {
         super(series);
-        this.barCount = barCount;
         this.plusDIIndicator = new PlusDIIndicator(series, barCount);
         this.minusDIIndicator = new MinusDIIndicator(series, barCount);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        Num pdiValue = plusDIIndicator.getValue(index);
-        Num mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(zero())) {
-            return zero();
+    protected Num calculate() {
+        final Num pdiValue = this.plusDIIndicator.getValue();
+        final Num mdiValue = this.minusDIIndicator.getValue();
+        if (pdiValue.plus(mdiValue).equals(getBarSeries().numFactory().zero())) {
+            return getBarSeries().numFactory().zero();
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(hundred());
+        return pdiValue.minus(mdiValue)
+                .abs()
+                .dividedBy(pdiValue.plus(mdiValue))
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override
-    public int getUnstableBars() {
-        return barCount;
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+            this.plusDIIndicator.refresh(tick);
+            this.minusDIIndicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.plusDIIndicator.isStable() && this.minusDIIndicator.isStable();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " " + this.plusDIIndicator + " " + this.minusDIIndicator;
     }
 }

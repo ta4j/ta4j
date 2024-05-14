@@ -20,7 +20,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: 11
+          java-version: 22
           distribution: 'zulu'
           server-id: sonatype-nexus-snapshots
           server-username: MAVEN_USERNAME

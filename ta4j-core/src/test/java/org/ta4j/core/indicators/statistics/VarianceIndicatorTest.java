@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,70 +23,91 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.function.Function;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNext;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private BarSeries data;
+  private static final Logger LOG = LoggerFactory.getLogger(VarianceIndicatorTest.class);
+  private BacktestBarSeries data;
 
-    public VarianceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
 
-    @Before
-    public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
-    }
+  public VarianceIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
 
-    @Test
-    public void varianceUsingBarCount4UsingClosePrice() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
 
-        assertNumEquals(0, var.getValue(0));
-        assertNumEquals(0.25, var.getValue(1));
-        assertNumEquals(2.0 / 3, var.getValue(2));
-        assertNumEquals(1.25, var.getValue(3));
-        assertNumEquals(0.5, var.getValue(4));
-        assertNumEquals(0.25, var.getValue(5));
-        assertNumEquals(0.5, var.getValue(6));
-        assertNumEquals(0.5, var.getValue(7));
-        assertNumEquals(0.5, var.getValue(8));
-        assertNumEquals(3.5, var.getValue(9));
-        assertNumEquals(10.5, var.getValue(10));
-    }
+  @Before
+  public void setUp() {
+    this.data =
+        new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
+  }
 
-    @Test
-    public void firstValueShouldBeZero() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
-        assertNumEquals(0, var.getValue(0));
-    }
 
-    @Test
-    public void varianceShouldBeZeroWhenBarCountIs1() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
-        assertNumEquals(0, var.getValue(3));
-        assertNumEquals(0, var.getValue(8));
-    }
+  @Test
+  public void varianceUsingBarCount4UsingClosePrice() {
+    final var var = new VarianceIndicator(new ClosePriceIndicator(this.data), 4);
+    this.data.replaceStrategy(new MockStrategy(var));
 
-    @Test
-    public void varianceUsingBarCount2UsingClosePrice() {
-        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
+    // unstable values may produce garbage, this is why they are called unstable
+    assertNext(this.data, 0.1875, var);
+    assertFalse(var.isStable());
 
-        assertNumEquals(0, var.getValue(0));
-        assertNumEquals(0.25, var.getValue(1));
-        assertNumEquals(0.25, var.getValue(2));
-        assertNumEquals(0.25, var.getValue(3));
-        assertNumEquals(2.25, var.getValue(9));
-        assertNumEquals(20.25, var.getValue(10));
-    }
+    assertNext(this.data, 0.5416, var);
+    assertFalse(var.isStable());
+
+    assertNext(this.data, 0.9166, var);
+    assertFalse(var.isStable());
+
+    // stable date bellow
+    assertNext(this.data, 1.6667, var);
+    assertTrue(var.isStable());
+
+    assertNext(this.data, 0.6667, var);
+    assertTrue(var.isStable());
+
+    assertNext(this.data, 0.3333, var);
+    assertNext(this.data, 0.6667, var);
+    assertNext(this.data, 0.6667, var);
+    assertNext(this.data, 0.6667, var);
+    assertNext(this.data, 4.6667, var);
+    assertNext(this.data, 14.000, var);
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void varianceShouldBeZeroWhenBarCountIs1() {
+     new VarianceIndicator(new ClosePriceIndicator(this.data), 1);
+  }
+
+
+  @Test
+  public void varianceUsingBarCount2UsingClosePrice() {
+    final var var = new VarianceIndicator(new ClosePriceIndicator(this.data), 2);
+    this.data.replaceStrategy(new MockStrategy(var));
+
+    assertNext(this.data, 0.25, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 0.5, var);
+    assertNext(this.data, 4.5, var);
+  }
 }

@@ -24,9 +24,9 @@
 package org.ta4j.core.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -75,14 +75,14 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         return numberOfPositionsCriterion.calculate(series, position);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        return numberOfPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
+        return numberOfPositions.dividedBy(series.numFactory().numOf(tradingRecord.getPositionCount()));
     }
 
     /**

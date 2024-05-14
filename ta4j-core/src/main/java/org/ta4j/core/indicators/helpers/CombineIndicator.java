@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,99 +23,125 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Combine indicator.
- * 
+ *
  * <p>
  * Combines two Num indicators by using common math operations.
  */
-public class CombineIndicator extends CachedIndicator<Num> {
+public class CombineIndicator extends AbstractIndicator<Num> {
 
-    private final Indicator<Num> indicatorLeft;
-    private final Indicator<Num> indicatorRight;
-    private final BinaryOperator<Num> combineFunction;
+  private final Indicator<Num> indicatorLeft;
+  private final Indicator<Num> indicatorRight;
+  private final BinaryOperator<Num> combineFunction;
+  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Num value;
 
-    /**
-     * Constructor.
-     *
-     * @param indicatorLeft  the indicator for the left hand side of the calculation
-     * @param indicatorRight the indicator for the right hand side of the
-     *                       calculation
-     * @param combination    a {@link Function} describing the combination function
-     *                       to combine the values of the indicators
-     */
-    public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
-            BinaryOperator<Num> combination) {
-        // TODO check both indicators use the same series/num function
-        super(indicatorLeft);
-        this.indicatorLeft = indicatorLeft;
-        this.indicatorRight = indicatorRight;
-        this.combineFunction = combination;
+
+  /**
+   * Constructor.
+   *
+   * @param indicatorLeft the indicator for the left hand side of the calculation
+   * @param indicatorRight the indicator for the right hand side of the
+   *     calculation
+   * @param combination a {@link Function} describing the combination function
+   *     to combine the values of the indicators
+   */
+  public CombineIndicator(
+      final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight,
+      final BinaryOperator<Num> combination
+  ) {
+    // TODO check both indicators use the same series/num function
+    super(indicatorLeft.getBarSeries());
+    this.indicatorLeft = indicatorLeft;
+    this.indicatorRight = indicatorRight;
+    this.combineFunction = combination;
+  }
+
+
+  protected Num calculate() {
+    return this.combineFunction.apply(this.indicatorLeft.getValue(), this.indicatorRight.getValue());
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final ZonedDateTime tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.indicatorLeft.refresh(tick);
+      this.indicatorRight.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    @Override
-    protected Num calculate(int index) {
-        return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
-    }
 
-    /** @return {@code 0} */
-    @Override
-    public int getUnstableBars() {
-        return 0;
-    }
+  @Override
+  public boolean isStable() {
+    return this.indicatorLeft.isStable() && this.indicatorRight.isStable();
+  }
 
-    /**
-     * Combines the two input indicators by indicatorLeft.plus(indicatorRight).
-     */
-    public static CombineIndicator plus(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::plus);
-    }
 
-    /**
-     * Combines the two input indicators by indicatorLeft.minus(indicatorRight).
-     */
-    public static CombineIndicator minus(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::minus);
-    }
+  /**
+   * Combines the two input indicators by indicatorLeft.plus(indicatorRight).
+   */
+  public static CombineIndicator plus(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::plus);
+  }
 
-    /**
-     * Combines the two input indicators by indicatorLeft.dividedBy(indicatorRight).
-     */
-    public static CombineIndicator divide(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::dividedBy);
-    }
 
-    /**
-     * Combines the two input indicators by
-     * indicatorLeft.multipliedBy(indicatorRight).
-     */
-    public static CombineIndicator multiply(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
-    }
+  /**
+   * Combines the two input indicators by indicatorLeft.minus(indicatorRight).
+   */
+  public static CombineIndicator minus(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::minus);
+  }
 
-    /**
-     * Combines the two input indicators by indicatorLeft.max(indicatorRight).
-     */
-    public static CombineIndicator max(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::max);
-    }
 
-    /**
-     * Combines the two input indicators by indicatorLeft.min(indicatorRight).
-     */
-    public static CombineIndicator min(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::min);
-    }
+  /**
+   * Combines the two input indicators by indicatorLeft.dividedBy(indicatorRight).
+   */
+  public static CombineIndicator divide(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::dividedBy);
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
+
+  /**
+   * Combines the two input indicators by
+   * indicatorLeft.multipliedBy(indicatorRight).
+   */
+  public static CombineIndicator multiply(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
+  }
+
+
+  /**
+   * Combines the two input indicators by indicatorLeft.max(indicatorRight).
+   */
+  public static CombineIndicator max(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::max);
+  }
+
+
+  /**
+   * Combines the two input indicators by indicatorLeft.min(indicatorRight).
+   */
+  public static CombineIndicator min(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+    return new CombineIndicator(indicatorLeft, indicatorRight, Num::min);
+  }
 }

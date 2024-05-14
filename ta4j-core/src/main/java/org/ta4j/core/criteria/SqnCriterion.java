@@ -24,9 +24,9 @@
 package org.ta4j.core.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.helpers.StandardDeviationCriterion;
 import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.num.Num;
@@ -82,10 +82,10 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num stdDevPnl = standardDeviationCriterion.calculate(series, position);
         if (stdDevPnl.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
@@ -95,20 +95,20 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);
         if (stdDevPnl.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
 
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         Num pnl = criterion.calculate(series, tradingRecord);
         Num avgPnl = pnl.dividedBy(numberOfPositions);
-        if (nPositions != null && numberOfPositions.isGreaterThan(series.hundred())) {
-            numberOfPositions = series.numOf(nPositions);
+        if (nPositions != null && numberOfPositions.isGreaterThan(series.numFactory().hundred())) {
+            numberOfPositions = series.numFactory().numOf(nPositions);
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
         return avgPnl.dividedBy(stdDevPnl).multipliedBy(numberOfPositions.sqrt());

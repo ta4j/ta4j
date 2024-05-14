@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,46 +25,65 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.average.HMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private BacktestBarSeries data;
 
-    public HMAIndicatorTest(Function<Number, Num> numFunction) {
+    public HMAIndicatorTest(final NumFactory numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10,
-                83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
+      this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+                .withData(84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10, 83.11, 83.60, 83.66,
+                        82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87)
+                .build();
     }
 
     @Test
     public void hmaUsingBarCount9UsingClosePrice() {
         // Example from
         // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
-        assertNumEquals(86.3204, hma.getValue(10));
-        assertNumEquals(85.3705, hma.getValue(11));
-        assertNumEquals(84.1044, hma.getValue(12));
-        assertNumEquals(83.0197, hma.getValue(13));
-        assertNumEquals(81.3913, hma.getValue(14));
-        assertNumEquals(79.6511, hma.getValue(15));
-        assertNumEquals(78.0443, hma.getValue(16));
-        assertNumEquals(76.8832, hma.getValue(17));
-        assertNumEquals(75.5363, hma.getValue(18));
-        assertNumEquals(75.1713, hma.getValue(19));
-        assertNumEquals(75.3597, hma.getValue(20));
+        final var hma = new HMAIndicator(new ClosePriceIndicator(this.data), 9);
+
+      this.data.replaceStrategy(new MockStrategy(hma));
+
+      for (int i = 0; i < 11; i++) {
+        this.data.advance();
+      }
+
+      assertNumEquals(86.3204, hma.getValue());
+      this.data.advance();
+      assertNumEquals(85.3705, hma.getValue());
+      this.data.advance();
+      assertNumEquals(84.1044, hma.getValue());
+      this.data.advance();
+      assertNumEquals(83.0197, hma.getValue());
+      this.data.advance();
+      assertNumEquals(81.3913, hma.getValue());
+      this.data.advance();
+      assertNumEquals(79.6511, hma.getValue());
+      this.data.advance();
+      assertNumEquals(78.0443, hma.getValue());
+      this.data.advance();
+      assertNumEquals(76.8832, hma.getValue());
+      this.data.advance();
+      assertNumEquals(75.5363, hma.getValue());
+      this.data.advance();
+      assertNumEquals(75.1713, hma.getValue());
+      this.data.advance();
+      assertNumEquals(75.3597, hma.getValue());
     }
 
 }

@@ -23,15 +23,19 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * -DI indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  *
@@ -41,38 +45,56 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class MinusDIIndicator extends CachedIndicator<Num> {
+public class MinusDIIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final ATRIndicator atrIndicator;
     private final MMAIndicator avgMinusDMIndicator;
+    private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link #atrIndicator} and
      *                 {@link #avgMinusDMIndicator}
      */
-    public MinusDIIndicator(BarSeries series, int barCount) {
+    public MinusDIIndicator(final BarSeries series, final int barCount) {
         super(series);
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(hundred());
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return barCount;
+    protected Num calculate() {
+        return this.avgMinusDMIndicator.getValue()
+                .dividedBy(this.atrIndicator.getValue())
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
+    }
+
+    @Override
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            this.atrIndicator.refresh(tick);
+            this.avgMinusDMIndicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.atrIndicator.isStable() && this.avgMinusDMIndicator.isStable();
     }
 }

@@ -23,54 +23,41 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Volume indicator.
- * 
+ *
  * <p>
- * Returns the sum of the total traded volumes from the bar series within the
- * bar count.
+ * Returns the open price of a bar.
  */
-public class VolumeIndicator extends CachedIndicator<Num> {
-
-    private final int barCount;
-
-    /**
-     * Constructor with {@code barCount} = 1.
-     * 
-     * @param series the bar series
-     */
-    public VolumeIndicator(BarSeries series) {
-        this(series, 1);
-    }
+public class VolumeIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param series   the bar series
-     * @param barCount the time frame
+     *
+     * @param series the bar series
      */
-    public VolumeIndicator(BarSeries series, int barCount) {
+    public VolumeIndicator(final BarSeries series) {
         super(series);
-        this.barCount = barCount;
     }
 
     @Override
-    protected Num calculate(int index) {
-        int startIndex = Math.max(0, index - barCount + 1);
-        Num sumOfVolume = zero();
-        for (int i = startIndex; i <= index; i++) {
-            sumOfVolume = sumOfVolume.plus(getBarSeries().getBar(i).getVolume());
-        }
-        return sumOfVolume;
+    public Num getValue() {
+        return getBarSeries().getBar().volume();
     }
 
-    /** @return {@link #barCount} */
     @Override
-    public int getUnstableBars() {
-        return barCount;
+    public void refresh(final ZonedDateTime tick) {
+        // NOOP
+    }
+
+    @Override
+    public boolean isStable() {
+        return true;
     }
 }

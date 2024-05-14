@@ -23,56 +23,71 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.function.Predicate;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
  * Lowest value indicator.
- * 
+ *
  * <p>
  * Returns the lowest indicator value from the bar series within the bar count.
  */
-public class LowestValueIndicator extends CachedIndicator<Num> {
+public class LowestValueIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
 
+    /** circular array */
+    private final ArrayList<Num> data;
+    private Num value;
+    private int barsPassed;
+
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public LowestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+    public LowestValueIndicator(final Indicator<Num> indicator, final int barCount) {
+        super(indicator.getBarSeries());
         this.indicator = indicator;
         this.barCount = barCount;
+        this.data = new ArrayList<>(barCount);
+        for (int i = 0; i < barCount; i++) {
+            this.data.add(NaN.NaN);
+        }
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
-        }
-        int end = Math.max(0, index - barCount + 1);
-        Num lowest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (lowest.isGreaterThan(indicator.getValue(i))) {
-                lowest = indicator.getValue(i);
-            }
-        }
-        return lowest;
-    }
-
-    /** @return {@link #barCount} */
-    @Override
-    public int getUnstableBars() {
-        return barCount;
+    protected Num calculate() {
+        final var indicatorValue = this.indicator.getValue();
+        this.data.set(this.barsPassed % this.barCount, indicatorValue);
+        return this.data.stream().filter(Predicate.not(Num::isNaN)).min(Num::compareTo).orElse(NaN.NaN);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " " + this.indicator;
+    }
+
+    @Override
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        ++this.barsPassed;
+        this.value = calculate();
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.barsPassed >= this.barCount && this.indicator.isStable();
     }
 }

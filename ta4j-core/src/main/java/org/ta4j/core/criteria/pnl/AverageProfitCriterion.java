@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
@@ -39,27 +39,27 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
         if (numberOfWinningPositions.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num grossProfit = grossProfitCriterion.calculate(series, position);
         if (grossProfit.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         return grossProfit.dividedBy(numberOfWinningPositions);
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfWinningPositions.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
         if (grossProfit.isZero()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         return grossProfit.dividedBy(numberOfWinningPositions);
     }

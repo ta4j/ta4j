@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,60 +23,69 @@
  */
 package org.ta4j.core.indicators;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNext;
+import static org.ta4j.core.TestUtils.fastForward;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.average.ZLEMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+  private BacktestBarSeries data;
 
-    public ZLEMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
 
-    @Before
-    public void setUp() {
-        data = new MockBarSeries(numFunction, 10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2);
-    }
+  public ZLEMAIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
 
-    @Test
-    public void ZLEMAUsingBarCount10UsingClosePrice() {
-        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
-        assertNumEquals(11.9091, zlema.getValue(9));
-        assertNumEquals(8.8347, zlema.getValue(10));
-        assertNumEquals(5.7739, zlema.getValue(11));
-    }
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2)
+        .build();
+  }
 
-    @Test
-    public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
-        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
-        assertNumEquals(10, zlema.getValue(0));
-    }
 
-    @Test
-    public void valuesLessThanBarCountMustBeEqualsToSMAValues() {
-        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
+  @Test
+  public void ZLEMAUsingBarCount10UsingClosePrice() {
+    final var zlema = new ZLEMAIndicator(new ClosePriceIndicator(this.data), 10);
+    this.data.replaceStrategy(new MockStrategy(zlema));
 
-        for (int i = 0; i < 9; i++) {
-            assertEquals(sma.getValue(i), zlema.getValue(i));
-        }
-    }
+    fastForward(this.data, 5);
 
-    @Test
-    public void smallBarCount() {
-        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
-        assertNumEquals(10, zlema.getValue(0));
-    }
+    assertNext(this.data, 19.0909, zlema);
+    assertNext(this.data, 19.4380, zlema);
+    assertNext(this.data, 17.7220, zlema);
+    assertNext(this.data, 15.5907, zlema);
+    assertNext(this.data, 13.3015, zlema);
+    assertNext(this.data, 10.5194, zlema);
+    assertNext(this.data, 7.6977, zlema);
+    assertNext(this.data, 4.8435, zlema);
+  }
+
+
+  @Test
+  public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
+    final var zlema = new ZLEMAIndicator(new ClosePriceIndicator(this.data), 10);
+    this.data.replaceStrategy(new MockStrategy(zlema));
+
+    assertNext(this.data,10, zlema);
+  }
+
+
+  @Test
+  public void smallBarCount() {
+    final var zlema = new ZLEMAIndicator(new ClosePriceIndicator(this.data), 3);
+    this.data.replaceStrategy(new MockStrategy(zlema));
+
+    assertNext(this.data,10, zlema);
+  }
 }

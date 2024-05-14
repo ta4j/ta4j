@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,71 +23,106 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.indicators.average.WMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public WMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+  public WMAIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
+
+
+  @Test
+  public void calculate() {
+    final var series =
+        new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
+    final var close = new ClosePriceIndicator(series);
+    final var wmaIndicator = new WMAIndicator(close, 3);
+
+    series.replaceStrategy(new MockStrategy(wmaIndicator));
+    series.advance();
+    assertFalse(wmaIndicator.isStable());
+    series.advance();
+    assertFalse(wmaIndicator.isStable());
+    series.advance();
+    assertTrue(wmaIndicator.isStable());
+    assertNumEquals(2.3333, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(3.3333, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(4.3333, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(5.3333, wmaIndicator.getValue());
+  }
+
+
+  @Test
+  public void wmaWithBarCountGreaterThanSeriesSize() {
+    final var series =
+        new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
+    final var close = new ClosePriceIndicator(series);
+    final var wmaIndicator = new WMAIndicator(close, 55);
+    final var strategy = new MockStrategy(wmaIndicator);
+    series.replaceStrategy(strategy);
+
+    for (int i = 0; i < 56; i++) {
+      series.advance();
+      assertFalse(String.valueOf(i), strategy.isStable());
+    }
+  }
+
+
+  @Test
+  public void wmaUsingBarCount9UsingClosePrice() {
+    // Example from
+    // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10, 83.11, 83.60, 83.66,
+            82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87
+        )
+        .build();
+
+    final var wmaIndicator = new WMAIndicator(new ClosePriceIndicator(series), 9);
+    series.replaceStrategy(new MockStrategy(wmaIndicator));
+
+    for (int i = 0; i < 9; i++) {
+      series.advance();
     }
 
-    @Test
-    public void calculate() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<Num> close = new ClosePriceIndicator(series);
-        Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
-
-        assertNumEquals(1, wmaIndicator.getValue(0));
-        assertNumEquals(1.6667, wmaIndicator.getValue(1));
-        assertNumEquals(2.3333, wmaIndicator.getValue(2));
-        assertNumEquals(3.3333, wmaIndicator.getValue(3));
-        assertNumEquals(4.3333, wmaIndicator.getValue(4));
-        assertNumEquals(5.3333, wmaIndicator.getValue(5));
-    }
-
-    @Test
-    public void wmaWithBarCountGreaterThanSeriesSize() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<Num> close = new ClosePriceIndicator(series);
-        Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
-
-        assertNumEquals(1, wmaIndicator.getValue(0));
-        assertNumEquals(1.6667, wmaIndicator.getValue(1));
-        assertNumEquals(2.3333, wmaIndicator.getValue(2));
-        assertNumEquals(3, wmaIndicator.getValue(3));
-        assertNumEquals(3.6666, wmaIndicator.getValue(4));
-        assertNumEquals(4.3333, wmaIndicator.getValue(5));
-    }
-
-    @Test
-    public void wmaUsingBarCount9UsingClosePrice() {
-        // Example from
-        // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        BarSeries data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98,
-                87.10, 83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
-
-        WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
-        assertNumEquals(84.4958, wma.getValue(8));
-        assertNumEquals(85.0158, wma.getValue(9));
-        assertNumEquals(84.6807, wma.getValue(10));
-        assertNumEquals(84.5387, wma.getValue(11));
-        assertNumEquals(84.4298, wma.getValue(12));
-        assertNumEquals(84.1224, wma.getValue(13));
-        assertNumEquals(83.1031, wma.getValue(14));
-        assertNumEquals(82.1462, wma.getValue(15));
-        assertNumEquals(81.1149, wma.getValue(16));
-        assertNumEquals(80.0736, wma.getValue(17));
-        assertNumEquals(78.6907, wma.getValue(18));
-        assertNumEquals(78.1504, wma.getValue(19));
-        assertNumEquals(77.6133, wma.getValue(20));
-    }
+    assertNumEquals(84.4958, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(85.0158, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(84.6807, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(84.5387, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(84.4298, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(84.1224, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(83.1031, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(82.1462, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(81.1149, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(80.0736, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(78.6907, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(78.1504, wmaIndicator.getValue());
+    series.advance();
+    assertNumEquals(77.6133, wmaIndicator.getValue());
+  }
 }

@@ -24,7 +24,6 @@
 package org.ta4j.core;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,7 +34,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Function;
 import java.util.zip.DataFormatException;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -44,10 +42,14 @@ import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockTradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class XlsTestsUtils {
 
@@ -63,14 +65,15 @@ public class XlsTestsUtils {
      *                     close throws IOException
      */
     private static Sheet getSheet(Class<?> clazz, String fileName) throws IOException {
-        InputStream inputStream = clazz.getResourceAsStream(fileName);
-        if (inputStream == null) {
-            throw new IOException("Null InputStream for file " + fileName);
+        try (final var inputStream = clazz.getResourceAsStream(fileName)) {
+            if (inputStream == null) {
+                throw new IOException("Null InputStream for file " + fileName);
+            }
+            HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
+            Sheet sheet = workbook.getSheetAt(0);
+            workbook.close();
+            return sheet;
         }
-        HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
-        Sheet sheet = workbook.getSheetAt(0);
-        workbook.close();
-        return sheet;
     }
 
     /**
@@ -110,16 +113,19 @@ public class XlsTestsUtils {
     /**
      * Gets the BarSeries from a file.
      *
-     * @param clazz    class containing the file resources
-     * @param fileName file name of the file resource
+     * @param clazz      class containing the file resources
+     * @param fileName   file name of the file resource
+     * @param numFactory
+     *
      * @return BarSeries of the data
+     *
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static BarSeries getSeries(Class<?> clazz, String fileName, Function<Number, Num> numFunction)
+    public static BacktestBarSeries getSeries(Class<?> clazz, String fileName, NumFactory numFactory)
             throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return getSeries(sheet, numFunction);
+        return getSeries(sheet, numFactory);
     }
 
     /**
@@ -127,13 +133,16 @@ public class XlsTestsUtils {
      * data section header and appears in the first six columns to the end of the
      * file. Empty cells in the data are forbidden.
      *
-     * @param sheet mutable Sheet
+     * @param sheet      mutable Sheet
+     * @param numFactory
+     *
      * @return BarSeries of the data
+     *
      * @throws DataFormatException if getData throws DataFormatException or if the
      *                             data contains empty cells
      */
-    private static BarSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+    private static BacktestBarSeries getSeries(Sheet sheet, NumFactory numFactory) throws DataFormatException {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         int minInterval = Integer.MAX_VALUE;
@@ -164,13 +173,16 @@ public class XlsTestsUtils {
             Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
             ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
                     ZoneId.systemDefault());
-            series.addBar(duration, endDateTime,
-                    // open, high, low, close, volume
-                    numFunction.apply(new BigDecimal(cellValues[1].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[2].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[3].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[4].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[5].formatAsString())), numFunction.apply(0));
+            series.barBuilder()
+                    .timePeriod(duration)
+                    .endTime(endDateTime)
+                    .openPrice(new BigDecimal(cellValues[1].formatAsString()))
+                    .highPrice(new BigDecimal(cellValues[2].formatAsString()))
+                    .lowPrice(new BigDecimal(cellValues[3].formatAsString()))
+                    .closePrice(new BigDecimal(cellValues[4].formatAsString()))
+                    .volume(new BigDecimal(cellValues[5].formatAsString()))
+                    .amount(0)
+                    .add();
         }
         return series;
     }
@@ -185,12 +197,12 @@ public class XlsTestsUtils {
      * @return List<Num> of values from the column
      * @throws DataFormatException if getValues returns DataFormatException
      */
-    private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Object... params)
+    private static List<Num> getValues(Sheet sheet, int column, NumFactory numFactory, Object... params)
             throws DataFormatException {
         Num[] NumParams = Arrays.stream(params)
-                .map(p -> numFunction.apply(new BigDecimal(p.toString())))
+                .map(p -> numFactory.numOf(new BigDecimal(p.toString())))
                 .toArray(Num[]::new);
-        return getValues(sheet, column, numFunction, NumParams);
+        return getValues(sheet, column, numFactory, NumParams);
     }
 
     /**
@@ -205,10 +217,10 @@ public class XlsTestsUtils {
      * @throws DataFormatException if setParams or getValues throws
      *                             DataFormatException
      */
-    private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Num... params)
+    private static List<Num> getValues(Sheet sheet, int column, NumFactory numFactory, Num... params)
             throws DataFormatException {
         setParams(sheet, params);
-        return getValues(sheet, column, numFunction);
+        return getValues(sheet, column, numFactory);
     }
 
     /**
@@ -220,8 +232,7 @@ public class XlsTestsUtils {
      * @return List<Num> of values from the column
      * @throws DataFormatException if getData throws DataFormatException
      */
-    private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction)
-            throws DataFormatException {
+    private static List<Num> getValues(Sheet sheet, int column, NumFactory numFactory) throws DataFormatException {
         List<Num> values = new ArrayList<>();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         // get all of the data from the data section of the sheet
@@ -235,7 +246,7 @@ public class XlsTestsUtils {
             if (s.equals("#DIV/0!")) {
                 values.add(NaN.NaN);
             } else {
-                values.add(numFunction.apply(new BigDecimal(s)));
+                values.add(numFactory.numOf(new BigDecimal(s)));
             }
         }
         return values;
@@ -293,10 +304,10 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getSeries or getValues throws
      *                             DataFormatException
      */
-    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column,
-            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column, NumFactory numFactory,
+            Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
+        return new MockIndicator(getSeries(sheet, numFactory), getValues(sheet, column, numFactory, params));
     }
 
     /**
@@ -311,10 +322,10 @@ public class XlsTestsUtils {
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getValues throws DataFormatException
      */
-    public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column,
-            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+    public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column, NumFactory numFactory,
+            Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        List<Num> values = getValues(sheet, column, numFunction, params);
+        List<Num> values = getValues(sheet, column, numFactory, params);
         return values.get(values.size() - 1);
     }
 
@@ -328,10 +339,10 @@ public class XlsTestsUtils {
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getValues throws DataFormatException
      */
-    public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column,
-            Function<Number, Num> numFunction) throws IOException, DataFormatException {
+    public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column, NumFactory numFactory)
+            throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockTradingRecord(getValues(sheet, column, numFunction));
+        return new MockTradingRecord(getValues(sheet, column, numFactory));
     }
 
 }

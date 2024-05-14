@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,15 +23,19 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * +DI indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  *
@@ -41,38 +45,63 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class PlusDIIndicator extends CachedIndicator<Num> {
+public class PlusDIIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final ATRIndicator atrIndicator;
     private final MMAIndicator avgPlusDMIndicator;
+    private Num value;
+    private int barsPassed;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link #atrIndicator} and
      *                 {@link #avgPlusDMIndicator}
      */
-    public PlusDIIndicator(BarSeries series, int barCount) {
+    public PlusDIIndicator(final BarSeries series, final int barCount) {
         super(series);
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
+    protected Num calculate() {
+        return this.avgPlusDMIndicator.getValue()
+                .dividedBy(this.atrIndicator.getValue())
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override
-    public int getUnstableBars() {
-        return barCount;
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.barsPassed;
+            this.atrIndicator.refresh(tick);
+            this.avgPlusDMIndicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(tick)) {
+            this.barsPassed = 1;
+            this.atrIndicator.refresh(tick);
+            this.avgPlusDMIndicator.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    public boolean isStable() {
+        return this.barsPassed >= this.barCount && this.atrIndicator.isStable() && this.avgPlusDMIndicator.isStable();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " " + this.atrIndicator + " " + this.avgPlusDMIndicator;
     }
 }

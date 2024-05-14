@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,10 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.Indicator;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
@@ -44,8 +46,8 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
-    public CrossedDownIndicatorRule(Indicator<Num> indicator, Number threshold) {
-        this(indicator, indicator.numOf(threshold));
+    public CrossedDownIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
+        this(indicator, indicator.getBarSeries().numFactory().numOf(threshold));
     }
 
     /**
@@ -54,7 +56,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
-    public CrossedDownIndicatorRule(Indicator<Num> indicator, Num threshold) {
+    public CrossedDownIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
     }
 
@@ -64,25 +66,40 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param first  the first indicator
      * @param second the second indicator
      */
-    public CrossedDownIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
+    public CrossedDownIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
         this.cross = new CrossIndicator(first, second);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = cross.getValue(index);
-        traceIsSatisfied(index, satisfied);
+    public boolean isSatisfied(final TradingRecord tradingRecord) {
+        final boolean satisfied = this.cross.getValue();
+        traceIsSatisfied(satisfied);
         return satisfied;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        this.cross.refresh(tick);
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.cross.isStable();
     }
 
     /** @return the initial lower indicator */
     public Indicator<Num> getLow() {
-        return cross.getLow();
+        return this.cross.getLow();
     }
 
     /** @return the initial upper indicator */
     public Indicator<Num> getUp() {
-        return cross.getUp();
+        return this.cross.getUp();
+    }
+
+    @Override
+    public String toString() {
+        return "CrossedDownIndicatorRule{cross=" + this.cross + '}';
     }
 }

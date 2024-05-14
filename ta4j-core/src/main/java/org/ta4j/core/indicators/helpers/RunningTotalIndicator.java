@@ -23,8 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,32 +37,68 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
-public class RunningTotalIndicator extends CachedIndicator<Num> {
+public class RunningTotalIndicator extends NumericIndicator {
     private final Indicator<Num> indicator;
     private final int barCount;
+    private final PreviousValueIndicator previousValue;
+    private Num previousSum;
+    private Num value;
+    private int processedBars;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
-    public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
+    public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
+        this.previousSum = indicator.getBarSeries().numFactory().zero();
+        this.previousValue = new PreviousValueIndicator(indicator, barCount);
     }
 
     @Override
-    protected Num calculate(int index) {
-        Num sum = zero();
-        for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
-            sum = sum.plus(indicator.getValue(i));
+    public Num getValue() {
+        return this.value;
+    }
+
+    protected Num calculate() {
+        final var newSum = partialSum();
+        return newSum;
+    }
+
+    private Num partialSum() {
+        final var indicatorValue = this.indicator.getValue();
+
+        var sum = this.previousSum.plus(indicatorValue);
+
+        if (this.previousValue.isStable()) {
+            sum = sum.minus(this.previousValue.getValue());
         }
+
+        this.previousSum = sum;
         return sum;
     }
 
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
 
     @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            ++this.processedBars;
+            this.previousValue.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.processedBars = 1;
+            this.previousValue.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.processedBars >= this.barCount && this.indicator.isStable();
     }
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,45 +26,59 @@ package org.ta4j.core.indicators.adx;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.function.Function;
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private final ExternalIndicatorTest xls;
 
-    public ADXIndicatorTest(Function<Number, Num> nf) throws Exception {
-        super((data, params) -> new ADXIndicator((BarSeries) data, (int) params[0], (int) params[1]), nf);
-        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, numFunction);
+    public ADXIndicatorTest(final NumFactory numFactory) {
+        super((data, params) -> new ADXIndicator(data, (int) params[0], (int) params[1]), numFactory);
+        this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, this.numFactory);
     }
 
     @Test
-    public void externalData() throws Exception {
-        BarSeries series = xls.getSeries();
-        Indicator<Num> actualIndicator;
+    public void externalData11() throws Exception {
+        final var series = this.xls.getSeries();
+        final var actualIndicator = getIndicator(series, 1, 1);
+        final var expectedIndicator = this.xls.getIndicator(1, 1);
+        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
 
-        actualIndicator = getIndicator(series, 1, 1);
-        assertIndicatorEquals(xls.getIndicator(1, 1), actualIndicator);
-        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+        assertIndicatorEquals(expectedIndicator, actualIndicator);
+        assertEquals(100.0, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    }
 
-        actualIndicator = getIndicator(series, 3, 2);
-        assertIndicatorEquals(xls.getIndicator(3, 2), actualIndicator);
-        assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+    @Test
+    public void externalData32() throws Exception {
+        final var series = this.xls.getSeries();
+        final var actualIndicator = getIndicator(series, 3, 2);
+        final var expectedIndicator = this.xls.getIndicator(3, 2);
+        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
 
-        actualIndicator = getIndicator(series, 13, 8);
-        assertIndicatorEquals(xls.getIndicator(13, 8), actualIndicator);
-        assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+        assertIndicatorEquals(expectedIndicator, actualIndicator);
+        assertEquals(12.1330, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    }
+
+    @Test
+    public void externalData138() throws Exception {
+        final var series = this.xls.getSeries();
+        final var actualIndicator = getIndicator(series, 13, 8);
+        final var expectedIndicator = this.xls.getIndicator(13, 8);
+        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+
+        assertIndicatorEquals(expectedIndicator, actualIndicator);
+        assertEquals(7.3884, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

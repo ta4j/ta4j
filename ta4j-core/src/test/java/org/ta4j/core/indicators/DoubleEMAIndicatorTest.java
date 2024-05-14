@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,45 +25,62 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.average.DoubleEMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ClosePriceIndicator closePrice;
+  private BacktestBarSeries data;
 
-    public DoubleEMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+
+  public DoubleEMAIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
+
+
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71, 0.53, 0.73, 0.77, 0.67, 0.68)
+        .build();
+  }
+
+
+  @Test
+  public void doubleEMAUsingBarCount5UsingClosePrice() {
+    final var doubleEma = new DoubleEMAIndicator(new ClosePriceIndicator(this.data), 5);
+    this.data.replaceStrategy(new MockStrategy(doubleEma));
+
+    this.data.advance();
+    assertNumEquals(0.73, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.7244, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.7992, doubleEma.getValue());
+
+    for (int i = 0; i < 6 - 2; i++) {
+      this.data.advance();
     }
+    assertNumEquals(0.7858, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.7374, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.6884, doubleEma.getValue());
 
-    @Before
-    public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71,
-                0.53, 0.73, 0.77, 0.67, 0.68);
-        closePrice = new ClosePriceIndicator(data);
+    for (int i = 0; i < 12 - 8; i++) {
+      this.data.advance();
     }
-
-    @Test
-    public void doubleEMAUsingBarCount5UsingClosePrice() {
-        DoubleEMAIndicator doubleEma = new DoubleEMAIndicator(closePrice, 5);
-
-        assertNumEquals(0.73, doubleEma.getValue(0));
-        assertNumEquals(0.7244, doubleEma.getValue(1));
-        assertNumEquals(0.7992, doubleEma.getValue(2));
-
-        assertNumEquals(0.7858, doubleEma.getValue(6));
-        assertNumEquals(0.7374, doubleEma.getValue(7));
-        assertNumEquals(0.6884, doubleEma.getValue(8));
-
-        assertNumEquals(0.7184, doubleEma.getValue(12));
-        assertNumEquals(0.6939, doubleEma.getValue(13));
-        assertNumEquals(0.6859, doubleEma.getValue(14));
-    }
+    assertNumEquals(0.7184, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.6939, doubleEma.getValue());
+    this.data.advance();
+    assertNumEquals(0.6859, doubleEma.getValue());
+  }
 }

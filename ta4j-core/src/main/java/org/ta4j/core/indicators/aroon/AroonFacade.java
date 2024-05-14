@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,7 +45,7 @@ public class AroonFacade {
      * @param series   the bar series
      * @param barCount the number of periods used for the indicators
      */
-    public AroonFacade(BarSeries series, int barCount) {
+    public AroonFacade(final BarSeries series, final int barCount) {
         this.up = NumericIndicator.of(new AroonUpIndicator(series, barCount));
         this.down = NumericIndicator.of(new AroonDownIndicator(series, barCount));
     }
@@ -56,7 +56,7 @@ public class AroonFacade {
      * @return a NumericIndicator wrapped around a cached AroonUpIndicator
      */
     public NumericIndicator up() {
-        return up;
+        return this.up;
     }
 
     /**
@@ -65,7 +65,7 @@ public class AroonFacade {
      * @return a NumericIndicator wrapped around a cached AroonDownIndicator
      */
     public NumericIndicator down() {
-        return down;
+        return this.down;
     }
 
     /**
@@ -75,7 +75,7 @@ public class AroonFacade {
      *         AroonDown
      */
     public NumericIndicator oscillator() {
-        return up.minus(down);
+        return this.up.minus(this.down);
     }
 
 }

@@ -26,6 +26,7 @@ package org.ta4j.core.criteria.pnl;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -51,28 +52,28 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param excludeTradingCosts set to true to exclude trading costs
+     * @param excludeCosts set to true to exclude trading costs
      */
     public ProfitCriterion(boolean excludeCosts) {
         this.excludeCosts = excludeCosts;
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = excludeCosts ? position.getGrossProfit() : position.getProfit();
-            return profit.isPositive() ? profit : series.zero();
+            return profit.isPositive() ? profit : series.numFactory().zero();
         }
-        return series.zero();
+        return series.numFactory().zero();
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.zero(), Num::plus);
+                .reduce(series.numFactory().zero(), Num::plus);
     }
 
     /** The higher the criterion value (= the higher the profit), the better. */

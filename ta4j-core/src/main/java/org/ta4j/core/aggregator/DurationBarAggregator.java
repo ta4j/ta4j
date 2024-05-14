@@ -29,12 +29,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
+import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.num.Num;
 
 /**
- * Aggregates a list of {@link BaseBar bars} into another one by
- * {@link BaseBar#timePeriod duration}.
+ * Aggregates a list of {@link BacktestBar bars} into another one by
+ * {@link BacktestBar#timePeriod duration}.
  */
 public class DurationBarAggregator implements BarAggregator {
 
@@ -49,7 +49,7 @@ public class DurationBarAggregator implements BarAggregator {
      *
      * @param timePeriod the target time period that aggregated bars should have
      */
-    public DurationBarAggregator(Duration timePeriod) {
+    public DurationBarAggregator(final Duration timePeriod) {
         this(timePeriod, true);
     }
 
@@ -60,7 +60,7 @@ public class DurationBarAggregator implements BarAggregator {
      * @param onlyFinalBars if true, only bars with elapsed time (final bars) will
      *                      be created, otherwise also pending bars
      */
-    public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
+    public DurationBarAggregator(final Duration timePeriod, final boolean onlyFinalBars) {
         this.timePeriod = timePeriod;
         this.onlyFinalBars = onlyFinalBars;
     }
@@ -74,29 +74,29 @@ public class DurationBarAggregator implements BarAggregator {
      *                                  multiplication of actual {@code timePeriod}
      */
     @Override
-    public List<Bar> aggregate(List<Bar> bars) {
+    public List<Bar> aggregate(final List<Bar> bars) {
         final List<Bar> aggregated = new ArrayList<>();
         if (bars.isEmpty()) {
             return aggregated;
         }
         final Bar firstBar = bars.get(0);
         // get the actual time period
-        final Duration actualDur = firstBar.getTimePeriod();
+        final Duration actualDur = firstBar.timePeriod();
         // check if new timePeriod is a multiplication of actual time period
-        final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
+        final boolean isMultiplication = this.timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
             throw new IllegalArgumentException(
                     "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().zero();
+        final Num zero = firstBar.openPrice().getNumFactory().zero();
         while (i < bars.size()) {
-            Bar bar = bars.get(i);
-            final ZonedDateTime beginTime = bar.getBeginTime();
-            final Num open = bar.getOpenPrice();
-            Num high = bar.getHighPrice();
-            Num low = bar.getLowPrice();
+            BacktestBar bar = (BacktestBar) bars.get(i);
+            final ZonedDateTime beginTime = bar.beginTime();
+            final Num open = bar.openPrice();
+            Num high = bar.highPrice();
+            Num low = bar.lowPrice();
 
             Num close = null;
             Num volume = zero;
@@ -106,20 +106,20 @@ public class DurationBarAggregator implements BarAggregator {
 
             while (isInDuration(sumDur)) {
                 if (i < bars.size()) {
-                    if (!beginTimesInDuration(beginTime, bars.get(i).getBeginTime())) {
+                    if (!beginTimesInDuration(beginTime, bars.get(i).beginTime())) {
                         break;
                     }
-                    bar = bars.get(i);
-                    if (high == null || bar.getHighPrice().isGreaterThan(high)) {
-                        high = bar.getHighPrice();
+                    bar = (BacktestBar) bars.get(i);
+                    if (high == null || bar.highPrice().isGreaterThan(high)) {
+                        high = bar.highPrice();
                     }
-                    if (low == null || bar.getLowPrice().isLessThan(low)) {
-                        low = bar.getLowPrice();
+                    if (low == null || bar.lowPrice().isLessThan(low)) {
+                        low = bar.lowPrice();
                     }
-                    close = bar.getClosePrice();
+                    close = bar.closePrice();
 
-                    if (bar.getVolume() != null) {
-                        volume = volume.plus(bar.getVolume());
+                    if (bar.volume() != null) {
+                        volume = volume.plus(bar.volume());
                     }
                     if (bar.getAmount() != null) {
                         amount = amount.plus(bar.getAmount());
@@ -133,21 +133,29 @@ public class DurationBarAggregator implements BarAggregator {
                 i++;
             }
 
-            if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
-                        volume, amount, trades);
-                aggregated.add(aggregatedBar);
+            if (!this.onlyFinalBars || i <= bars.size()) {
+// FIXME how to aggregate bars without accessmto series?               final Bar aggregatedBar = new BacktestBarBuilder(new MockBarSeriesBuilder().build()).timePeriod(this.timePeriod)
+//                        .endTime(beginTime.plus(this.timePeriod))
+//                        .openPrice(open)
+//                        .highPrice(high)
+//                        .lowPrice(low)
+//                        .closePrice(close)
+//                        .volume(volume)
+//                        .amount(amount)
+//                        .trades(trades)
+//                        .build();
+//                aggregated.add(aggregatedBar);
             }
         }
 
         return aggregated;
     }
 
-    private boolean beginTimesInDuration(ZonedDateTime startTime, ZonedDateTime endTime) {
-        return Duration.between(startTime, endTime).compareTo(timePeriod) < 0;
+    private boolean beginTimesInDuration(final ZonedDateTime startTime, final ZonedDateTime endTime) {
+        return Duration.between(startTime, endTime).compareTo(this.timePeriod) < 0;
     }
 
-    private boolean isInDuration(Duration duration) {
-        return duration.compareTo(timePeriod) < 0;
+    private boolean isInDuration(final Duration duration) {
+        return duration.compareTo(this.timePeriod) < 0;
     }
 }

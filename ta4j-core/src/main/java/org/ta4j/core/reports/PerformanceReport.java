@@ -44,7 +44,7 @@ public class PerformanceReport {
 
     /**
      * Constructor.
-     * 
+     *
      * @param totalProfitLoss           the total PnL
      * @param totalProfitLossPercentage the total PnL in percent
      * @param totalProfit               the total profit

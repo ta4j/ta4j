@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,12 @@
  */
 package org.ta4j.core.indicators;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -33,27 +37,29 @@ import org.ta4j.core.num.Num;
  *
  * @see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
-public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
+public class AwesomeOscillatorIndicator extends AbstractIndicator<Num> {
 
-    private final SMAIndicator sma5;
-    private final SMAIndicator sma34;
+    private final SMAIndicator shortSma;
+    private final SMAIndicator longSma;
+    private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
 
     /**
      * Constructor.
      *
-     * @param indicator    (normally {@link MedianPriceIndicator})
-     * @param barCountSma1 (normally 5)
-     * @param barCountSma2 (normally 34)
+     * @param indicator     (normally {@link MedianPriceIndicator})
+     * @param shortBarCount (normally 5)
+     * @param longBarCOunt  (normally 34)
      */
-    public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
-        super(indicator);
-        this.sma5 = new SMAIndicator(indicator, barCountSma1);
-        this.sma34 = new SMAIndicator(indicator, barCountSma2);
+    public AwesomeOscillatorIndicator(final Indicator<Num> indicator, final int shortBarCount, final int longBarCOunt) {
+        super(indicator.getBarSeries());
+        this.shortSma = new SMAIndicator(indicator, shortBarCount);
+        this.longSma = new SMAIndicator(indicator, longBarCOunt);
     }
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCountSma1} = 5
      * <li>{@code barCountSma2} = 34
@@ -61,13 +67,13 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      *
      * @param indicator (normally {@link MedianPriceIndicator})
      */
-    public AwesomeOscillatorIndicator(Indicator<Num> indicator) {
+    public AwesomeOscillatorIndicator(final Indicator<Num> indicator) {
         this(indicator, 5, 34);
     }
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code indicator} = {@link MedianPriceIndicator}
      * <li>{@code barCountSma1} = 5
@@ -76,17 +82,31 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      *
      * @param series the bar series
      */
-    public AwesomeOscillatorIndicator(BarSeries series) {
+    public AwesomeOscillatorIndicator(final BarSeries series) {
         this(new MedianPriceIndicator(series), 5, 34);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        return sma5.getValue(index).minus(sma34.getValue(index));
+    protected Num calculate() {
+        return this.shortSma.getValue().minus(this.longSma.getValue());
     }
 
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            this.shortSma.refresh(tick);
+            this.longSma.refresh(tick);
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.shortSma.isStable() && this.longSma.isStable();
     }
 }

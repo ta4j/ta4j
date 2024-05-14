@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,77 +25,65 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private BarSeries series;
+    private BacktestBarSeries series;
 
-    /**
-     * Constructor.
-     *
-     * @param function
-     */
-    public AwesomeOscillatorIndicatorTest(Function<Number, Num> function) {
-        super(function);
+    public AwesomeOscillatorIndicatorTest(final NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
+        this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+        this.series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
+        this.series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
+        this.series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
+        this.series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
+        this.series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
 
-        bars.add(new MockBar(0, 0, 16, 8, numFunction));
-        bars.add(new MockBar(0, 0, 12, 6, numFunction));
-        bars.add(new MockBar(0, 0, 18, 14, numFunction));
-        bars.add(new MockBar(0, 0, 10, 6, numFunction));
-        bars.add(new MockBar(0, 0, 8, 4, numFunction));
-
-        this.series = new MockBarSeries(bars);
     }
 
     @Test
     public void calculateWithSma2AndSma3() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 2, 3);
-
-        assertNumEquals(0, awesome.getValue(0));
-        assertNumEquals(0, awesome.getValue(1));
-        assertNumEquals(1d / 6, awesome.getValue(2));
-        assertNumEquals(1, awesome.getValue(3));
-        assertNumEquals(-3, awesome.getValue(4));
+        final var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(this.series), 2, 3);
+        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(awesome))));
+        // pass to stable range
+        this.series.advance();
+        this.series.advance();
+        assertValues(this.series, 1d / 6, awesome);
+        assertValues(this.series, 1, awesome);
+        assertValues(this.series, -3, awesome);
     }
 
     @Test
     public void withSma1AndSma2() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 1, 2);
-
-        assertNumEquals(0, awesome.getValue(0));
-        assertNumEquals("-1.5", awesome.getValue(1));
-        assertNumEquals("3.5", awesome.getValue(2));
-        assertNumEquals(-4, awesome.getValue(3));
-        assertNumEquals(-1, awesome.getValue(4));
+        final var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(this.series), 1, 2);
+        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(awesome))));
+        // pass to stable range
+        this.series.advance();
+        assertValues(this.series, -1.5, awesome);
+        assertValues(this.series, 3.5, awesome);
+        assertValues(this.series, -4, awesome);
+        assertValues(this.series, -1, awesome);
     }
 
-    @Test
-    public void withSmaDefault() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series));
-
-        assertNumEquals(0, awesome.getValue(0));
-        assertNumEquals(0, awesome.getValue(1));
-        assertNumEquals(0, awesome.getValue(2));
-        assertNumEquals(0, awesome.getValue(3));
-        assertNumEquals(0, awesome.getValue(4));
+    private static void assertValues(final BacktestBarSeries series, final double expected,
+            final AwesomeOscillatorIndicator awesome) {
+        series.advance();
+        assertNumEquals(expected, awesome.getValue());
     }
 
 }

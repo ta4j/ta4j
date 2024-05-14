@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -41,21 +41,21 @@ import org.ta4j.core.num.Num;
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
+    public Num calculate(BacktestBarSeries series, Position position) {
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.numFactory().hundred());
         }
-        return series.zero();
+        return series.numFactory().zero();
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.zero(), Num::plus);
+                .reduce(series.numFactory().zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */

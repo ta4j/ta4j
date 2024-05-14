@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -57,13 +57,13 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return series.one();
+    public Num calculate(BacktestBarSeries series, Position position) {
+        return series.numFactory().one();
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.numOf(tradingRecord.getPositionCount());
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
+        return series.numFactory().numOf(tradingRecord.getPositionCount());
     }
 
     /**

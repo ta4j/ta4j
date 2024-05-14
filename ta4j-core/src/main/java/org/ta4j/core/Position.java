@@ -25,12 +25,12 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,9 +43,7 @@ import org.ta4j.core.num.Num;
  * <li>entry == SELL --> exit == BUY
  * </ul>
  */
-public class Position implements Serializable {
-
-    private static final long serialVersionUID = -5484709075767220358L;
+public class Position {
 
     /** The entry trade */
     private Trade entry;
@@ -162,7 +160,6 @@ public class Position implements Serializable {
     /**
      * Operates the position at the index-th position.
      *
-     * @param index the bar index
      * @return the trade
      * @see #operate(int, Num, Num)
      */
@@ -173,11 +170,10 @@ public class Position implements Serializable {
     /**
      * Operates the position at the index-th position.
      *
-     * @param index  the bar index
      * @param price  the price
      * @param amount the amount
      * @return the trade
-     * @throws IllegalStateException if {@link #isOpened()} and index < entry.index
+     * @throws IllegalStateException if {@link #isOpened()}
      */
     public Trade operate(int index, Num price, Num amount) {
         Trade trade = null;
@@ -334,7 +330,7 @@ public class Position implements Serializable {
      *         barSeries
      * @see #getGrossReturn(Num, Num)
      */
-    public Num getGrossReturn(BarSeries barSeries) {
+    public Num getGrossReturn(BacktestBarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
         Num exitPrice = getExit().getPricePerAsset(barSeries);
         return getGrossReturn(entryPrice, exitPrice);
@@ -360,7 +356,7 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
-            Num one = entryPrice.numOf(1);
+            Num one = entryPrice.getNumFactory().one();
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
     }
@@ -420,7 +416,7 @@ public class Position implements Serializable {
      * @return the Num of 0
      */
     private Num zero() {
-        return entry.getNetPrice().zero();
+        return entry.getNetPrice().getNumFactory().zero();
     }
 
     @Override

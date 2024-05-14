@@ -26,86 +26,87 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestUtils;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.average.MMAIndicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private final ExternalIndicatorTest xls;
 
-    public MMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
+    public MMAIndicatorTest(final NumFactory numFunction) {
         super((data, params) -> new MMAIndicator(data, (int) params[0]), numFunction);
-        xls = new XLSIndicatorTest(this.getClass(), "MMA.xls", 6, numFunction);
+        this.xls = new XLSIndicatorTest(this.getClass(), "MMA.xls", 6, numFunction);
     }
 
-    private BarSeries data;
+    private BacktestBarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37,
-                61.33, 61.51);
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+                .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
+                .build();
     }
 
     @Test
-    public void firstValueShouldBeEqualsToFirstDataValue() throws Exception {
-        Indicator<Num> actualIndicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(64.75, actualIndicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);
+    public void firstValueShouldBeEqualsToFirstDataValue() {
+        final var actualIndicator = getIndicator(new ClosePriceIndicator(this.data), 1);
+        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator))));
+        this.data.advance();
+        assertEquals(64.75, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
-    public void mmaUsingBarCount10UsingClosePrice() throws Exception {
-        Indicator<Num> actualIndicator = getIndicator(new ClosePriceIndicator(data), 10);
-        assertEquals(63.9983, actualIndicator.getValue(9).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(63.7315, actualIndicator.getValue(10).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(63.5093, actualIndicator.getValue(11).doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+    public void mmaUsingBarCount10UsingClosePrice() {
+        final var actualIndicator = getIndicator(new ClosePriceIndicator(this.data), 10);
+        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator))));
 
-    @Test
-    public void stackOverflowError() throws Exception {
-        List<Bar> bigListOfBars = new ArrayList<>();
-        for (int i = 0; i < 10000; i++) {
-            bigListOfBars.add(new MockBar(i, numFunction));
+        for (int i = 0; i < 10; i++) {
+            this.data.advance();
         }
-        MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
-        Indicator<Num> actualIndicator = getIndicator(closePrice, 10);
-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
-        assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.GENERAL_OFFSET);
+
+        assertEquals(63.9983, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+        this.data.advance();
+        assertEquals(63.7315, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+        this.data.advance();
+        assertEquals(63.5093, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
-    public void testAgainstExternalData() throws Exception {
-        Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
-        Indicator<Num> actualIndicator;
+    public void testAgainstExternalData1() throws Exception {
+        assertBarCount(1, 329.0);
+    }
 
-        actualIndicator = getIndicator(xlsClose, 1);
-        assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+    @Test
+    public void testAgainstExternalData3() throws Exception {
+        assertBarCount(3, 327.2900);
+    }
 
-        actualIndicator = getIndicator(xlsClose, 3);
-        assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+    @Test
+    public void testAgainstExternalData13() throws Exception {
+        assertBarCount(13, 326.9696);
+    }
 
-        actualIndicator = getIndicator(xlsClose, 13);
-        assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+    private void assertBarCount(final int barCount, final double expected) throws Exception {
+        final var xlsSeries = this.xls.getSeries();
+        final var xlsClose = new ClosePriceIndicator(xlsSeries);
+        final var actualIndicator = getIndicator(xlsClose, barCount);
+        final var expectedIndicator = this.xls.getIndicator(barCount);
+        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+
+        assertIndicatorEquals(expectedIndicator, actualIndicator);
+        assertEquals(expected, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

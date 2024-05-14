@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,50 +23,78 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * True range indicator.
- * 
+ *
  * <pre>
  * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
  * </pre>
  */
-public class TRIndicator extends CachedIndicator<Num> {
+public class TRIndicator extends AbstractIndicator<Num> {
+
+    private Bar previousBar;
+    private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private boolean stable;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
-    public TRIndicator(BarSeries series) {
+    public TRIndicator(final BarSeries series) {
         super(series);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
+    protected Num calculate() {
+        final Bar bar = getBarSeries().getBar();
+        final Num high = bar.highPrice();
+        final Num low = bar.lowPrice();
+        final Num hl = high.minus(low);
 
-        if (index == 0) {
+        if (this.previousBar == null) {
+            this.previousBar = bar;
             return hl.abs();
         }
 
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
+        this.stable = true;
+        final Num previousClose = this.previousBar.closePrice();
+        final Num hc = high.minus(previousClose);
+        final Num cl = previousClose.minus(low);
+        this.previousBar = bar;
         return hl.abs().max(hc.abs()).max(cl.abs());
 
     }
 
-    /** @return {@code 1} */
     @Override
-    public int getUnstableBars() {
-        return 1;
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.previousBar = null;
+            this.stable = false;
+            this.value = calculate();
+            this.currentTick = tick;
+        }
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.stable;
     }
 }

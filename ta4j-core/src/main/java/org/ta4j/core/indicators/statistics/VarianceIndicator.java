@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,54 +23,95 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Variance indicator.
  */
-public class VarianceIndicator extends CachedIndicator<Num> {
+public class VarianceIndicator extends AbstractIndicator<Num> {
 
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final SMAIndicator sma;
+  private final int barCount;
+  private final Num divisor;
+  private final SMAIndicator mean;
+  // TODO circular buffer
+  private final LinkedList<Num> values = new LinkedList<>();
+  private final Indicator<Num> indicator;
+  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Num value;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param barCount  the time frame
-     */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+
+  /**
+   * Constructor.
+   *
+   * @param indicator the indicator
+   * @param barCount the time frame
+   */
+  public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
+    super(indicator.getBarSeries());
+    this.barCount = barCount;
+    this.indicator = indicator;
+    this.divisor = this.indicator.getBarSeries().numFactory().numOf(this.barCount - 1);
+    this.mean = new SMAIndicator(indicator, barCount);
+
+    if (barCount <= 1) {
+      throw new IllegalArgumentException("barCount must be greater than 1");
+    }
+  }
+
+
+  protected Num calculate() {
+    this.values.addLast(this.indicator.getValue());
+
+    if (this.values.size() > this.barCount) {
+      this.values.removeFirst();
     }
 
-    @Override
-    protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        Num variance = zero();
-        Num average = sma.getValue(index);
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
-        }
-        variance = variance.dividedBy(numOf(numberOfObservations));
-        return variance;
+    Num variance = getBarSeries().numFactory().zero();
+    // cannot use RunningTotalIndicator because mean is changing each tick
+    final Num average = this.mean.getValue();
+    for (final var val : this.values) {
+      final var diff = val.minus(average);
+      final Num pow = diff.multipliedBy(diff);
+      variance = variance.plus(pow);
     }
 
-    @Override
-    public int getUnstableBars() {
-        return barCount;
-    }
+    variance = variance.dividedBy(this.divisor);
+    return variance;
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final ZonedDateTime tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.mean.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.indicator.isStable() && this.mean.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " barCount: " + this.barCount;
+  }
 }

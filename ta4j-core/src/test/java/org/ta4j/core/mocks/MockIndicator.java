@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,57 +23,57 @@
  */
 package org.ta4j.core.mocks;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 public class MockIndicator implements Indicator<Num> {
 
     private final BarSeries series;
     private final List<Num> values;
+    private int currentIndex = -1;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series BarSeries of the Indicator
      * @param values Indicator values
      */
-    public MockIndicator(BarSeries series, List<Num> values) {
+    public MockIndicator(final BarSeries series, final List<Num> values) {
         this.series = series;
         this.values = values;
     }
 
     /**
      * Gets a value from the Indicator
-     * 
-     * @param index Indicator value to get
+     *
      * @return Num Indicator value at index
      */
     @Override
-    public Num getValue(int index) {
-        return values.get(index);
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return 0;
+    public Num getValue() {
+        return this.values.get(this.currentIndex);
     }
 
     /**
      * Gets the Indicator TimeSeries.
-     * 
+     *
      * @return TimeSeries of the Indicator
      */
     @Override
     public BarSeries getBarSeries() {
-        return series;
+        return this.series;
     }
 
     @Override
-    public Num numOf(Number number) {
-        return series.numOf(number);
+    public void refresh(final ZonedDateTime tick) {
+        ++this.currentIndex;
     }
 
+    @Override
+    public boolean isStable() {
+        return true;
+    }
 }

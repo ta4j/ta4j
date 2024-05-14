@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,21 +23,23 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * ADX indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class ADXIndicator extends CachedIndicator<Num> {
+public class ADXIndicator extends AbstractIndicator<Num> {
 
     private final int diBarCount;
     private final int adxBarCount;
@@ -45,12 +47,12 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series      the bar series
      * @param diBarCount  the bar count for {@link DXIndicator}
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
      */
-    public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
+    public ADXIndicator(final BarSeries series, final int diBarCount, final int adxBarCount) {
         super(series);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
@@ -59,27 +61,32 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link DXIndicator} and
      *                 {@link #averageDXIndicator}
      */
-    public ADXIndicator(BarSeries series, int barCount) {
+    public ADXIndicator(final BarSeries series, final int barCount) {
         this(series, barCount, barCount);
     }
 
     @Override
-    protected Num calculate(int index) {
-        return averageDXIndicator.getValue(index);
-    }
-
-    @Override
-    public int getUnstableBars() {
-        return Math.max(diBarCount, adxBarCount);
-    }
-
-    @Override
     public String toString() {
-        return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
+        return getClass().getSimpleName() + " diBarCount: " + this.diBarCount + " adxBarCount: " + this.adxBarCount;
+    }
+
+    @Override
+    public Num getValue() {
+        return this.averageDXIndicator.getValue();
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        this.averageDXIndicator.refresh(tick);
+    }
+
+    @Override
+    public boolean isStable() {
+        return this.averageDXIndicator.isStable();
     }
 }

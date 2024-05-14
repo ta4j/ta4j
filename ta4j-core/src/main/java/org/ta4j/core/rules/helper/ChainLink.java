@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.rules.helper;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
@@ -34,9 +33,7 @@ import org.ta4j.core.Rule;
  * ChainLinks are evaluated in the trade they are added to the ChainRule and the
  * rule has to be satisfied within a specified "number of bars (= threshold)".
  */
-public class ChainLink implements Serializable {
-
-    private static final long serialVersionUID = -436033401669929601L;
+public class ChainLink {
 
     /** The {@link Rule}, which must be satisfied within the threshold. */
     private Rule rule;

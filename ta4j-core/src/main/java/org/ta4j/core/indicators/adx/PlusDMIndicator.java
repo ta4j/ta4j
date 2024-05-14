@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,47 +23,80 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * +DM indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  */
-public class PlusDMIndicator extends CachedIndicator<Num> {
+public class PlusDMIndicator extends AbstractIndicator<Num> {
+
+    private Bar previousBar;
+    private Num value;
+    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private boolean stable;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
-    public PlusDMIndicator(BarSeries series) {
+    public PlusDMIndicator(final BarSeries series) {
         super(series);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return zero();
-        }
-        final Bar prevBar = getBarSeries().getBar(index - 1);
-        final Bar currentBar = getBarSeries().getBar(index);
+    protected Num calculate() {
+        final var numFactory = getBarSeries().numFactory();
 
-        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
-        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
-        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(zero())) {
+        if (this.previousBar == null) {
+            this.previousBar = getBarSeries().getBar();
+            return numFactory.zero();
+        }
+
+        this.stable = true;
+        final Bar prevBar = this.previousBar;
+        final Bar currentBar = getBarSeries().getBar();
+
+        final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
+        final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
+
+        this.previousBar = currentBar;
+        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
             return upMove;
-        } else {
-            return zero();
+        }
+
+        return numFactory.zero();
+    }
+
+    @Override
+    public Num getValue() {
+        return this.value;
+    }
+
+    @Override
+    public void refresh(final ZonedDateTime tick) {
+        if (tick.isAfter(this.currentTick)) {
+            this.value = calculate();
+            this.currentTick = tick;
+        } else if (tick.isBefore(this.currentTick)) {
+            this.previousBar = null;
+            this.stable = false;
+            this.value = calculate();
+            this.currentTick = tick;
         }
     }
 
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public boolean isStable() {
+        return this.stable;
     }
 }

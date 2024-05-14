@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,18 +34,18 @@ import org.ta4j.core.num.Num;
 public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return isBreakEvenPosition(position) ? series.one() : series.zero();
+    public Num calculate(BacktestBarSeries series, Position position) {
+        return isBreakEvenPosition(position) ? series.numFactory().one() : series.numFactory().zero();
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BacktestBarSeries series, TradingRecord tradingRecord) {
         long numberOfBreakEvenTrades = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .filter(this::isBreakEvenPosition)
                 .count();
-        return series.numOf(numberOfBreakEvenTrades);
+        return series.numFactory().numOf(numberOfBreakEvenTrades);
     }
 
     private boolean isBreakEvenPosition(Position position) {

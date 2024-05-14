@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,91 +23,144 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.ZonedDateTime;
-import java.util.function.Function;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.MockRule;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+  private BacktestBarSeries data;
 
-    public HighestValueIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+
+  public HighestValueIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
+
+
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2)
+        .build();
+  }
+
+
+  @Test
+  public void highestValueUsingBarCount5UsingClosePrice() {
+    final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 5);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+
+    for (int i = 0; i < 5; i++) {
+      this.data.advance();
+    }
+    assertNumEquals("4.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("4.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("5.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("6.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("6.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("6.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("6.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("6.0", highestValue.getValue());
+    this.data.advance();
+    assertNumEquals("4.0", highestValue.getValue());
+  }
+
+
+  @Test
+  public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
+    final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 5);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    this.data.advance();
+
+    assertNumEquals("1.0", highestValue.getValue());
+  }
+
+
+  @Test
+  public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
+    final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 500);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    for (int i = 0; i < 12; i++) {
+      this.data.advance();
     }
 
-    @Before
-    public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
+    assertNumEquals("6.0", highestValue.getValue());
+  }
+
+
+  @Test
+  public void onlyNaNValues() {
+    final var series = new MockBarSeriesBuilder().withName("NaN test").build();
+    for (long i = 0; i <= 10000; i++) {
+      series.barBuilder()
+          .endTime(ZonedDateTime.now().plusDays(i))
+          .openPrice(NaN)
+          .closePrice(NaN)
+          .highPrice(NaN)
+          .lowPrice(NaN)
+          .volume(NaN)
+          .add();
     }
 
-    @Test
-    public void highestValueUsingBarCount5UsingClosePrice() {
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
+    final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
 
-        assertNumEquals("4.0", highestValue.getValue(4));
-        assertNumEquals("4.0", highestValue.getValue(5));
-        assertNumEquals("5.0", highestValue.getValue(6));
-        assertNumEquals("6.0", highestValue.getValue(7));
-        assertNumEquals("6.0", highestValue.getValue(8));
-        assertNumEquals("6.0", highestValue.getValue(9));
-        assertNumEquals("6.0", highestValue.getValue(10));
-        assertNumEquals("6.0", highestValue.getValue(11));
-        assertNumEquals("4.0", highestValue.getValue(12));
+    while (series.advance()) {
+      assertEquals(NaN.toString(), highestValue.getValue().toString());
+    }
+  }
+
+
+  @Test
+  public void naNValuesInIntervall() {
+    final BacktestBarSeries series = new MockBarSeriesBuilder().withName("NaN test").build();
+    for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
+      final Num closePrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
+      series.barBuilder()
+          .endTime(ZonedDateTime.now().plusDays(i))
+          .openPrice(NaN)
+          .closePrice(closePrice)
+          .highPrice(NaN)
+          .lowPrice(NaN)
+          .volume(NaN)
+          .add();
     }
 
-    @Test
-    public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals("1.0", highestValue.getValue(0));
+    final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+
+    // index is the biggest of (index, index-1)
+    for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+      series.advance();
+      if (i % 2 != 0) // current is NaN take the previous as highest
+      {
+        assertEquals(series.getBar(i - 1).closePrice().toString(), highestValue.getValue().toString());
+      } else // current is not NaN but previous, take the current
+      {
+        assertEquals(series.getBar(i).closePrice().toString(), highestValue.getValue().toString());
+      }
     }
-
-    @Test
-    public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertNumEquals("6.0", highestValue.getValue(12));
-    }
-
-    @Test
-    public void onlyNaNValues() {
-        BaseBarSeries series = new BaseBarSeries("NaN test");
-        for (long i = 0; i <= 10000; i++) {
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
-        }
-
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertEquals(NaN.toString(), highestValue.getValue(i).toString());
-        }
-    }
-
-    @Test
-    public void naNValuesInIntervall() {
-        BaseBarSeries series = new BaseBarSeries("NaN test");
-        for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
-            Num closePrice = i % 2 == 0 ? series.numOf(i) : NaN;
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, closePrice, NaN);
-        }
-
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
-
-        // index is the biggest of (index, index-1)
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            if (i % 2 != 0) // current is NaN take the previous as highest
-                assertEquals(series.getBar(i - 1).getClosePrice().toString(), highestValue.getValue(i).toString());
-            else // current is not NaN but previous, take the current
-                assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
-        }
-    }
+  }
 }

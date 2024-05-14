@@ -23,14 +23,12 @@
  */
 package org.ta4j.core.num;
 
-import java.util.function.Function;
-
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)
- * 
+ *
  * <p>
  * Special behavior in methods such as:
- * 
+ *
  * <ul>
  * <li>{@link NaN#plus(Num)} => NaN</li>
  * <li>{@link NaN#isEqual(Num)} => true</li>
@@ -94,6 +92,56 @@ public class NaN implements Num {
     @Override
     public Number getDelegate() {
         return null;
+    }
+
+    @Override
+    public NumFactory getNumFactory() {
+        return new NumFactory() {
+            @Override
+            public Num minusOne() {
+                return NaN;
+            }
+
+            @Override
+            public Num zero() {
+                return NaN;
+            }
+
+            @Override
+            public Num one() {
+                return NaN;
+            }
+
+            @Override
+            public Num two() {
+                return NaN;
+            }
+
+            @Override
+            public Num three() {
+                return NaN;
+            }
+
+            @Override
+            public Num hundred() {
+                return NaN;
+            }
+
+            @Override
+            public Num thousand() {
+                return NaN;
+            }
+
+            @Override
+            public Num numOf(final Number number) {
+                return NaN;
+            }
+
+            @Override
+            public Num numOf(final String number) {
+                return NaN;
+            }
+        };
     }
 
     @Override
@@ -241,11 +289,6 @@ public class NaN implements Num {
     @Override
     public Num max(Num other) {
         return this;
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return number -> NaN;
     }
 
     @Override

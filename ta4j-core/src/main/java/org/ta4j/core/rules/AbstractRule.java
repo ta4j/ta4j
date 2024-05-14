@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.time.ZonedDateTime;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
@@ -38,15 +40,20 @@ public abstract class AbstractRule implements Rule {
     /** The class name */
     private final String className = getClass().getSimpleName();
 
+    private ZonedDateTime currentTick;
+
     /**
      * Traces the {@code isSatisfied()} method calls.
      *
-     * @param index       the bar index
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+    protected void traceIsSatisfied(final boolean isSatisfied) {
+        if (this.log.isTraceEnabled()) {
+            this.log.trace("{}#isSatisfied({}): {}", this.className, this.currentTick, isSatisfied);
         }
+    }
+
+    protected void setCurrentTick(final ZonedDateTime currentTick) {
+        this.currentTick = currentTick;
     }
 }

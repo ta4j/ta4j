@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,43 +38,56 @@ import org.ta4j.core.indicators.AbstractIndicator;
  *
  * <p>
  * Returns constant values for a bar.
- * 
+ *
  * @param <T> the type of returned constant values (Double, Boolean, etc.)
  */
 public class FixedIndicator<T> extends AbstractIndicator<T> {
 
-    private final List<T> values = new ArrayList<>();
+  private final List<T> values = new ArrayList<>();
+  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private int index = -1;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     * @param values the values to be returned by this indicator
-     */
-    @SafeVarargs
-    public FixedIndicator(BarSeries series, T... values) {
-        super(series);
-        this.values.addAll(Arrays.asList(values));
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param values the values to be returned by this indicator
+   */
+  @SafeVarargs
+  public FixedIndicator(final BarSeries series, final T... values) {
+    super(series);
+    this.values.addAll(Arrays.asList(values));
+  }
+
+
+  /**
+   * Adds the {@code value} to {@link #values}.
+   *
+   * @param value the value to add
+   */
+  public void addValue(final T value) {
+    this.values.add(value);
+  }
+
+
+  @Override
+  public T getValue() {
+    return this.values.get(this.index);
+  }
+
+
+  @Override
+  public void refresh(final ZonedDateTime tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.index;
+      this.currentTick = tick;
     }
+  }
 
-    /**
-     * Adds the {@code value} to {@link #values}.
-     * 
-     * @param value the value to add
-     */
-    public void addValue(T value) {
-        this.values.add(value);
-    }
 
-    @Override
-    public T getValue(int index) {
-        return values.get(index);
-    }
-
-    /** @return {@code 0} */
-    @Override
-    public int getUnstableBars() {
-        return 0;
-    }
-
+  @Override
+  public boolean isStable() {
+    return true;
+  }
 }

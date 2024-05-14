@@ -25,10 +25,10 @@ package org.ta4j.core.mocks;
 
 import java.util.List;
 
-import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.backtest.BackTestTradingRecord;
 import org.ta4j.core.num.Num;
 
-public class MockTradingRecord extends BaseTradingRecord {
+public class MockTradingRecord extends BackTestTradingRecord {
 
     private static final long serialVersionUID = 6220278197931451635L;
 

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,35 +27,58 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.MockStrategy;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class FixedIndicatorTest {
 
-    @Test
-    public void getValueOnFixedDecimalIndicator() {
-        BarSeries series = new BaseBarSeries();
-        FixedDecimalIndicator fixedDecimalIndicator = new FixedDecimalIndicator(series, 13.37, 42, -17);
-        assertNumEquals(13.37, fixedDecimalIndicator.getValue(0));
-        assertNumEquals(42, fixedDecimalIndicator.getValue(1));
-        assertNumEquals(-17, fixedDecimalIndicator.getValue(2));
+  @Test
+  public void getValueOnFixedDecimalIndicatorDouble() {
+    final var series = new MockBarSeriesBuilder().withDefaultData().build();
+    final var fixedDecimalIndicator = new FixedDecimalIndicator(series, 13.37, 42, -17);
+    series.replaceStrategy(new MockStrategy(fixedDecimalIndicator));
 
-        fixedDecimalIndicator = new FixedDecimalIndicator(series, "3.0", "-123.456", "0.0");
-        assertNumEquals("3.0", fixedDecimalIndicator.getValue(0));
-        assertNumEquals("-123.456", fixedDecimalIndicator.getValue(1));
-        assertNumEquals("0.0", fixedDecimalIndicator.getValue(2));
+    series.advance();
+    assertNumEquals(13.37, fixedDecimalIndicator.getValue());
+    series.advance();
+    assertNumEquals(42, fixedDecimalIndicator.getValue());
+    series.advance();
+    assertNumEquals(-17, fixedDecimalIndicator.getValue());
 
-    }
+  }
 
-    @Test
-    public void getValueOnFixedBooleanIndicator() {
-        BarSeries series = new BaseBarSeries();
-        FixedBooleanIndicator fixedBooleanIndicator = new FixedBooleanIndicator(series, false, false, true, false,
-                true);
-        Assert.assertFalse(fixedBooleanIndicator.getValue(0));
-        Assert.assertFalse(fixedBooleanIndicator.getValue(1));
-        Assert.assertTrue(fixedBooleanIndicator.getValue(2));
-        Assert.assertFalse(fixedBooleanIndicator.getValue(3));
-        Assert.assertTrue(fixedBooleanIndicator.getValue(4));
-    }
+
+  @Test
+  public void getValueOnFixedDecimalIndicatorString() {
+    final var series = new MockBarSeriesBuilder().withDefaultData().build();
+    final var fixedDecimalIndicator = new FixedDecimalIndicator(series, "3.0", "-123.456", "0.0");
+    series.replaceStrategy(new MockStrategy(fixedDecimalIndicator));
+
+    series.advance();
+    assertNumEquals("3.0", fixedDecimalIndicator.getValue());
+    series.advance();
+    assertNumEquals("-123.456", fixedDecimalIndicator.getValue());
+    series.advance();
+    assertNumEquals("0.0", fixedDecimalIndicator.getValue());
+
+  }
+
+
+  @Test
+  public void getValueOnFixedBooleanIndicator() {
+    final var series = new MockBarSeriesBuilder().withDefaultData().build();
+    final var fixedBooleanIndicator = new FixedBooleanIndicator(series, false, false, true, false, true);
+    series.replaceStrategy(new MockStrategy(fixedBooleanIndicator));
+
+    series.advance();
+    Assert.assertFalse(fixedBooleanIndicator.getValue());
+    series.advance();
+    Assert.assertFalse(fixedBooleanIndicator.getValue());
+    series.advance();
+    Assert.assertTrue(fixedBooleanIndicator.getValue());
+    series.advance();
+    Assert.assertFalse(fixedBooleanIndicator.getValue());
+    series.advance();
+    Assert.assertTrue(fixedBooleanIndicator.getValue());
+  }
 }
