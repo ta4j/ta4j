@@ -1,83 +1,121 @@
-///**
-// * The MIT License (MIT)
-// *
-// * Copyright (c) 2017-2023 Ta4j Organization & respective
-// * authors (see AUTHORS)
-// *
-// * Permission is hereby granted, free of charge, to any person obtaining a copy of
-// * this software and associated documentation files (the "Software"), to deal in
-// * the Software without restriction, including without limitation the rights to
-// * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-// * the Software, and to permit persons to whom the Software is furnished to do so,
-// * subject to the following conditions:
-// *
-// * The above copyright notice and this permission notice shall be included in all
-// * copies or substantial portions of the Software.
-// *
-// * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-// * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-// * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-// * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-// * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// */
-//package org.ta4j.core.indicators.average;
-//
-//import org.ta4j.core.indicators.Indicator;
-//import org.ta4j.core.num.Num;
-//
-///**
-// * Zero-lag exponential moving average indicator.
-// *
-// * @see <a href=
-// *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
-// *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
-// */
-//public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
-//
-//    private final Indicator<Num> indicator;
-//    private final int barCount;
-//    private final Num two;
-//    private final Num k;
-//    private final int lag;
-//
-//    /**
-//     * Constructor.
-//     *
-//     * @param indicator the {@link Indicator}
-//     * @param barCount  the time frame
-//     */
-//    public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
-//        super(indicator);
-//        this.indicator = indicator;
-//        this.barCount = barCount;
-//        this.two = getBarSeries().numFactory().numOf(2);
-//        this.k = two.dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
-//        this.lag = (barCount - 1) / 2;
-//    }
-//
-//    @Override
-//    protected Num calculate(int index) {
-//        if (index + 1 < barCount) {
-//            // Starting point of the ZLEMA
-//            return new SMAIndicator(indicator, barCount).getValue(index);
-//        }
-//        if (index == 0) {
-//            // If the barCount is bigger than the indicator's value count
-//            return indicator.getValue(0);
-//        }
-//        Num zlemaPrev = getValue(index - 1);
-//        return k.multipliedBy(two.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
-//                .plus(getBarSeries().numFactory().one().minus(k).multipliedBy(zlemaPrev));
-//    }
-//
-//    @Override
-//    public int getUnstableBars() {
-//        return barCount;
-//    }
-//
-//    @Override
-//    public String toString() {
-//        return getClass().getSimpleName() + " barCount: " + barCount;
-//    }
-//}
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.indicators.average;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.num.Num;
+
+/**
+ * Zero-lag exponential moving average indicator.
+ *
+ * @see <a href=
+ *     "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
+ *     http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
+ */
+public class ZLEMAIndicator extends AbstractIndicator<Num> {
+
+  private final Indicator<Num> indicator;
+  private final int barCount;
+  private final Num k;
+  private final Num oneMinusK;
+  private final PreviousValueIndicator lagPreviousValue;
+  private final int lag;
+  private int barsPassed;
+  private Num value;
+  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+
+
+  /**
+   * Constructor.
+   *
+   * @param indicator the {@link Indicator}
+   * @param barCount the time frame
+   */
+  public ZLEMAIndicator(final Indicator<Num> indicator, final int barCount) {
+    super(indicator.getBarSeries());
+    this.indicator = indicator;
+    this.barCount = barCount;
+    this.k = getBarSeries().numFactory().two().dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
+    this.oneMinusK = getBarSeries().numFactory().one().minus(this.k);
+    this.lag = (barCount - 1) / 2;
+
+    if (this.lag == 0) {
+      throw new IllegalArgumentException("The bar count must be greater than 2");
+    }
+
+    this.lagPreviousValue = new PreviousValueIndicator(indicator, this.lag);
+  }
+
+
+  protected Num calculate() {
+    if (this.barsPassed <= this.lag) {
+      return this.indicator.getValue();
+    }
+
+    final Num zlemaPrev = getValue();
+    return this.k.multipliedBy(
+            getBarSeries().numFactory()
+                .two()
+                .multipliedBy(this.indicator.getValue())
+                .minus(this.lagPreviousValue.getValue())
+        )
+        .plus(this.oneMinusK.multipliedBy(zlemaPrev));
+  }
+
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " barCount: " + this.barCount;
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final ZonedDateTime tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.barsPassed;
+      this.indicator.refresh(tick);
+      this.lagPreviousValue.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
+    }
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.barsPassed >= this.lag && this.lagPreviousValue.isStable() && this.indicator.isStable();
+  }
+}
