@@ -31,6 +31,20 @@ import org.ta4j.core.num.Num;
  * Coppock Curve indicator.
  * 科波克曲线指标。
  *
+ * 科普克曲线（Coppock Curve）是一种趋势追踪指标，旨在识别长期趋势的变化。它由爱德华·科普克（Edward Coppock）于1962年开发，最初用于识别股票市场的买入信号。
+ *
+ * 科普克曲线的计算过程涉及以下步骤：
+ *
+ * 1. 首先，计算两个不同时间段的加权移动平均线（WMA）：
+ *    - 第一个移动平均线通常使用11个月的时间周期。
+ *    - 第二个移动平均线通常使用14个月的时间周期。
+ *
+ * 2. 然后，将这两个加权移动平均线相加，并应用一个固定的滞后因子（通常为10），得到科普克曲线的值。
+ *
+ * 科普克曲线的数值通常用作长期趋势的参考。当科普克曲线从底部向上穿越零线时，这被视为买入信号，暗示着市场可能迎来长期上升趋势。相反，当科普克曲线从顶部向下穿越零线时，这被视为卖出信号，暗示着市场可能进入长期下降趋势。
+ *
+ * 科普克曲线通常用于分析股票市场，但也可以应用于其他金融市场，如外汇市场和商品市场。交易者可以结合其他技术指标和价格模式来使用科普克曲线，以辅助他们的交易决策，并确认长期趋势的变化。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>

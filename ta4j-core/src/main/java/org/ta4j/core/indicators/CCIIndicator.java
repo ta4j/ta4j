@@ -32,6 +32,28 @@ import org.ta4j.core.num.Num;
  * Commodity Channel Index (CCI) indicator.
  * 商品通道指数 (CCI) 指标。
  *
+ * 商品通道指数（Commodity Channel Index，CCI）是一种技术指标，用于衡量资产价格与其统计的平均价格之间的偏离程度，从而帮助交易者确认价格的超买和超卖情况，以及可能的趋势反转点。
+ *
+ * CCI指标的计算基于资产的典型价格和统计的平均价格之间的差异。典型价格通常是最高价、最低价和收盘价的平均值。CCI指标的计算步骤如下：
+ *
+ * 1. 计算典型价格（Typical Price）：
+ *     TP =  最高价 +  最低价  +  收盘价 / 3
+ *
+ * 2. 计算统计的平均价格（Simple Moving Average，SMA）：
+ *    - 选择一个固定的时间周期（例如20个交易周期）。
+ *    - 计算最近一段时间内的典型价格的简单移动平均值。
+ *
+ * 3. 计算平均偏差（Mean Deviation）：
+ *    - 计算最近一段时间内每个典型价格与其对应的统计的平均价格之间的差异的绝对值。
+ *    - 取这些绝对值的平均值。
+ *
+ * 4. 计算商品通道指数（Commodity Channel Index）：
+ *      CCI =  TP - SMA(TP) / 0.015 * 平均偏差
+ *
+ * CCI指标的数值范围通常在-100到+100之间，数值越高表示价格与其统计的平均价格相比偏离程度越大，可能暗示着超买的情况；反之，数值越低表示价格偏离程度较小，可能暗示着超卖的情况。
+ *
+ * 交易者通常使用CCI指标来确认价格的超买和超卖情况，并结合其他技术指标一起使用，以辅助他们的交易决策。例如，当CCI指标超过+100时，可能暗示着价格超买，可能发生价格下跌；而当CCI指标低于-100时，可能暗示着价格超卖，可能发生价格上涨。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>

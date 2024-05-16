@@ -32,10 +32,22 @@ import org.ta4j.core.num.Num;
   Y3-Period Rate-of-Change RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
   KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
 
- Know Sure Thing (KST) RCMA1 = Y1 周期变化率 RCMA2 的 X1 周期 SMA
- = X2-周期 SMA Y2-周期变化率 RCMA3 = X3-周期 SMA
- Y3-周期变化率 RCMA4 = Y4-周期变化率的 X4-周期 SMA
- KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
+ 知道确定的事情
+ （KST） RCMA1 = Y1 周期变化率的 X1 周期 SMA RCMA2 = Y2 周期的 SMA 变化率 RCMA3 = Y3 周期的 X3 周期 SMA 变化率 RCMA4 = X4 周期 Y4 周期的 SMA 变化率 KST = （RCMA1 x 1） + （RCMA2 x 2） + （RCMA3 x 3） + （RCMA4 x 4）
+ *
+ *
+ * KST指标（Know Sure Thing Indicator）是由马丁·普林斯（Martin Pring）于1992年开发的一种技术指标，旨在识别市场的趋势转折点。它是一种复合指标，通过结合四个不同周期的平滑移动平均线和变动率来分析价格数据。
+ *
+ * KST指标的计算过程相对复杂，通常分为以下几个步骤：
+ *
+ * 1. 计算四个不同周期的平滑移动平均线（SMA）：这些周期通常是9、12、18和24个周期。
+ * 2. 计算每个周期内的价格变动率：通过计算每个周期的价格变化百分比来确定价格的变动率。
+ * 3. 对不同周期的价格变动率进行加权求和：将四个不同周期的价格变动率乘以不同的权重系数，并求和。
+ * 4. 应用一个二次平滑移动平均线（SMA）来平滑加权和，以得到最终的KST指标值。
+ *
+ * KST指标的数值通常波动在零线上下，正值表示价格处于上升趋势，负值表示价格处于下降趋势。交易者可以根据KST指标的数值变化来确定价格的趋势转折点，并据此制定买卖策略。
+ *
+ * 总的来说，KST指标是一种综合性的技术指标，结合了不同周期的平滑移动平均线和价格变动率，能够较为准确地识别市场的趋势转折点。然而，由于其复杂的计算过程和较长的时间周期，交易者在使用KST指标时需要谨慎考虑，并结合其他技术指标和价格模式进行综合分析。
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:know_sure_thing_kst">

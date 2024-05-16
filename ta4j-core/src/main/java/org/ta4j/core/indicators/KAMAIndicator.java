@@ -29,6 +29,21 @@ import org.ta4j.core.num.Num;
 /**
  * The Kaufman's Adaptive Moving Average (KAMA) Indicator.
  * * 考夫曼的自适应移动平均线 (KAMA) 指标。
+ *
+ * 考夫曼自适应移动平均线（Kaufman's Adaptive Moving Average，KAMA）是一种技术指标，用于平滑资产的价格数据，并根据市场的波动性调整移动平均线的参数，以适应不同的市场条件。
+ *
+ * KAMA指标的主要特点是其能够自动调整其平滑参数，以适应市场的波动性。相比传统的简单移动平均线（SMA）或指数移动平均线（EMA），KAMA能够更好地适应市场的变化，减少滞后性，提高对价格趋势的敏感度。
+ *
+ * KAMA的计算过程相对复杂，主要包括以下几个步骤：
+ *
+ * 1. 计算真实波幅（True Range）：通常是最高价与最低价之间的差值，用于衡量市场的波动性。
+ * 2. 计算效率比率（Efficiency Ratio）：用于衡量价格变化的方向性和强度。
+ * 3. 计算平滑参数（Smoothing Constant）：根据效率比率和市场的波动性来调整平滑参数，以实现自适应性。
+ * 4. 计算KAMA值：将平滑参数应用于价格数据，计算出KAMA指标的值。
+ *
+ * KAMA指标的数值通常用于识别价格的趋势方向和市场的买卖信号。当KAMA值上升时，可能暗示着价格上升趋势的开始，为买入信号；当KAMA值下降时，可能暗示着价格下降趋势的开始，为卖出信号。
+ *
+ * 总的来说，KAMA是一种适应性强、对市场变化敏感的移动平均线指标，能够有效平滑价格数据并识别价格的趋势方向。交易者可以将KAMA与其他技术指标和价格模式结合使用，以制定更可靠的交易策略。
  * 
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">

@@ -32,6 +32,28 @@ import org.ta4j.core.num.Num;
  * Awesome oscillator. (AO)
  * 很棒的振荡器。 (AO)
  *
+ * 令人敬畏的振荡器（Awesome Oscillator，AO）是一种技术指标，用于帮助交易者确认资产价格的趋势方向和趋势的强度。它是由比尔·威廉姆斯（Bill Williams）开发的，旨在捕捉市场的动能。
+ *
+ * Awesome Oscillator基于资产的简单移动平均线（SMA）和指数移动平均线（EMA）之间的差异来计算。它通过计算这两个移动平均线的差异来衡量市场的动能。
+ *
+ * Awesome Oscillator的计算方法如下：
+ *
+ * 1. 首先，计算资产的简单移动平均线（SMA）：
+ *    - 通常，选择5个交易周期和34个交易周期分别计算简单移动平均线。
+ *
+ * 2. 然后，计算资产的指数移动平均线（EMA）：
+ *    - 同样，选择5个交易周期和34个交易周期分别计算指数移动平均线。
+ *
+ * 3. 最后，计算Awesome Oscillator：
+ *    - 将5个交易周期的SMA减去34个交易周期的SMA，得到快速移动平均线（Fast AO）。
+ *    - 将5个交易周期的EMA减去34个交易周期的EMA，得到慢速移动平均线（Slow AO）。
+ *    - 最终，将快速移动平均线减去慢速移动平均线，得到Awesome Oscillator的值。
+ *
+ * Awesome Oscillator的数值越高，表示市场动能越强劲，可能暗示着价格趋势的加速；反之，Awesome Oscillator的数值越低，表示市场动能较弱，可能暗示着价格趋势的减缓。
+ *
+ * 交易者通常将Awesome Oscillator与其他技术指标一起使用，例如移动平均线、MACD等，以确认价格趋势的方向和市场动能的强度，并据此制定交易策略。
+ *
+ *
  * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {

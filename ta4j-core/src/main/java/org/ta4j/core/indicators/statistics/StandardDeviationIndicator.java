@@ -31,6 +31,21 @@ import org.ta4j.core.num.Num;
  * Standard deviation indicator.
  * 标准偏差指标。
  *
+ * 标准差指标是用于衡量数据集中数据点分散程度的统计指标。它表示数据点与数据集平均值之间的平均偏差程度。标准差越大，表示数据点越分散；标准差越小，表示数据点越集中。
+ *
+ * 标准差的计算公式如下：
+ *
+ * \[ \text{标准差} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (x_i - \bar{x})^2} \]
+ *
+ * 其中：
+ * - \( x_i \) 是数据集中的第 \( i \) 个数据点。
+ * - \( \bar{x} \) 是数据集的平均值。
+ * - \( n \) 是数据点的数量。
+ *
+ * 标准差指标提供了关于数据点分布的重要信息。较大的标准差表示数据点相对于平均值的偏离程度较大，即数据的分散程度较高；较小的标准差表示数据点相对于平均值的偏离程度较小，即数据的集中程度较高。
+ *
+ * 在金融领域，标准差常用于衡量资产价格的波动性或风险。例如，股票的日收益率的标准差可以用来衡量股票的波动性，从而评估其风险水平。标准差也可以用于构建投资组合，帮助投资者在风险和回报之间进行权衡。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>

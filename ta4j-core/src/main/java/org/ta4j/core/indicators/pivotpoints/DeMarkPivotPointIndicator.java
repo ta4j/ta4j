@@ -38,6 +38,20 @@ import org.ta4j.core.num.Num;
  * DeMark Pivot Point indicator.
  * DeMark 枢轴点指标。
  *
+ * DeMark Pivot Point指标是一种用于技术分析的指标，它用于确定资产价格可能发生反转的水平。这个指标是由技术分析家汤姆·德马克（Tom DeMark）开发的。
+ *
+ * DeMark Pivot Point指标通常包括四个水平：Pivot Point（支撑/阻力的中心）、R1（首个支撑/阻力）、S1（首个支撑/阻力）、R2（第二个支撑/阻力）、S2（第二个支撑/阻力）。这些水平可以帮助交易者识别资产价格可能反转的关键水平。
+ *
+ * 计算DeMark Pivot Point指标的方法因不同的版本而异，但通常使用前一个周期的高、低和收盘价来计算。下面是一种常见的计算方法：
+ *
+ * 1. Pivot Point（PP）=（前一个周期的高 + 前一个周期的低 + 前一个周期的收盘价）/ 3
+ * 2. R1 =（2 * PP）- 前一个周期的最低价
+ * 3. S1 =（2 * PP）- 前一个周期的最高价
+ * 4. R2 = PP +（前一个周期的高 - 前一个周期的低）
+ * 5. S2 = PP -（前一个周期的高 - 前一个周期的低）
+ *
+ * DeMark Pivot Point指标可以与其他技术指标结合使用，例如移动平均线、相对强弱指标等，以提供更全面的市场分析和交易信号。它通常用于短期交易和日内交易，以帮助确定进出场时机和设定止损位点。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>

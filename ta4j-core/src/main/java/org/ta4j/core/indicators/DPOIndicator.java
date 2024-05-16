@@ -40,15 +40,27 @@ import org.ta4j.core.num.Num;
   alignment with the most recent is not an issue because DPO is not a momentum
   oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
   cycle length.
-     去趋势价格振荡器 (DPO) 是一种旨在消除趋势的指标
-     从价格和更容易识别周期。 DPO 不延伸到
-     最后日期，因为它是基于位移的移动平均线。 然而，
-     与最近的一致不是问题，因为 DPO 不是动力
-     振荡器。 相反，DPO 用于识别周期高点/低点并估计
-     周期长度。
+ 去趋势价格震荡指标 (DPO) 是一种旨在消除价格趋势并更容易识别周期的指标。 DPO 不会延续到最后日期，因为它基于移动平均线。然而，与最新的一致不是问题，因为 DPO 不是动量振荡器。相反，DPO 用于识别周期高低点并估计周期长度。
  *
  * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
- * 简而言之，DPO(20) 等于 11 天前的价格减去 20 天 SMA。
+ * 简而言之，DPO(20) 等于 11 天前的价格减去 20 天的 SMA。
+ *
+ *
+ *
+ * 去趋势价格振荡器（Detrended Price Oscillator，DPO）是一种用于衡量资产价格相对于其移动平均值的偏离程度的技术指标。与许多其他指标不同，DPO不考虑当前价格相对于移动平均线的位置，而是专注于当前价格相对于过去一段时间内的平均价格的偏离程度。
+ *
+ * DPO的计算步骤如下：
+ *
+ * 1. 选择一个固定的时间周期（例如20个交易周期）。
+ * 2. 计算该时间周期内的移动平均值（MA）。
+ * 3. 从过去一段时间内的中间点（通常是指定时间周期的一半）开始，计算当前价格与该中间点的价格之间的差值。
+ * 4. 将这些差值绘制成图表，即为DPO指标的值。
+ *
+ * DPO指标的主要作用是帮助交易者识别资产价格的周期性波动，而不受长期趋势的影响。通过观察DPO的数值变化，交易者可以更好地了解价格在短期内的波动模式，并据此制定交易策略。
+ *
+ * 一般而言，当DPO的数值为正时，表示当前价格高于过去一段时间内的平均价格，可能暗示着价格处于上升趋势；相反，当DPO的数值为负时，表示当前价格低于过去一段时间内的平均价格，可能暗示着价格处于下降趋势。
+ *
+ * 交易者通常会将DPO与其他技术指标结合使用，例如移动平均线、趋势线等，以辅助他们的交易决策。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">

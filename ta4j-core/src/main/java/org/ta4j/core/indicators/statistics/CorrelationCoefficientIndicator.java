@@ -31,6 +31,20 @@ import org.ta4j.core.num.Num;
  * Correlation coefficient indicator.
  * 相关系数指标。
  *
+ * 相关系数指标是一种用于量化两个变量之间关系强度的指标，通常用于统计分析和金融市场中。在金融领域，相关系数常用于衡量两个资产价格之间的关联程度。
+ *
+ * 相关系数的取值范围在 -1 到 1 之间，具体含义如下：
+ * - 当相关系数为 1 时，表示两个变量呈完全正相关关系，即一个变量的增加与另一个变量的增加呈线性关系。
+ * - 当相关系数为 -1 时，表示两个变量呈完全负相关关系，即一个变量的增加与另一个变量的减少呈线性关系。
+ * - 当相关系数为 0 时，表示两个变量之间没有线性关系，或者说它们之间的线性关系很弱。
+ *
+ * 在金融市场中，相关系数指标可以用于：
+ * - 衡量不同资产价格之间的相关性，例如股票价格、货币对、商品价格等。
+ * - 分析资产价格与其他因素（如利率、通胀率、公司财务指标等）之间的关联程度。
+ * - 辅助构建投资组合，通过选择相关性较低的资产来实现分散化。
+ *
+ * 相关系数指标的计算通常使用统计软件或函数进行，它可以帮助交易者了解市场中不同资产之间的关联程度，从而指导投资决策和风险管理。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>

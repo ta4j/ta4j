@@ -33,6 +33,23 @@ import org.ta4j.core.num.Num;
  * The ROCIndicator calculation compares the current value with the value "n" periods ago.
  * ROCIndicator 计算将当前值与“n”个周期前的值进行比较。
  *
+ *
+ * 变动率指标（Rate of Change，ROC），又称动量指标，是一种常用的技术指标，用于衡量价格变动的速度和幅度。它显示了当前价格与一段时间前（通常是N个周期）的价格之间的百分比变化。
+ *
+ * ROC指标的计算公式如下：
+ *
+ *  ROC  =  (  当前价格  - N个周期前的价格 / N个周期前的价格 ) * 100
+ *
+ * 其中：
+ * - 当前价格是最新的价格数据。
+ * - N是选择的周期数。
+ *
+ * ROC指标的数值可以为正数或负数，表示价格相对于N个周期前的价格的百分比变化。正数表示价格上升，负数表示价格下降。
+ *
+ * 交易者通常使用ROC指标来确认价格的趋势和判断市场的超买超卖情况。例如，当ROC指标为正且数值较大时，可能暗示价格上升趋势较为强劲；相反，当ROC指标为负且数值较大时，可能暗示价格下降趋势较为强劲。当ROC指标的数值超过一定阈值时，可能意味着市场处于超买或超卖状态。
+ *
+ * 总的来说，ROC指标是一种用于衡量价格变动速度和幅度的技术指标，可以帮助交易者更好地理解市场的价格动态和趋势变化。
+ *
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/pricerateofchange.asp">https://www.investopedia.com/terms/p/pricerateofchange.asp</a>
  */

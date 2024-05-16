@@ -32,6 +32,26 @@ import org.ta4j.core.num.Num;
  * Mean deviation indicator.
  * 平均偏差指标。
  *
+ * 均值偏差指标（Mean Deviation Indicator）是一种用于衡量数据集中数据点与其平均值之间的偏差程度的指标。它是平均绝对偏差（Mean Absolute Deviation，MAD）的一种形式，用于描述数据的离散程度。
+ *
+ * 均值偏差指标的计算步骤如下：
+ * 1. 计算数据集的平均值（均值）。
+ * 2. 计算每个数据点与平均值之间的绝对偏差（即数据点与平均值之间的距离）。
+ * 3. 将所有绝对偏差相加，并除以数据点的数量，得到平均绝对偏差。
+ *
+ * 数学公式如下：
+ *
+ * Mean Deviation = \frac{1}{n} \sum_{i=1}^{n} |x_i - \bar{x}| \]
+ *
+ * 其中：
+ * - \( x_i \) 表示数据集中的第 \( i \) 个数据点。
+ * - \( \bar{x} \) 表示数据集的平均值。
+ * - \( n \) 表示数据点的数量。
+ *
+ * 均值偏差指标可以用来衡量数据的变异程度，即数据点在平均值周围的分散程度。较大的均值偏差值表示数据点相对于平均值更分散，而较小的值表示数据点更接近平均值。因此，均值偏差指标可用于比较不同数据集之间的变异程度，或者监测单个数据集的变化趋势。
+ *
+ * 在金融领域，均值偏差指标通常用于衡量资产价格的波动性或风险，以及投资组合的分散程度。
+ *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *      http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>

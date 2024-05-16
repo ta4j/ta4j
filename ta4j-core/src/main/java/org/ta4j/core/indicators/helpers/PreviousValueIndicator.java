@@ -30,6 +30,33 @@ import org.ta4j.core.num.Num;
 /**
  * Returns the previous (n-th) value of an indicator
  * 返回指标的前一个（第 n 个）值
+ *
+ * 要获取指标的前 n 个值，你可以使用历史数据或指标本身的计算结果，具体取决于数据的可用性以及计算指标的方法。以下是一般的方法：
+ *
+ * 1. **使用历史数据**：如果你有历史数据，你可以直接查找 n 期前的指标值。例如，如果你想获取 10 期前的移动平均值，你可以在历史数据中查找移动平均值 10 期前的数值。
+ *
+ * 2. **使用指标计算**：如果你是通过编程计算指标或者有指标计算逻辑的访问权限，你可以直接从计算中获取指标的第 n 个值。例如，如果你正在计算移动平均线，你可以在计算过程中直接获取 n 期前的移动平均值。
+ *
+ * 以下是一个用 Python 代码示例的简单示例，演示了如何使用历史数据来获取指标的前 n 个值：
+ *
+ * ```python
+ * # 假设你有一个包含指标历史值的列表或数组
+ * indicator_values = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+ *
+ * # 函数用于获取指标的前 n 个值
+ * def get_previous_value(indicator_values, n):
+ *     if n >= len(indicator_values):
+ *         return None  # 如果历史数据不足，则返回 None
+ *     return indicator_values[-n]
+ *
+ * # 示例用法：获取 5 期前的指标值
+ * n = 5
+ * previous_value = get_previous_value(indicator_values, n)
+ * print("指标", n, "期前的值是:", previous_value)
+ * ```
+ *
+ * 用你的实际历史数据替换 `indicator_values`，并根据需要调整 `n` 的值，以获取你的指标的前 n 个值。
+ *
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 

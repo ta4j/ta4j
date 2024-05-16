@@ -34,7 +34,24 @@ import org.ta4j.core.rules.IsRisingRule;
 
 /**
  * Indicator-convergence-divergence.
- * * 指标-收敛-发散。
+ * * 指标-收敛-发散。  TODO ?? 是否为MACD??
+ *
+ * “Indicator convergence divergence”可能是指MACD（Moving Average Convergence Divergence）指标，这是一种广泛用于技术分析的指标。
+ *
+ * MACD指标由两条线组成：快速线（MACD线）和慢速线（信号线）。快速线是两个移动平均线之间的差异，通常是12天指数移动平均线减去26天指数移动平均线。慢速线是快速线的9天指数移动平均线。MACD的计算方法如下：
+ *
+ * 1. 计算12天指数移动平均线（EMA）。
+ * 2. 计算26天指数移动平均线。
+ * 3. 计算快速线（MACD线）：12天EMA减去26天EMA。
+ * 4. 计算慢速线（信号线）：MACD线的9天EMA。
+ *
+ * MACD指标的主要应用包括：
+ * - **趋势确认**：当MACD线交叉信号线向上时，可能表示买入信号；当MACD线交叉信号线向下时，可能表示卖出信号。
+ * - **趋势强度**：MACD柱状图的高度可以反映价格趋势的强度。柱状图的增长表示价格加速上涨或下跌的动力增加，柱状图的缩小则表示价格动力减弱。
+ * - **背离**：价格和MACD之间的背离可能暗示着价格趋势的转变。
+ *
+ * MACD指标在技术分析中是非常常用的工具之一，但在使用时，需要结合其他指标和分析方法，并且根据具体市场情况进行调整和确认。
+ *
  */
 public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 

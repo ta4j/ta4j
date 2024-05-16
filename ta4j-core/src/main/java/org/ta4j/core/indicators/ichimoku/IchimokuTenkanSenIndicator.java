@@ -27,7 +27,21 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
- * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
+ * Ichimoku 云： Tenkan-sen （转换线） 指标
+ *
+ * Tenkan-sen（转换线）是一目均衡云指标的一个组成部分，它用于显示短期市场趋势的变化。Tenkan-sen 是一段特定时间内的最高价和最低价的平均值，并且向前移动到未来一定时间段内。
+ *
+ * Tenkan-sen 的计算方式是将一定时间段内的最高价和最低价的平均值作为当前线，然后将这个值移动到未来一定时间段内。通常情况下，一目均衡云中的标准设置是将这个值移动到未来的 9 个周期。
+ *
+ * Tenkan-sen 的计算公式如下：
+ *
+ * Tenkan-sen = (Highest High + Lowest Low ) / 2
+ *
+ * 其中，“Highest High” 是一定时间段内的最高价，“Lowest Low” 是一定时间段内的最低价。
+ *
+ * Tenkan-sen 在一目均衡云中通常被用作短期市场趋势的参考线。当 Tenkan-sen 上升时，这可能表示短期趋势为上升；而当 Tenkan-sen 下降时，则可能表示短期趋势为下降。
+ *
+ * 总的来说，Tenkan-sen 是一目均衡云中的一个重要指标，它用于显示短期市场趋势的变化，并提供了一些未来价格走势的参考，有助于交易者更好地理解市场的动态并制定相应的交易策略。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">

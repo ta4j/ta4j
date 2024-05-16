@@ -34,7 +34,20 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Fisher Indicator.
- * 费雪指标。
+ * 费舍尔指标。
+ *
+ * Fisher指标是一种基于价格和体积的技术指标，旨在识别价格的趋势方向和市场的买卖信号。它是由约翰·埃勒斯（John Ehlers）开发的，具有相当的复杂性和独特性。
+ *
+ * Fisher指标的计算过程相对复杂，通常分为以下几个步骤：
+ *
+ * 1. 计算价格的中间价（Typical Price）：通常是最高价、最低价和收盘价的加权平均值。
+ * 2. 计算价格的平滑系数：使用一种平滑系数来平滑价格的中间价，以减少价格的随机波动。
+ * 3. 计算价格的变化率：计算价格的变化率，用于确定价格的趋势方向。
+ * 4. 计算Fisher变换值：将价格的变化率转换为Fisher变换值，以便更好地识别价格的买卖信号。
+ *
+ * Fisher指标的数值通常波动在一个固定的范围内，正值表示上涨趋势，负值表示下跌趋势。交易者可以根据Fisher指标的数值变化来确定市场的短期和长期趋势，并据此制定交易策略。
+ *
+ * Fisher指标的优点之一是它对价格的平滑处理，能够有效减少价格数据中的噪音，并帮助交易者更准确地识别价格的趋势。然而，由于其相对复杂的计算过程，以及对参数设置的敏感性，交易者在使用Fisher指标时需要谨慎考虑，并结合其他技术指标和价格模式进行综合分析。
  *
  * @apiNote Minimal deviations in last Num places possible. During the  calculations this indicator converts {@link Num Num} to  {@link Double double}
  * @apiNote 最后 Num 个位置的偏差可能最小。 在计算过程中，该指标将 {@link Num Num} 转换为 {@link Double double}

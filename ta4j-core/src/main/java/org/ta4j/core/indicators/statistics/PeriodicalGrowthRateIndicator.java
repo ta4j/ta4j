@@ -33,8 +33,25 @@ import org.ta4j.core.num.Num;
  * Periodical Growth Rate indicator.
  * 周期性增长率指标。
  *
+ * 周期增长率指标是用于衡量某一指标在一段时间内的增长情况的指标。它通常用于分析某项指标（如收入、销售额、利润等）在不同时间段内的增长率，以便评估增长的速度和趋势。
+ *
+ * 周期增长率可以根据具体的需求和时间段选择不同的计算方式，常见的计算方法包括简单增长率和复合增长率。
+ *
+ * 1. 简单增长率：简单增长率是指在两个时间点之间的增长比率，计算公式如下：
+ *
+ * 简单增长率 = (结束值 - 开始值) / 开始值 * 100%
+ *
+ * 2. 复合增长率：复合增长率是指在一段时间内的平均年增长率，计算公式如下：
+ *
+ *  复合增长率  =  (结束值 / 开始值)* 1 / n  - 1
+ *
+ * 其中，\( n \) 表示时间段的长度（通常以年为单位）。
+ *
+ * 周期增长率指标可以用于分析公司业绩、市场趋势以及经济增长等方面。通过比较不同时间段内的增长率，可以帮助分析者评估发展趋势，并做出相应的决策。
+ *
  * In general the 'Growth Rate' is useful for comparing the average returns of investments in stocks or funds and can be used to compare the performance e.g. comparing the historical returns of stocks with bonds.
- * * 一般而言，“增长率”可用于比较股票或基金投资的平均回报，并可用于比较业绩，例如 比较股票和债券的历史收益。
+ * 一般来说，“增长率”对于比较股票或基金投资的平均回报非常有用，并且可以用来比较绩效，例如：比较股票和债券的历史回报。
+ *
  *
  * This indicator has the following characteristics: - the calculation is
   timeframe dependendant. The timeframe corresponds to the number of trading
@@ -47,16 +64,9 @@ import org.ta4j.core.num.Num;
   are calculated for the remaining 0,3 years - the method 'getTotalReturn'
   calculates the total return over all returns of the coresponding timeframes
 
- 该指标具有以下特点： - 计算为
- 时间框架依赖。 时间范围对应交易数量
- 一个时期内的事件，例如。 G。 美国交易年度结束的时间范围
- 柱将是“251”个交易日 - 结果是一个阶梯函数
- 时间范围内的常数值 - NaN 值，而索引小于
- 时间范围，例如 timeframe 是 year，而不是在 a 之前计算任何值
- 已达到全年 - 不完整时间范围的 NaN 值，例如 大体时间
- 是一年，您的时间序列包含 11,3 年的数据，而不是没有值
- 计算剩余的 0,3 年 - 方法“getTotalReturn”
- 计算对应时间范围内所有回报的总回报
+ 该指标具有以下特征： - 计算取决于时间范围。时间范围对应于一段时间内的交易事件数量，例如。
+    G。美国交易年收盘柱的时间范围为“251”个交易日 - 结果是一个时间范围内具有恒定值的阶跃函数 - NaN 值，而指数小于时间范围，例如时间范围是年，在达到全年之前不会计算任何值 - 不完整时间范围的 NaN 值，例如时间范围是一年，您的时间序列包含 11,
+        3 年的数据，而不计算剩余 0,3 年的任何值 - 方法“getTotalReturn”计算相应时间范围的所有回报的总回报
  *
  *
  * Further readings: Good sumary on 'Rate of Return':

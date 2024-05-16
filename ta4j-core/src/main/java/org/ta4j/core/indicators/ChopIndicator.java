@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The "CHOP" index is used to indicate side-ways markets see
- * “CHOP”指数用于指示横向市场见
+ * “CHOP”指数用于指示横向市场
  * <a href= "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
  * 100++ * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n) n = User
  defined period length. LOG10(n) = base-10 LOG of n ATR(1) = Average True
@@ -48,6 +48,19 @@ import org.ta4j.core.num.Num;
   by the 'scaleTo' arg of the constructor
  ++ 通常这个索引在 0 到 100 之间，但可以不同地缩放
  通过构造函数的 'scaleTo' 参数
+
+
+
+ CHOP指数（Choppiness Index）用于指示市场是否处于横盘或震荡状态。它由E.W. Dreiss开发，旨在衡量市场的趋势性或震荡性。
+
+ Choppiness Index根据最近一段时间内的价格行为计算市场的震荡程度。它的值范围从0到100。
+
+ - 当CHOP指数接近100时，表示市场处于强劲的趋势。
+ - 相反，当CHOP指数接近0时，表示市场处于横盘或震荡状态。
+
+ 交易者通常使用CHOP指数来帮助确定市场是否从趋势性阶段转变为横盘阶段，反之亦然。在横盘市场中，交易者可能会选择范围交易策略，而在趋势市场中，他们可能会更倾向于趋势跟踪策略。因此，CHOP指数可以成为根据市场情况调整交易策略的有价值工具。
+
+
  *
  * @apiNote Minimal deviations in last decimal places possible. During the   calculations this indicator converts {@link Num Decimal /BigDecimal}   to to {@link Double double}
  * * @apiNote 最后一位小数的偏差可能最小。 在计算期间，该指标将 {@link Num Decimal /BigDecimal} 转换为 {@link Double double}

@@ -34,6 +34,21 @@ import org.ta4j.core.num.Num;
  * Keltner Channel (middle line) indicator
  * 凯尔特纳通道（中线）指标
  *
+ * 凯尔特纳通道（Keltner Channel）的中轨是其三条线中的一个重要组成部分，通常用于识别价格的趋势和确定交易信号。中轨是由一段时间内的指数移动平均线（EMA）计算得出的，通常代表了价格的中间水平。
+ *
+ * 中轨的计算方式如下：
+ *
+ * 中轨 = EMA
+ *
+ * 其中：
+ * - EMA 是一段时间内的指数移动平均线，通常选择 20 个周期。
+ *
+ * 中轨代表了一定时间段内价格的平均水平，可以用作价格趋势的参考线。当价格位于中轨之上时，可能表明市场处于上升趋势；而当价格位于中轨之下时，则可能表明市场处于下降趋势。
+ *
+ * 凯尔特纳通道的中轨也可以用于识别交易信号。例如，当价格从下方穿越中轨向上时，可能出现买入信号；而当价格从上方穿越中轨向下时，则可能出现卖出信号。
+ *
+ * 总的来说，凯尔特纳通道的中轨是一个重要的技术指标，它可以提供有关价格趋势和交易信号的信息，有助于交易者更好地理解市场动态并制定相应的交易策略。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>

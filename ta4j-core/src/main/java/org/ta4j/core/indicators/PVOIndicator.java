@@ -30,6 +30,25 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
  * Percentage Volume Oscillator (PVO): ((12-day EMA of Volume - 26-day EMA of Volume)/26-day EMA of Volume) x 100
  * * 成交量振荡器百分比 (PVO): ((12 天成交量均线 - 26 天成交量均线)/26 天成交量均线) x 100
  *
+ * 百分比成交量振荡器（Percentage Volume Oscillator，PVO）是一种技术指标，用于衡量成交量的趋势和波动。它通过计算两个不同期间的成交量指数加权移动平均线（EMA）之间的百分比差异来确定成交量的变化情况。
+ *
+ * PVO的计算公式如下所示：
+ *
+ * ((12-day EMA of Volume - 26-day EMA of Volume)/26-day EMA of Volume) x 100
+ * ((12 天成交量均线 - 26 天成交量均线)/26 天成交量均线) x 100
+ *
+ * 其中：
+ * - "12日成交量EMA" 表示12个交易周期的成交量指数加权移动平均线。
+ * - "26日成交量EMA" 表示26个交易周期的成交量指数加权移动平均线。
+ *
+ * 计算PVO时，首先计算出12日和26日的成交量指数加权移动平均线，然后计算它们之间的差异，并将其除以26日的成交量指数加权移动平均线，最后乘以100得到百分比差异。
+ *
+ * PVO指标的数值通常波动在零线上下，正值表示较短期成交量高于较长期成交量，可能暗示着成交量的增加；负值表示较短期成交量低于较长期成交量，可能暗示着成交量的减少。
+ *
+ * 交易者通常使用PVO来识别成交量的趋势变化和制定买卖信号。例如，当PVO线上穿零线时，可能暗示着成交量的增加，为买入信号；相反，当PVO线下穿零线时，可能暗示着成交量的减少，为卖出信号。
+ *
+ * 总的来说，PVO是一种用于衡量成交量趋势和波动的技术指标，可以帮助交易者更好地理解市场的成交量动态，但仍建议将其与其他技术指标和价格模式结合使用，以增强交易决策的准确性。
+ *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo">
  *      https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo

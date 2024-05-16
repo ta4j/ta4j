@@ -33,6 +33,11 @@ import org.ta4j.core.num.Num;
  * Ichimoku clouds: Chikou Span indicator
  * 一目(均衡线) 云:赤口跨度指标
  *
+ * 一般而言，在一目均衡云（Ichimoku Cloud）中，Chikou Span（或称为延迟线）是指当前价格移动到过去某一特定周期的一部分。Chikou Span 用于帮助识别价格走势的方向和确定趋势的强度。
+ * Chikou Span 的计算方式很简单：就是将当前价格移动到过去某一特定周期的一部分。例如，如果我们设置 Chikou Span 为 26 期（在一目均衡云中通常是这样），那么 Chikou Span 就是将当前价格移动到过去 26 个周期之前的位置。
+ * Chikou Span 可以用来帮助判断市场的趋势。当 Chikou Span 位于价格图表上方时，这可能表明市场处于上升趋势；而当 Chikou Span 位于价格图表下方时，则可能表明市场处于下降趋势。另外，一些交易者也会观察 Chikou Span 是否穿越价格图表，这可能被视为潜在的买入或卖出信号。
+ * 总之，Chikou Span 是一目均衡云中的一个重要指标，它的位置可以提供有关价格走势和趋势方向的重要信息，有助于交易者做出更明智的交易决策。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>

@@ -39,6 +39,24 @@ import org.ta4j.core.num.Num;
  *
  * @apiNote Minimal deviations in last decimal places possible. During some  calculations this indicator converts {@link Num DecimalNum} to  {@link Double double}
  * * @apiNote 最后一位小数的偏差可能最小。 在某些计算过程中，该指标将 {@link Num DecimalNum} 转换为 {@link Double double}
+ *
+ *
+ * "Transform indicator" 是一个广义的术语，通常用来描述一种将原始数据或已有指标进行转换或转化的操作。这个术语并不是指特定的技术指标，而是一种用于描述数据处理或分析方法的术语。
+ *
+ * 在技术分析中，"transform indicator" 可能指代各种不同的操作，包括但不限于以下几种：
+ *
+ * 1. **平滑处理**：将原始价格数据或指标进行平滑处理，以减少噪音和波动性，例如通过计算移动平均线或应用滤波器来平滑价格曲线。
+ *
+ * 2. **变换函数**：使用数学函数对原始数据进行变换，以获得新的指标或数据序列。例如，对价格进行对数变换或百分比变换。
+ *
+ * 3. **标准化或归一化**：将数据转换为具有特定统计特性的形式，例如将数据缩放到特定的范围或将数据转换为标准正态分布。
+ *
+ * 4. **差分或差异变换**：计算数据序列之间的差异或变化，例如计算价格的一阶或二阶差分，以提取趋势或周期性成分。
+ *
+ * 5. **逆转或反转**：对数据进行逆转或反转，例如将价格曲线从对数坐标转换为线性坐标，或将时间序列进行反转以进行反向分析。
+ *
+ * 总的来说，"transform indicator" 并不指代特定的技术指标，而是指代对原始数据或已有指标进行各种形式的转换或变换操作，以获取新的数据视角或提取有用的信息。在实际应用中，具体的转换方法会根据分析的目的和数据特性而有所不同。
+ *
  */
 public class TransformIndicator extends CachedIndicator<Num> {
 

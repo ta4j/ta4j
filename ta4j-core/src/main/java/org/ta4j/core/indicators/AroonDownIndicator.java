@@ -35,6 +35,18 @@ import org.ta4j.core.num.Num;
  * Aroon down indicator.
  * 阿隆下跌指标。
  *
+ * Aroon下降指标是用于衡量价格下降趋势强度和时间的技术指标。它是由Tushar Chande在他的书《新的技术指标》（New Technical Indicators）中提出的。Aroon指标基于两个主要组成部分：Aroon Up和Aroon Down。
+ *
+ * Aroon Down指标衡量了在一定时间周期内，价格创下新低点后经过的期间。Aroon Down值的计算公式如下：
+ *
+ *  Aroon Down  = (周期 - 自价格出现新高后的周期数) / 周期 * 100
+ *
+ * 通常，周期的设定是比较近期的若干个交易周期。例如，若周期设定为25个交易周期，Aroon Down将计算最近25个交易周期内价格创下新低点后经过的周期数，并以百分比的形式表示。
+ *
+ * Aroon Down指标的数值范围从0到100，数值越高，表示价格创新低后经过的时间越长，即价格下降趋势的强度越高。
+ *
+ * 交易者通常将Aroon Down指标与Aroon Up指标结合使用。当Aroon Down高于Aroon Up时，可能暗示着价格处于下降趋势；反之，当Aroon Up高于Aroon Down时，则可能暗示着价格处于上升趋势。此外，Aroon指标还可用于识别价格趋势的转折点和确认交易信号。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */

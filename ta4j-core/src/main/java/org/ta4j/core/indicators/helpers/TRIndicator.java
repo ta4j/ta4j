@@ -30,6 +30,26 @@ import org.ta4j.core.num.Num;
 /**
  * True range indicator.
  * 真实范围指示器。
+ *
+ * 真实波幅指标（True Range Indicator）是一种用于衡量金融资产价格波动性的技术指标。它是由威尔斯·威尔德（Welles Wilder）在他的著作《新概念技术分析》中提出的，并被广泛用于技术分析中。
+ *
+ * 真实波幅指标的计算方法通常基于以下几个值：
+ *
+ * 1. 当日的最高价和最低价之间的价格范围（High-Low Range）。
+ * 2. 前一日收盘价与当日最高价之间的价格范围（Previous Close to Current High Range）。
+ * 3. 前一日收盘价与当日最低价之间的价格范围（Previous Close to Current Low Range）。
+ *
+ * 真实波幅指标的计算公式如下：
+ *
+ *  TR = max(H - L, |H - C_{p}|, |L - C_{p}|)
+ *
+ * 其中：
+ * - \( TR \) 是真实波幅。
+ * - \( H \) 是当日的最高价。
+ * - \( L \) 是当日的最低价。
+ * - \( C_{p} \) 是前一日的收盘价。
+ *
+ * 真实波幅指标的值代表了资产价格在一段时间内的波动范围，它可以帮助交易者和投资者更好地理解市场的波动性，并用于确定止损位、波动性的测量以及其他交易决策。
  */
 public class TRIndicator extends CachedIndicator<Num> {
 

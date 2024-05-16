@@ -32,6 +32,18 @@ import org.ta4j.core.num.Num;
  * Ichimoku clouds: Senkou Span A (Leading Span A) indicator
  * * Ichimoku 云：Senkou Span A (Leading Span A) 指标
  *
+ * Senkou Span A（先行线A）是一目均衡云指标中的一个部分，它用于显示将来的价格走势。Senkou Span A 是在一定时间段内的基准线（Kijun-sen）和转换线（Tenkan-sen）之间的中点，并且向前移动到将来一定时间段内。
+ *
+ * Senkou Span A 的计算方式是将基准线和转换线的平均值作为当前线，然后将这个值移动到未来一定时间段内。通常情况下，一目均衡云中的标准设置是将这个值移动到未来的 26 个周期。
+ *
+ * Senkou Span A 的计算公式如下：
+ *
+ * Senkou Span A = ( Tenkan-sen + Kijun-sen ) / 2
+ *
+ * 一目均衡云中的 Senkou Span A 线与其他指标一起使用，有助于确定未来的价格走势和支撑/阻力水平。当 Senkou Span A 处于价格图表的上方时，它可能作为一个未来的支撑水平；而当 Senkou Span A 处于价格图表的下方时，则可能作为一个未来的阻力水平。
+ *
+ * 总的来说，Senkou Span A 是一目均衡云中的一个重要指标，它用于显示未来的价格走势，并提供了一些支撑/阻力水平，有助于交易者做出更明智的交易决策。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>

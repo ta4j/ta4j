@@ -30,7 +30,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
- *  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
+ * Ichimoku 云： Senkou Span B （Leading Span B） 指标
+ *
+ * Senkou Span B（先行线B）是一目均衡云指标的一个重要组成部分，用于显示将来的支撑和阻力水平。与 Senkou Span A 不同，Senkou Span B 是在一定时间段内的最高价和最低价之间的中点，并且向前移动到未来一定时间段内。
+ *
+ * Senkou Span B 的计算方式是将最高价和最低价的中点作为当前线，然后将这个值移动到未来一定时间段内。通常情况下，一目均衡云中的标准设置是将这个值移动到未来的 26 个周期。
+ *
+ * Senkou Span B 的计算公式如下：
+ *
+ * Senkou Span B = (Highest High + Lowest Low ) / 2
+ *
+ * 其中，“Highest High” 是一定时间段内的最高价，“Lowest Low” 是一定时间段内的最低价。
+ *
+ * Senkou Span B 在一目均衡云中通常被用作未来的支撑和阻力水平。当 Senkou Span B 处于价格图表的上方时，它可能作为一个未来的阻力水平；而当 Senkou Span B 处于价格图表的下方时，则可能作为一个未来的支撑水平。
+ *
+ * 总的来说，Senkou Span B 是一目均衡云中的一个重要指标，它用于显示未来的支撑和阻力水平，并提供了一些未来价格走势的参考，有助于交易者制定更明智的交易策略。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">

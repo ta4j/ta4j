@@ -35,7 +35,7 @@ import org.ta4j.core.Indicator;
  * 缓存的 {@link Indicator Indicator}。
  *
  * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
- * * 缓存指标的构造函数。 避免两次计算同一指标的指标。
+ * 缓存指标的构造函数。避免对指标的同一指标进行两次计算。
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 

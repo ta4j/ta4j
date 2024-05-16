@@ -35,6 +35,16 @@ import org.ta4j.core.num.Num;
  * Fibonacci Reversal Indicator.
  * 斐波那契反转指标。
  *
+ * Fibonacci Reversal Indicator是一种技术分析工具，它基于斐波那契数列和黄金分割比率来识别资产价格可能发生反转的点位。这个指标利用了斐波那契数列中的特定比率，通常包括0.236、0.382、0.500、0.618和0.786等级，以及其他一些扩展级别如1.272、1.618等。
+ *
+ * Fibonacci Reversal Indicator通常用于绘制斐波那契回撤线或扩展线。斐波那契回撤线通常是由一段价格上升趋势中的高点和低点之间的水平距离按照斐波那契比率绘制出的水平线。扩展线则是根据斐波那契数列的比率在价格反转之后的新趋势中绘制的线。
+ *
+ * 这些水平线可以提供潜在的支撑和阻力水平，帮助交易者确定价格可能发生反转的点位。例如，当价格向上趋势时，如果价格回撤到了斐波那契回撤线的某个水平附近，可能会出现买入信号。反之，当价格向下趋势时，如果价格反弹到了斐波那契回撤线的某个水平附近，可能会出现卖出信号。
+ *
+ * Fibonacci Reversal Indicator也可以与其他技术指标结合使用，例如移动平均线、相对强弱指标等，以提供更全面的市场分析和交易信号。
+ *
+ * 总的来说，Fibonacci Reversal Indicator是一种常用的技术分析工具，它可以帮助交易者识别价格可能发生反转的点位，并提供潜在的交易信号，有助于制定更有效的交易策略。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>

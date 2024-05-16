@@ -35,6 +35,20 @@ import org.ta4j.core.num.Num;
  * Pivot Reversal Indicator.
  * *枢轴反转指标。
  *
+ * Pivot Reversal Indicator是一种技术分析工具，用于识别资产价格可能发生趋势反转的信号。它结合了Pivot Point指标和其他技术指标，帮助交易者确定市场的转折点。
+ *
+ * Pivot Reversal Indicator的工作原理基于先前周期的价格行为和可能的支撑/阻力水平。它通常会识别出潜在的价格反转点，以及价格趋势可能变化的迹象。
+ *
+ * 具体的计算方法和特征取决于所选用的Pivot Reversal Indicator版本和参数设置。一般来说，它可能会考虑到以下因素：
+ *
+ * 1. Pivot Point：计算出来的主要Pivot Point水平，作为价格的中心点。
+ * 2. 支撑和阻力水平：根据主要Pivot Point水平和先前周期的价格高低点计算出来的可能的支撑和阻力水平。
+ * 3. 其他技术指标：可能会结合其他技术指标，如移动平均线、相对强弱指标等，来进一步确认价格反转的信号。
+ *
+ * Pivot Reversal Indicator的信号可以用于确定买入或卖出的时机。例如，当价格触及支撑水平并且出现了其他确认信号时，可能会出现买入信号；反之，当价格触及阻力水平并且出现了其他确认信号时，可能会出现卖出信号。
+ *
+ * 总的来说，Pivot Reversal Indicator是一种有用的技术分析工具，可以帮助交易者识别价格可能发生趋势反转的信号，有助于制定更有效的交易策略。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>

@@ -35,6 +35,16 @@ import org.ta4j.core.num.Num;
  * DeMark Reversal Indicator.
  * DeMark 反转指标。
  *
+ * DeMark Reversal Indicator是一种用于技术分析的指标，它用于识别资产价格可能发生趋势反转的信号。这个指标是由技术分析家汤姆·德马克（Tom DeMark）开发的。
+ *
+ * DeMark Reversal Indicator的工作原理基于价格序列中的特定形态和序列的出现。它通常会标识出潜在的价格反转点，帮助交易者预测市场趋势的转变。
+ *
+ * 该指标的计算方法和特定形态的识别依赖于复杂的算法，其中包含了一系列的价格动态、波峰和波谷，以及对价格序列的一些限定条件。德马克使用了自己的一套独特的数学模型来确定这些特定的价格模式和信号。
+ *
+ * 尽管DeMark Reversal Indicator的具体细节和计算方法相对复杂，但它通常会生成几种不同类型的信号，例如“顺序13”和“顺序9”。这些信号可以提供有关市场可能反转的重要信息，有助于交易者做出更明智的交易决策。
+ *
+ * 总的来说，DeMark Reversal Indicator是一种强大的技术分析工具，可以帮助交易者识别价格趋势反转的信号，有助于制定更有效的交易策略。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>

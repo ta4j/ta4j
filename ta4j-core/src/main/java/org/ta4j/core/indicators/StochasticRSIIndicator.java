@@ -33,6 +33,21 @@ import org.ta4j.core.num.Num;
 /**
  * The Stochastic RSI Indicator.
  * 随机 RSI 指标。
+ *
+ * Stochastic RSI指标是基于相对强弱指数（Relative Strength Index，RSI）和随机振荡器（Stochastic Oscillator）的一种变体，结合了它们两者的特点，用于衡量价格的超买和超卖情况。
+ *
+ * Stochastic RSI指标的计算基于RSI指标和随机振荡器K线的数值。通常情况下，计算Stochastic RSI指标需要以下几个步骤：
+ *
+ * 1. 首先计算RSI指标的数值，用于衡量价格的相对强弱。
+ * 2. 然后计算RSI指标数值在一段时间内的移动平均值，通常选择3至5个周期的移动平均。
+ * 3. 接着计算RSI指标数值相对于其移动平均值的位置，得到%K线的数值。
+ * 4. 最后对%K线进行平滑处理，通常使用简单移动平均线或指数移动平均线，得到Stochastic RSI指标的数值。
+ *
+ * Stochastic RSI指标的数值通常在0到100之间波动。与传统的Stochastic Oscillator相比，Stochastic RSI指标更加平滑，因为它是基于RSI指标的移动平均值计算得出的。
+ *
+ * 交易者通常使用Stochastic RSI指标来识别价格的超买和超卖情况，并据此制定买卖策略。例如，当Stochastic RSI指标从超卖区域上升至超买区域时，可能暗示着价格即将下跌，为卖出信号；相反，当Stochastic RSI指标从超买区域下降至超卖区域时，可能暗示着价格即将上涨，为买入信号。
+ *
+ * 总的来说，Stochastic RSI指标是一种结合了RSI指标和随机振荡器的特点，用于识别价格的超买和超卖情况的技术指标，可以帮助交易者更好地理解市场的价格动态并制定相应的交易策略。
  * 
  * Stoch RSI = (RSI - MinimumRSIn) / (MaximumRSIn - MinimumRSIn)
  * 随机 RSI = (RSI - 最小 RSIn) / (最大 RAIn - 最小 RAIn)

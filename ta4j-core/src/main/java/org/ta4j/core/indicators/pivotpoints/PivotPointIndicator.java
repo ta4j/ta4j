@@ -37,6 +37,22 @@ import org.ta4j.core.num.Num;
 /**
  * Pivot Point indicator.
  * 枢轴点指示器。
+ * 
+ * Pivot Point指标是一种经典的技术分析工具，用于确定资产价格可能发生反转的水平。这个指标基于先前周期的高、低和收盘价来计算。
+ *
+ * Pivot Point指标通常包括一个主要的Pivot Point水平，以及可能的支撑和阻力水平。主要的Pivot Point水平是根据前一个周期的高、低和收盘价计算得出的。然后，根据这个主要的Pivot Point水平，可以计算出可能的支撑（Support）和阻力（Resistance）水平。
+ *
+ * 常见的计算方法如下：
+ *
+ * 1. Pivot Point（PP）=（前一个周期的高 + 前一个周期的低 + 前一个周期的收盘价）/ 3
+ * 2. Support 1（S1）=（2 * PP）- 前一个周期的高
+ * 3. Support 2（S2）= PP -（前一个周期的高 - 前一个周期的低）
+ * 4. Resistance 1（R1）=（2 * PP）- 前一个周期的低
+ * 5. Resistance 2（R2）= PP +（前一个周期的高 - 前一个周期的低）
+ *
+ * Pivot Point指标通常用于各种市场，包括股票、外汇、期货等。它可以用于日内交易、短期交易和长期交易，帮助交易者识别可能的支撑和阻力水平，并提供潜在的买入或卖出信号。
+ *
+ * 总的来说，Pivot Point指标是一种简单但有效的技术分析工具，它可以帮助交易者识别价格反转的可能水平，有助于制定更明智的交易决策。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school:

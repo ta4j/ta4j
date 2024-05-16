@@ -30,7 +30,24 @@ import org.ta4j.core.num.Num;
 
 /**
  * Sigma-Indicator (also called, "z-score" or "standard score").
- * * Sigma-Indicator（也称为“z 分数”或“标准分数”）。
+ * 西格玛指标（也称为“z 分数”或“标准分数”）。
+ *
+ * Sigma指标，也称为“z-score”或“标准分数”，是一种用于衡量数据点与平均值之间偏离程度的统计指标。它表示一个数据点与平均值之间的标准偏差的倍数。Sigma指标常用于金融领域和统计学中，用于评估数据的正态性和相对位置。
+ *
+ * Sigma指标的计算方法如下：
+ *
+ *  Sigma  =  (X -  mu)  /  sigma
+ *
+ * 其中：
+ * - \( X \) 是某个数据点的值。
+ * - \( \mu \) 是数据集的平均值。
+ * - \( \sigma \) 是数据集的标准偏差。
+ *
+ * Sigma指标表示了一个数据点相对于数据集平均值的偏离程度。如果数据点的Sigma值为正，则表示该数据点高于平均值；如果为负，则表示低于平均值。Sigma值的绝对值越大，表示数据点偏离平均值的程度越大。
+ *
+ * Sigma指标通常用于识别数据集中的异常值或离群点。通常，当Sigma值超过一定的阈值（例如2或3）时，就会被认为是异常值，可能需要进一步调查或处理。
+ *
+ * 在金融领域，Sigma指标也常用于风险管理和投资决策。例如，投资组合经理可能会使用Sigma指标来评估资产的相对表现或波动性，并作出相应的投资决策。
  *
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */

@@ -35,6 +35,21 @@ import org.ta4j.core.num.Num;
  * Aroon up indicator.
  * * 阿隆向上指标。
  *
+ * Aroon上升指标（Aroon Up）是一种技术指标，用于衡量资产价格在一定时间内创出新高点后经过的期间数。它是由Tushar Chande开发的，旨在帮助交易者确认价格趋势的强度和可能的转折点。
+ *
+ * Aroon Up指标的计算方法如下：
+ *
+ * 1. 首先，确定一个固定的时间周期（通常是14个交易周期）。
+ *
+ * 2. 在给定的时间周期内，找到最近的价格创新高点，并计算自该新高点出现以来经过的周期数。
+ *
+ * 3. 计算Aroon Up值：
+ *     Aroon Up  =  周期  - 自价格出现新高后的周期数 / 周期 * 100
+ *
+ * Aroon Up指标的数值范围从0到100，数值越高，表示价格创新高点后经过的时间越短，即价格上升趋势的强度越高。
+ *
+ * 交易者通常将Aroon Up指标与Aroon Down指标结合使用。当Aroon Up高于Aroon Down时，可能暗示着价格处于上升趋势；反之，当Aroon Down高于Aroon Up时，则可能暗示着价格处于下降趋势。此外，Aroon指标还可用于识别价格趋势的转折点和确认交易信号。
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */

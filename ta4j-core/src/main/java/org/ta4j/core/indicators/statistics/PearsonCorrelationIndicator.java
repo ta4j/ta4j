@@ -33,6 +33,22 @@ import org.ta4j.core.num.Num;
  * Indicator-Pearson-Correlation
  * 指标-皮尔逊相关
  *
+ * Pearson相关系数是一种用于衡量两个变量之间线性关系强度和方向的统计指标。它通常用于描述两个变量之间的线性相关程度，取值范围在 -1 到 1 之间。
+ *
+ * Pearson相关系数的计算公式如下：
+ *
+ * \[ r_{xy} = \frac{\sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n} (x_i - \bar{x})^2} \times \sqrt{\sum_{i=1}^{n} (y_i - \bar{y})^2}} \]
+ *
+ * 其中：
+ * - \( r_{xy} \) 表示变量 \( X \) 和 \( Y \) 之间的Pearson相关系数。
+ * - \( x_i \) 和 \( y_i \) 分别表示变量 \( X \) 和 \( Y \) 的第 \( i \) 个观察值。
+ * - \( \bar{x} \) 和 \( \bar{y} \) 分别表示变量 \( X \) 和 \( Y \) 的样本均值。
+ * - \( n \) 表示样本的数量。
+ *
+ * Pearson相关系数为正数表示两个变量之间存在正相关关系，即一个变量的增加伴随着另一个变量的增加；为负数表示两个变量之间存在负相关关系，即一个变量的增加伴随着另一个变量的减少；接近于零表示两个变量之间几乎没有线性关系。
+ *
+ * 在金融领域，Pearson相关系数常用于衡量不同资产价格之间的相关性，以及资产价格与其他因素（如利率、通胀率等）之间的关联程度。它是一种常用的统计工具，用于帮助分析师和交易者理解市场中不同因素之间的关系，并做出相应的决策。
+ *
  * @see <a href=
  *      "http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/">
  *      http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/</a>

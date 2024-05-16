@@ -32,6 +32,24 @@ import org.ta4j.core.num.Num;
  * 
  * To preserve trend direction, default calculation does not use absolute value.
  * 为了保持趋势方向，默认计算不使用绝对值。
+ *
+ *
+ * 尚德的范围动作验证指数（Chande's Range Action Verification Index，RAVI）是一种技术指标，用于衡量价格波动的强度和趋势的方向。它由Tushar Chande开发，旨在帮助交易者确认价格趋势的可靠性。
+ *
+ * RAVI指标通过比较两个不同期间内的价格范围来评估价格波动的强度。具体来说，RAVI指标计算短期和长期价格范围的指数加权移动平均线（EMA）之间的差异，并据此提供价格趋势的信号。
+ *
+ * RAVI指标的计算过程如下：
+ *
+ * 1. 计算短期和长期价格范围的指数加权移动平均线（EMA）。通常选择短期为7个交易周期，长期为65个交易周期。
+ * 2. 计算短期EMA和长期EMA之间的差值。
+ * 3. RAVI线：用短期EMA减去长期EMA，即为RAVI线。
+ *
+ * RAVI指标的数值可以为正值或负值，正值表示短期价格波动幅度大于长期价格波动幅度，可能暗示着价格的上涨趋势；负值表示短期价格波动幅度小于长期价格波动幅度，可能暗示着价格的下跌趋势。
+ *
+ * 交易者通常使用RAVI指标来确认价格趋势的可靠性和制定买卖信号。例如，当RAVI线从负值转为正值时，可能暗示着价格的上涨趋势加强，为买入信号；相反，当RAVI线从正值转为负值时，可能暗示着价格的下跌趋势加强，为卖出信号。
+ *
+ * 总的来说，RAVI指标是一种用于确认价格趋势和提供买卖信号的技术指标，可以帮助交易者更好地理解价格波动的强度和趋势的方向。
+ *
  */
 public class RAVIIndicator extends CachedIndicator<Num> {
 

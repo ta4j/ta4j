@@ -30,6 +30,29 @@ import org.ta4j.core.num.Num;
  * Zero-lag exponential moving average indicator.
  * 零滞后指数移动平均线指标。
  *
+ * 零滞后指数移动平均线（Zero-lag Exponential Moving Average，ZLEMA）是一种技术指标，旨在减少指数移动平均线（EMA）的滞后效应，更快地反映价格的变化。
+ *
+ * 与传统的指数移动平均线不同，零滞后指数移动平均线尝试通过减少滞后来更快地跟踪价格的趋势。它的计算方法比较复杂，但基本上可以通过以下步骤来实现：
+ *
+ * 1. 计算传统的指数移动平均线（EMA）。
+ * 2. 计算当前价格与传统EMA之间的偏差（即残差）。
+ * 3. 将这个偏差添加到EMA中，以消除滞后。
+ *
+ * 数学上，ZLEMA的计算公式如下：
+ *
+ *   ZLEMA =  EMA}(C) +  EMA(C - EMA(C))
+ *
+ * 其中：
+ * -  C  是当前的收盘价。
+ * -  EMA (x)  是对输入数据 x 进行指数移动平均的函数。
+ *
+ * ZLEMA指标的数值通常以一条平滑的曲线显示在价格图上，相比于传统的EMA，ZLEMA更接近价格的变化，更及时地反映价格的趋势。
+ *
+ * 交易者通常使用ZLEMA指标来捕捉价格的短期和长期趋势，并据此制定买卖策略。例如，当价格上穿ZLEMA线时，可能暗示着价格的上升趋势开始，为买入信号；相反，当价格下穿ZLEMA线时，可能暗示着价格的下跌趋势开始，为卖出信号。
+ *
+ * 总的来说，零滞后指数移动平均线是一种旨在减少滞后效应的技术指标，可以帮助交易者更快地捕捉价格的变化并制定相应的交易策略。
+ *
+ *
  * @see <a href=
  *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
  *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
