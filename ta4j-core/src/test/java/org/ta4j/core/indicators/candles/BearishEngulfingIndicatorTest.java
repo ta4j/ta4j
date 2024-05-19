@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNextFalse;
+import static org.ta4j.core.TestUtils.assertNextTrue;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -67,17 +67,5 @@ public class BearishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
     assertNextTrue(this.series, bep);
     assertNextFalse(this.series, bep);
     assertNextFalse(this.series, bep);
-  }
-
-
-  private void assertNextFalse(final BacktestBarSeries series, final Indicator<Boolean> indicator) {
-    series.advance();
-    assertFalse(indicator.getValue());
-  }
-
-
-  private void assertNextTrue(final BacktestBarSeries series, final Indicator<Boolean> indicator) {
-    series.advance();
-    assertTrue(indicator.getValue());
   }
 }

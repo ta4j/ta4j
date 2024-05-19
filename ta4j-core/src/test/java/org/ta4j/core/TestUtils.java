@@ -24,7 +24,9 @@
 package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 
@@ -56,6 +58,19 @@ public class TestUtils {
   public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> kama) {
     data.advance();
     assertNumEquals(expected, kama.getValue());
+  }
+
+
+
+  public static void assertNextFalse(final BacktestBarSeries series, final Indicator<Boolean> indicator) {
+    series.advance();
+    assertFalse(indicator.getValue());
+  }
+
+
+  public static void assertNextTrue(final BacktestBarSeries series, final Indicator<Boolean> indicator) {
+    series.advance();
+    assertTrue(indicator.getValue());
   }
 
 
