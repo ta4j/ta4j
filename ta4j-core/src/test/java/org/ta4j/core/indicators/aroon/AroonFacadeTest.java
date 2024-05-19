@@ -239,8 +239,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
             aroonUpNumeric,
             aroonDownIndicator,
             aroonUpIndicator,
-            aroonDownNumeric,
-            aroonOscillatorIndicator
+            aroonDownNumeric
         )
     );
 
