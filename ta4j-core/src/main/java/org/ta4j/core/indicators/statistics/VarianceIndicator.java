@@ -26,12 +26,12 @@ package org.ta4j.core.indicators.statistics;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.LinkedList;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * Variance indicator.
@@ -41,8 +41,7 @@ public class VarianceIndicator extends AbstractIndicator<Num> {
   private final int barCount;
   private final Num divisor;
   private final SMAIndicator mean;
-  // TODO circular buffer
-  private final LinkedList<Num> values = new LinkedList<>();
+  private final CircularNumArray values;
   private final Indicator<Num> indicator;
   private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
   private Num value;
@@ -64,15 +63,13 @@ public class VarianceIndicator extends AbstractIndicator<Num> {
     if (barCount <= 1) {
       throw new IllegalArgumentException("barCount must be greater than 1");
     }
+
+    this.values = new CircularNumArray(barCount);
   }
 
 
   protected Num calculate() {
     this.values.addLast(this.indicator.getValue());
-
-    if (this.values.size() > this.barCount) {
-      this.values.removeFirst();
-    }
 
     Num variance = getBarSeries().numFactory().zero();
     // cannot use RunningTotalIndicator because mean is changing each tick

@@ -26,11 +26,10 @@ package org.ta4j.core.indicators.statistics;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNext;
+import static org.ta4j.core.TestUtils.assertNextNaN;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -41,7 +40,6 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-  private static final Logger LOG = LoggerFactory.getLogger(VarianceIndicatorTest.class);
   private BacktestBarSeries data;
 
 
@@ -63,13 +61,13 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     this.data.replaceStrategy(new MockStrategy(var));
 
     // unstable values may produce garbage, this is why they are called unstable
-    assertNext(this.data, 0.1875, var);
+    assertNextNaN(this.data, var);
     assertFalse(var.isStable());
 
-    assertNext(this.data, 0.5416, var);
+    assertNextNaN(this.data, var);
     assertFalse(var.isStable());
 
-    assertNext(this.data, 0.9166, var);
+    assertNextNaN(this.data, var);
     assertFalse(var.isStable());
 
     // stable date bellow
@@ -90,7 +88,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
   @Test(expected = IllegalArgumentException.class)
   public void varianceShouldBeZeroWhenBarCountIs1() {
-     new VarianceIndicator(new ClosePriceIndicator(this.data), 1);
+    new VarianceIndicator(new ClosePriceIndicator(this.data), 1);
   }
 
 
@@ -99,7 +97,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     final var var = new VarianceIndicator(new ClosePriceIndicator(this.data), 2);
     this.data.replaceStrategy(new MockStrategy(var));
 
-    assertNext(this.data, 0.25, var);
+    assertNextNaN(this.data, var);
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 0.5, var);

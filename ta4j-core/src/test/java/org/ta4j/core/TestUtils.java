@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -55,11 +56,16 @@ public class TestUtils {
   }
 
 
+  public static void assertNextNaN(final BacktestBarSeries data, final Indicator<Num> indicator) {
+    data.advance();
+    assertNumEquals(NaN.NaN, indicator.getValue());
+  }
+
+
   public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> indicator) {
     data.advance();
     assertNumEquals(expected, indicator.getValue());
   }
-
 
 
   public static void assertNextFalse(final BacktestBarSeries series, final Indicator<Boolean> indicator) {
