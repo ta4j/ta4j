@@ -73,7 +73,7 @@ abstract class CircularArray<T> implements Iterable<T> {
   }
 
 
-  protected int getCurrentIndex() {
+  public int getCurrentIndex() {
     return this.currentIndex;
   }
 
