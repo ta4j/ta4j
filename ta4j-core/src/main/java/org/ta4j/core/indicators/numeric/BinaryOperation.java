@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.numeric;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.function.BinaryOperator;
 
@@ -40,114 +42,147 @@ import org.ta4j.core.num.Num;
  */
 public class BinaryOperation implements Indicator<Num> {
 
-    private final BinaryOperator<Num> operator;
-    private final Indicator<Num> left;
-    private final Indicator<Num> right;
+  private final BinaryOperator<Num> operator;
+  private final Indicator<Num> left;
+  private final Indicator<Num> right;
+  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Num value;
 
-    private BinaryOperation(final BinaryOperator<Num> operator, final Indicator<Num> left, final Indicator<Num> right) {
-        this.operator = operator;
-        this.left = left;
-        this.right = right;
+
+  private BinaryOperation(final BinaryOperator<Num> operator, final Indicator<Num> left, final Indicator<Num> right) {
+    this.operator = operator;
+    this.left = left;
+    this.right = right;
+  }
+
+
+  /**
+   * Returns an {@code Indicator} whose value is {@code (left + right)}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return {@code left + right}, rounded as necessary
+   *
+   * @see Num#plus
+   */
+  public static BinaryOperation sum(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::plus, left, right);
+  }
+
+
+  /**
+   * Returns an {@code Indicator} whose value is {@code (left - right)}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return {@code left - right}, rounded as necessary
+   *
+   * @see Num#minus
+   */
+  public static BinaryOperation difference(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::minus, left, right);
+  }
+
+
+  /**
+   * Returns an {@code Indicator} whose value is {@code (left * right)}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return {@code left * right}, rounded as necessary
+   *
+   * @see Num#multipliedBy
+   */
+  public static BinaryOperation product(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::multipliedBy, left, right);
+  }
+
+
+  /**
+   * Returns an {@code Indicator} whose value is {@code (left / right)}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return {@code left / right}, rounded as necessary
+   *
+   * @see Num#dividedBy
+   */
+  public static BinaryOperation quotient(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::dividedBy, left, right);
+  }
+
+
+  /**
+   * Returns the minimum of {@code left} and {@code right} as an
+   * {@code Indicator}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return the {@code Indicator} whose value is the smaller of {@code left} and
+   *     {@code right}. If they are equal, {@code left} is returned.
+   *
+   * @see Num#min
+   */
+  public static BinaryOperation min(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::min, left, right);
+  }
+
+
+  /**
+   * Returns the maximum of {@code left} and {@code right} as an
+   * {@code Indicator}.
+   *
+   * @param left
+   * @param right
+   *
+   * @return the {@code Indicator} whose value is the greater of {@code left} and
+   *     {@code right}. If they are equal, {@code left} is returned.
+   *
+   * @see Num#max
+   */
+  public static BinaryOperation max(final Indicator<Num> left, final Indicator<Num> right) {
+    return new BinaryOperation(Num::max, left, right);
+  }
+
+
+  private Num calculate() {
+    final Num n1 = this.left.getValue();
+    final Num n2 = this.right.getValue();
+    return this.operator.apply(n1, n2);
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public BarSeries getBarSeries() {
+    return this.left.getBarSeries();
+  }
+
+
+  @Override
+  public void refresh(final ZonedDateTime tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.left.refresh(tick);
+      this.right.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code (left + right)}.
-     *
-     * @param left
-     * @param right
-     * @return {@code left + right}, rounded as necessary
-     * @see Num#plus
-     */
-    public static BinaryOperation sum(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::plus, left, right);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code (left - right)}.
-     *
-     * @param left
-     * @param right
-     * @return {@code left - right}, rounded as necessary
-     * @see Num#minus
-     */
-    public static BinaryOperation difference(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::minus, left, right);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code (left * right)}.
-     *
-     * @param left
-     * @param right
-     * @return {@code left * right}, rounded as necessary
-     * @see Num#multipliedBy
-     */
-    public static BinaryOperation product(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::multipliedBy, left, right);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code (left / right)}.
-     *
-     * @param left
-     * @param right
-     * @return {@code left / right}, rounded as necessary
-     * @see Num#dividedBy
-     */
-    public static BinaryOperation quotient(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::dividedBy, left, right);
-    }
-
-    /**
-     * Returns the minimum of {@code left} and {@code right} as an
-     * {@code Indicator}.
-     *
-     * @param left
-     * @param right
-     * @return the {@code Indicator} whose value is the smaller of {@code left} and
-     *         {@code right}. If they are equal, {@code left} is returned.
-     * @see Num#min
-     */
-    public static BinaryOperation min(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::min, left, right);
-    }
-
-    /**
-     * Returns the maximum of {@code left} and {@code right} as an
-     * {@code Indicator}.
-     *
-     * @param left
-     * @param right
-     * @return the {@code Indicator} whose value is the greater of {@code left} and
-     *         {@code right}. If they are equal, {@code left} is returned.
-     * @see Num#max
-     */
-    public static BinaryOperation max(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperation(Num::max, left, right);
-    }
-
-    @Override
-    public Num getValue() {
-        final Num n1 = this.left.getValue();
-        final Num n2 = this.right.getValue();
-        return this.operator.apply(n1, n2);
-    }
-
-    @Override
-    public BarSeries getBarSeries() {
-        return this.left.getBarSeries();
-    }
+  }
 
 
-    @Override
-    public void refresh(final ZonedDateTime tick) {
-
-    }
-
-
-    @Override
-    public boolean isStable() {
-        return false;
-    }
+  @Override
+  public boolean isStable() {
+    return this.left.isStable() && this.right.isStable();
+  }
 
 }

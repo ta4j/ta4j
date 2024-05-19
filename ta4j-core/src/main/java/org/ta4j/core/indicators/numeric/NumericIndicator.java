@@ -32,7 +32,11 @@ import org.ta4j.core.indicators.average.EMAIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
@@ -140,123 +144,123 @@ public class NumericIndicator implements Indicator<Num> {
     return minus(createConstant(n));
   }
 
-//
-//
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return {@code this * other}, rounded as necessary
-//   */
-//  public NumericIndicator multipliedBy(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.product(this, other));
-//  }
-//
-//
-//  /**
-//   * @param n the other number
-//   *
-//   * @return {@code this * n}, rounded as necessary
-//   */
-//  public NumericIndicator multipliedBy(final Number n) {
-//    return multipliedBy(createConstant(n));
-//  }
-//
-//
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return {@code this / other}, rounded as necessary
-//   */
-//  public NumericIndicator dividedBy(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.quotient(this, other));
-//  }
-//
-//
-//  /**
-//   * @param n the other number
-//   *
-//   * @return {@code this / n}, rounded as necessary
-//   */
-//  public NumericIndicator dividedBy(final Number n) {
-//    return dividedBy(createConstant(n));
-//  }
-//
-//
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return the smaller of {@code this} and {@code other}; if they are equal,
-//   *     {@code this} is returned.
-//   */
-//  public NumericIndicator min(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.min(this, other));
-//  }
-//
-//
-//  /**
-//   * @param n the other number
-//   *
-//   * @return the smaller of {@code this} and {@code n}; if they are equal,
-//   *     {@code this} is returned.
-//   */
-//  public NumericIndicator min(final Number n) {
-//    return min(createConstant(n));
-//  }
-//
-//
-//  /**
-//   * @param other the other indicator
-//   *
-//   * @return the greater of {@code this} and {@code other}; if they are equal,
-//   *     {@code this} is returned.
-//   */
-//  public NumericIndicator max(final Indicator<Num> other) {
-//    return NumericIndicator.of(BinaryOperation.max(this, other));
-//  }
-//
-//
-//  /**
-//   * @param n the other number
-//   *
-//   * @return the greater of {@code this} and {@code n}; if they are equal,
-//   *     {@code this} is returned.
-//   */
-//  public NumericIndicator max(final Number n) {
-//    return max(createConstant(n));
-//  }
-//
-//
-//  /**
-//   * Returns an Indicator whose values are the absolute values of {@code this}.
-//   *
-//   * @return {@code abs(this)}
-//   */
-//  public NumericIndicator abs() {
-//    return NumericIndicator.of(UnaryOperation.abs(this));
-//  }
-//
-//
-//  /**
-//   * Returns an Indicator whose values are √(this).
-//   *
-//   * @return {@code √(this)}
-//   */
-//  public NumericIndicator sqrt() {
-//    return NumericIndicator.of(UnaryOperation.sqrt(this));
-//  }
-//
-//
-//  /**
-//   * Returns an Indicator whose values are {@code this * this}.
-//   *
-//   * @return {@code this * this}
-//   */
-//  public NumericIndicator squared() {
-//    // TODO: implement pow(n); a few others
-//    return this.multipliedBy(this);
-//  }
-//
-//
+
+
+  /**
+   * @param other the other indicator
+   *
+   * @return {@code this * other}, rounded as necessary
+   */
+  public NumericIndicator multipliedBy(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.product(this, other));
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return {@code this * n}, rounded as necessary
+   */
+  public NumericIndicator multipliedBy(final Number n) {
+    return multipliedBy(createConstant(n));
+  }
+
+
+  /**
+   * @param other the other indicator
+   *
+   * @return {@code this / other}, rounded as necessary
+   */
+  public NumericIndicator dividedBy(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.quotient(this, other));
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return {@code this / n}, rounded as necessary
+   */
+  public NumericIndicator dividedBy(final Number n) {
+    return dividedBy(createConstant(n));
+  }
+
+
+  /**
+   * @param other the other indicator
+   *
+   * @return the smaller of {@code this} and {@code other}; if they are equal,
+   *     {@code this} is returned.
+   */
+  public NumericIndicator min(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.min(this, other));
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return the smaller of {@code this} and {@code n}; if they are equal,
+   *     {@code this} is returned.
+   */
+  public NumericIndicator min(final Number n) {
+    return min(createConstant(n));
+  }
+
+
+  /**
+   * @param other the other indicator
+   *
+   * @return the greater of {@code this} and {@code other}; if they are equal,
+   *     {@code this} is returned.
+   */
+  public NumericIndicator max(final Indicator<Num> other) {
+    return NumericIndicator.of(BinaryOperation.max(this, other));
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return the greater of {@code this} and {@code n}; if they are equal,
+   *     {@code this} is returned.
+   */
+  public NumericIndicator max(final Number n) {
+    return max(createConstant(n));
+  }
+
+
+  /**
+   * Returns an Indicator whose values are the absolute values of {@code this}.
+   *
+   * @return {@code abs(this)}
+   */
+  public NumericIndicator abs() {
+    return NumericIndicator.of(UnaryOperation.abs(this));
+  }
+
+
+  /**
+   * Returns an Indicator whose values are √(this).
+   *
+   * @return {@code √(this)}
+   */
+  public NumericIndicator sqrt() {
+    return NumericIndicator.of(UnaryOperation.sqrt(this));
+  }
+
+
+  /**
+   * Returns an Indicator whose values are {@code this * this}.
+   *
+   * @return {@code this * this}
+   */
+  public NumericIndicator squared() {
+    // TODO: implement pow(n); a few others
+    return this.multipliedBy(this);
+  }
+
+
     /**
      * @param barCount the time frame
      *
@@ -274,54 +278,54 @@ public class NumericIndicator implements Indicator<Num> {
     public NumericIndicator ema(final int barCount) {
         return NumericIndicator.of(new EMAIndicator(this.delegate, barCount));
     }
-//
-//
-//  /**
-//   * @param barCount the time frame
-//   *
-//   * @return the {@link StandardDeviationIndicator} of {@code this}
-//   */
-//  public NumericIndicator stddev(final int barCount) {
-//    return NumericIndicator.of(new StandardDeviationIndicator(this, barCount));
-//  }
-//
-//
-//  /**
-//   * @param barCount the time frame
-//   *
-//   * @return the {@link HighestValueIndicator} of {@code this}
-//   */
-//  public NumericIndicator highest(final int barCount) {
-//    return NumericIndicator.of(new HighestValueIndicator(this, barCount));
-//  }
-//
-//
-//  /**
-//   * @param barCount the time frame
-//   *
-//   * @return the {@link LowestValueIndicator} of {@code this}
-//   */
-//  public NumericIndicator lowest(final int barCount) {
-//    return NumericIndicator.of(new LowestValueIndicator(this, barCount));
-//  }
-//
-//
-//  /**
-//   * @param barCount the time frame
-//   *
-//   * @return the {@link PreviousValueIndicator} of {@code this}
-//   */
-//  public NumericIndicator previous(final int barCount) {
-//    return NumericIndicator.of(new PreviousValueIndicator(this, barCount));
-//  }
 
-//  /**
-//   * @return the {@link PreviousValueIndicator} of {@code this} with
-//   *     {@code barCount=1}
-//   */
-//  public Indicator<Num> previous() {
-//    return previous(1);
-//  }
+
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link StandardDeviationIndicator} of {@code this}
+   */
+  public NumericIndicator stddev(final int barCount) {
+    return NumericIndicator.of(new StandardDeviationIndicator(this, barCount));
+  }
+
+
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link HighestValueIndicator} of {@code this}
+   */
+  public NumericIndicator highest(final int barCount) {
+    return NumericIndicator.of(new HighestValueIndicator(this, barCount));
+  }
+
+
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link LowestValueIndicator} of {@code this}
+   */
+  public NumericIndicator lowest(final int barCount) {
+    return NumericIndicator.of(new LowestValueIndicator(this, barCount));
+  }
+
+
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link PreviousValueIndicator} of {@code this}
+   */
+  public NumericIndicator previous(final int barCount) {
+    return NumericIndicator.of(new PreviousValueIndicator(this, barCount));
+  }
+
+  /**
+   * @return the {@link PreviousValueIndicator} of {@code this} with
+   *     {@code barCount=1}
+   */
+  public Indicator<Num> previous() {
+    return previous(1);
+  }
 
     /**
      * @param other the other indicator
