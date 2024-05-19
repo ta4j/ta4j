@@ -106,4 +106,8 @@ abstract class CircularArray<T> implements Iterable<T> {
   public boolean isEmpty() {
     return this.currentIndex == -1;
   }
+
+  public boolean isNotFull() {
+    return this.currentIndex < this.capacity - 1;
+  }
 }

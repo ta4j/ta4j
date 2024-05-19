@@ -26,11 +26,12 @@ package org.ta4j.core.indicators.average;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * Linearly Weighted Moving Average (LWMA) indicator.
@@ -43,8 +44,9 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
 
   private final Indicator<Num> indicator;
   private final int barCount;
-  // TODO circular buffer
-  private final LinkedList<Num> values = new LinkedList<>();
+  private final CircularNumArray values;
+  private final ArrayList<Num> weights;
+  private final Num denominator;
   private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
   private Num value;
 
@@ -59,35 +61,33 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
     super(indicator.getBarSeries());
     this.indicator = indicator;
     this.barCount = barCount;
+    this.values = new CircularNumArray(barCount);
+    this.weights = new ArrayList<>(barCount);
+    final var numFactory = getBarSeries().numFactory();
+    for (int i = 1; i < barCount + 1; i++) {
+      this.weights.add(numFactory.numOf(i));
+    }
+    this.denominator = numFactory.numOf(this.weights.stream().mapToInt(Num::intValue).sum());
   }
 
 
   protected Num calculate() {
     final var numFactory = getBarSeries().numFactory();
     Num sum = numFactory.zero();
-    Num denominator = numFactory.zero();
-
 
     this.values.addLast(this.indicator.getValue());
 
-    if (this.values.size() < this.barCount) {
+    if (this.values.isNotFull()) {
       return numFactory.zero();
     }
 
-    if (this.values.size() > this.barCount) {
-      this.values.removeFirst();
-    }
-
-    // TODO extract denominator, it is constant
     int count = 0;
     for (final var val : this.values) {
-      count++;
-      final var weight = numFactory.numOf(count);
-      denominator = denominator.plus(weight);
+      final var weight = this.weights.get(count++);
       sum = sum.plus(val.multipliedBy(weight));
     }
 
-    return sum.dividedBy(denominator);
+    return sum.dividedBy(this.denominator);
   }
 
 
