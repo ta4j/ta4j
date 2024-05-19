@@ -24,7 +24,6 @@
 package org.ta4j.core.utils;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * A circular array can hold up to N elements. N is known as the capacity of the
@@ -45,7 +44,7 @@ import java.util.Iterator;
  */
 abstract class CircularArray<T> implements Iterable<T> {
 
-  private final ArrayList<T> elements;
+  protected final ArrayList<T> elements;
   private final int capacity;
   private int currentIndex = -1;
 
@@ -74,6 +73,11 @@ abstract class CircularArray<T> implements Iterable<T> {
   }
 
 
+  protected int getCurrentIndex() {
+    return this.currentIndex;
+  }
+
+
   private int getIndex(final int index) {
     return index % capacity();
   }
@@ -86,7 +90,7 @@ abstract class CircularArray<T> implements Iterable<T> {
 
   public void addLast(final T element) {
     ++this.currentIndex;
-    this.elements.set(getIndex(this.currentIndex), element);
+    this.elements.set(getIndex(getCurrentIndex()), element);
   }
 
 
@@ -96,8 +100,10 @@ abstract class CircularArray<T> implements Iterable<T> {
   }
 
 
-  @Override
-  public Iterator<T> iterator() {
-    return this.elements.iterator();
+  public abstract Iterable<T> reversed();
+
+
+  public boolean isEmpty() {
+    return this.currentIndex == -1;
   }
 }

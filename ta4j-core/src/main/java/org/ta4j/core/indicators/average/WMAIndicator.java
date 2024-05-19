@@ -26,11 +26,11 @@ package org.ta4j.core.indicators.average;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.LinkedList;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * WMA indicator.
@@ -39,8 +39,7 @@ public class WMAIndicator extends AbstractIndicator<Num> {
 
   private final int barCount;
   private final Indicator<Num> indicator;
-  // TODO circular buffer
-  private final LinkedList<Num> values = new LinkedList<>();
+  private final CircularNumArray values;
   private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
   private Num value;
   private int barsPassed;
@@ -56,6 +55,7 @@ public class WMAIndicator extends AbstractIndicator<Num> {
     super(indicator.getBarSeries());
     this.indicator = indicator;
     this.barCount = barCount;
+    this.values = new CircularNumArray(barCount);
   }
 
 
@@ -67,9 +67,6 @@ public class WMAIndicator extends AbstractIndicator<Num> {
     }
 
     this.values.addLast(this.indicator.getValue());
-    if (this.values.size() > this.barCount) {
-      this.values.removeFirst();
-    }
 
     final var numFactory = getBarSeries().numFactory();
     Num wmaSum = numFactory.zero();

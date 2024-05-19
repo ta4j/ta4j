@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.statistics;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNext;
-import static org.ta4j.core.TestUtils.assertNextNaN;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -61,13 +60,13 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     this.data.replaceStrategy(new MockStrategy(var));
 
     // unstable values may produce garbage, this is why they are called unstable
-    assertNextNaN(this.data, var);
+    assertNext(this.data, 0.0, var);
     assertFalse(var.isStable());
 
-    assertNextNaN(this.data, var);
+    assertNext(this.data, 0.0, var);
     assertFalse(var.isStable());
 
-    assertNextNaN(this.data, var);
+    assertNext(this.data, 0.0, var);
     assertFalse(var.isStable());
 
     // stable date bellow
@@ -97,12 +96,24 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     final var var = new VarianceIndicator(new ClosePriceIndicator(this.data), 2);
     this.data.replaceStrategy(new MockStrategy(var));
 
-    assertNextNaN(this.data, var);
+    assertNext(this.data, 0.0, var);
+    assertFalse(var.isStable());
+
     assertNext(this.data, 0.5, var);
+    assertTrue(var.isStable());
+
     assertNext(this.data, 0.5, var);
+    assertTrue(var.isStable());
+
     assertNext(this.data, 0.5, var);
+    assertTrue(var.isStable());
+
     assertNext(this.data, 0.5, var);
+    assertTrue(var.isStable());
+
     assertNext(this.data, 0.5, var);
+    assertTrue(var.isStable());
+
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 0.5, var);

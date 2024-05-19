@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.utils;
 
+import java.util.Iterator;
+
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -30,5 +32,59 @@ public class CircularNumArray extends CircularArray<Num> {
 
   public CircularNumArray(final int capacity) {
     super(capacity, NaN.NaN);
+  }
+
+
+  @Override
+  public Iterable<Num> reversed() {
+    return () -> new Iterator<>() {
+      final int currentIndex = getCurrentIndex();
+      int processed = 0;
+
+
+      @Override
+      public boolean hasNext() {
+        return this.processed < capacity()
+               && getIndex() > -1
+               && !get(getIndex()).isNaN();
+      }
+
+
+      private int getIndex() {
+        return this.currentIndex - this.processed;
+      }
+
+
+      @Override
+      public Num next() {
+        final var num = get(getIndex());
+        ++this.processed;
+        return num;
+      }
+    };
+  }
+
+
+  @Override
+  public Iterator<Num> iterator() {
+    return new Iterator<>() {
+      int currentIndex = getCurrentIndex();
+      int processed = 0;
+
+
+      @Override
+      public boolean hasNext() {
+        return this.processed < capacity()
+               && !get(this.currentIndex + 1).isNaN();
+      }
+
+
+      @Override
+      public Num next() {
+        ++this.currentIndex;
+        ++this.processed;
+        return get(this.currentIndex);
+      }
+    };
   }
 }
