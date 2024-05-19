@@ -55,9 +55,9 @@ public class TestUtils {
   }
 
 
-  public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> kama) {
+  public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> indicator) {
     data.advance();
-    assertNumEquals(expected, kama.getValue());
+    assertNumEquals(expected, indicator.getValue());
   }
 
 
