@@ -88,7 +88,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param barCount of signal line
      * @return signal line for this MACD indicator
      */
-    public EMAIndicator  signal(int barCount) {
+    public EMAIndicator getSignalLine(int barCount) {
         return new EMAIndicator(this, barCount);
     }
 
@@ -96,8 +96,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param barCount of signal line
      * @return histogram of this MACD indicator
      */
-    public NumericIndicator histogram(int barCount) {
-        return NumericIndicator.of(this).minus(signal(barCount));
+    public NumericIndicator getHistogram(int barCount) {
+        return NumericIndicator.of(this).minus(getSignalLine(barCount));
     }
 
     @Override
