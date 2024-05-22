@@ -27,7 +27,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.BacktestBar;
@@ -38,7 +37,7 @@ import org.ta4j.core.backtest.BacktestBarBuilder;
  */
 public class MockBarBuilder extends BacktestBarBuilder {
 
-    private final Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneId.systemDefault());
+    private final Clock clock = Clock.fixed(Instant.ofEpochMilli(-1), ZoneId.systemDefault());
     private boolean periodSet;
     private boolean endTimeSet;
 
@@ -50,7 +49,7 @@ public class MockBarBuilder extends BacktestBarBuilder {
     }
 
     @Override
-    public MockBarBuilder endTime(final ZonedDateTime endTime) {
+    public MockBarBuilder endTime(final Instant endTime) {
       this.endTimeSet = true;
         super.endTime(endTime);
         return this;
@@ -71,7 +70,7 @@ public class MockBarBuilder extends BacktestBarBuilder {
         }
 
         if (!this.endTimeSet) {
-            endTime(ZonedDateTime.now(Clock.offset(this.clock, this.timePeriod.multipliedBy(++countOfProducedBars))));
+            endTime(Instant.now(Clock.offset(this.clock, this.timePeriod.multipliedBy(++countOfProducedBars))));
         }
         return super.build();
     }

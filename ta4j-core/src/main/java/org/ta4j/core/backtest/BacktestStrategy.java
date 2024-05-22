@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.backtest;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,7 @@ public class BacktestStrategy implements Strategy {
     private BackTestTradingRecord tradingRecord;
 
     /** Current time */
-    private ZonedDateTime currentTick;
+    private Instant currentTick;
 
     /**
      * Constructor.
@@ -119,7 +119,7 @@ public class BacktestStrategy implements Strategy {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.entryRule.refresh(tick);
         this.exitRule.refresh(tick);
         this.currentTick = tick;

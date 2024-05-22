@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.junit.Before;
@@ -115,7 +114,6 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     final var series = new MockBarSeriesBuilder().withName("NaN test").build();
     for (long i = 0; i <= 10000; i++) {
       series.barBuilder()
-          .endTime(ZonedDateTime.now().plusDays(i))
           .openPrice(NaN)
           .closePrice(NaN)
           .highPrice(NaN)
@@ -139,7 +137,6 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
       final Num closePrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
       series.barBuilder()
-          .endTime(ZonedDateTime.now().plusDays(i))
           .openPrice(NaN)
           .closePrice(closePrice)
           .highPrice(NaN)

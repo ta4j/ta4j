@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
@@ -44,7 +42,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   private final Indicator<Num> indicatorLeft;
   private final Indicator<Num> indicatorRight;
   private final BinaryOperator<Num> combineFunction;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -81,7 +79,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.indicatorLeft.refresh(tick);
       this.indicatorRight.refresh(tick);

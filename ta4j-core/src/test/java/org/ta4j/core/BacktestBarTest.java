@@ -44,83 +44,90 @@ import org.ta4j.core.num.NumFactory;
 
 public class BacktestBarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private BacktestBar bar;
+  private BacktestBar bar;
 
-    private ZonedDateTime beginTime;
+  private ZonedDateTime beginTime;
 
-    private ZonedDateTime endTime;
+  private ZonedDateTime endTime;
   private BacktestBarSeries series;
 
 
   public BacktestBarTest(final NumFactory numFactory) {
-        super(null, numFactory);
-    }
+    super(null, numFactory);
+  }
 
-    @Before
-    public void setUp() {
-      this.beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-      this.endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-      this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-      this.bar = new BacktestBarBuilder(this.series).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
-                .volume(0)
-                .amount(0)
-                .build();
 
-    }
+  @Before
+  public void setUp() {
+    this.beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
+    this.endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+    this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    this.bar = new BacktestBarBuilder(this.series).timePeriod(Duration.ofHours(1))
+        .endTime(this.endTime.toInstant())
+        .volume(0)
+        .amount(0)
+        .build();
 
-    @Test
-    public void addTrades() {
+  }
 
-      this.bar.addTrade(numOf(3.0), numOf(200.0));
-      this.bar.addTrade(numOf(4.0), numOf(201.0));
-      this.bar.addTrade(numOf(2.0), numOf(198.0));
 
-        assertEquals(3, this.bar.getTrades());
-        assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), this.bar.getAmount());
-        assertEquals(numOf(200), this.bar.openPrice());
-        assertEquals(numOf(198), this.bar.closePrice());
-        assertEquals(numOf(198), this.bar.lowPrice());
-        assertEquals(numOf(201), this.bar.highPrice());
-        assertEquals(numOf(9), this.bar.volume());
-    }
+  @Test
+  public void addTrades() {
 
-    @Test
-    public void timePeriod() {
-        assertEquals(this.beginTime, this.bar.endTime().minus(this.bar.timePeriod()));
-    }
+    this.bar.addTrade(numOf(3.0), numOf(200.0));
+    this.bar.addTrade(numOf(4.0), numOf(201.0));
+    this.bar.addTrade(numOf(2.0), numOf(198.0));
 
-    @Test
-    public void beginTime() {
-        assertEquals(this.beginTime, this.bar.beginTime());
-    }
+    assertEquals(3, this.bar.getTrades());
+    assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), this.bar.getAmount());
+    assertEquals(numOf(200), this.bar.openPrice());
+    assertEquals(numOf(198), this.bar.closePrice());
+    assertEquals(numOf(198), this.bar.lowPrice());
+    assertEquals(numOf(201), this.bar.highPrice());
+    assertEquals(numOf(9), this.bar.volume());
+  }
 
-    @Test
-    public void inPeriod() {
-        assertFalse(this.bar.inPeriod(null));
 
-        assertFalse(this.bar.inPeriod(this.beginTime.withDayOfMonth(24)));
-        assertFalse(this.bar.inPeriod(this.beginTime.withDayOfMonth(26)));
-        assertTrue(this.bar.inPeriod(this.beginTime.withMinute(30)));
+  @Test
+  public void timePeriod() {
+    assertEquals(this.beginTime.toInstant(), this.bar.endTime().minus(this.bar.timePeriod()));
+  }
 
-        assertTrue(this.bar.inPeriod(this.beginTime));
-        assertFalse(this.bar.inPeriod(this.endTime));
-    }
 
-    @Test
-    public void equals() {
-        final Bar bar1 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime).build();
-        final Bar bar2 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime).build();
+  @Test
+  public void beginTime() {
+    assertEquals(this.beginTime.toInstant(), this.bar.beginTime());
+  }
 
-        assertEquals(bar1, bar2);
-      assertNotSame(bar1, bar2);
-    }
 
-    @Test
-    public void hashCode2() {
-        final Bar bar1 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime).build();
-        final Bar bar2 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime).build();
+  @Test
+  public void inPeriod() {
+    assertFalse(this.bar.inPeriod(null));
 
-        assertEquals(bar1.hashCode(), bar2.hashCode());
-    }
+    assertFalse(this.bar.inPeriod(this.beginTime.withDayOfMonth(24).toInstant()));
+    assertFalse(this.bar.inPeriod(this.beginTime.withDayOfMonth(26).toInstant()));
+    assertTrue(this.bar.inPeriod(this.beginTime.withMinute(30).toInstant()));
+
+    assertTrue(this.bar.inPeriod(this.beginTime.toInstant()));
+    assertFalse(this.bar.inPeriod(this.endTime.toInstant()));
+  }
+
+
+  @Test
+  public void equals() {
+    final Bar bar1 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime.toInstant()).build();
+    final Bar bar2 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime.toInstant()).build();
+
+    assertEquals(bar1, bar2);
+    assertNotSame(bar1, bar2);
+  }
+
+
+  @Test
+  public void hashCode2() {
+    final Bar bar1 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime.toInstant()).build();
+    final Bar bar2 = this.series.barBuilder().timePeriod(Duration.ofHours(1)).endTime(this.endTime.toInstant()).build();
+
+    assertEquals(bar1.hashCode(), bar2.hashCode());
+  }
 }

@@ -24,7 +24,7 @@
 package org.ta4j.core.live;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -40,7 +40,7 @@ class LiveBarBuilder implements BarBuilder {
   private final NumFactory numFactory;
   private final BarSeries series;
   private Duration timePeriod;
-  private ZonedDateTime endTime;
+  private Instant endTime;
   private Num openPrice;
   private Num highPrice;
   private Num lowPrice;
@@ -59,7 +59,7 @@ class LiveBarBuilder implements BarBuilder {
     return this;
   }
 
-  public LiveBarBuilder endTime(final ZonedDateTime endTime) {
+  public LiveBarBuilder endTime(final Instant endTime) {
     this.endTime = endTime;
     return this;
   }

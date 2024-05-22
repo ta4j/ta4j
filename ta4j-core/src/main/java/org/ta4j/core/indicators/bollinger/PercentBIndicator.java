@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.bollinger;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
@@ -45,7 +43,7 @@ public class PercentBIndicator extends AbstractIndicator<Num> {
   private final Indicator<Num> indicator;
   private final BollingerBandsUpperIndicator bbu;
   private final BollingerBandsLowerIndicator bbl;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -81,7 +79,7 @@ public class PercentBIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.indicator.refresh(tick);
       this.bbl.refresh(tick);

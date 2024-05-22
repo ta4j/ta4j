@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 
@@ -60,7 +60,7 @@ public interface Indicator<T> {
      *
      * @param tick current time
      */
-    void refresh(ZonedDateTime tick);
+    void refresh(Instant tick);
 
     /**
      * @return true if indicator is stabilized

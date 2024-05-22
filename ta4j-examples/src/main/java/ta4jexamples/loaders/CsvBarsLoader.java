@@ -24,12 +24,14 @@
 package ta4jexamples.loaders;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,69 +48,79 @@ import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
  */
 public class CsvBarsLoader {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_DATE_TIME;
+  private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_DATE;
 
-    /**
-     * @return the bar series from Apple Inc. bars.
-     */
 
-    public static BacktestBarSeries loadAppleIncSeries() throws IOException {
-        return loadCsvSeries(Path.of("appleinc_bars_from_20130101_usd.csv"));
+  /**
+   * @return the bar series from Apple Inc. bars.
+   */
+
+  public static BacktestBarSeries loadAppleIncSeries() {
+    return loadCsvSeries(Path.of("appleinc_bars_from_20130101_usd.csv"));
+  }
+
+
+  public static BacktestBarSeries loadCsvSeries(final Path filename) {
+
+
+    final var series = new BacktestBarSeriesBuilder().withName("apple_bars").build();
+
+    // new CSVReader(, ',', '"',
+    // 1)
+
+    try (final var stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename.toString())) {
+      readCsv(stream, series);
+    } catch (final IOException ioe) {
+      Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
+    } catch (final NumberFormatException nfe) {
+      Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
     }
+    return series;
+  }
 
-    public static BacktestBarSeries loadCsvSeries(Path filename) throws IOException {
 
-        var stream = Files.newInputStream(filename);
+  private static void readCsv(final InputStream stream, final BacktestBarSeries series) throws IOException {
+    try (
+        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
+            .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
+            .withSkipLines(1)
+            .build()
+    ) {
+      String[] line;
+      while ((line = csvReader.readNext()) != null) {
+        final Instant date =
+            LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant();
+        final double open = Double.parseDouble(line[1]);
+        final double high = Double.parseDouble(line[2]);
+        final double low = Double.parseDouble(line[3]);
+        final double close = Double.parseDouble(line[4]);
+        final double volume = Double.parseDouble(line[5]);
 
-        var series = new BacktestBarSeriesBuilder().withName("apple_bars").build();
-
-        // new CSVReader(, ',', '"',
-        // 1)
-
-        try {
-            assert stream != null;
-            try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
-                    .withSkipLines(1)
-                    .build()) {
-                String[] line;
-                while ((line = csvReader.readNext()) != null) {
-                    ZonedDateTime date = ZonedDateTime.parse(line[0], DATE_FORMAT);
-                    double open = Double.parseDouble(line[1]);
-                    double high = Double.parseDouble(line[2]);
-                    double low = Double.parseDouble(line[3]);
-                    double close = Double.parseDouble(line[4]);
-                    double volume = Double.parseDouble(line[5]);
-
-                    series.barBuilder()
-                            .timePeriod(Duration.ofDays(1))
-                            .endTime(date)
-                            .openPrice(open)
-                            .closePrice(close)
-                            .highPrice(high)
-                            .lowPrice(low)
-                            .volume(volume)
-                            .amount(0)
-                            .add();
-                }
-            } catch (CsvValidationException e) {
-                Logger.getLogger(CsvBarsLoader.class.getName())
-                        .log(Level.SEVERE, "Unable to load bars from CSV. File is not valid csv.", e);
-            }
-        } catch (IOException ioe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
-        } catch (NumberFormatException nfe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
-        }
-        return series;
+        series.barBuilder()
+            .timePeriod(Duration.ofDays(1))
+            .endTime(date)
+            .openPrice(open)
+            .closePrice(close)
+            .highPrice(high)
+            .lowPrice(low)
+            .volume(volume)
+            .amount(0)
+            .add();
+      }
+    } catch (final CsvValidationException e) {
+      Logger.getLogger(CsvBarsLoader.class.getName())
+          .log(Level.SEVERE, "Unable to load bars from CSV. File is not valid csv.", e);
     }
+  }
 
-    public static void main(String[] args) throws IOException {
-        BacktestBarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar().volume() + "\n" + "\tOpen price: "
-                           + series.getBar().openPrice() + "\n" + "\tClose price: " + series.getBar().closePrice());
-    }
+  public static void main(final String[] args) {
+    final BacktestBarSeries series = CsvBarsLoader.loadAppleIncSeries();
+    series.advance();
+
+    System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
+    System.out.println("Number of bars: " + series.getBarCount());
+    System.out.println("First bar: \n" + "\tVolume: " + series.getBar().volume() + "\n" + "\tOpen price: "
+                       + series.getBar().openPrice() + "\n" + "\tClose price: " + series.getBar().closePrice());
+  }
 }

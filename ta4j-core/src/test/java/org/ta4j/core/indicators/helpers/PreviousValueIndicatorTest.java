@@ -27,6 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Random;
@@ -52,7 +53,7 @@ public class PreviousValueIndicatorTest {
             final double close = r.nextDouble();
             final double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
             final double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
-            final ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
+            final Instant dateTime = ZonedDateTime.now().minusSeconds(1001 - i).toInstant();
             this.series.barBuilder()
                     .endTime(dateTime)
                     .openPrice(open)

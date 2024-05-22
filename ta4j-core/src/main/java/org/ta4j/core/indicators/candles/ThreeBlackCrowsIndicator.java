@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.candles;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -54,7 +52,7 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
   private final Num factor;
 
   private final CircularBarArray bars = new CircularBarArray(4);
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Boolean value;
 
 
@@ -154,7 +152,7 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.averageLowerShadowInd.refresh(tick);
       this.lowerShadows.refresh(tick);

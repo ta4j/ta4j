@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.utils;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Iterator;
 
 import org.ta4j.core.indicators.Indicator;
@@ -89,7 +89,7 @@ public class CircularIndicatorArray extends CircularArray<Indicator<Num>> {
   }
 
 
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     for (final var element : this.elements) {
       if (element != null) {
         element.refresh(tick);

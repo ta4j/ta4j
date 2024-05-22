@@ -24,8 +24,8 @@
 package org.ta4j.core.live;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.num.Num;
@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 record LiveBar(
     Duration timePeriod,
-    ZonedDateTime beginTime,
-    ZonedDateTime endTime,
+    Instant beginTime,
+    Instant endTime,
     Num openPrice,
     Num highPrice,
     Num lowPrice,
@@ -49,7 +49,7 @@ record LiveBar(
   public String toString() {
     return String.format(
         "{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
-        this.endTime.withZoneSameInstant(ZoneId.systemDefault()),
+        this.endTime.atZone(ZoneId.systemDefault()),
         this.closePrice.doubleValue(),
         this.openPrice.doubleValue(),
         this.lowPrice.doubleValue(),

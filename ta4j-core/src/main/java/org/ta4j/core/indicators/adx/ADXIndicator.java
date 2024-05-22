@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -81,7 +81,7 @@ public class ADXIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.averageDXIndicator.refresh(tick);
     }
 

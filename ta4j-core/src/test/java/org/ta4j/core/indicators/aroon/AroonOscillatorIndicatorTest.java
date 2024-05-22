@@ -26,9 +26,9 @@ package org.ta4j.core.indicators.aroon;
 import static org.junit.Assert.assertNotNull;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
@@ -211,7 +211,7 @@ public class AroonOscillatorIndicatorTest {
     final var dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.getDefault());
     for (int i = dataLine.length - 1; i >= 0; i--) {
       final String[] tickData = dataLine[i].split(",");
-      final ZonedDateTime date = LocalDate.parse(tickData[0], dtf).atStartOfDay(ZoneId.systemDefault());
+      final Instant date = LocalDate.parse(tickData[0], dtf).atStartOfDay(ZoneId.systemDefault()).toInstant();
       this.data.barBuilder()
           .endTime(date)
           .openPrice(tickData[3])

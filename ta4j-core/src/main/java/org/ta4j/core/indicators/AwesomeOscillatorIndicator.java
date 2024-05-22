@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.average.SMAIndicator;
@@ -42,7 +40,7 @@ public class AwesomeOscillatorIndicator extends AbstractIndicator<Num> {
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;
     private Num value;
-    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private Instant currentTick = Instant.EPOCH;
 
     /**
      * Constructor.
@@ -96,7 +94,7 @@ public class AwesomeOscillatorIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         if (tick.isAfter(this.currentTick)) {
             this.shortSma.refresh(tick);
             this.longSma.refresh(tick);

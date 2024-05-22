@@ -31,7 +31,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 
 import org.junit.Test;
@@ -72,7 +72,7 @@ public class LiveTradingTest extends AbstractIndicatorTest<LiveBarSeries, Num> {
     for (int i = 0; i < 6; i++) {
       liveTrading.barBuilder()
           .timePeriod(Duration.ofMinutes(1))
-          .endTime(ZonedDateTime.now())
+          .endTime(Instant.now())
           .closePrice(10)
           .add();
       assertEquals(String.valueOf(i), expectedValues[i], smaTest.getFirst().getValue());
@@ -83,7 +83,7 @@ public class LiveTradingTest extends AbstractIndicatorTest<LiveBarSeries, Num> {
     // test exit rule in stable period
     liveTrading.barBuilder()
         .timePeriod(Duration.ofMinutes(1))
-        .endTime(ZonedDateTime.now())
+        .endTime(Instant.now())
         .closePrice(100)
         .add();
 

@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -44,38 +42,43 @@ import org.ta4j.core.num.Num;
  */
 public class MedianPriceIndicator extends AbstractIndicator<Num> {
 
-    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
-    private Num value;
+  private Instant currentTick = Instant.EPOCH;
+  private Num value;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public MedianPriceIndicator(final BarSeries series) {
-        super(series);
-    }
 
-    protected Num calculate() {
-        final Bar bar = getBarSeries().getBar();
-        return bar.highPrice().plus(bar.lowPrice()).dividedBy(getBarSeries().numFactory().two());
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  public MedianPriceIndicator(final BarSeries series) {
+    super(series);
+  }
 
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
 
-    @Override
-    public void refresh(final ZonedDateTime tick) {
-        if (!tick.isEqual(this.currentTick)) {
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
+  protected Num calculate() {
+    final Bar bar = getBarSeries().getBar();
+    return bar.highPrice().plus(bar.lowPrice()).dividedBy(getBarSeries().numFactory().two());
+  }
 
-    @Override
-    public boolean isStable() {
-        return true;
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return true;
+  }
 }

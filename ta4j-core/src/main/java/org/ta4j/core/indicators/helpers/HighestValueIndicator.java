@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.function.Predicate;
 
@@ -80,7 +80,7 @@ public class HighestValueIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     ++this.barsPassed;
     this.value = calculate();
   }

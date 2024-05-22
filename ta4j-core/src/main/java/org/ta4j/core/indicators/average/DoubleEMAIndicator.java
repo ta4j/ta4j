@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
@@ -43,7 +41,7 @@ public class DoubleEMAIndicator extends AbstractIndicator<Num> {
   private final int barCount;
   private final EMAIndicator ema;
   private final EMAIndicator emaEma;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -68,7 +66,7 @@ public class DoubleEMAIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.ema.refresh(tick);
       this.emaEma.refresh(tick);

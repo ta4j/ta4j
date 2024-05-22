@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
@@ -87,7 +87,7 @@ public interface Rule {
      *
      * @param tick current time
      */
-    void refresh(ZonedDateTime tick);
+    void refresh(Instant tick);
 
     /**
      * @return ture if results of underlying indicators are stable

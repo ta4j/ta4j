@@ -26,7 +26,6 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.junit.Test;
@@ -41,119 +40,119 @@ import org.ta4j.core.num.NumFactory;
 
 public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private final ExternalIndicatorTest xls;
+  private final ExternalIndicatorTest xls;
 
-    public ATRIndicatorTest(final NumFactory numFactory) {
-        super((data, params) -> new ATRIndicator(data, (int) params[0]), numFactory);
-        this.xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFactory);
-    }
 
-    @Test
-    public void testDummy() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-        series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(5))
-                .openPrice(0)
-                .closePrice(12)
-                .highPrice(15)
-                .lowPrice(8)
-                .amount(0)
-                .volume(0)
-                .add();
-        series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(4))
-                .openPrice(0)
-                .closePrice(8)
-                .highPrice(11)
-                .lowPrice(6)
-                .volume(0)
-                .amount(0)
-                .trades(0)
-                .add();
-        series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(3))
-                .openPrice(0)
-                .closePrice(15)
-                .highPrice(17)
-                .lowPrice(14)
-                .volume(0)
-                .amount(0)
-                .trades(0)
-                .add();
-        series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(2))
-                .openPrice(0)
-                .closePrice(15)
-                .highPrice(17)
-                .lowPrice(14)
-                .volume(0)
-                .amount(0)
-                .trades(0)
-                .add();
-        series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(1))
-                .openPrice(0)
-                .closePrice(0)
-                .highPrice(0)
-                .lowPrice(2)
-                .volume(0)
-                .amount(0)
-                .trades(0)
-                .add();
-        final Indicator<Num> indicator = getIndicator(series, 3);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+  public ATRIndicatorTest(final NumFactory numFactory) {
+    super((data, params) -> new ATRIndicator(data, (int) params[0]), numFactory);
+    this.xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFactory);
+  }
 
-        series.advance();
-        var value = indicator.getValue().doubleValue();
-        assertEquals(7d, value, TestUtils.GENERAL_OFFSET);
 
-        series.advance();
-        assertEquals(6d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-        value = indicator.getValue().doubleValue();
+  @Test
+  public void testDummy() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    series.barBuilder()
+        .openPrice(0)
+        .closePrice(12)
+        .highPrice(15)
+        .lowPrice(8)
+        .amount(0)
+        .volume(0)
+        .add();
+    series.barBuilder()
+        .openPrice(0)
+        .closePrice(8)
+        .highPrice(11)
+        .lowPrice(6)
+        .volume(0)
+        .amount(0)
+        .trades(0)
+        .add();
+    series.barBuilder()
+        .openPrice(0)
+        .closePrice(15)
+        .highPrice(17)
+        .lowPrice(14)
+        .volume(0)
+        .amount(0)
+        .trades(0)
+        .add();
+    series.barBuilder()
+        .openPrice(0)
+        .closePrice(15)
+        .highPrice(17)
+        .lowPrice(14)
+        .volume(0)
+        .amount(0)
+        .trades(0)
+        .add();
+    series.barBuilder()
+        .openPrice(0)
+        .closePrice(0)
+        .highPrice(0)
+        .lowPrice(2)
+        .volume(0)
+        .amount(0)
+        .trades(0)
+        .add();
+    final Indicator<Num> indicator = getIndicator(series, 3);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
-        series.advance();
-        assertEquals(9d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-        value = indicator.getValue().doubleValue();
+    series.advance();
+    var value = indicator.getValue().doubleValue();
+    assertEquals(7d, value, TestUtils.GENERAL_OFFSET);
 
-        series.advance();
-        assertEquals(3d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-        value = indicator.getValue().doubleValue();
+    series.advance();
+    assertEquals(6d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    value = indicator.getValue().doubleValue();
 
-        series.advance();
-        assertEquals(15d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+    series.advance();
+    assertEquals(9d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    value = indicator.getValue().doubleValue();
 
-    @Test
-    public void testXls1() throws Exception {
-        final var xlsSeries = this.xls.getSeries();
-        final var indicator = getIndicator(xlsSeries, 1);
-        final var expected = this.xls.getIndicator(1);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+    series.advance();
+    assertEquals(3d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    value = indicator.getValue().doubleValue();
 
-        assertIndicatorEquals(expected, indicator);
-        assertEquals(4.8, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+    series.advance();
+    assertEquals(15d / 3 + (1 - 1d / 3) * value, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
-    @Test
-    public void testXls3() throws Exception {
-        final var xlsSeries = this.xls.getSeries();
-        final var indicator = getIndicator(xlsSeries, 3);
-        final var expected = this.xls.getIndicator(3);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
 
-        assertIndicatorEquals(expected, indicator);
-        assertEquals(7.4225, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+  @Test
+  public void testXls1() throws Exception {
+    final var xlsSeries = this.xls.getSeries();
+    final var indicator = getIndicator(xlsSeries, 1);
+    final var expected = this.xls.getIndicator(1);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
 
-    @Test
-    public void testXls13() throws Exception {
-        final var xlsSeries = this.xls.getSeries();
-        final var indicator = getIndicator(xlsSeries, 13);
-        final var expected = this.xls.getIndicator(13);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+    assertIndicatorEquals(expected, indicator);
+    assertEquals(4.8, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
-        assertIndicatorEquals(expected, indicator);
-        assertEquals(8.8082, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+
+  @Test
+  public void testXls3() throws Exception {
+    final var xlsSeries = this.xls.getSeries();
+    final var indicator = getIndicator(xlsSeries, 3);
+    final var expected = this.xls.getIndicator(3);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+
+    assertIndicatorEquals(expected, indicator);
+    assertEquals(7.4225, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
+
+
+  @Test
+  public void testXls13() throws Exception {
+    final var xlsSeries = this.xls.getSeries();
+    final var indicator = getIndicator(xlsSeries, 13);
+    final var expected = this.xls.getIndicator(13);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+
+    assertIndicatorEquals(expected, indicator);
+    assertEquals(8.8082, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
 }

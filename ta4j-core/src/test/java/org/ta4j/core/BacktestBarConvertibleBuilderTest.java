@@ -32,49 +32,47 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-@RunWith(Parameterized.class)
 public class BacktestBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BacktestBarConvertibleBuilderTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+  public BacktestBarConvertibleBuilderTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
 
-    @Test
-    public void testBuildBigDecimal() {
 
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        final Duration duration = Duration.between(beginTime, endTime);
+  @Test
+  public void testBuildBigDecimal() {
 
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        final var bar = series.barBuilder()
-                .timePeriod(duration)
-                .endTime(endTime)
-                .openPrice(BigDecimal.valueOf(101.0))
-                .highPrice(BigDecimal.valueOf(103))
-                .lowPrice(BigDecimal.valueOf(100))
-                .closePrice(BigDecimal.valueOf(102))
-                .trades(4)
-                .volume(BigDecimal.valueOf(40))
-                .amount(BigDecimal.valueOf(4020))
-                .build();
+    final var beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant();
+    final var endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault()).toInstant();
+    final var duration = Duration.between(beginTime, endTime);
 
-        assertEquals(duration, bar.timePeriod());
-        assertEquals(beginTime, bar.beginTime());
-        assertEquals(endTime, bar.endTime());
-        assertNumEquals(numOf(101.0), bar.openPrice());
-        assertNumEquals(numOf(103), bar.highPrice());
-        assertNumEquals(numOf(100), bar.lowPrice());
-        assertNumEquals(numOf(102), bar.closePrice());
-        assertEquals(4, bar.getTrades());
-        assertNumEquals(numOf(40), bar.volume());
-        assertNumEquals(numOf(4020), bar.getAmount());
-    }
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    final var bar = series.barBuilder()
+        .timePeriod(duration)
+        .endTime(endTime)
+        .openPrice(BigDecimal.valueOf(101.0))
+        .highPrice(BigDecimal.valueOf(103))
+        .lowPrice(BigDecimal.valueOf(100))
+        .closePrice(BigDecimal.valueOf(102))
+        .trades(4)
+        .volume(BigDecimal.valueOf(40))
+        .amount(BigDecimal.valueOf(4020))
+        .build();
+
+    assertEquals(duration, bar.timePeriod());
+    assertEquals(beginTime, bar.beginTime());
+    assertEquals(endTime, bar.endTime());
+    assertNumEquals(numOf(101.0), bar.openPrice());
+    assertNumEquals(numOf(103), bar.highPrice());
+    assertNumEquals(numOf(100), bar.lowPrice());
+    assertNumEquals(numOf(102), bar.closePrice());
+    assertEquals(4, bar.getTrades());
+    assertNumEquals(numOf(40), bar.volume());
+    assertNumEquals(numOf(4020), bar.getAmount());
+  }
 }

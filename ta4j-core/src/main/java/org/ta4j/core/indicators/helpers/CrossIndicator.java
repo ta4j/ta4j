@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
@@ -45,7 +43,7 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     /** Lower indicator */
     private final Indicator<Num> low;
     private Boolean value;
-    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private Instant currentTick = Instant.EPOCH;
 
     /**
      * Constructor.
@@ -71,7 +69,7 @@ public class CrossIndicator extends AbstractIndicator<Boolean> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
             this.low.refresh(tick);
             this.up.refresh(tick);

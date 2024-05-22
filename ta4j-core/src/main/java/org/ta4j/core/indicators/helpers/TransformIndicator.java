@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -44,7 +42,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
 
   private final Indicator<Num> indicator;
   private final UnaryOperator<Num> transformationFunction;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -73,7 +71,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.indicator.refresh(tick);
       this.value = calculate();

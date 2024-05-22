@@ -24,8 +24,7 @@
 package ta4jexamples.backtesting;
 
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
@@ -43,67 +42,82 @@ import org.ta4j.core.reports.TradingStatement;
 
 public class SimpleMovingAverageBacktest {
 
-    public static void main(String[] args) throws InterruptedException {
-        var series = createBarSeries();
+  public static void main(final String[] args) throws InterruptedException {
+    final var series = createBarSeries();
 
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        List<TradingStatement> tradingStatements = backtestExecutor.execute(
-            List.of(
+    final BacktestExecutor backtestExecutor = new BacktestExecutor(series);
+    final List<TradingStatement> tradingStatements = backtestExecutor.execute(
+        List.of(
             create2DaySmaStrategy(series),
-                create3DaySmaStrategy(series)
-            ),
-            DecimalNum.valueOf(50),
-                Trade.TradeType.BUY);
-        System.out.println(tradingStatements);
+            create3DaySmaStrategy(series)
+        ),
+        DecimalNum.valueOf(50),
+        Trade.TradeType.BUY
+    );
+    System.out.println(tradingStatements);
 
-        var criterion = new ReturnCriterion();
-        tradingStatements.stream()
-                .map(tradingStatement -> criterion.calculate(series, tradingStatement.getStrategy().getTradeRecord()))
-                .forEach(sum -> System.out.println(sum));
-    }
+    final var criterion = new ReturnCriterion();
+    tradingStatements.stream()
+        .map(tradingStatement -> criterion.calculate(series, tradingStatement.getStrategy().getTradeRecord()))
+        .forEach(sum -> System.out.println(sum));
+  }
 
-    private static BacktestBarSeries createBarSeries() {
-        var series = new BacktestBarSeriesBuilder().build();
-        series.addBar(createBar(series.barBuilder(), createDay(1), 100.0, 100.0, 100.0, 100.0, 1060));
-        series.addBar(createBar(series.barBuilder(), createDay(2), 110.0, 110.0, 110.0, 110.0, 1070));
-        series.addBar(createBar(series.barBuilder(), createDay(3), 140.0, 140.0, 140.0, 140.0, 1080));
-        series.addBar(createBar(series.barBuilder(), createDay(4), 119.0, 119.0, 119.0, 119.0, 1090));
-        series.addBar(createBar(series.barBuilder(), createDay(5), 100.0, 100.0, 100.0, 100.0, 1100));
-        series.addBar(createBar(series.barBuilder(), createDay(6), 110.0, 110.0, 110.0, 110.0, 1110));
-        series.addBar(createBar(series.barBuilder(), createDay(7), 120.0, 120.0, 120.0, 120.0, 1120));
-        series.addBar(createBar(series.barBuilder(), createDay(8), 130.0, 130.0, 130.0, 130.0, 1130));
-        return series;
-    }
 
-    private static BacktestBar createBar(
-        BacktestBarBuilder barBuilder, ZonedDateTime endTime,
-            Number openPrice, Number highPrice, Number lowPrice, Number closePrice, Number volume) {
-        return barBuilder.timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
-                .openPrice(openPrice)
-                .highPrice(highPrice)
-                .lowPrice(lowPrice)
-                .closePrice(closePrice)
-                .volume(volume)
-                .build();
-    }
+  private static BacktestBarSeries createBarSeries() {
+    final var series = new BacktestBarSeriesBuilder().build();
+    series.addBar(createBar(series.barBuilder(), createDay(1), 100.0, 100.0, 100.0, 100.0, 1060));
+    series.addBar(createBar(series.barBuilder(), createDay(2), 110.0, 110.0, 110.0, 110.0, 1070));
+    series.addBar(createBar(series.barBuilder(), createDay(3), 140.0, 140.0, 140.0, 140.0, 1080));
+    series.addBar(createBar(series.barBuilder(), createDay(4), 119.0, 119.0, 119.0, 119.0, 1090));
+    series.addBar(createBar(series.barBuilder(), createDay(5), 100.0, 100.0, 100.0, 100.0, 1100));
+    series.addBar(createBar(series.barBuilder(), createDay(6), 110.0, 110.0, 110.0, 110.0, 1110));
+    series.addBar(createBar(series.barBuilder(), createDay(7), 120.0, 120.0, 120.0, 120.0, 1120));
+    series.addBar(createBar(series.barBuilder(), createDay(8), 130.0, 130.0, 130.0, 130.0, 1130));
+    return series;
+  }
 
-    private static ZonedDateTime createDay(int day) {
-        return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
-    }
 
-    private static BacktestStrategy create3DaySmaStrategy(BacktestBarSeries series) {
-        var closePrice = NumericIndicator.closePrice(series);
-        var sma = closePrice.sma( 3);
-        return new BacktestStrategy("", sma.isLessThan(closePrice),
-                sma.isGreaterThan(closePrice));
-    }
+  private static BacktestBar createBar(
+      final BacktestBarBuilder barBuilder,
+      final Instant endTime,
+      final Number openPrice,
+      final Number highPrice,
+      final Number lowPrice,
+      final Number closePrice,
+      final Number volume
+  ) {
+    return barBuilder.timePeriod(Duration.ofDays(1))
+        .endTime(endTime)
+        .openPrice(openPrice)
+        .highPrice(highPrice)
+        .lowPrice(lowPrice)
+        .closePrice(closePrice)
+        .volume(volume)
+        .build();
+  }
 
-    private static BacktestStrategy create2DaySmaStrategy(BarSeries series) {
-        var closePrice = NumericIndicator.closePrice(series);
-        var sma = closePrice.sma( 2);
-        return new BacktestStrategy("",
-            sma.isLessThan(closePrice),
-                sma.isGreaterThan(closePrice));
-    }
+
+  private static Instant createDay(final int day) {
+    return Instant.EPOCH.plus(Duration.ofDays(day));
+  }
+
+
+  private static BacktestStrategy create3DaySmaStrategy(final BacktestBarSeries series) {
+    final var closePrice = NumericIndicator.closePrice(series);
+    final var sma = closePrice.sma(3);
+    return new BacktestStrategy("", sma.isLessThan(closePrice),
+        sma.isGreaterThan(closePrice)
+    );
+  }
+
+
+  private static BacktestStrategy create2DaySmaStrategy(final BarSeries series) {
+    final var closePrice = NumericIndicator.closePrice(series);
+    final var sma = closePrice.sma(2);
+    return new BacktestStrategy(
+        "",
+        sma.isLessThan(closePrice),
+        sma.isGreaterThan(closePrice)
+    );
+  }
 }

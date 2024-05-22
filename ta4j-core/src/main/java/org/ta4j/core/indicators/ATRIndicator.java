@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.average.MMAIndicator;
@@ -64,7 +64,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.averageTrueRangeIndicator.refresh(tick);
     }
 

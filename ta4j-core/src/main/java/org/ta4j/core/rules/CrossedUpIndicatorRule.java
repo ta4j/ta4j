@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
@@ -94,7 +94,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.cross.refresh(tick);
     }
 

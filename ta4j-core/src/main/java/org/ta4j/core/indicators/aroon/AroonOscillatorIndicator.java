@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.aroon;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -43,7 +41,7 @@ public class AroonOscillatorIndicator extends AbstractIndicator<Num> {
   private final int barCount;
   private final AroonUpIndicator aroonUpIndicator;
   private final AroonDownIndicator aroonDownIndicator;
-  private final ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -91,11 +89,12 @@ public class AroonOscillatorIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.aroonUpIndicator.refresh(tick);
       this.aroonDownIndicator.refresh(tick);
       this.value = calculate();
+      this.currentTick = tick;
     }
   }
 

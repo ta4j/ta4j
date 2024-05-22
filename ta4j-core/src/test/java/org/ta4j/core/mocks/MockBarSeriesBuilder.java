@@ -41,82 +41,92 @@ import org.ta4j.core.num.NumFactory;
  */
 public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
 
-    private List<Double> data;
-    private boolean defaultData;
-    private boolean strategy;
+  private List<Double> data;
+  private boolean defaultData;
+  private boolean strategy;
 
-    public MockBarSeriesBuilder withNumFactory(final NumFactory numFactory) {
-        super.withNumFactory(numFactory);
-        return this;
-    }
 
-    /**
-     * Generates bars with given close prices.
-     *
-     * @param data close prices
-     * @return this
-     */
-    public MockBarSeriesBuilder withData(final List<Double> data) {
-        this.data = data;
-        return this;
-    }
+  public MockBarSeriesBuilder withNumFactory(final NumFactory numFactory) {
+    super.withNumFactory(numFactory);
+    return this;
+  }
 
-    /**
-     * Generates bars with given close prices.
-     *
-     * @param data close prices
-     * @return this
-     */
-    public MockBarSeriesBuilder withData(final double... data) {
-        withData(DoubleStream.of(data).boxed().collect(Collectors.toList()));
-        return this;
-    }
 
-    private static void doublesToBars(final BacktestBarSeries series, final List<Double> data) {
-        for (int i = 0; i < data.size(); i++) {
-            series.barBuilder().closePrice(data.get(i)).openPrice(0).add();
-        }
-    }
+  /**
+   * Generates bars with given close prices.
+   *
+   * @param data close prices
+   *
+   * @return this
+   */
+  public MockBarSeriesBuilder withData(final List<Double> data) {
+    this.data = data;
+    return this;
+  }
 
-    public MockBarSeriesBuilder withDefaultData() {
-        this.defaultData = true;
-        return this;
-    }
 
-    public MockBarSeriesBuilder withStrategyFactory(final StrategyFactory strategyFactory) {
-        this.strategy = true;
-        super.withStrategyFactory(strategyFactory);
-        return this;
-    }
+  /**
+   * Generates bars with given close prices.
+   *
+   * @param data close prices
+   *
+   * @return this
+   */
+  public MockBarSeriesBuilder withData(final double... data) {
+    withData(DoubleStream.of(data).boxed().collect(Collectors.toList()));
+    return this;
+  }
 
-    private static void arbitraryBars(final BacktestBarSeries series) {
-        for (double i = 0d; i < 5000; i++) {
-            series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusMinutes((long) (5001 - i)))
-                    .openPrice(i)
-                    .closePrice(i + 1)
-                    .highPrice(i + 2)
-                    .lowPrice(i + 3)
-                    .volume(i + 4)
-                    .amount(i + 5)
-                    .trades((int) (i + 6))
-                    .add();
-        }
-    }
 
-    @Override
-    public BacktestBarSeries build() {
-        withBarBuilderFactory(new MockBarBuilderFactory());
-        if (!this.strategy) {
-            withStrategyFactory(x -> new MockStrategy(new MockRule(List.of())));
-        }
-        final var series = super.build();
-        if (this.data != null) {
-            doublesToBars(series, this.data);
-        }
-        if (this.defaultData) {
-            arbitraryBars(series);
-        }
-        return series;
+  private static void doublesToBars(final BacktestBarSeries series, final List<Double> data) {
+    for (int i = 0; i < data.size(); i++) {
+      series.barBuilder().closePrice(data.get(i)).openPrice(0).add();
     }
+  }
+
+
+  public MockBarSeriesBuilder withDefaultData() {
+    this.defaultData = true;
+    return this;
+  }
+
+
+  public MockBarSeriesBuilder withStrategyFactory(final StrategyFactory strategyFactory) {
+    this.strategy = true;
+    super.withStrategyFactory(strategyFactory);
+    return this;
+  }
+
+
+  private static void arbitraryBars(final BacktestBarSeries series) {
+    for (double i = 0d; i < 5000; i++) {
+      series.barBuilder()
+          .endTime(ZonedDateTime.now().minusMinutes((long) (5001 - i)).toInstant())
+          .openPrice(i)
+          .closePrice(i + 1)
+          .highPrice(i + 2)
+          .lowPrice(i + 3)
+          .volume(i + 4)
+          .amount(i + 5)
+          .trades((int) (i + 6))
+          .add();
+    }
+  }
+
+
+  @Override
+  public BacktestBarSeries build() {
+    withBarBuilderFactory(new MockBarBuilderFactory());
+    if (!this.strategy) {
+      withStrategyFactory(x -> new MockStrategy(new MockRule(List.of())));
+    }
+    final var series = super.build();
+    if (this.data != null) {
+      doublesToBars(series, this.data);
+    }
+    if (this.defaultData) {
+      arbitraryBars(series);
+    }
+    return series;
+  }
 }

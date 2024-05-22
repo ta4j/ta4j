@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 /**
  * A {@code Strategy} (also called "trading strategy") is a pair of
@@ -57,7 +57,7 @@ public interface Strategy {
      *
      * @param tick current time
      */
-    void refresh(ZonedDateTime tick);
+    void refresh(Instant tick);
 
     /**
      * @return true if this strategy is stable at current moment, false otherwise

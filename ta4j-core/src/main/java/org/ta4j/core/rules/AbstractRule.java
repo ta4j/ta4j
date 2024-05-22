@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public abstract class AbstractRule implements Rule {
     /** The class name */
     private final String className = getClass().getSimpleName();
 
-    private ZonedDateTime currentTick;
+    private Instant currentTick;
 
     /**
      * Traces the {@code isSatisfied()} method calls.
@@ -53,7 +53,7 @@ public abstract class AbstractRule implements Rule {
         }
     }
 
-    protected void setCurrentTick(final ZonedDateTime currentTick) {
+    protected void setCurrentTick(final Instant currentTick) {
         this.currentTick = currentTick;
     }
 }

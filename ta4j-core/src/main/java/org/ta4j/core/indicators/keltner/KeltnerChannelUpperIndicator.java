@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.keltner;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -43,7 +41,7 @@ public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
   private final ATRIndicator averageTrueRangeIndicator;
   private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
   private final Num ratio;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -95,7 +93,7 @@ public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.keltnerMiddleIndicator.refresh(tick);
       this.averageTrueRangeIndicator.refresh(tick);

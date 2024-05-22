@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import org.ta4j.core.indicators.Indicator;
@@ -46,7 +46,7 @@ public class MockRule implements Rule {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.indicators.forEach(indicator -> indicator.refresh(tick));
     }
 

@@ -24,7 +24,8 @@
 package org.ta4j.core;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 import org.ta4j.core.num.Num;
@@ -35,84 +36,85 @@ import org.ta4j.core.num.Num;
  */
 public interface Bar {
 
-    /**
-     * @return the time period of the bar
-     */
-    Duration timePeriod();
+  /**
+   * @return the time period of the bar
+   */
+  Duration timePeriod();
 
-    /**
-     * @return the begin timestamp of the bar period
-     */
-    ZonedDateTime beginTime();
+  /**
+   * @return the begin timestamp of the bar period
+   */
+  Instant beginTime();
 
-    /**
-     * @return the end timestamp of the bar period
-     */
-    ZonedDateTime endTime();
+  /**
+   * @return the end timestamp of the bar period
+   */
+  Instant endTime();
 
-    /**
-     * @return the open price of the bar period
-     */
-    Num openPrice();
+  /**
+   * @return the open price of the bar period
+   */
+  Num openPrice();
 
-    /**
-     * @return the high price of the bar period
-     */
-    Num highPrice();
+  /**
+   * @return the high price of the bar period
+   */
+  Num highPrice();
 
-    /**
-     * @return the low price of the bar period
-     */
-    Num lowPrice();
+  /**
+   * @return the low price of the bar period
+   */
+  Num lowPrice();
 
-    /**
-     * @return the close price of the bar period
-     */
-    Num closePrice();
+  /**
+   * @return the close price of the bar period
+   */
+  Num closePrice();
 
-    /**
-     * @return the total traded volume of the bar period
-     */
-    Num volume();
+  /**
+   * @return the total traded volume of the bar period
+   */
+  Num volume();
 
-    /**
-     * @param timestamp a timestamp
-     * @return true if the provided timestamp is between the begin time and the end
-     *         time of the current period, false otherwise
-     */
-    default boolean inPeriod(ZonedDateTime timestamp) {
-        return timestamp != null && !timestamp.isBefore(beginTime()) && timestamp.isBefore(endTime());
-    }
+  /**
+   * @param timestamp a timestamp
+   *
+   * @return true if the provided timestamp is between the begin time and the end
+   *     time of the current period, false otherwise
+   */
+  default boolean inPeriod(final Instant timestamp) {
+    return timestamp != null && !timestamp.isBefore(beginTime()) && timestamp.isBefore(endTime());
+  }
 
-    /**
-     * @return a human-friendly string of the end timestamp
-     */
-    default String getDateName() {
-        return endTime().format(DateTimeFormatter.ISO_DATE_TIME);
-    }
+  /**
+   * @return a human-friendly string of the end timestamp
+   */
+  default String getDateName() {
+    return endTime().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE_TIME);
+  }
 
-    /**
-     * @return a even more human-friendly string of the end timestamp
-     */
-    default String getSimpleDateName() {
-        return endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    }
+  /**
+   * @return a even more human-friendly string of the end timestamp
+   */
+  default String getSimpleDateName() {
+    return endTime().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+  }
 
-    /**
-     * @return true if this is a bearish bar, false otherwise
-     */
-    default boolean isBearish() {
-        Num openPrice = openPrice();
-        Num closePrice = closePrice();
-        return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
-    }
+  /**
+   * @return true if this is a bearish bar, false otherwise
+   */
+  default boolean isBearish() {
+    final Num openPrice = openPrice();
+    final Num closePrice = closePrice();
+    return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
+  }
 
-    /**
-     * @return true if this is a bullish bar, false otherwise
-     */
-    default boolean isBullish() {
-        Num openPrice = openPrice();
-        Num closePrice = closePrice();
-        return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
-    }
+  /**
+   * @return true if this is a bullish bar, false otherwise
+   */
+  default boolean isBullish() {
+    final Num openPrice = openPrice();
+    final Num closePrice = closePrice();
+    return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
+  }
 }

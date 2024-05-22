@@ -45,9 +45,9 @@ public class BacktestBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num
 
     @Test
     public void testBuildBar() {
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        final Duration duration = Duration.between(beginTime, endTime);
+        final var beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant();
+        final var endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault()).toInstant();
+        final var duration = Duration.between(beginTime, endTime);
 
         final BacktestBar bar = new BacktestBarBuilder(new MockBarSeriesBuilder().build()).timePeriod(duration)
                 .endTime(endTime)

@@ -25,45 +25,44 @@ package ta4jexamples.loaders.jsonhelper;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarSeries;
 
 public class GsonBarData {
-    private long endTime;
-    private Number openPrice;
-    private Number highPrice;
-    private Number lowPrice;
-    private Number closePrice;
-    private Number volume;
-    private Number amount;
+  private long endTime;
+  private Number openPrice;
+  private Number highPrice;
+  private Number lowPrice;
+  private Number closePrice;
+  private Number volume;
+  private Number amount;
 
-    public static GsonBarData from(final BacktestBar bar) {
-        final var result = new GsonBarData();
-        result.endTime = bar.endTime().toInstant().toEpochMilli();
-        result.openPrice = bar.openPrice().getDelegate();
-        result.highPrice = bar.highPrice().getDelegate();
-        result.lowPrice = bar.lowPrice().getDelegate();
-        result.closePrice = bar.closePrice().getDelegate();
-        result.volume = bar.volume().getDelegate();
-        result.amount = bar.getAmount().getDelegate();
-        return result;
-    }
 
-    public void addTo(final BacktestBarSeries barSeries) {
-        final var endTimeInstant = Instant.ofEpochMilli(this.endTime);
-        final var endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
-        barSeries.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endBarTime)
-                .openPrice(this.openPrice)
-                .highPrice(this.highPrice)
-                .lowPrice(this.lowPrice)
-                .closePrice(this.closePrice)
-                .volume(this.volume)
-                .amount(this.amount)
-                .add();
-    }
+  public static GsonBarData from(final BacktestBar bar) {
+    final var result = new GsonBarData();
+    result.endTime = bar.endTime().toEpochMilli();
+    result.openPrice = bar.openPrice().getDelegate();
+    result.highPrice = bar.highPrice().getDelegate();
+    result.lowPrice = bar.lowPrice().getDelegate();
+    result.closePrice = bar.closePrice().getDelegate();
+    result.volume = bar.volume().getDelegate();
+    result.amount = bar.getAmount().getDelegate();
+    return result;
+  }
+
+
+  public void addTo(final BacktestBarSeries barSeries) {
+    final var endTimeInstant = Instant.ofEpochMilli(this.endTime);
+    barSeries.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTimeInstant)
+        .openPrice(this.openPrice)
+        .highPrice(this.highPrice)
+        .lowPrice(this.lowPrice)
+        .closePrice(this.closePrice)
+        .volume(this.volume)
+        .amount(this.amount)
+        .add();
+  }
 }

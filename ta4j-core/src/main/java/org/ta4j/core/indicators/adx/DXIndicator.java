@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.adx;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -41,7 +39,7 @@ public class DXIndicator extends AbstractIndicator<Num> {
 
     private final PlusDIIndicator plusDIIndicator;
     private final MinusDIIndicator minusDIIndicator;
-    private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+    private Instant currentTick = Instant.EPOCH;
     private Num value;
 
     /**
@@ -75,7 +73,7 @@ public class DXIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
             this.plusDIIndicator.refresh(tick);
             this.minusDIIndicator.refresh(tick);

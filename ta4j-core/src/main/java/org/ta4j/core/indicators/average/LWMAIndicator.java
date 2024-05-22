@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -47,7 +45,7 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
   private final CircularNumArray values;
   private final ArrayList<Num> weights;
   private final Num denominator;
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -104,7 +102,7 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.indicator.refresh(tick);
       this.value = calculate();

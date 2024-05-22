@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
@@ -65,7 +65,7 @@ public class BollingerBandsMiddleIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     this.indicator.refresh(tick);
   }
 

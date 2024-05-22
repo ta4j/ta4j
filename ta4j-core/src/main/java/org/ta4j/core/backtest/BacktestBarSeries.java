@@ -23,7 +23,8 @@
  */
 package org.ta4j.core.backtest;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -263,7 +264,7 @@ public class BacktestBarSeries implements BarSeries {
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
-            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).endTime();
+            final Instant seriesEndTime = this.bars.get(lastBarIndex).endTime();
             if (!bar.endTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
@@ -374,9 +375,9 @@ public class BacktestBarSeries implements BarSeries {
         if (!getBarData().isEmpty()) {
             final Bar firstBar = getFirstBar();
             final Bar lastBar = getLastBar();
-            sb.append(firstBar.endTime().format(DateTimeFormatter.ISO_DATE_TIME))
+            sb.append(firstBar.endTime().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE_TIME))
                 .append(" - ")
-                .append(lastBar.endTime().format(DateTimeFormatter.ISO_DATE_TIME));
+                .append(lastBar.endTime().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE_TIME));
         }
         return sb.toString();
     }

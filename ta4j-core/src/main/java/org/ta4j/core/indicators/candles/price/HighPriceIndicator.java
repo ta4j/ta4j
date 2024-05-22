@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.candles.price;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -58,7 +58,7 @@ public class HighPriceIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         // NOOP
     }
 }

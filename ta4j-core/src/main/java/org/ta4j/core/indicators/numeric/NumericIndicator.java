@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
@@ -415,7 +415,7 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         this.delegate.refresh(tick);
     }
 

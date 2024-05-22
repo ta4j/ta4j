@@ -24,7 +24,7 @@
 package ta4jexamples.barSeries;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,153 +36,163 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 
 public class BuildBarSeries {
-    private static final Logger LOG = LoggerFactory.getLogger(BuildBarSeries.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BuildBarSeries.class);
 
-    /**
-     * Calls different functions that shows how a BacktestBarSeries could be created
-     * and how Bars could be added
-     *
-     * @param args command line arguments (ignored)
-     */
-    @SuppressWarnings("unused")
-    public static void main(String[] args) {
-        BarSeries a = buildAndAddData();
-        LOG.info("a: {}", a.getBar().closePrice().getName());
-        a = buildAndAddData();
-        LOG.info("a: {}", a.getBar().closePrice().getName());
-        BarSeries b = buildWithDouble();
-        BarSeries c = buildWithBigDecimal();
-        BarSeries d = buildManually();
-        BarSeries e = buildManuallyDoubleNum();
-        BarSeries f = buildManuallyAndAddBarManually();
-    }
 
-    private static BarSeries buildAndAddData() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries").build();
+  /**
+   * Calls different functions that shows how a BacktestBarSeries could be created
+   * and how Bars could be added
+   *
+   * @param args command line arguments (ignored)
+   */
+  @SuppressWarnings("unused")
+  public static void main(final String[] args) {
+    var a = buildAndAddData();
+    a.advance();
+    LOG.info("a: {}", a.getBar().closePrice().getName());
+    a = buildAndAddData();
+    a.advance();
+    LOG.info("a: {}", a.getBar().closePrice().getName());
+    final BarSeries b = buildWithDouble();
+    final BarSeries c = buildWithBigDecimal();
+    final BarSeries d = buildManually();
+    final BarSeries e = buildManuallyDoubleNum();
+    final BarSeries f = buildManuallyAndAddBarManually();
+  }
 
-        var endTime = ZonedDateTime.now();
-        // ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
-        // Number closePrice, volume
-        addBars(series, endTime);
 
-        return series;
-    }
+  private static BacktestBarSeries buildAndAddData() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries").build();
 
-    private static void addBars(final BacktestBarSeries series, final ZonedDateTime endTime) {
-        series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
-                .openPrice(105.42)
-                .highPrice(112.99)
-                .lowPrice(104.01)
-                .closePrice(111.42)
-                .volume(1337)
-                .add();
-        series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(1))
-                .openPrice(111.43)
-                .highPrice(112.83)
-                .lowPrice(107.77)
-                .closePrice(107.99)
-                .volume(1234)
-                .add();
-        series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(2))
-                .openPrice(107.90)
-                .highPrice(117.50)
-                .lowPrice(107.90)
-                .closePrice(115.42)
-                .volume(4242)
-                .add();
-    }
+    final Instant endTime = Instant.now();
+    // ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
+    // Number closePrice, volume
+    addBars(series, endTime);
 
-    private static BarSeries buildWithDouble() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries")
-                .withNumFactory(DoubleNumFactory.getInstance())
-                .build();
+    return series;
+  }
 
-        var endTime = ZonedDateTime.now();
-        addBars(series, endTime);
 
-        return series;
-    }
+  private static void addBars(final BacktestBarSeries series, final Instant endTime) {
+    series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime)
+        .openPrice(105.42)
+        .highPrice(112.99)
+        .lowPrice(104.01)
+        .closePrice(111.42)
+        .volume(1337)
+        .add();
+    series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime.plus(Duration.ofDays(1)))
+        .openPrice(111.43)
+        .highPrice(112.83)
+        .lowPrice(107.77)
+        .closePrice(107.99)
+        .volume(1234)
+        .add();
+    series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime.plus(Duration.ofDays(2)))
+        .openPrice(107.90)
+        .highPrice(117.50)
+        .lowPrice(107.90)
+        .closePrice(115.42)
+        .volume(4242)
+        .add();
+  }
 
-    private static BarSeries buildWithBigDecimal() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries")
-                .withNumFactory(DecimalNumFactory.getInstance())
-                .build();
 
-        ZonedDateTime endTime = ZonedDateTime.now();
-        addBars(series, endTime);
-        // ...
+  private static BarSeries buildWithDouble() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries")
+        .withNumFactory(DoubleNumFactory.getInstance())
+        .build();
 
-        return series;
-    }
+    final Instant endTime = Instant.now();
+    addBars(series, endTime);
 
-    private static BarSeries buildManually() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries").build(); // uses BigDecimalNum
+    return series;
+  }
 
-        ZonedDateTime endTime = ZonedDateTime.now();
-        addBars(series, endTime);
-        // ...
 
-        return series;
-    }
+  private static BarSeries buildWithBigDecimal() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries")
+        .withNumFactory(DecimalNumFactory.getInstance())
+        .build();
 
-    private static BarSeries buildManuallyDoubleNum() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries")
-                .withNumFactory(DoubleNumFactory.getInstance())
-                .build();
-        ZonedDateTime endTime = ZonedDateTime.now();
-        addBars(series, endTime);
-        // ...
+    final Instant endTime = Instant.now();
+    addBars(series, endTime);
+    // ...
 
-        return series;
-    }
+    return series;
+  }
 
-    private static BarSeries buildManuallyAndAddBarManually() {
-        var series = new BacktestBarSeriesBuilder().withName("mySeries")
-                .withNumFactory(DoubleNumFactory.getInstance())
-                .build();
 
-        // create bars and add them to the series. The bars have the same Num type
-        // as the series
-        ZonedDateTime endTime = ZonedDateTime.now();
-        Bar b1 = series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
-                .openPrice(105.42)
-                .highPrice(112.99)
-                .lowPrice(104.01)
-                .closePrice(111.42)
-                .volume(1337.0)
-                .build();
-        Bar b2 = series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(1))
-                .openPrice(111.43)
-                .highPrice(112.83)
-                .lowPrice(107.77)
-                .closePrice(107.99)
-                .volume(1234.0)
-                .build();
-        Bar b3 = series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(2))
-                .openPrice(107.90)
-                .highPrice(117.50)
-                .lowPrice(107.90)
-                .closePrice(115.42)
-                .volume(4242.0)
-                .build();
-        // ...
+  private static BarSeries buildManually() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries").build(); // uses BigDecimalNum
 
-        series.addBar(b1);
-        series.addBar(b2);
-        series.addBar(b3);
+    final Instant endTime = Instant.now();
+    addBars(series, endTime);
+    // ...
 
-        return series;
-    }
+    return series;
+  }
+
+
+  private static BarSeries buildManuallyDoubleNum() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries")
+        .withNumFactory(DoubleNumFactory.getInstance())
+        .build();
+    final Instant endTime = Instant.now();
+    addBars(series, endTime);
+    // ...
+
+    return series;
+  }
+
+
+  private static BarSeries buildManuallyAndAddBarManually() {
+    final var series = new BacktestBarSeriesBuilder().withName("mySeries")
+        .withNumFactory(DoubleNumFactory.getInstance())
+        .build();
+
+    // create bars and add them to the series. The bars have the same Num type
+    // as the series
+    final Instant endTime = Instant.now();
+    final Bar b1 = series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime)
+        .openPrice(105.42)
+        .highPrice(112.99)
+        .lowPrice(104.01)
+        .closePrice(111.42)
+        .volume(1337.0)
+        .build();
+    final Bar b2 = series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime.plus(Duration.ofDays(1)))
+        .openPrice(111.43)
+        .highPrice(112.83)
+        .lowPrice(107.77)
+        .closePrice(107.99)
+        .volume(1234.0)
+        .build();
+    final Bar b3 = series.barBuilder()
+        .timePeriod(Duration.ofDays(1))
+        .endTime(endTime.plus(Duration.ofDays(2)))
+        .openPrice(107.90)
+        .highPrice(117.50)
+        .lowPrice(107.90)
+        .closePrice(115.42)
+        .volume(4242.0)
+        .build();
+    // ...
+
+    series.addBar(b1);
+    series.addBar(b2);
+    series.addBar(b3);
+
+    return series;
+  }
 }

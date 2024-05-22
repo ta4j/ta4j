@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.numeric;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.function.UnaryOperator;
 
 import org.ta4j.core.BarSeries;
@@ -39,7 +37,7 @@ import org.ta4j.core.num.Num;
  */
 public class UnaryOperation implements Indicator<Num> {
 
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -101,7 +99,7 @@ public class UnaryOperation implements Indicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.operand.refresh(tick);
       this.value = calculate();

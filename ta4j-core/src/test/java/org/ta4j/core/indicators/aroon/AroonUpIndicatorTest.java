@@ -27,7 +27,6 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.junit.Before;
@@ -124,7 +123,6 @@ public class AroonUpIndicatorTest {
     final var series = new MockBarSeriesBuilder().withName("NaN test").build();
     for (long i = 0; i <= 1000; i++) {
       series.barBuilder()
-          .endTime(ZonedDateTime.now().plusDays(i))
           .openPrice(NaN)
           .closePrice(NaN)
           .highPrice(NaN)
@@ -148,7 +146,6 @@ public class AroonUpIndicatorTest {
     for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
       final Num highPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
       series.barBuilder()
-          .endTime(ZonedDateTime.now().plusDays(i))
           .openPrice(NaN)
           .closePrice(NaN)
           .highPrice(highPrice)

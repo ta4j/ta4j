@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators.candles;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
@@ -44,7 +42,7 @@ import org.ta4j.core.num.Num;
  */
 public class RealBodyIndicator extends AbstractIndicator<Num> {
 
-  private ZonedDateTime currentTick = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
+  private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
@@ -71,7 +69,7 @@ public class RealBodyIndicator extends AbstractIndicator<Num> {
 
 
   @Override
-  public void refresh(final ZonedDateTime tick) {
+  public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       this.value = calculate();
       this.currentTick = tick;

@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.mocks;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
@@ -68,7 +68,7 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     @Override
-    public void refresh(final ZonedDateTime tick) {
+    public void refresh(final Instant tick) {
         ++this.currentIndex;
     }
 
