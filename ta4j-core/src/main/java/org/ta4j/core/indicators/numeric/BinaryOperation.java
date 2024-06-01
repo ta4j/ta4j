@@ -26,8 +26,6 @@ package org.ta4j.core.indicators.numeric;
 import java.time.Instant;
 import java.util.function.BinaryOperator;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,16 +36,21 @@ import org.ta4j.core.num.Num;
  * {@link org.ta4j.core.indicators.helpers.CombineIndicator CombineIndicator};
  * it doesn't cache.
  */
-public class BinaryOperation implements Indicator<Num> {
+public class BinaryOperation extends NumericIndicator {
 
   private final BinaryOperator<Num> operator;
-  private final Indicator<Num> left;
-  private final Indicator<Num> right;
+  private final NumericIndicator left;
+  private final NumericIndicator right;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
 
 
-  private BinaryOperation(final BinaryOperator<Num> operator, final Indicator<Num> left, final Indicator<Num> right) {
+  private BinaryOperation(
+      final BinaryOperator<Num> operator,
+      final NumericIndicator left,
+      final NumericIndicator right
+  ) {
+    super(left.getNumFactory());
     this.operator = operator;
     this.left = left;
     this.right = right;
@@ -64,7 +67,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#plus
    */
-  public static BinaryOperation sum(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation sum(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::plus, left, right);
   }
 
@@ -79,7 +82,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#minus
    */
-  public static BinaryOperation difference(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation difference(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::minus, left, right);
   }
 
@@ -94,7 +97,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#multipliedBy
    */
-  public static BinaryOperation product(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation product(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::multipliedBy, left, right);
   }
 
@@ -109,7 +112,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#dividedBy
    */
-  public static BinaryOperation quotient(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation quotient(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::dividedBy, left, right);
   }
 
@@ -126,7 +129,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#min
    */
-  public static BinaryOperation min(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation min(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::min, left, right);
   }
 
@@ -143,7 +146,7 @@ public class BinaryOperation implements Indicator<Num> {
    *
    * @see Num#max
    */
-  public static BinaryOperation max(final Indicator<Num> left, final Indicator<Num> right) {
+  public static BinaryOperation max(final NumericIndicator left, final NumericIndicator right) {
     return new BinaryOperation(Num::max, left, right);
   }
 
@@ -158,12 +161,6 @@ public class BinaryOperation implements Indicator<Num> {
   @Override
   public Num getValue() {
     return this.value;
-  }
-
-
-  @Override
-  public BarSeries getBarSeries() {
-    return this.left.getBarSeries();
   }
 
 

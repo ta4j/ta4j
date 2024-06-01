@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -29,22 +29,23 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import java.util.List;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
+import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class ATRIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private final ExternalIndicatorTest xls;
 
 
   public ATRIndicatorTest(final NumFactory numFactory) {
-    super((data, params) -> new ATRIndicator(data, (int) params[0]), numFactory);
+    super(numFactory);
     this.xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFactory);
   }
 
@@ -96,7 +97,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         .amount(0)
         .trades(0)
         .add();
-    final Indicator<Num> indicator = getIndicator(series, 3);
+    final var indicator = NumericIndicator.atr(series, 3);
     series.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
     series.advance();
@@ -123,11 +124,11 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
   @Test
   public void testXls1() throws Exception {
     final var xlsSeries = this.xls.getSeries();
-    final var indicator = getIndicator(xlsSeries, 1);
+    final var indicator = NumericIndicator.atr(xlsSeries, 1);
     final var expected = this.xls.getIndicator(1);
     xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
 
-    assertIndicatorEquals(expected, indicator);
+    assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(4.8, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
   }
 
@@ -135,11 +136,11 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
   @Test
   public void testXls3() throws Exception {
     final var xlsSeries = this.xls.getSeries();
-    final var indicator = getIndicator(xlsSeries, 3);
+    final var indicator = NumericIndicator.atr(xlsSeries, 3);
     final var expected = this.xls.getIndicator(3);
     xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
 
-    assertIndicatorEquals(expected, indicator);
+    assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(7.4225, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
   }
 
@@ -147,11 +148,11 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
   @Test
   public void testXls13() throws Exception {
     final var xlsSeries = this.xls.getSeries();
-    final var indicator = getIndicator(xlsSeries, 13);
+    final var indicator = NumericIndicator.atr(xlsSeries, 13);
     final var expected = this.xls.getIndicator(13);
     xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
 
-    assertIndicatorEquals(expected, indicator);
+    assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(8.8082, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
   }
 

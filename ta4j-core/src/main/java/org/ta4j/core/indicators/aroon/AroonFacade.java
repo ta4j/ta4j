@@ -36,8 +36,8 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
  */
 public class AroonFacade {
 
-    private final NumericIndicator up;
-    private final NumericIndicator down;
+    private final AroonUpIndicator up;
+    private final AroonDownIndicator down;
 
     /**
      * Create the Aroon facade.
@@ -46,8 +46,8 @@ public class AroonFacade {
      * @param barCount the number of periods used for the indicators
      */
     public AroonFacade(final BarSeries series, final int barCount) {
-        this.up = NumericIndicator.of(new AroonUpIndicator(series, barCount));
-        this.down = NumericIndicator.of(new AroonDownIndicator(series, barCount));
+        this.up = new AroonUpIndicator(series, barCount);
+        this.down = new AroonDownIndicator(series, barCount);
     }
 
     /**
@@ -55,7 +55,7 @@ public class AroonFacade {
      *
      * @return a NumericIndicator wrapped around a cached AroonUpIndicator
      */
-    public NumericIndicator up() {
+    public AroonUpIndicator up() {
         return this.up;
     }
 
@@ -64,7 +64,7 @@ public class AroonFacade {
      *
      * @return a NumericIndicator wrapped around a cached AroonDownIndicator
      */
-    public NumericIndicator down() {
+    public AroonDownIndicator down() {
         return this.down;
     }
 

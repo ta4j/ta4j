@@ -27,7 +27,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedBooleanIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
@@ -40,7 +40,7 @@ import org.ta4j.core.utils.CircularIndicatorArray;
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
  *     http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
-public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
+public class ThreeBlackCrowsIndicator extends SeriesRelatedBooleanIndicator {
 
   /** Lower shadow. */
   private final CircularIndicatorArray lowerShadows = new CircularIndicatorArray(3);
@@ -71,7 +71,7 @@ public class ThreeBlackCrowsIndicator extends AbstractIndicator<Boolean> {
     this.lowerShadows.addLast(new PreviousValueIndicator(lowerShadowIndicator, 2));
     this.lowerShadows.addLast(new PreviousValueIndicator(lowerShadowIndicator, 1));
     this.averageLowerShadowInd = new PreviousValueIndicator(new SMAIndicator(lowerShadowIndicator, barCount), 4);
-    this.factor = getBarSeries().numFactory().numOf(factor);
+    this.factor = series.numFactory().numOf(factor);
   }
 
 

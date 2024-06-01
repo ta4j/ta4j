@@ -31,12 +31,12 @@
 //import org.ta4j.core.num.Num;
 //
 //public class ConstantIndicatorTest {
-//    private ConstantIndicator<Num> constantIndicator;
+//    private ConstantNumericIndicator<Num> constantIndicator;
 //
 //    @Before
 //    public void setUp() {
 //        var series = new MockBarSeriesBuilder().build();
-//        constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(30.33));
+//        constantIndicator = new ConstantNumericIndicator<>(series, series.numFactory().numOf(30.33));
 //    }
 //
 //    @Test

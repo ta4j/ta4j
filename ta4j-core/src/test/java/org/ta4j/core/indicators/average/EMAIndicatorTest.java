@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -25,7 +25,8 @@ package org.ta4j.core.indicators.average;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNext;
+import static org.ta4j.core.TestUtils.fastForward;
 
 import java.util.List;
 
@@ -34,90 +35,92 @@ import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
+import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class EMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private final ExternalIndicatorTest xls;
+  private final ExternalIndicatorTest xls;
 
-    public EMAIndicatorTest(final NumFactory numFactory) {
-        super((data, params) -> new EMAIndicator(data, (int) params[0]), numFactory);
-        this.xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6, numFactory);
-    }
 
-    private BacktestBarSeries data;
+  public EMAIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+    this.xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6, numFactory);
+  }
 
-    @Before
-    public void setUp() {
-        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
-                .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
-                .build();
-    }
 
-    @Test
-    public void firstValueShouldBeEqualsToFirstDataValue() {
-        final Indicator<Num> indicator = getIndicator(NumericIndicator.closePrice(this.data), 1);
-        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
-        this.data.advance();
-        assertNumEquals(64.75, indicator.getValue());
-    }
+  private BacktestBarSeries data;
 
-    @Test
-    public void usingBarCount10UsingClosePrice() {
-        final Indicator<Num> indicator = getIndicator(NumericIndicator.closePrice(this.data), 10);
-        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
-        for (int i = 0; i < 10; i++) {
-            this.data.advance();
-        }
-        assertNumEquals(63.6948, indicator.getValue());
-        this.data.advance();
-        assertNumEquals(63.2648, indicator.getValue());
-        this.data.advance();
-        assertNumEquals(62.9457, indicator.getValue());
-    }
 
-    @Test
-    public void externalData1() throws Exception {
-        final BacktestBarSeries xlsSeries = this.xls.getSeries();
-        final var closePrice = NumericIndicator.closePrice(xlsSeries);
-        final var indicator = getIndicator(closePrice, 1);
-        final var expectedIndicator = this.xls.getIndicator(1);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
+        .build();
+  }
 
-        assertIndicatorEquals(expectedIndicator, indicator);
-        assertEquals(329.0, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
 
-    @Test
-    public void externalData3() throws Exception {
-        final BacktestBarSeries xlsSeries = this.xls.getSeries();
-        final var closePrice = NumericIndicator.closePrice(xlsSeries);
-        final var indicator = getIndicator(closePrice, 3);
-        final var expectedIndicator = this.xls.getIndicator(3);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+  @Test
+  public void firstValueShouldBeEqualsToFirstDataValue() {
+    final var indicator = NumericIndicator.closePrice(this.data).ema(1);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
 
-        assertIndicatorEquals(expectedIndicator, indicator);
-        assertEquals(327.7748, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+    assertNext(this.data, 64.75, indicator);
+  }
 
-    @Test
-    public void externalData13() throws Exception {
-        final BacktestBarSeries xlsSeries = this.xls.getSeries();
-        final var closePrice = NumericIndicator.closePrice(xlsSeries);
-        final var indicator = getIndicator(closePrice, 13);
-        final var expectedIndicator = this.xls.getIndicator(13);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
 
-        assertIndicatorEquals(expectedIndicator, indicator);
-        assertEquals(327.4076, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+  @Test
+  public void usingBarCount10UsingClosePrice() {
+    final var indicator = NumericIndicator.closePrice(this.data).ema(10);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+
+    fastForward(this.data, 10);
+    assertNext(this.data, 63.6948, indicator);
+    assertNext(this.data, 63.2648, indicator);
+    assertNext(this.data, 62.9457, indicator);
+  }
+
+
+  @Test
+  public void externalData1() throws Exception {
+    final BacktestBarSeries xlsSeries = this.xls.getSeries();
+    final var indicator = NumericIndicator.closePrice(xlsSeries).ema(1);
+    final var expectedIndicator = this.xls.getIndicator(1);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, indicator));
+    assertEquals(329.0, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
+
+
+  @Test
+  public void externalData3() throws Exception {
+    final BacktestBarSeries xlsSeries = this.xls.getSeries();
+    final var indicator = NumericIndicator.closePrice(xlsSeries).ema(3);
+    final var expectedIndicator = this.xls.getIndicator(3);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, indicator));
+    assertEquals(327.7748, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
+
+
+  @Test
+  public void externalData13() throws Exception {
+    final BacktestBarSeries xlsSeries = this.xls.getSeries();
+    final var indicator = NumericIndicator.closePrice(xlsSeries).ema(13);
+    final var expectedIndicator = this.xls.getIndicator(13);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, indicator));
+    assertEquals(327.4076, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
 }

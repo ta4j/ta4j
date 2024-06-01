@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -27,7 +27,8 @@ import java.time.Instant;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,61 +40,66 @@ import org.ta4j.core.num.Num;
  */
 public class UnderIndicatorRule extends AbstractRule {
 
-    /** The first indicator. */
-    private final Indicator<Num> first;
+  /** The first indicator. */
+  private final NumericIndicator first;
 
-    /** The second indicator. */
-    private final Indicator<Num> second;
+  /** The second indicator. */
+  private final NumericIndicator second;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param threshold the threshold
-     */
-    public UnderIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(threshold)));
-    }
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param threshold the threshold
-     */
-    public UnderIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator the indicator
+   * @param threshold the threshold
+   */
+  public UnderIndicatorRule(final NumericIndicator indicator, final Number threshold) {
+    this(indicator, new ConstantNumericIndicator(indicator.getNumFactory().numOf(threshold)));
+  }
 
-    /**
-     * Constructor.
-     *
-     * @param first  the first indicator
-     * @param second the second indicator
-     */
-    public UnderIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
-        this.first = first;
-        this.second = second;
-    }
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
-        traceIsSatisfied(satisfied);
-        return satisfied;
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator the indicator
+   * @param threshold the threshold
+   */
+  public UnderIndicatorRule(final NumericIndicator indicator, final Num threshold) {
+    this(indicator, new ConstantNumericIndicator(threshold));
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.first.refresh(tick);
-        this.second.refresh(tick);
-        setCurrentTick(tick);
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.first.isStable() && this.second.isStable();
-    }
+  /**
+   * Constructor.
+   *
+   * @param first the first indicator
+   * @param second the second indicator
+   */
+  public UnderIndicatorRule(final NumericIndicator first, final NumericIndicator second) {
+    this.first = first;
+    this.second = second;
+  }
+
+
+  /** This rule does not use the {@code tradingRecord}. */
+  @Override
+  public boolean isSatisfied(final TradingRecord tradingRecord) {
+    final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
+    traceIsSatisfied(satisfied);
+    return satisfied;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.first.refresh(tick);
+    this.second.refresh(tick);
+    setCurrentTick(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.first.isStable() && this.second.isStable();
+  }
 }

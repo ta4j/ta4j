@@ -26,8 +26,6 @@ package org.ta4j.core.indicators.numeric;
 import java.time.Instant;
 import java.util.function.UnaryOperator;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +33,7 @@ import org.ta4j.core.num.Num;
  *
  * There may be other unary operations on Num that could be added here.
  */
-public class UnaryOperation implements Indicator<Num> {
+public class UnaryOperation extends NumericIndicator {
 
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -50,7 +48,7 @@ public class UnaryOperation implements Indicator<Num> {
    *
    * @see Num#sqrt
    */
-  public static UnaryOperation sqrt(final Indicator<Num> operand) {
+  public static UnaryOperation sqrt(final NumericIndicator operand) {
     return new UnaryOperation(Num::sqrt, operand);
   }
 
@@ -65,16 +63,17 @@ public class UnaryOperation implements Indicator<Num> {
    *
    * @see Num#abs
    */
-  public static UnaryOperation abs(final Indicator<Num> operand) {
+  public static UnaryOperation abs(final NumericIndicator operand) {
     return new UnaryOperation(Num::abs, operand);
   }
 
 
   private final UnaryOperator<Num> operator;
-  private final Indicator<Num> operand;
+  private final NumericIndicator operand;
 
 
-  private UnaryOperation(final UnaryOperator<Num> operator, final Indicator<Num> operand) {
+  private UnaryOperation(final UnaryOperator<Num> operator, final NumericIndicator operand) {
+    super(operand.getNumFactory());
     this.operator = operator;
     this.operand = operand;
   }
@@ -89,12 +88,6 @@ public class UnaryOperation implements Indicator<Num> {
   @Override
   public Num getValue() {
     return this.value;
-  }
-
-
-  @Override
-  public BarSeries getBarSeries() {
-    return this.operand.getBarSeries();
   }
 
 

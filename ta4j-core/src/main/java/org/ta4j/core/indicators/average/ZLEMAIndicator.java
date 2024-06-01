@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,9 +37,9 @@ import org.ta4j.core.num.Num;
  *     "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
  *     http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
-public class ZLEMAIndicator extends AbstractIndicator<Num> {
+public class ZLEMAIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private final int barCount;
   private final Num k;
   private final Num oneMinusK;
@@ -56,12 +56,12 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCount the time frame
    */
-  public ZLEMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public ZLEMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     this.barCount = barCount;
-    this.k = getBarSeries().numFactory().two().dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
-    this.oneMinusK = getBarSeries().numFactory().one().minus(this.k);
+    this.k = getNumFactory().two().dividedBy(getNumFactory().numOf(barCount + 1));
+    this.oneMinusK = getNumFactory().one().minus(this.k);
     this.lag = (barCount - 1) / 2;
 
     if (this.lag == 0) {
@@ -79,7 +79,7 @@ public class ZLEMAIndicator extends AbstractIndicator<Num> {
 
     final Num zlemaPrev = getValue();
     return this.k.multipliedBy(
-            getBarSeries().numFactory()
+            getNumFactory()
                 .two()
                 .multipliedBy(this.indicator.getValue())
                 .minus(this.lagPreviousValue.getValue())

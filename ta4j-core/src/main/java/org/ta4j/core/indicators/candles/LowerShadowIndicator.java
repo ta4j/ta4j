@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.candles;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
  *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
  */
-public class LowerShadowIndicator extends AbstractIndicator<Num> {
+public class LowerShadowIndicator extends SeriesRelatedNumericIndicator {
 
   private Instant currentTick = Instant.EPOCH;
   private Num value;

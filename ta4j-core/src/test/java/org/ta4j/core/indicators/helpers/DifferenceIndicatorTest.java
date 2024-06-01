@@ -31,38 +31,40 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class DifferenceIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private DifferenceIndicator closePriceDifference;
+  private DifferenceIndicator closePriceDifference;
 
-    private BacktestBarSeries barSeries;
+  private BacktestBarSeries barSeries;
 
-    public DifferenceIndicatorTest(final NumFactory numFactory) {
-        super(numFactory);
+
+  public DifferenceIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
+
+
+  @Before
+  public void setUp() {
+    this.barSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
+    this.closePriceDifference = new DifferenceIndicator(new ClosePriceIndicator(this.barSeries));
+  }
+
+
+  @Test
+  public void indicatorShouldRetrieveBarDifference() {
+    this.barSeries.replaceStrategy(new MockStrategy(this.closePriceDifference));
+    this.barSeries.advance();
+    assertNumEquals(1.0, this.closePriceDifference.getValue());
+    for (int i = 1; i < 10; i++) {
+      this.barSeries.advance();
+      final Num previousBarClosePrice = this.barSeries.getBar(i - 1).closePrice();
+      final Num currentBarClosePrice = this.barSeries.getBar(i).closePrice();
+      assertEquals(currentBarClosePrice.minus(previousBarClosePrice), this.closePriceDifference.getValue());
     }
-
-    @Before
-    public void setUp() {
-      this.barSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
-      this.closePriceDifference = new DifferenceIndicator(new ClosePriceIndicator(this.barSeries));
-    }
-
-    @Test
-    public void indicatorShouldRetrieveBarDifference() {
-        this.barSeries.replaceStrategy(new MockStrategy(this.closePriceDifference));
-       this.barSeries.advance();
-        assertNumEquals(1.0, this.closePriceDifference.getValue());
-        for (int i = 1; i < 10; i++) {
-            this.barSeries.advance();
-            final Num previousBarClosePrice = this.barSeries.getBar(i - 1).closePrice();
-            final Num currentBarClosePrice = this.barSeries.getBar(i).closePrice();
-            assertEquals(currentBarClosePrice.minus(previousBarClosePrice), this.closePriceDifference.getValue());
-        }
-    }
+  }
 }

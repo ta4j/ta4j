@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Constant indicator.
@@ -34,38 +34,42 @@ import org.ta4j.core.indicators.AbstractIndicator;
  * <p>
  * Returns a constant value for a bar.
  */
-public class ConstantIndicator<T> extends AbstractIndicator<T> {
+public class ConstantNumericIndicator extends NumericIndicator {
 
-    private final T value;
+  private final Num value;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     * @param t      the constant value
-     */
-    public ConstantIndicator(final BarSeries series, final T t) {
-        super(series);
-        this.value = t;
-    }
 
-    @Override
-    public T getValue() {
-        return this.value;
-    }
+  /**
+   * Constructor.
+   *
+   * @param t the constant value
+   */
+  public ConstantNumericIndicator(final Num t) {
+    super(t.getNumFactory());
+    this.value = t;
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
 
-    @Override
-    public boolean isStable() {
-        return true;
-    }
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " Value: " + this.value;
-    }
+
+  @Override
+  public void refresh(final Instant tick) {
+    // NOOP
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return true;
+  }
+
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " Value: " + this.value;
+  }
 }

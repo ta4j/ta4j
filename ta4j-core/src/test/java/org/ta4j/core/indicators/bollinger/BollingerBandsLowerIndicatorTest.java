@@ -31,7 +31,6 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
@@ -39,7 +38,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private int barCount;
 
@@ -50,7 +49,7 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
 
 
   public BollingerBandsLowerIndicatorTest(final NumFactory numFactory) {
-    super(null, numFactory);
+    super(numFactory);
   }
 
 

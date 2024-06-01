@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.candles.price;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,30 +35,33 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the close price of a bar.
  */
-public class ClosePriceIndicator extends AbstractIndicator<Num> {
+public class ClosePriceIndicator extends SeriesRelatedNumericIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public ClosePriceIndicator(final BarSeries series) {
-        super(series);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  public ClosePriceIndicator(final BarSeries series) {
+    super(series);
+  }
 
-    @Override
-    public Num getValue() {
-        return getBarSeries().getBar().closePrice();
-    }
 
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
+  @Override
+  public Num getValue() {
+    return getBarSeries().getBar().closePrice();
+  }
 
-    @Override
-    public boolean isStable() {
-        return true;
-    }
+
+  @Override
+  public void refresh(final Instant tick) {
+    // NOOP
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return true;
+  }
 
 }

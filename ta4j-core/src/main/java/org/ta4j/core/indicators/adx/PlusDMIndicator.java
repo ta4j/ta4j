@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -27,7 +27,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,65 +36,70 @@ import org.ta4j.core.num.Num;
  * <p>
  * Part of the Directional Movement System.
  */
-public class PlusDMIndicator extends AbstractIndicator<Num> {
+public class PlusDMIndicator extends SeriesRelatedNumericIndicator {
 
-    private Bar previousBar;
-    private Num value;
-    private Instant currentTick = Instant.EPOCH;
-    private boolean stable;
+  private Bar previousBar;
+  private Num value;
+  private Instant currentTick = Instant.EPOCH;
+  private boolean stable;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public PlusDMIndicator(final BarSeries series) {
-        super(series);
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  public PlusDMIndicator(final BarSeries series) {
+    super(series);
+  }
+
+
+  protected Num calculate() {
+    final var numFactory = getBarSeries().numFactory();
+
+    if (this.previousBar == null) {
+      this.previousBar = getBarSeries().getBar();
+      return numFactory.zero();
     }
 
-    protected Num calculate() {
-        final var numFactory = getBarSeries().numFactory();
+    this.stable = true;
+    final Bar prevBar = this.previousBar;
+    final Bar currentBar = getBarSeries().getBar();
 
-        if (this.previousBar == null) {
-            this.previousBar = getBarSeries().getBar();
-            return numFactory.zero();
-        }
+    final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
+    final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
 
-        this.stable = true;
-        final Bar prevBar = this.previousBar;
-        final Bar currentBar = getBarSeries().getBar();
-
-        final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
-        final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
-
-        this.previousBar = currentBar;
-        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
-            return upMove;
-        }
-
-        return numFactory.zero();
+    this.previousBar = currentBar;
+    if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
+      return upMove;
     }
 
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
+    return numFactory.zero();
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            this.value = calculate();
-            this.currentTick = tick;
-        } else if (tick.isBefore(this.currentTick)) {
-            this.previousBar = null;
-            this.stable = false;
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.stable;
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.value = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.previousBar = null;
+      this.stable = false;
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.stable;
+  }
 }

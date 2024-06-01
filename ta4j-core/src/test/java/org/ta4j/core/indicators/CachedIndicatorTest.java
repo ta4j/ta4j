@@ -41,7 +41,7 @@
 //import org.ta4j.core.indicators.average.SMAIndicator;
 //import org.ta4j.core.indicators.average.ZLEMAIndicator;
 //import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
-//import org.ta4j.core.indicators.helpers.ConstantIndicator;
+//import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;
 //import org.ta4j.core.num.Num;
 //import org.ta4j.core.num.NumFactory;
@@ -74,7 +74,7 @@
 //    @Test // should be not null
 //    public void getValueWithNullBarSeries() {
 //
-//        ConstantIndicator<Num> constant = new ConstantIndicator<>(
+//        ConstantNumericIndicator<Num> constant = new ConstantNumericIndicator<>(
 //                new BacktestBarSeriesBuilder().withNumFactory(numFactory).build(), numFactory.numOf(10));
 //        assertEquals(numFactory.numOf(10), constant.getValue(0));
 //        assertEquals(numFactory.numOf(10), constant.getValue(100));

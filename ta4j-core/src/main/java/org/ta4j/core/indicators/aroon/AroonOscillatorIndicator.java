@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.aroon;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator</a>
  */
-public class AroonOscillatorIndicator extends AbstractIndicator<Num> {
+public class AroonOscillatorIndicator extends NumericIndicator {
 
   private final int barCount;
   private final AroonUpIndicator aroonUpIndicator;
@@ -52,7 +52,7 @@ public class AroonOscillatorIndicator extends AbstractIndicator<Num> {
    * @param barCount the number of periods used for the indicators
    */
   public AroonOscillatorIndicator(final BarSeries series, final int barCount) {
-    super(series);
+    super(series.numFactory());
     this.barCount = barCount;
     this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
     this.aroonDownIndicator = new AroonDownIndicator(series, barCount);

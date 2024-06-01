@@ -31,12 +31,11 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries series;
 

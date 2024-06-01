@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,36 +23,28 @@
  */
 package org.ta4j.core.indicators;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 
 /**
- * Abstract {@link Indicator indicator}.
+ * Indicator that fetches data from series directly
  */
-public abstract class AbstractIndicator<T> implements Indicator<T> {
+public abstract class SeriesRelatedBooleanIndicator extends BooleanIndicator {
 
-    /** The logger. */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final BarSeries series;
+  private final BarSeries series;
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    protected AbstractIndicator(final BarSeries series) {
-        this.series = series;
-    }
 
-    @Override
-    public BarSeries getBarSeries() {
-        return this.series;
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  protected SeriesRelatedBooleanIndicator(final BarSeries series) {
+    this.series = series;
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
+
+  public BarSeries getBarSeries() {
+    return this.series;
+  }
 }

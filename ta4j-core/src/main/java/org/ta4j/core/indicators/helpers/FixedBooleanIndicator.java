@@ -23,7 +23,9 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.BarSeries;
+import java.time.Instant;
+
+import org.ta4j.core.indicators.BooleanIndicator;
 
 /**
  * A fixed boolean indicator.
@@ -31,15 +33,36 @@ import org.ta4j.core.BarSeries;
  * <p>
  * Returns constant {@link Boolean} values for a bar.
  */
-public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
+public class FixedBooleanIndicator extends BooleanIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     * @param values the values to be returned by this indicator
-     */
-    public FixedBooleanIndicator(final BarSeries series, final Boolean... values) {
-        super(series, values);
-    }
+
+  private final FixedIndicator<Boolean> indicator;
+
+
+  /**
+   * Constructor.
+   *
+   * @param values the values to be returned by this indicator
+   */
+  public FixedBooleanIndicator(final Boolean... values) {
+    this.indicator = new FixedIndicator<>(values);
+  }
+
+
+  @Override
+  public Boolean getValue() {
+    return this.indicator.getValue();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.indicator.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.indicator.isStable();
+  }
 }

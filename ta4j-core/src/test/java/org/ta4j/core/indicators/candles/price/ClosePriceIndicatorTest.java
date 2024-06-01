@@ -29,12 +29,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Num> {
     private ClosePriceIndicator closePrice;
 
     BacktestBarSeries barSeries;

@@ -26,8 +26,8 @@ package org.ta4j.core.indicators.average;
 import java.time.Instant;
 import java.util.ArrayList;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.CircularNumArray;
 
@@ -38,9 +38,9 @@ import org.ta4j.core.utils.CircularNumArray;
  *     "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
  *     https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp</a>
  */
-public class LWMAIndicator extends AbstractIndicator<Num> {
+public class LWMAIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private final int barCount;
   private final CircularNumArray values;
   private final ArrayList<Num> weights;
@@ -55,13 +55,13 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCount the time frame
    */
-  public LWMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public LWMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     this.barCount = barCount;
     this.values = new CircularNumArray(barCount);
     this.weights = new ArrayList<>(barCount);
-    final var numFactory = getBarSeries().numFactory();
+    final var numFactory = getNumFactory();
     for (int i = 1; i < barCount + 1; i++) {
       this.weights.add(numFactory.numOf(i));
     }
@@ -70,7 +70,7 @@ public class LWMAIndicator extends AbstractIndicator<Num> {
 
 
   protected Num calculate() {
-    final var numFactory = getBarSeries().numFactory();
+    final var numFactory = getNumFactory();
     Num sum = numFactory.zero();
 
     this.values.addLast(this.indicator.getValue());

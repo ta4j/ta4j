@@ -27,8 +27,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.function.Predicate;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -38,9 +38,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the highest indicator value from the bar series within the bar count.
  */
-public class HighestValueIndicator extends AbstractIndicator<Num> {
+public class HighestValueIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private final int barCount;
 
   /** circular array */
@@ -55,8 +55,8 @@ public class HighestValueIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCount the time frame
    */
-  public HighestValueIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public HighestValueIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     this.barCount = barCount;
     this.data = new ArrayList<>(barCount);

@@ -26,10 +26,10 @@ package org.ta4j.core.indicators.keltner;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.average.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
+public class KeltnerChannelMiddleIndicator extends NumericIndicator {
 
   private final EMAIndicator emaIndicator;
   private Instant currentTick = Instant.EPOCH;
@@ -63,8 +63,8 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCountEMA the bar count for the {@link EMAIndicator}
    */
-  public KeltnerChannelMiddleIndicator(final Indicator<Num> indicator, final int barCountEMA) {
-    super(indicator.getBarSeries());
+  public KeltnerChannelMiddleIndicator(final NumericIndicator indicator, final int barCountEMA) {
+    super(indicator.getNumFactory());
     this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
   }
 

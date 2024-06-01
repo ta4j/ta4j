@@ -31,13 +31,12 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 
@@ -90,7 +89,7 @@ public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Indi
   @Test
   public void keltnerChannelUpperIndicatorTest() {
     final var km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(this.data), 14);
-    final var ku = new KeltnerChannelUpperIndicator(km, 2, 14);
+    final var ku = new KeltnerChannelUpperIndicator(this.data, km, 2, 14);
 
     this.data.replaceStrategy(new MockStrategy(km, ku));
 

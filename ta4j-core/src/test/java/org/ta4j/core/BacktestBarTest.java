@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -42,7 +42,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BacktestBarTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestBarTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBar bar;
 
@@ -53,7 +53,7 @@ public class BacktestBarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
 
   public BacktestBarTest(final NumFactory numFactory) {
-    super(null, numFactory);
+    super(numFactory);
   }
 
 

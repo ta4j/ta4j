@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -27,8 +27,8 @@ import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.average.MMAIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,68 +38,74 @@ import org.ta4j.core.num.Num;
  * Part of the Directional Movement System.
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  * @see <a href=
- *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
+ *     "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class PlusDIIndicator extends AbstractIndicator<Num> {
+public class PlusDIIndicator extends NumericIndicator {
 
-    private final int barCount;
-    private final ATRIndicator atrIndicator;
-    private final MMAIndicator avgPlusDMIndicator;
-    private Num value;
-    private int barsPassed;
-    private Instant currentTick = Instant.EPOCH;
+  private final int barCount;
+  private final ATRIndicator atrIndicator;
+  private final MMAIndicator avgPlusDMIndicator;
+  private Num value;
+  private int barsPassed;
+  private Instant currentTick = Instant.EPOCH;
 
-    /**
-     * Constructor.
-     *
-     * @param series   the bar series
-     * @param barCount the bar count for {@link #atrIndicator} and
-     *                 {@link #avgPlusDMIndicator}
-     */
-    public PlusDIIndicator(final BarSeries series, final int barCount) {
-        super(series);
-        this.barCount = barCount;
-        this.atrIndicator = new ATRIndicator(series, barCount);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param barCount the bar count for {@link #atrIndicator} and
+   *     {@link #avgPlusDMIndicator}
+   */
+  public PlusDIIndicator(final BarSeries series, final int barCount) {
+    super(series.numFactory());
+    this.barCount = barCount;
+    this.atrIndicator = new ATRIndicator(series, barCount);
+    this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
+  }
+
+
+  protected Num calculate() {
+    return this.avgPlusDMIndicator.getValue()
+        .dividedBy(this.atrIndicator.getValue())
+        .multipliedBy(getNumFactory().hundred());
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.barsPassed;
+      this.atrIndicator.refresh(tick);
+      this.avgPlusDMIndicator.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(tick)) {
+      this.barsPassed = 1;
+      this.atrIndicator.refresh(tick);
+      this.avgPlusDMIndicator.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    protected Num calculate() {
-        return this.avgPlusDMIndicator.getValue()
-                .dividedBy(this.atrIndicator.getValue())
-                .multipliedBy(getBarSeries().numFactory().hundred());
-    }
 
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
+  public boolean isStable() {
+    return this.barsPassed >= this.barCount && this.atrIndicator.isStable() && this.avgPlusDMIndicator.isStable();
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            ++this.barsPassed;
-            this.atrIndicator.refresh(tick);
-            this.avgPlusDMIndicator.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        } else if (tick.isBefore(tick)) {
-            this.barsPassed = 1;
-            this.atrIndicator.refresh(tick);
-            this.avgPlusDMIndicator.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
 
-    public boolean isStable() {
-        return this.barsPassed >= this.barCount && this.atrIndicator.isStable() && this.avgPlusDMIndicator.isStable();
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " " + this.atrIndicator + " " + this.avgPlusDMIndicator;
-    }
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " " + this.atrIndicator + " " + this.avgPlusDMIndicator;
+  }
 }

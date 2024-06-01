@@ -31,14 +31,13 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 
@@ -91,15 +90,15 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
   @Test
   public void testCreation() {
     final var facade = new KeltnerChannelFacade(this.data, 14, 14, 2);
-    assertEquals(this.data, facade.middle().getBarSeries());
+    assertEquals(this.data.numFactory(), facade.middle().getNumFactory());
   }
 
 
   @Test
   public void testNumericFacadesSameAsDefaultIndicators() {
     final var km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(this.data), 14);
-    final var kl = new KeltnerChannelLowerIndicator(km, 2, 14);
-    final var ku = new KeltnerChannelUpperIndicator(km, 2, 14);
+    final var kl = new KeltnerChannelLowerIndicator(this.data, km, 2, 14);
+    final var ku = new KeltnerChannelUpperIndicator(this.data, km, 2, 14);
 
     final var facade = new KeltnerChannelFacade(this.data, 14, 14, 2);
     final NumericIndicator middleNumeric = facade.middle();

@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +35,7 @@ import org.ta4j.core.num.Num;
  *     "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
  *     https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
  */
-public class DoubleEMAIndicator extends AbstractIndicator<Num> {
+public class DoubleEMAIndicator extends NumericIndicator {
 
   private final int barCount;
   private final EMAIndicator ema;
@@ -51,8 +50,8 @@ public class DoubleEMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the indicator
    * @param barCount the time frame
    */
-  public DoubleEMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public DoubleEMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.barCount = barCount;
     this.ema = new EMAIndicator(indicator, barCount);
     this.emaEma = new EMAIndicator(this.ema, barCount);
@@ -83,7 +82,7 @@ public class DoubleEMAIndicator extends AbstractIndicator<Num> {
 
 
   protected Num calculate() {
-    return this.ema.getValue().multipliedBy(getBarSeries().numFactory().two()).minus(this.emaEma.getValue());
+    return this.ema.getValue().multipliedBy(getNumFactory().two()).minus(this.emaEma.getValue());
   }
 
 

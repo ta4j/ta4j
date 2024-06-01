@@ -29,13 +29,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
-import org.ta4j.core.indicators.average.LWMAIndicator;
-import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class LWMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 
@@ -55,7 +54,7 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
   @Test
   public void lwmaUsingBarCount5UsingClosePrice() {
-    final var lwma = new LWMAIndicator(new ClosePriceIndicator(this.data), 5);
+    final var lwma = NumericIndicator.closePrice(data).lwma(5);
     this.data.replaceStrategy(new MockStrategy(lwma));
 
     assertNext(this.data,0.0, lwma);

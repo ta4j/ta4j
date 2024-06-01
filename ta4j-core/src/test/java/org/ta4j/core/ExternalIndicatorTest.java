@@ -24,7 +24,6 @@
 package org.ta4j.core;
 
 import org.ta4j.core.backtest.BacktestBarSeries;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 public interface ExternalIndicatorTest {
@@ -45,6 +44,6 @@ public interface ExternalIndicatorTest {
      * @return Indicator<Num> from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception
      */
-    Indicator<Num> getIndicator(Object... params) throws Exception;
+    TestIndicator<Num> getIndicator(Object... params) throws Exception;
 
 }

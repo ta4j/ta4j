@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -21,43 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.candles.price;
+package org.ta4j.core.indicators;
 
-import java.time.Instant;
-
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
-import org.ta4j.core.num.Num;
-
-/**
- * Low price indicator.
- *
- * <p>
- * Returns the low price of a bar.
- */
-public class LowPriceIndicator extends SeriesRelatedNumericIndicator {
-
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public LowPriceIndicator(final BarSeries series) {
-        super(series);
-    }
-
-    @Override
-    public Num getValue() {
-        return getBarSeries().getBar().lowPrice();
-    }
-
-    @Override
-    public boolean isStable() {
-        return true;
-    }
-
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
+public abstract class BooleanIndicator implements Indicator<Boolean> {
 }

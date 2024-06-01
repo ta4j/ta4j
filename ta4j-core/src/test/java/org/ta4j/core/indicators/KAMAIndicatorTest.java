@@ -43,7 +43,7 @@ import org.ta4j.core.num.NumFactory;
  *     href="http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls>
  *     http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls</a>
  */
-public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class KAMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 

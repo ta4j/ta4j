@@ -25,8 +25,9 @@ package org.ta4j.core.indicators.keltner;
 
 import java.time.Instant;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +37,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelLowerIndicator extends AbstractIndicator<Num> {
+public class KeltnerChannelLowerIndicator extends NumericIndicator {
 
   private final ATRIndicator averageTrueRangeIndicator;
   private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
@@ -53,11 +54,12 @@ public class KeltnerChannelLowerIndicator extends AbstractIndicator<Num> {
    * @param barCountATR the bar count for the {@link ATRIndicator}
    */
   public KeltnerChannelLowerIndicator(
+      final BarSeries series,
       final KeltnerChannelMiddleIndicator middle,
       final double ratio,
       final int barCountATR
   ) {
-    this(middle, new ATRIndicator(middle.getBarSeries(), barCountATR), ratio);
+    this(series, middle, new ATRIndicator(series, barCountATR), ratio);
   }
 
 
@@ -69,14 +71,15 @@ public class KeltnerChannelLowerIndicator extends AbstractIndicator<Num> {
    * @param ratio the {@link #ratio}
    */
   public KeltnerChannelLowerIndicator(
+      final BarSeries series,
       final KeltnerChannelMiddleIndicator middle,
       final ATRIndicator atr,
       final double ratio
   ) {
-    super(middle.getBarSeries());
+    super(series.numFactory());
     this.keltnerMiddleIndicator = middle;
     this.averageTrueRangeIndicator = atr;
-    this.ratio = getBarSeries().numFactory().numOf(ratio);
+    this.ratio = getNumFactory().numOf(ratio);
   }
 
 

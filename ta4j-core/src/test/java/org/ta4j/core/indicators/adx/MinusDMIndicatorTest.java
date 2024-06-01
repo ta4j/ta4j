@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -33,12 +33,11 @@ import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class MinusDMIndicatorTest extends AbstractIndicatorTest<Num> {
 
     public MinusDMIndicatorTest(final NumFactory numFactory) {
         super(numFactory);

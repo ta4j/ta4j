@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -26,8 +26,8 @@ package org.ta4j.core.indicators.adx;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.average.MMAIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,56 +37,62 @@ import org.ta4j.core.num.Num;
  * Part of the Directional Movement System.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
+ *     "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class ADXIndicator extends AbstractIndicator<Num> {
+public class ADXIndicator extends NumericIndicator {
 
-    private final int diBarCount;
-    private final int adxBarCount;
-    private final MMAIndicator averageDXIndicator;
+  private final int diBarCount;
+  private final int adxBarCount;
+  private final MMAIndicator averageDXIndicator;
 
-    /**
-     * Constructor.
-     *
-     * @param series      the bar series
-     * @param diBarCount  the bar count for {@link DXIndicator}
-     * @param adxBarCount the bar count for {@link #averageDXIndicator}
-     */
-    public ADXIndicator(final BarSeries series, final int diBarCount, final int adxBarCount) {
-        super(series);
-        this.diBarCount = diBarCount;
-        this.adxBarCount = adxBarCount;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
-    }
 
-    /**
-     * Constructor.
-     *
-     * @param series   the bar series
-     * @param barCount the bar count for {@link DXIndicator} and
-     *                 {@link #averageDXIndicator}
-     */
-    public ADXIndicator(final BarSeries series, final int barCount) {
-        this(series, barCount, barCount);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param diBarCount the bar count for {@link DXIndicator}
+   * @param adxBarCount the bar count for {@link #averageDXIndicator}
+   */
+  public ADXIndicator(final BarSeries series, final int diBarCount, final int adxBarCount) {
+    super(series.numFactory());
+    this.diBarCount = diBarCount;
+    this.adxBarCount = adxBarCount;
+    this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " diBarCount: " + this.diBarCount + " adxBarCount: " + this.adxBarCount;
-    }
 
-    @Override
-    public Num getValue() {
-        return this.averageDXIndicator.getValue();
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param barCount the bar count for {@link DXIndicator} and
+   *     {@link #averageDXIndicator}
+   */
+  public ADXIndicator(final BarSeries series, final int barCount) {
+    this(series, barCount, barCount);
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.averageDXIndicator.refresh(tick);
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.averageDXIndicator.isStable();
-    }
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " diBarCount: " + this.diBarCount + " adxBarCount: " + this.adxBarCount;
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.averageDXIndicator.getValue();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.averageDXIndicator.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.averageDXIndicator.isStable();
+  }
 }

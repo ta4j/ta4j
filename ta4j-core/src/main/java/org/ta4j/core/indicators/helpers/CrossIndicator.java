@@ -25,9 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.BooleanIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
  * Cross indicator.
@@ -35,66 +34,72 @@ import org.ta4j.core.num.Num;
  * <p>
  * Boolean indicator that monitors the crossing of two indicators.
  */
-public class CrossIndicator extends AbstractIndicator<Boolean> {
+public class CrossIndicator extends BooleanIndicator {
 
-    /** Upper indicator */
-    private final Indicator<Num> up;
+  /** Upper indicator */
+  private final NumericIndicator up;
 
-    /** Lower indicator */
-    private final Indicator<Num> low;
-    private Boolean value;
-    private Instant currentTick = Instant.EPOCH;
+  /** Lower indicator */
+  private final NumericIndicator low;
+  private Boolean value;
+  private Instant currentTick = Instant.EPOCH;
 
-    /**
-     * Constructor.
-     *
-     * @param up  the upper indicator
-     * @param low the lower indicator
-     */
-    public CrossIndicator(final Indicator<Num> up, final Indicator<Num> low) {
-        // TODO: check if up series is equal to low series
-        super(up.getBarSeries());
-        this.up = up;
-        this.low = low;
+
+  /**
+   * Constructor.
+   *
+   * @param up the upper indicator
+   * @param low the lower indicator
+   */
+  public CrossIndicator(final NumericIndicator up, final NumericIndicator low) {
+    this.up = up;
+    this.low = low;
+  }
+
+
+  protected Boolean calculate() {
+    // TODO previous value should be opposite or equal
+    return this.up.getValue().isGreaterThan(this.low.getValue());
+  }
+
+
+  @Override
+  public Boolean getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+      this.low.refresh(tick);
+      this.up.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    protected Boolean calculate() {
-        // TODO previous value should be opposite or equal
-        return this.up.getValue().isGreaterThan(this.low.getValue());
-    }
 
-    @Override
-    public Boolean getValue() {
-        return this.value;
-    }
+  @Override
+  public boolean isStable() {
+    return this.up.isStable() && this.low.isStable();
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
-            this.low.refresh(tick);
-            this.up.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.up.isStable() && this.low.isStable();
-    }
+  /** @return the initial lower indicator */
+  public NumericIndicator getLow() {
+    return this.low;
+  }
 
-    /** @return the initial lower indicator */
-    public Indicator<Num> getLow() {
-        return this.low;
-    }
 
-    /** @return the initial upper indicator */
-    public Indicator<Num> getUp() {
-        return this.up;
-    }
+  /** @return the initial upper indicator */
+  public NumericIndicator getUp() {
+    return this.up;
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " " + this.low + " " + this.up;
-    }
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " " + this.low + " " + this.up;
+  }
 }

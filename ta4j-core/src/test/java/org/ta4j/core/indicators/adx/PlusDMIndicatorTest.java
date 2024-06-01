@@ -33,12 +33,11 @@ import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class PlusDMIndicatorTest extends AbstractIndicatorTest<Num> {
 
     public PlusDMIndicatorTest(NumFactory numFactory) {
         super(numFactory);

@@ -25,22 +25,21 @@ package org.ta4j.core.indicators.statistics;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * Variance indicator.
  */
-public class VarianceIndicator extends AbstractIndicator<Num> {
+public class VarianceIndicator extends NumericIndicator {
 
   private final int barCount;
   private final Num divisor;
   private final SMAIndicator mean;
   private final CircularNumArray values;
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
 
@@ -51,11 +50,11 @@ public class VarianceIndicator extends AbstractIndicator<Num> {
    * @param indicator the indicator
    * @param barCount the time frame
    */
-  public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public VarianceIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.barCount = barCount;
     this.indicator = indicator;
-    this.divisor = this.indicator.getBarSeries().numFactory().numOf(this.barCount - 1);
+    this.divisor = getNumFactory().numOf(this.barCount - 1);
     this.mean = new SMAIndicator(indicator, barCount);
 
     if (barCount <= 1) {
@@ -69,7 +68,7 @@ public class VarianceIndicator extends AbstractIndicator<Num> {
   protected Num calculate() {
     this.values.addLast(this.indicator.getValue());
 
-    Num variance = getBarSeries().numFactory().zero();
+    Num variance = getNumFactory().zero();
     // cannot use RunningTotalIndicator because mean is changing each tick
     final Num average = this.mean.getValue();
     for (final var val : this.values) {

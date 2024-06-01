@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -27,7 +27,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
  * </pre>
  */
-public class TRIndicator extends AbstractIndicator<Num> {
+public class TRIndicator extends SeriesRelatedNumericIndicator {
 
     private Bar previousBar;
     private Num value;

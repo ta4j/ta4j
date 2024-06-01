@@ -24,10 +24,7 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.num.Num;
 
 /**
  * A facade to create the 3 Bollinger Band indicators. A simple moving average
@@ -41,88 +38,95 @@ import org.ta4j.core.num.Num;
  */
 public class BollingerBandFacade {
 
-    private final NumericIndicator price;
-    private final NumericIndicator middle;
-    private final NumericIndicator upper;
-    private final NumericIndicator lower;
+  private final NumericIndicator price;
+  private final NumericIndicator middle;
+  private final NumericIndicator upper;
+  private final NumericIndicator lower;
 
-    /**
-     * Create the BollingerBands facade based on the close price of a bar series
-     *
-     * @param barSeries a bar series
-     * @param barCount  the number of periods used for the indicators
-     * @param k         the multiplier used to calculate the upper and lower bands
-     */
-    public BollingerBandFacade(final BarSeries barSeries, final int barCount, final Number k) {
-        this.price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
-        this.middle = NumericIndicator.of(this.price.sma(barCount));
-        final NumericIndicator stdev = this.price.stddev(barCount);
-        this.upper = this.middle.plus(stdev.multipliedBy(k));
-        this.lower = this.middle.minus(stdev.multipliedBy(k));
-    }
 
-    /**
-     * Create the BollingerBands facade based on the provided indicator
-     *
-     * @param indicator an indicator
-     * @param barCount  the number of periods used for the indicators
-     * @param k         the multiplier used to calculate the upper and lower bands
-     */
-    public BollingerBandFacade(final Indicator<Num> indicator, final int barCount, final Number k) {
-        this.price = NumericIndicator.of(indicator);
-        this.middle = NumericIndicator.of(this.price.sma(barCount));
-        final NumericIndicator stdev = this.price.stddev(barCount);
-        this.upper = this.middle.plus(stdev.multipliedBy(k));
-        this.lower = this.middle.minus(stdev.multipliedBy(k));
-    }
+  /**
+   * Create the BollingerBands facade based on the close price of a bar series
+   *
+   * @param barSeries a bar series
+   * @param barCount the number of periods used for the indicators
+   * @param k the multiplier used to calculate the upper and lower bands
+   */
+  public BollingerBandFacade(final BarSeries barSeries, final int barCount, final Number k) {
+    this.price = NumericIndicator.closePrice(barSeries);
+    this.middle = this.price.sma(barCount);
+    final var stdev = this.price.stddev(barCount);
+    this.upper = this.middle.plus(stdev.multipliedBy(k));
+    this.lower = this.middle.minus(stdev.multipliedBy(k));
+  }
 
-    /**
-     * A fluent BB middle band
-     *
-     * @return a NumericIndicator wrapped around a cached SMAIndicator of close
-     *         price.
-     */
-    public NumericIndicator middle() {
-        return this.middle;
-    }
 
-    /**
-     * A fluent BB upper band
-     *
-     * @return an object that calculates the sum of BB middle and a multiple of
-     *         standard deviation.
-     */
-    public NumericIndicator upper() {
-        return this.upper;
-    }
+  /**
+   * Create the BollingerBands facade based on the provided indicator
+   *
+   * @param indicator an indicator
+   * @param barCount the number of periods used for the indicators
+   * @param k the multiplier used to calculate the upper and lower bands
+   */
+  public BollingerBandFacade(final NumericIndicator indicator, final int barCount, final Number k) {
+    this.price = indicator;
+    this.middle = this.price.sma(barCount);
+    final var stdev = this.price.stddev(barCount);
+    this.upper = this.middle.plus(stdev.multipliedBy(k));
+    this.lower = this.middle.minus(stdev.multipliedBy(k));
+  }
 
-    /**
-     * A fluent BB lower band
-     *
-     * @return an object that calculates the difference between BB middle and a
-     *         multiple of standard deviation.
-     */
-    public NumericIndicator lower() {
-        return this.lower;
-    }
 
-    /**
-     * A fluent BB Bandwidth indicator
-     *
-     * @return an object that calculates BB bandwidth from BB upper, lower and
-     *         middle
-     */
-    public NumericIndicator bandwidth() {
-        return this.upper.minus(this.lower).dividedBy(this.middle).multipliedBy(100);
-    }
+  /**
+   * A fluent BB middle band
+   *
+   * @return a NumericIndicator wrapped around a cached SMAIndicator of close
+   *     price.
+   */
+  public NumericIndicator middle() {
+    return this.middle;
+  }
 
-    /**
-     * A fluent %B indicator
-     *
-     * @return an object that calculates %B from close price, BB upper and lower
-     */
-    public NumericIndicator percentB() {
-        return this.price.minus(this.lower).dividedBy(this.upper.minus(this.lower));
-    }
+
+  /**
+   * A fluent BB upper band
+   *
+   * @return an object that calculates the sum of BB middle and a multiple of
+   *     standard deviation.
+   */
+  public NumericIndicator upper() {
+    return this.upper;
+  }
+
+
+  /**
+   * A fluent BB lower band
+   *
+   * @return an object that calculates the difference between BB middle and a
+   *     multiple of standard deviation.
+   */
+  public NumericIndicator lower() {
+    return this.lower;
+  }
+
+
+  /**
+   * A fluent BB Bandwidth indicator
+   *
+   * @return an object that calculates BB bandwidth from BB upper, lower and
+   *     middle
+   */
+  public NumericIndicator bandwidth() {
+    return this.upper.minus(this.lower).dividedBy(this.middle).multipliedBy(100);
+  }
+
+
+  /**
+   * A fluent %B indicator
+   *
+   * @return an object that calculates %B from close price, BB upper and lower
+   */
+  public NumericIndicator percentB() {
+    return this.price.minus(this.lower).dividedBy(this.upper.minus(this.lower));
+  }
 
 }

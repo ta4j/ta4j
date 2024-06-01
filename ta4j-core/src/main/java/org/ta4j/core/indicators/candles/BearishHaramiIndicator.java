@@ -27,7 +27,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedBooleanIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/b/bearishharami.asp">
  *     http://www.investopedia.com/terms/b/bearishharami.asp</a>
  */
-public class BearishHaramiIndicator extends AbstractIndicator<Boolean> {
+public class BearishHaramiIndicator extends SeriesRelatedBooleanIndicator {
 
   private Instant currentTick = Instant.EPOCH;
   private Boolean value;

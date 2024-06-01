@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,8 +35,8 @@ import org.ta4j.core.num.Num;
  * difference = current indicator value - previous indicator value
  * </pre>
  */
-public class DifferenceIndicator extends AbstractIndicator<Num> {
-  private final Indicator<Num> indicator;
+public class DifferenceIndicator extends NumericIndicator {
+  private final NumericIndicator indicator;
   private Num previousValue;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -48,8 +47,8 @@ public class DifferenceIndicator extends AbstractIndicator<Num> {
    *
    * @param indicator the bar indicator
    */
-  public DifferenceIndicator(final Indicator<Num> indicator) {
-    super(indicator.getBarSeries());
+  public DifferenceIndicator(final NumericIndicator indicator) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
   }
 

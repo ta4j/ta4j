@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.TradingRecord;
-//import org.ta4j.core.indicators.helpers.ConstantIndicator;
+//import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -62,8 +62,8 @@
 //     * @param lower the lower threshold
 //     */
 //    public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
-//        this(ref, new ConstantIndicator<>(ref.getBarSeries(), upper),
-//                new ConstantIndicator<>(ref.getBarSeries(), lower));
+//        this(ref, new ConstantNumericIndicator<>(ref.getBarSeries(), upper),
+//                new ConstantNumericIndicator<>(ref.getBarSeries(), lower));
 //    }
 //
 //    /**

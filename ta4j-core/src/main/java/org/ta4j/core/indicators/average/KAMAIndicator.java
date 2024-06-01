@@ -25,12 +25,11 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,9 +39,9 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average</a>
  */
-public class KAMAIndicator extends AbstractIndicator<Num> {
+public class KAMAIndicator extends NumericIndicator {
 
-  private final Indicator<Num> price;
+  private final NumericIndicator price;
   private final int barCountEffectiveRatio;
   private final Num fastest;
   private final Num slowest;
@@ -63,17 +62,18 @@ public class KAMAIndicator extends AbstractIndicator<Num> {
    * @param barCountSlow the time frame slow (usually 30)
    */
   public KAMAIndicator(
-      final Indicator<Num> price,
+      final NumericIndicator price,
       final int barCountEffectiveRatio,
       final int barCountFast,
       final int barCountSlow
   ) {
-    super(price.getBarSeries());
+    super(price.getNumFactory());
     this.price = price;
     this.barCountEffectiveRatio = barCountEffectiveRatio;
     this.priceAtStartOfRange = new PreviousValueIndicator(price, barCountEffectiveRatio);
-    this.previousVolatilities = new RunningTotalIndicator(TransformIndicator.abs(new DifferenceIndicator(price)), barCountEffectiveRatio);
-    final var numFactory = getBarSeries().numFactory();
+    this.previousVolatilities =
+        new RunningTotalIndicator(TransformIndicator.abs(new DifferenceIndicator(price)), barCountEffectiveRatio);
+    final var numFactory = getNumFactory();
     final var two = numFactory.two();
     this.fastest = two.dividedBy(numFactory.numOf(barCountFast + 1));
     this.slowest = two.dividedBy(numFactory.numOf(barCountSlow + 1));
@@ -91,7 +91,7 @@ public class KAMAIndicator extends AbstractIndicator<Num> {
    *
    * @param price the priceindicator
    */
-  public KAMAIndicator(final Indicator<Num> price) {
+  public KAMAIndicator(final NumericIndicator price) {
     this(price, 10, 2, 30);
   }
 

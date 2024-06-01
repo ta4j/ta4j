@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -29,12 +29,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class HighPriceIndicatorTest extends AbstractIndicatorTest<Num> {
     private HighPriceIndicator highPriceIndicator;
 
     private BacktestBarSeries barSeries;

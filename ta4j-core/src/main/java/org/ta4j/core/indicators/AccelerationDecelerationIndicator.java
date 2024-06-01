@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -28,61 +28,68 @@ import java.time.Instant;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Acceleration-deceleration indicator.
  */
-public class AccelerationDecelerationIndicator extends AbstractIndicator<Double> {
+public class AccelerationDecelerationIndicator extends NumericIndicator {
 
-    private final AwesomeOscillatorIndicator awesome;
-    private final SMAIndicator sma;
-    private Instant currentTick = Instant.EPOCH;
-    private Num value;
+  private final AwesomeOscillatorIndicator awesome;
+  private final SMAIndicator sma;
+  private Instant currentTick = Instant.EPOCH;
+  private Num value;
 
-    /**
-     * Constructor.
-     *
-     * @param series        the bar series
-     * @param shortBarCount the bar count for {@link #awesome}
-     * @param longBarCount  the bar count for {@link #sma}
-     */
-    public AccelerationDecelerationIndicator(final BarSeries series, final int shortBarCount, final int longBarCount) {
-        super(series);
-        this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), shortBarCount, longBarCount);
-        this.sma = new SMAIndicator(this.awesome, shortBarCount);
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param shortBarCount the bar count for {@link #awesome}
+   * @param longBarCount the bar count for {@link #sma}
+   */
+  public AccelerationDecelerationIndicator(final BarSeries series, final int shortBarCount, final int longBarCount) {
+    super(series.numFactory());
+    this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), shortBarCount, longBarCount);
+    this.sma = new SMAIndicator(this.awesome, shortBarCount);
+  }
+
+
+  /**
+   * Constructor with {@code barCountSma1} = 5 and {@code barCountSma2} = 34.
+   *
+   * @param series the bar series
+   */
+  public AccelerationDecelerationIndicator(final BarSeries series) {
+    this(series, 5, 34);
+  }
+
+
+  protected Num calculate() {
+    return this.awesome.getValue().minus(this.sma.getValue());
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.awesome.refresh(tick);
+      this.sma.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    /**
-     * Constructor with {@code barCountSma1} = 5 and {@code barCountSma2} = 34.
-     *
-     * @param series the bar series
-     */
-    public AccelerationDecelerationIndicator(final BarSeries series) {
-        this(series, 5, 34);
-    }
 
-    protected Num calculate() {
-        return this.awesome.getValue().minus(this.sma.getValue());
-    }
-
-    @Override
-    public Double getValue() {
-        return this.value.doubleValue();
-    }
-
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            this.awesome.refresh(tick);
-            this.sma.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
-
-    @Override
-    public boolean isStable() {
-        return this.awesome.isStable() && this.sma.isStable();
-    }
+  @Override
+  public boolean isStable() {
+    return this.awesome.isStable() && this.sma.isStable();
+  }
 }

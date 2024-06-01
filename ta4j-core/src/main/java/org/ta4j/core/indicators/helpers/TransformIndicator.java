@@ -27,8 +27,8 @@ import java.time.Instant;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -38,9 +38,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Transforms the {@link Num} of any indicator by using common math operations.
  */
-public class TransformIndicator extends AbstractIndicator<Num> {
+public class TransformIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private final UnaryOperator<Num> transformationFunction;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -52,8 +52,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param transformation a {@link Function} describing the transformation
    */
-  public TransformIndicator(final Indicator<Num> indicator, final UnaryOperator<Num> transformation) {
-    super(indicator.getBarSeries());
+  public TransformIndicator(final NumericIndicator indicator, final UnaryOperator<Num> transformation) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     this.transformationFunction = transformation;
   }
@@ -89,8 +89,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.plus(coefficient).
    */
-  public static TransformIndicator plus(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator plus(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.plus(numCoefficient));
   }
 
@@ -98,8 +98,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.minus(coefficient).
    */
-  public static TransformIndicator minus(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator minus(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.minus(numCoefficient));
   }
 
@@ -107,8 +107,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.dividedBy(coefficient).
    */
-  public static TransformIndicator divide(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator divide(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.dividedBy(numCoefficient));
   }
 
@@ -116,8 +116,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.multipliedBy(coefficient).
    */
-  public static TransformIndicator multiply(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator multiply(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.multipliedBy(numCoefficient));
   }
 
@@ -125,8 +125,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.max(coefficient).
    */
-  public static TransformIndicator max(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator max(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.max(numCoefficient));
   }
 
@@ -134,8 +134,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.min(coefficient).
    */
-  public static TransformIndicator min(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator min(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.min(numCoefficient));
   }
 
@@ -143,7 +143,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.abs().
    */
-  public static TransformIndicator abs(final Indicator<Num> indicator) {
+  public static TransformIndicator abs(final NumericIndicator indicator) {
     return new TransformIndicator(indicator, Num::abs);
   }
 
@@ -151,8 +151,8 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.pow(coefficient).
    */
-  public static TransformIndicator pow(final Indicator<Num> indicator, final Number coefficient) {
-    final Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+  public static TransformIndicator pow(final NumericIndicator indicator, final Number coefficient) {
+    final Num numCoefficient = indicator.getNumFactory().numOf(coefficient);
     return new TransformIndicator(indicator, val -> val.pow(numCoefficient));
   }
 
@@ -160,7 +160,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.sqrt().
    */
-  public static TransformIndicator sqrt(final Indicator<Num> indicator) {
+  public static TransformIndicator sqrt(final NumericIndicator indicator) {
     return new TransformIndicator(indicator, Num::sqrt);
   }
 
@@ -168,7 +168,7 @@ public class TransformIndicator extends AbstractIndicator<Num> {
   /**
    * Transforms the input indicator by indicator.log().
    */
-  public static TransformIndicator log(final Indicator<Num> indicator) {
+  public static TransformIndicator log(final NumericIndicator indicator) {
     return new TransformIndicator(
         indicator,
         val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue()))

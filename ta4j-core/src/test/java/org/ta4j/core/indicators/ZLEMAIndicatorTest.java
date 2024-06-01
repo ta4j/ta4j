@@ -32,11 +32,12 @@ import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.average.ZLEMAIndicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 
@@ -74,10 +75,10 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
   @Test
   public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
-    final var zlema = new ZLEMAIndicator(new ClosePriceIndicator(this.data), 10);
+    final var zlema = NumericIndicator.closePrice(this.data).zlema(10);
     this.data.replaceStrategy(new MockStrategy(zlema));
 
-    assertNext(this.data,10, zlema);
+    assertNext(this.data, 10, zlema);
   }
 
 
@@ -86,6 +87,6 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     final var zlema = new ZLEMAIndicator(new ClosePriceIndicator(this.data), 3);
     this.data.replaceStrategy(new MockStrategy(zlema));
 
-    assertNext(this.data,10, zlema);
+    assertNext(this.data, 10, zlema);
   }
 }

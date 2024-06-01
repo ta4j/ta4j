@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,7 +40,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *     "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
  */
-public class TripleEMAIndicator extends AbstractIndicator<Num> {
+public class TripleEMAIndicator extends NumericIndicator {
 
   private final int barCount;
   private final EMAIndicator ema;
@@ -57,8 +56,8 @@ public class TripleEMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the indicator
    * @param barCount the time frame
    */
-  public TripleEMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public TripleEMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.barCount = barCount;
     this.ema = new EMAIndicator(indicator, barCount);
     this.emaEma = new EMAIndicator(this.ema, barCount);
@@ -68,7 +67,7 @@ public class TripleEMAIndicator extends AbstractIndicator<Num> {
 
   protected Num calculate() {
     // trix = 3 * ( ema - emaEma ) + emaEmaEma
-    final var numFactory = getBarSeries().numFactory();
+    final var numFactory = getNumFactory();
     return numFactory.numOf(3)
         .multipliedBy(this.ema.getValue().minus(this.emaEma.getValue()))
         .plus(this.emaEmaEma.getValue());

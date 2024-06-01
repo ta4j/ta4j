@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -27,8 +27,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.function.Predicate;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -38,56 +38,62 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the lowest indicator value from the bar series within the bar count.
  */
-public class LowestValueIndicator extends AbstractIndicator<Num> {
+public class LowestValueIndicator extends NumericIndicator {
 
-    private final Indicator<Num> indicator;
-    private final int barCount;
+  private final NumericIndicator indicator;
+  private final int barCount;
 
-    /** circular array */
-    private final ArrayList<Num> data;
-    private Num value;
-    private int barsPassed;
+  /** circular array */
+  private final ArrayList<Num> data;
+  private Num value;
+  private int barsPassed;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
-     */
-    public LowestValueIndicator(final Indicator<Num> indicator, final int barCount) {
-        super(indicator.getBarSeries());
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.data = new ArrayList<>(barCount);
-        for (int i = 0; i < barCount; i++) {
-            this.data.add(NaN.NaN);
-        }
+
+  /**
+   * Constructor.
+   *
+   * @param indicator the {@link Indicator}
+   * @param barCount the time frame
+   */
+  public LowestValueIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
+    this.indicator = indicator;
+    this.barCount = barCount;
+    this.data = new ArrayList<>(barCount);
+    for (int i = 0; i < barCount; i++) {
+      this.data.add(NaN.NaN);
     }
+  }
 
-    protected Num calculate() {
-        final var indicatorValue = this.indicator.getValue();
-        this.data.set(this.barsPassed % this.barCount, indicatorValue);
-        return this.data.stream().filter(Predicate.not(Num::isNaN)).min(Num::compareTo).orElse(NaN.NaN);
-    }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " " + this.indicator;
-    }
+  protected Num calculate() {
+    final var indicatorValue = this.indicator.getValue();
+    this.data.set(this.barsPassed % this.barCount, indicatorValue);
+    return this.data.stream().filter(Predicate.not(Num::isNaN)).min(Num::compareTo).orElse(NaN.NaN);
+  }
 
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
 
-    @Override
-    public void refresh(final Instant tick) {
-        ++this.barsPassed;
-        this.value = calculate();
-    }
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " " + this.indicator;
+  }
 
-    @Override
-    public boolean isStable() {
-        return this.barsPassed >= this.barCount && this.indicator.isStable();
-    }
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    ++this.barsPassed;
+    this.value = calculate();
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.barsPassed >= this.barCount && this.indicator.isStable();
+  }
 }

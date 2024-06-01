@@ -27,7 +27,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  * TypicalPrice = (highPrice + lowPrice + closePrice) / 3
  * </pre>
  */
-public class TypicalPriceIndicator extends AbstractIndicator<Num> {
+public class TypicalPriceIndicator extends SeriesRelatedNumericIndicator {
 
   private Instant currentTick = Instant.EPOCH;
   private Num value;

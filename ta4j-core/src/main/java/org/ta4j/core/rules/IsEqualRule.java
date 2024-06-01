@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.indicators.Indicator;
 //import org.ta4j.core.TradingRecord;
-//import org.ta4j.core.indicators.helpers.ConstantIndicator;
+//import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**
@@ -57,7 +57,7 @@
 //     * @param value     the value to check
 //     */
 //    public IsEqualRule(Indicator<Num> indicator, Num value) {
-//        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), value));
+//        this(indicator, new ConstantNumericIndicator<>(indicator.getBarSeries(), value));
 //    }
 //
 //    /**

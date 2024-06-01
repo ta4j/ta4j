@@ -23,24 +23,23 @@
  */
 package org.ta4j.core.indicators.average;
 
-import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
  * Exponential moving average indicator.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
+ *     "https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
  */
 public class EMAIndicator extends AbstractEMAIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param indicator an indicator
-     * @param barCount  the EMA time frame
-     */
-    public EMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, barCount, (2.0 / (barCount + 1)));
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator an indicator
+   * @param barCount the EMA time frame
+   */
+  public EMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator, barCount, (2.0 / (barCount + 1)));
+  }
 }

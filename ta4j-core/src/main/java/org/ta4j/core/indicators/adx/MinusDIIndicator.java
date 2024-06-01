@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,8 +27,8 @@ import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.average.MMAIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class MinusDIIndicator extends AbstractIndicator<Num> {
+public class MinusDIIndicator extends NumericIndicator {
 
     private final int barCount;
     private final ATRIndicator atrIndicator;
@@ -59,7 +59,7 @@ public class MinusDIIndicator extends AbstractIndicator<Num> {
      *                 {@link #avgMinusDMIndicator}
      */
     public MinusDIIndicator(final BarSeries series, final int barCount) {
-        super(series);
+      super(series.numFactory());
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
@@ -68,7 +68,7 @@ public class MinusDIIndicator extends AbstractIndicator<Num> {
     protected Num calculate() {
         return this.avgMinusDMIndicator.getValue()
                 .dividedBy(this.atrIndicator.getValue())
-                .multipliedBy(getBarSeries().numFactory().hundred());
+            .multipliedBy(getNumFactory().hundred());
     }
 
     @Override

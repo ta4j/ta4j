@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -62,7 +62,6 @@ public class MockIndicator implements Indicator<Num> {
      *
      * @return TimeSeries of the Indicator
      */
-    @Override
     public BarSeries getBarSeries() {
         return this.series;
     }

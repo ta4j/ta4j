@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.average;
 
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
  * Modified moving average indicator.
@@ -35,13 +35,13 @@ import org.ta4j.core.num.Num;
  */
 public class MMAIndicator extends AbstractEMAIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the MMA time frame
-     */
-    public MMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, barCount, 1.0 / barCount);
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator the {@link Indicator}
+   * @param barCount the MMA time frame
+   */
+  public MMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator, barCount, 1.0 / barCount);
+  }
 }

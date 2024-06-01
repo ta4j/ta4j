@@ -38,7 +38,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest<Num> {
 
     private BacktestBarSeries series;
 

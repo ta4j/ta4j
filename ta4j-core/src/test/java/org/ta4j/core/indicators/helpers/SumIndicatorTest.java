@@ -37,7 +37,7 @@
 //    @Before
 //    public void setUp() {
 //        BarSeries series = new MockBarSeriesBuilder().build();
-//        var constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(6));
+//        var constantIndicator = new ConstantNumericIndicator<>(series, series.numFactory().numOf(6));
 //        var mockIndicator = new FixedIndicator<>(series, series.numFactory().numOf(-2.0),
 //                series.numFactory().numOf(0.00), series.numFactory().numOf(1.00), series.numFactory().numOf(2.53),
 //                series.numFactory().numOf(5.87), series.numFactory().numOf(6.00), series.numFactory().numOf(10.0));

@@ -30,12 +30,11 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class TransformIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private TransformIndicator transPlus;
   private TransformIndicator transMinus;
@@ -59,7 +58,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
   @Before
   public void setUp() {
     this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
-    final var constantIndicator = new ConstantIndicator<>(this.series, numOf(4));
+    final var constantIndicator = new ConstantNumericIndicator(numOf(4));
 
     this.transPlus = TransformIndicator.plus(constantIndicator, 10);
     this.transMinus = TransformIndicator.minus(constantIndicator, 10);
@@ -68,7 +67,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     this.transMax = TransformIndicator.max(constantIndicator, 10);
     this.transMin = TransformIndicator.min(constantIndicator, 10);
 
-    this.transAbs = TransformIndicator.abs(new ConstantIndicator<Num>(this.series, numOf(-4)));
+    this.transAbs = TransformIndicator.abs(new ConstantNumericIndicator(numOf(-4)));
     this.transPow = TransformIndicator.pow(constantIndicator, 2);
     this.transSqrt = TransformIndicator.sqrt(constantIndicator);
     this.transLog = TransformIndicator.log(constantIndicator);

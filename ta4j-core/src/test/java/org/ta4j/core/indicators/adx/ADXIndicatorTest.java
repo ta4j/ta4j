@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -29,56 +29,61 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import java.util.List;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
+import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class ADXIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private final ExternalIndicatorTest xls;
+  private final ExternalIndicatorTest xls;
 
-    public ADXIndicatorTest(final NumFactory numFactory) {
-        super((data, params) -> new ADXIndicator(data, (int) params[0], (int) params[1]), numFactory);
-        this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, this.numFactory);
-    }
 
-    @Test
-    public void externalData11() throws Exception {
-        final var series = this.xls.getSeries();
-        final var actualIndicator = getIndicator(series, 1, 1);
-        final var expectedIndicator = this.xls.getIndicator(1, 1);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+  public ADXIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+    this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15, this.numFactory);
+  }
 
-        assertIndicatorEquals(expectedIndicator, actualIndicator);
-        assertEquals(100.0, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
 
-    @Test
-    public void externalData32() throws Exception {
-        final var series = this.xls.getSeries();
-        final var actualIndicator = getIndicator(series, 3, 2);
-        final var expectedIndicator = this.xls.getIndicator(3, 2);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+  @Test
+  public void externalData11() throws Exception {
+    final var series = this.xls.getSeries();
+    final var actualIndicator = NumericIndicator.adx(series, 1, 1);
+    final var expectedIndicator = this.xls.getIndicator(1, 1);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
 
-        assertIndicatorEquals(expectedIndicator, actualIndicator);
-        assertEquals(12.1330, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
+    assertEquals(100.0, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
-    @Test
-    public void externalData138() throws Exception {
-        final var series = this.xls.getSeries();
-        final var actualIndicator = getIndicator(series, 13, 8);
-        final var expectedIndicator = this.xls.getIndicator(13, 8);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
 
-        assertIndicatorEquals(expectedIndicator, actualIndicator);
-        assertEquals(7.3884, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+  @Test
+  public void externalData32() throws Exception {
+    final var series = this.xls.getSeries();
+    final var actualIndicator = NumericIndicator.adx(series, 3, 2);
+    final var expectedIndicator = this.xls.getIndicator(3, 2);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
+    assertEquals(12.1330, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
+
+
+  @Test
+  public void externalData138() throws Exception {
+    final var series = this.xls.getSeries();
+    final var actualIndicator = NumericIndicator.adx(series, 13, 8);
+    final var expectedIndicator = this.xls.getIndicator(13, 8);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
+    assertEquals(7.3884, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
 }

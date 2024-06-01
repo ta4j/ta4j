@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -23,7 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.time.Instant;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,31 +35,56 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns constant {@link Num} values for a bar.
  */
-public class FixedDecimalIndicator extends FixedIndicator<Num> {
+public class FixedDecimalIndicator extends NumericIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     * @param values the values to be returned by this indicator
-     */
-    public FixedDecimalIndicator(final BarSeries series, final double... values) {
-        super(series);
-        for (final var value : values) {
-            addValue(getBarSeries().numFactory().numOf(value));
-        }
-    }
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     * @param values the values to be returned by this indicator
-     */
-    public FixedDecimalIndicator(final BarSeries series, final String... values) {
-        super(series);
-        for (final var value : values) {
-            addValue(getBarSeries().numFactory().numOf(value));
-        }
+  private final FixedIndicator<Num> fixedIndicator;
+
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param values the values to be returned by this indicator
+   */
+  public FixedDecimalIndicator(final BarSeries series, final double... values) {
+    super(series.numFactory());
+    this.fixedIndicator = new FixedIndicator<>();
+    for (final var value : values) {
+      this.fixedIndicator.addValue(series.numFactory().numOf(value));
     }
+  }
+
+
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param values the values to be returned by this indicator
+   */
+  public FixedDecimalIndicator(final BarSeries series, final String... values) {
+    super(series.numFactory());
+    this.fixedIndicator = new FixedIndicator<>();
+    for (final var value : values) {
+      this.fixedIndicator.addValue(series.numFactory().numOf(value));
+    }
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.fixedIndicator.getValue();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.fixedIndicator.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.fixedIndicator.isStable();
+  }
 }

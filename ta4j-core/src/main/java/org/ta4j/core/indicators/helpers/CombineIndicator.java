@@ -27,8 +27,7 @@ import java.time.Instant;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,10 +36,10 @@ import org.ta4j.core.num.Num;
  * <p>
  * Combines two Num indicators by using common math operations.
  */
-public class CombineIndicator extends AbstractIndicator<Num> {
+public class CombineIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicatorLeft;
-  private final Indicator<Num> indicatorRight;
+  private final NumericIndicator indicatorLeft;
+  private final NumericIndicator indicatorRight;
   private final BinaryOperator<Num> combineFunction;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -56,11 +55,11 @@ public class CombineIndicator extends AbstractIndicator<Num> {
    *     to combine the values of the indicators
    */
   public CombineIndicator(
-      final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight,
+      final NumericIndicator indicatorLeft,
+      final NumericIndicator indicatorRight,
       final BinaryOperator<Num> combination
   ) {
-    // TODO check both indicators use the same series/num function
-    super(indicatorLeft.getBarSeries());
+    super(indicatorLeft.getNumFactory());
     this.indicatorLeft = indicatorLeft;
     this.indicatorRight = indicatorRight;
     this.combineFunction = combination;
@@ -98,7 +97,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   /**
    * Combines the two input indicators by indicatorLeft.plus(indicatorRight).
    */
-  public static CombineIndicator plus(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator plus(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::plus);
   }
 
@@ -106,7 +105,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   /**
    * Combines the two input indicators by indicatorLeft.minus(indicatorRight).
    */
-  public static CombineIndicator minus(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator minus(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::minus);
   }
 
@@ -114,7 +113,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   /**
    * Combines the two input indicators by indicatorLeft.dividedBy(indicatorRight).
    */
-  public static CombineIndicator divide(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator divide(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::dividedBy);
   }
 
@@ -123,7 +122,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
    * Combines the two input indicators by
    * indicatorLeft.multipliedBy(indicatorRight).
    */
-  public static CombineIndicator multiply(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator multiply(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
   }
 
@@ -131,7 +130,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   /**
    * Combines the two input indicators by indicatorLeft.max(indicatorRight).
    */
-  public static CombineIndicator max(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator max(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::max);
   }
 
@@ -139,7 +138,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
   /**
    * Combines the two input indicators by indicatorLeft.min(indicatorRight).
    */
-  public static CombineIndicator min(final Indicator<Num> indicatorLeft, final Indicator<Num> indicatorRight) {
+  public static CombineIndicator min(final NumericIndicator indicatorLeft, final NumericIndicator indicatorRight) {
     return new CombineIndicator(indicatorLeft, indicatorRight, Num::min);
   }
 }

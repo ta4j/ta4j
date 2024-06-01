@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -36,11 +36,8 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestStrategy;
-import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.average.SMAIndicator;
-import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.PerformanceReport;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
@@ -50,98 +47,109 @@ import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
 
-    public static void main(final String[] args) throws IOException {
 
-        final int start = 3;
-        final int stop = 3;
-        final int step = 5;
+  public static void main(final String[] args) throws IOException {
 
-        final List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
-        for (int i = start; i <= stop; i += step) {
-            final var p = i;
-            strategies.add(x -> new BacktestStrategy("Sma(" + p + ")", createEntryRule(x, p), createExitRule(x, p)));
-        }
+    final int start = 3;
+    final int stop = 3;
+    final int step = 5;
 
-        final var series = CsvBarsLoader.loadAppleIncSeries();
-        final var backtestExecutor = new BacktestExecutor(series);
-        final List<TradingStatement> tradingStatements = backtestExecutor.execute(new BacktestStrategy("SMA", createEntryRule(series, 3), createExitRule(series, 3)), DecimalNum.valueOf(50),
-                Trade.TradeType.BUY);
-
-        LOG.info(printReport(tradingStatements));
+    final List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
+    for (int i = start; i <= stop; i += step) {
+      final var p = i;
+      strategies.add(x -> new BacktestStrategy("Sma(" + p + ")", createEntryRule(x, p), createExitRule(x, p)));
     }
 
-    private static Rule createEntryRule(final BarSeries series, final int barCount) {
-        final Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        final SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-        return new UnderIndicatorRule(sma, closePrice);
+    final var series = CsvBarsLoader.loadAppleIncSeries();
+    final var backtestExecutor = new BacktestExecutor(series);
+    final List<TradingStatement> tradingStatements =
+        backtestExecutor.execute(
+            new BacktestStrategy("SMA", createEntryRule(series, 3), createExitRule(series, 3)),
+            DecimalNum.valueOf(50),
+            Trade.TradeType.BUY
+        );
+
+    LOG.info(printReport(tradingStatements));
+  }
+
+
+  private static Rule createEntryRule(final BarSeries series, final int barCount) {
+    final var closePrice = NumericIndicator.closePrice(series);
+    final var sma = closePrice.sma(barCount);
+    return new UnderIndicatorRule(sma, closePrice);
+  }
+
+
+  private static Rule createExitRule(final BarSeries series, final int barCount) {
+    final var closePrice = NumericIndicator.closePrice(series);
+    final var sma = closePrice.sma(barCount);
+    return new OverIndicatorRule(sma, closePrice);
+  }
+
+
+  private static String printReport(final List<TradingStatement> tradingStatements) {
+    final StringBuilder resultBuilder = new StringBuilder();
+    resultBuilder.append(System.lineSeparator());
+    for (final TradingStatement statement : tradingStatements) {
+      resultBuilder.append(printStatementReport(statement));
+      resultBuilder.append(System.lineSeparator());
     }
 
-    private static Rule createExitRule(final BarSeries series, final int barCount) {
-        final Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        final SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-        return new OverIndicatorRule(sma, closePrice);
-    }
+    return resultBuilder.toString();
+  }
 
-    private static String printReport(final List<TradingStatement> tradingStatements) {
-        final StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append(System.lineSeparator());
-        for (final TradingStatement statement : tradingStatements) {
-            resultBuilder.append(printStatementReport(statement));
-            resultBuilder.append(System.lineSeparator());
-        }
 
-        return resultBuilder.toString();
-    }
+  private static StringBuilder printStatementReport(final TradingStatement statement) {
+    final StringBuilder resultBuilder = new StringBuilder();
+    resultBuilder.append("######### ")
+        .append(statement.getStrategy().getName())
+        .append(" #########")
+        .append(System.lineSeparator())
+        .append(printPerformanceReport(statement.getPerformanceReport()))
+        .append(System.lineSeparator())
+        .append(printPositionStats(statement.getPositionStatsReport()))
+        .append(System.lineSeparator())
+        .append("###########################");
+    return resultBuilder;
+  }
 
-    private static StringBuilder printStatementReport(final TradingStatement statement) {
-        final StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("######### ")
-                .append(statement.getStrategy().getName())
-                .append(" #########")
-                .append(System.lineSeparator())
-                .append(printPerformanceReport(statement.getPerformanceReport()))
-                .append(System.lineSeparator())
-                .append(printPositionStats(statement.getPositionStatsReport()))
-                .append(System.lineSeparator())
-                .append("###########################");
-        return resultBuilder;
-    }
 
-    private static StringBuilder printPerformanceReport(final PerformanceReport report) {
-        final StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- performance report ---------")
-                .append(System.lineSeparator())
-                .append("total loss: ")
-                .append(report.getTotalLoss())
-                .append(System.lineSeparator())
-                .append("total profit: ")
-                .append(report.getTotalProfit())
-                .append(System.lineSeparator())
-                .append("total profit loss: " + report.getTotalProfitLoss())
-                .append(System.lineSeparator())
-                .append("total profit loss percentage: ")
-                .append(report.getTotalProfitLossPercentage())
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
-    }
+  private static StringBuilder printPerformanceReport(final PerformanceReport report) {
+    final StringBuilder resultBuilder = new StringBuilder();
+    resultBuilder.append("--------- performance report ---------")
+        .append(System.lineSeparator())
+        .append("total loss: ")
+        .append(report.getTotalLoss())
+        .append(System.lineSeparator())
+        .append("total profit: ")
+        .append(report.getTotalProfit())
+        .append(System.lineSeparator())
+        .append("total profit loss: " + report.getTotalProfitLoss())
+        .append(System.lineSeparator())
+        .append("total profit loss percentage: ")
+        .append(report.getTotalProfitLossPercentage())
+        .append(System.lineSeparator())
+        .append("---------------------------");
+    return resultBuilder;
+  }
 
-    private static StringBuilder printPositionStats(final PositionStatsReport report) {
-        final StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- trade statistics report ---------")
-                .append(System.lineSeparator())
-                .append("loss trade count: ")
-                .append(report.getLossCount())
-                .append(System.lineSeparator())
-                .append("profit trade count: ")
-                .append(report.getProfitCount())
-                .append(System.lineSeparator())
-                .append("break even trade count: ")
-                .append(report.getBreakEvenCount())
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
-    }
+
+  private static StringBuilder printPositionStats(final PositionStatsReport report) {
+    final StringBuilder resultBuilder = new StringBuilder();
+    resultBuilder.append("--------- trade statistics report ---------")
+        .append(System.lineSeparator())
+        .append("loss trade count: ")
+        .append(report.getLossCount())
+        .append(System.lineSeparator())
+        .append("profit trade count: ")
+        .append(report.getProfitCount())
+        .append(System.lineSeparator())
+        .append("break even trade count: ")
+        .append(report.getBreakEvenCount())
+        .append(System.lineSeparator())
+        .append("---------------------------");
+    return resultBuilder;
+  }
 }

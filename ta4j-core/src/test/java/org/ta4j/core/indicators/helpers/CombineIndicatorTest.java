@@ -32,13 +32,12 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class CombineIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private CombineIndicator combinePlus;
   private CombineIndicator combineMinus;
@@ -57,8 +56,8 @@ public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
   @Before
   public void setUp() {
     this.series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withDefaultData().build();
-    final var constantIndicator = new ConstantIndicator<>(this.series, numOf(4));
-    final var constantIndicatorTwo = new ConstantIndicator<>(this.series, numOf(2));
+    final var constantIndicator = new ConstantNumericIndicator(numOf(4));
+    final var constantIndicatorTwo = new ConstantNumericIndicator(numOf(2));
 
     this.combinePlus = CombineIndicator.plus(constantIndicator, constantIndicatorTwo);
     this.combineMinus = CombineIndicator.minus(constantIndicator, constantIndicatorTwo);
@@ -95,11 +94,17 @@ public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
     final Function<Number, Num> numFunction = DecimalNum::valueOf;
 
     final var series = new MockBarSeriesBuilder().withDefaultData().build();
-    final var mockIndicator = new FixedIndicator<>(series, numFunction.apply(-2.0), numFunction.apply(0.00),
-        numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87), numFunction.apply(6.00),
-        numFunction.apply(10.0)
+    final var mockIndicator = new FixedDecimalIndicator(
+        series,
+        -2.0,
+        0.00,
+        1.00,
+        2.53,
+        5.87,
+        6.00,
+        10.0
     );
-    final var constantIndicator = new ConstantIndicator<>(series, numFunction.apply(6));
+    final var constantIndicator = new ConstantNumericIndicator(numFunction.apply(6));
     final var differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
     series.replaceStrategy(new MockStrategy(constantIndicator, differenceIndicator));
 

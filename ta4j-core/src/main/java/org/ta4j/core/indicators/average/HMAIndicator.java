@@ -25,10 +25,10 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://alanhull.com/hull-moving-average">
  *     http://alanhull.com/hull-moving-average</a>
  */
-public class HMAIndicator extends AbstractIndicator<Num> {
+public class HMAIndicator extends NumericIndicator {
 
   private final int barCount;
   private final WMAIndicator sqrtWma;
@@ -51,8 +51,8 @@ public class HMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCount the time frame
    */
-  public HMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public HMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.barCount = barCount;
 
     final var halfWma = new WMAIndicator(indicator, barCount / 2);
@@ -61,7 +61,7 @@ public class HMAIndicator extends AbstractIndicator<Num> {
     final var indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
     this.sqrtWma = new WMAIndicator(
         indicatorForSqrtWma,
-        getBarSeries().numFactory().numOf(barCount).sqrt().intValue()
+        getNumFactory().numOf(barCount).sqrt().intValue()
     );
   }
 

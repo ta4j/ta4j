@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.candles.price;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,30 +35,33 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the high price of a bar.
  */
-public class HighPriceIndicator extends AbstractIndicator<Num> {
+public class HighPriceIndicator extends SeriesRelatedNumericIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public HighPriceIndicator(final BarSeries series) {
-        super(series);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  public HighPriceIndicator(final BarSeries series) {
+    super(series);
+  }
 
-    @Override
-    public Num getValue() {
-        return getBarSeries().getBar().highPrice();
-    }
 
-    /** @return {@code 0} */
-    @Override
-    public boolean isStable() {
-        return true;
-    }
+  @Override
+  public Num getValue() {
+    return getBarSeries().getBar().highPrice();
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
+
+  /** @return {@code 0} */
+  @Override
+  public boolean isStable() {
+    return true;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    // NOOP
+  }
 }

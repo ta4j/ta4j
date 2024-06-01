@@ -25,11 +25,9 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.Indicator;
 
 /**
  * A fixed indicator.
@@ -39,7 +37,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
  *
  * @param <T> the type of returned constant values (Double, Boolean, etc.)
  */
-public class FixedIndicator<T> extends AbstractIndicator<T> {
+class FixedIndicator<T> implements Indicator<T> {
 
   private final List<T> values = new ArrayList<>();
   private Instant currentTick = Instant.EPOCH;
@@ -49,13 +47,11 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
   /**
    * Constructor.
    *
-   * @param series the bar series
    * @param values the values to be returned by this indicator
    */
   @SafeVarargs
-  public FixedIndicator(final BarSeries series, final T... values) {
-    super(series);
-    this.values.addAll(Arrays.asList(values));
+  protected FixedIndicator(final T... values) {
+    this.values.addAll(List.of(values));
   }
 
 

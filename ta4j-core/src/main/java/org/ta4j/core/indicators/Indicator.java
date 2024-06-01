@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -41,11 +41,6 @@ public interface Indicator<T> {
      * @return the value of the indicator
      */
     T getValue();
-
-    /**
-     * @return the related bar series
-     */
-    BarSeries getBarSeries();
 
     /**
      * updates its state based on current bar

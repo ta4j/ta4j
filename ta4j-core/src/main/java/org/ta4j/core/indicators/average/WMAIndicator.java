@@ -25,18 +25,18 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * WMA indicator.
  */
-public class WMAIndicator extends AbstractIndicator<Num> {
+public class WMAIndicator extends NumericIndicator {
 
   private final int barCount;
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
   private final CircularNumArray values;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -49,8 +49,8 @@ public class WMAIndicator extends AbstractIndicator<Num> {
    * @param indicator the {@link Indicator}
    * @param barCount the time frame
    */
-  public WMAIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public WMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     this.barCount = barCount;
     this.values = new CircularNumArray(barCount);
@@ -66,7 +66,7 @@ public class WMAIndicator extends AbstractIndicator<Num> {
 
     this.values.addLast(this.indicator.getValue());
 
-    final var numFactory = getBarSeries().numFactory();
+    final var numFactory = getNumFactory();
     Num wmaSum = numFactory.zero();
     int i = this.barCount;
     for (final var v : this.values.reversed()) {

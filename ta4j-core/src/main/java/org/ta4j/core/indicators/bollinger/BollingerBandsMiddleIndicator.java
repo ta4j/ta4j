@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.bollinger;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,9 +36,9 @@ import org.ta4j.core.num.Num;
  * Sell - Occurs when the price line crosses from above to below the Upper
  * Bollinger Band.
  */
-public class BollingerBandsMiddleIndicator extends AbstractIndicator<Num> {
+public class BollingerBandsMiddleIndicator extends NumericIndicator {
 
-  private final Indicator<Num> indicator;
+  private final NumericIndicator indicator;
 
 
   /**
@@ -47,8 +46,8 @@ public class BollingerBandsMiddleIndicator extends AbstractIndicator<Num> {
    *
    * @param indicator the indicator that gives the values of the middle band
    */
-  public BollingerBandsMiddleIndicator(final Indicator<Num> indicator) {
-    super(indicator.getBarSeries());
+  public BollingerBandsMiddleIndicator(final NumericIndicator indicator) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
   }
 

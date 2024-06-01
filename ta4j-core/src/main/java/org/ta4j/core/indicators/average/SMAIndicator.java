@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -25,74 +25,82 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Simple moving average (SMA) indicator.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
+ *     "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
  */
-public class SMAIndicator extends AbstractIndicator<Num> {
+public class SMAIndicator extends NumericIndicator {
 
-    private final int barCount;
-    private final RunningTotalIndicator sum;
-    private Num value;
-    private int processedBars;
-    private Instant currentTick = Instant.EPOCH;
+  private final int barCount;
+  private final RunningTotalIndicator sum;
+  private Num value;
+  private int processedBars;
+  private Instant currentTick = Instant.EPOCH;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
-     */
-    public SMAIndicator(final Indicator<Num> indicator, final int barCount) {
-        super(indicator.getBarSeries());
-        this.sum = new RunningTotalIndicator(indicator, barCount);
-        this.barCount = barCount;
+
+  /**
+   * Constructor.
+   *
+   * @param indicator the {@link Indicator}
+   * @param barCount the time frame
+   */
+  public SMAIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
+    this.sum = new RunningTotalIndicator(indicator, barCount);
+    this.barCount = barCount;
+  }
+
+
+  protected Num calculate() {
+    final var sum = partialSum();
+    // TODO extract divisor to constant
+    return sum.dividedBy(getNumFactory().numOf(this.barCount));
+  }
+
+
+  private Num partialSum() {
+    return this.sum.getValue();
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.processedBars >= this.barCount && this.sum.isStable();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.processedBars;
+      this.sum.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.processedBars = 1;
+      this.sum.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    protected Num calculate() {
-        final var sum = partialSum();
-        return sum.dividedBy(getBarSeries().numFactory().numOf(this.barCount));
-    }
 
-    private Num partialSum() {
-        return this.sum.getValue();
-    }
-
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
-
-    @Override
-    public boolean isStable() {
-        return this.processedBars >= this.barCount && this.sum.isStable();
-    }
-
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            ++this.processedBars;
-            this.sum.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        } else if (tick.isBefore(this.currentTick)) {
-            this.processedBars = 1;
-            this.sum.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount;
-    }
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " barCount: " + this.barCount;
+  }
 
 }

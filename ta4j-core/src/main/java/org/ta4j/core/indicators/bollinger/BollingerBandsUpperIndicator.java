@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.bollinger;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,10 +36,10 @@ import org.ta4j.core.num.Num;
  * Sell - Occurs when the price line crosses from above to below the Upper
  * Bollinger Band.
  */
-public class BollingerBandsUpperIndicator extends AbstractIndicator<Num> {
+public class BollingerBandsUpperIndicator extends NumericIndicator {
 
   private final BollingerBandsMiddleIndicator bbm;
-  private final Indicator<Num> deviation;
+  private final NumericIndicator deviation;
   private final Num k;
   private Instant currentTick = Instant.EPOCH;
   private Num value;
@@ -54,8 +53,8 @@ public class BollingerBandsUpperIndicator extends AbstractIndicator<Num> {
    * @param deviation the deviation above and below the middle, factored by k.
    *     Typically a {@code StandardDeviationIndicator} is used.
    */
-  public BollingerBandsUpperIndicator(final BollingerBandsMiddleIndicator bbm, final Indicator<Num> deviation) {
-    this(bbm, deviation, bbm.getBarSeries().numFactory().two());
+  public BollingerBandsUpperIndicator(final BollingerBandsMiddleIndicator bbm, final NumericIndicator deviation) {
+    this(bbm, deviation, deviation.getNumFactory().two());
   }
 
 
@@ -71,10 +70,10 @@ public class BollingerBandsUpperIndicator extends AbstractIndicator<Num> {
    */
   public BollingerBandsUpperIndicator(
       final BollingerBandsMiddleIndicator bbm,
-      final Indicator<Num> deviation,
+      final NumericIndicator deviation,
       final Num k
   ) {
-    super(deviation.getBarSeries());
+    super(deviation.getNumFactory());
     this.bbm = bbm;
     this.deviation = deviation;
     this.k = k;

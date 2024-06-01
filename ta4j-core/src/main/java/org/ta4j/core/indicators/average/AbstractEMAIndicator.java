@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,80 +25,90 @@ package org.ta4j.core.indicators.average;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Base class for Exponential Moving Average implementations.
  */
-public abstract class AbstractEMAIndicator extends AbstractIndicator<Num> {
+public abstract class AbstractEMAIndicator extends NumericIndicator {
 
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final Num multiplier;
+  private final NumericIndicator indicator;
+  private final int barCount;
+  private final Num multiplier;
 
-    private Num previousValue;
-    private Num currentValue;
-    private int barsPassed;
+  private Num previousValue;
+  private Num currentValue;
+  private int barsPassed;
 
-    private Instant currentTick = Instant.EPOCH;
+  private Instant currentTick = Instant.EPOCH;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator  the {@link Indicator}
-     * @param barCount   the time frame
-     * @param multiplier the multiplier
-     */
-    protected AbstractEMAIndicator(final Indicator<Num> indicator, final int barCount, final double multiplier) {
-        super(indicator.getBarSeries());
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
+
+  /**
+   * Constructor.
+   *
+   * @param indicator the {@link Indicator}
+   * @param barCount the time frame
+   * @param multiplier the multiplier
+   */
+  protected AbstractEMAIndicator(
+      final NumericIndicator indicator,
+      final int barCount,
+      final double multiplier
+  ) {
+    super(indicator.getNumFactory());
+    this.indicator = indicator;
+    this.barCount = barCount;
+    this.multiplier = getNumFactory().numOf(multiplier);
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.currentValue;
+  }
+
+
+  protected Num calculate() {
+    if (this.previousValue == null) {
+      this.previousValue = this.indicator.getValue();
+      return this.previousValue;
     }
 
-    @Override
-    public Num getValue() {
-        return this.currentValue;
-    }
+    final var newValue = this.indicator.getValue()
+        .minus(this.previousValue)
+        .multipliedBy(this.multiplier)
+        .plus(this.previousValue);
+    this.previousValue = newValue;
+    return newValue;
+  }
 
-    protected Num calculate() {
-        if (this.previousValue == null) {
-            this.previousValue = this.indicator.getValue();
-            return this.previousValue;
-        }
 
-        final var newValue = this.indicator.getValue()
-                .minus(this.previousValue)
-                .multipliedBy(this.multiplier)
-                .plus(this.previousValue);
-        this.previousValue = newValue;
-        return newValue;
-    }
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " barCount: " + this.barCount;
+  }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount;
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.barsPassed > this.barCount && this.indicator.isStable();
-    }
+  @Override
+  public boolean isStable() {
+    return this.barsPassed > this.barCount && this.indicator.isStable();
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            ++this.barsPassed;
-            this.indicator.refresh(tick);
-            this.currentValue = calculate();
-            this.currentTick = tick;
-        } else if (tick.isBefore(this.currentTick)) {
-            this.barsPassed = 1;
-            this.indicator.refresh(tick);
-            this.currentValue = calculate();
-            this.currentTick = tick;
-        }
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.barsPassed;
+      this.indicator.refresh(tick);
+      this.currentValue = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.barsPassed = 1;
+      this.indicator.refresh(tick);
+      this.currentValue = calculate();
+      this.currentTick = tick;
     }
+  }
 }

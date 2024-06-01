@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.statistics;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +35,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
  */
-public class StandardDeviationIndicator extends AbstractIndicator<Num> {
+public class StandardDeviationIndicator extends NumericIndicator {
 
   private final VarianceIndicator variance;
   private Instant currentTick = Instant.EPOCH;
@@ -49,8 +48,8 @@ public class StandardDeviationIndicator extends AbstractIndicator<Num> {
    * @param indicator the indicator
    * @param barCount the time frame
    */
-  public StandardDeviationIndicator(final Indicator<Num> indicator, final int barCount) {
-    super(indicator.getBarSeries());
+  public StandardDeviationIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
     this.variance = new VarianceIndicator(indicator, barCount);
   }
 

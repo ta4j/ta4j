@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,28 +23,32 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.time.Instant;
-
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Rule;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.average.EMAIndicator;
+import org.ta4j.core.indicators.average.LWMAIndicator;
+import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.average.ZLEMAIndicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 /**
- * NumericIndicator is a "fluent decorator" for Indicator<Num>. It provides
+ * NumericIndicator is a "fluent decorator" for NumericIndicator. It provides
  * methods to create rules and other "lightweight" indicators, using a
  * (hopefully) natural-looking and expressive series of method calls.
  *
@@ -52,7 +56,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * Methods like plus(), minus() and sqrt() correspond directly to methods in the
  * {@code Num} interface. These methods create "lightweight" (not cached)
  * indicators to add, subtract, etc. Many methods are overloaded to accept
- * either {@code Indicator<Num>} or {@code Number} arguments.
+ * either {@code NumericIndicator} or {@code Number} arguments.
  *
  * <p>
  * Methods like sma() and ema() simply create the corresponding indicator
@@ -61,77 +65,84 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  *
  * <p>
  * Another set of methods, like crossedOver() and isGreaterThan() create Rule
- * objects. These are also overloaded to accept both {@code Indicator<Num>} and
+ * objects. These are also overloaded to accept both {@code NumericIndicator} and
  * {@code Number} arguments.
  */
+public abstract class NumericIndicator implements Indicator<Num> {
 
-// TODO this looks lika a nece base for each numeric indicator, not a wrapper
-public class NumericIndicator implements Indicator<Num> {
+  /**
+   * Factory used for creation of this indicator that will be propagated to child indicators.
+   */
+  private final NumFactory numFactory;
 
-    /**
-     * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
-     *
-     * @param delegate an indicator
-     *
-     * @return a fluent NumericIndicator wrapped around the argument
-     */
-    public static NumericIndicator of(final Indicator<Num> delegate) {
-        return new NumericIndicator(delegate);
-    }
 
-    /**
-     * Creates a fluent version of the ClosePriceIndicator.
-     *
-     * @return a NumericIndicator wrapped around a ClosePriceIndicator
-     */
-    public static NumericIndicator closePrice(final BarSeries bs) {
-        return NumericIndicator.of(new ClosePriceIndicator(bs));
-    }
+  protected NumericIndicator(final NumFactory numFactory) {
+    this.numFactory = numFactory;
+  }
 
-    /**
-     * Creates a fluent version of the VolumeIndicator.
-     *
-     * @return a NumericIndicator wrapped around a VolumeIndicator
-     */
-    public static NumericIndicator volume(final BarSeries bs) {
-        return of(new VolumeIndicator(bs));
-    }
 
-    protected final Indicator<Num> delegate;
+  /**
+   * Creates a fluent version of the ClosePriceIndicator.
+   *
+   * @return a NumericIndicator wrapped around a ClosePriceIndicator
+   */
+  public static ClosePriceIndicator closePrice(final BarSeries bs) {
+    return new ClosePriceIndicator(bs);
+  }
 
-    protected NumericIndicator(final Indicator<Num> delegate) {
-        this.delegate = delegate;
-    }
 
-    public Indicator<Num> delegate() {
-        return this.delegate;
-    }
+  public static ATRIndicator atr(final BarSeries series, final int barCount) {
+    return new ATRIndicator(series, barCount);
+  }
+
+
+  public static ADXIndicator adx(final BarSeries series, final int diBarCount, final int adxBarCount) {
+    return new ADXIndicator(series, diBarCount, adxBarCount);
+  }
+
+
+  /**
+   * Creates a fluent version of the VolumeIndicator.
+   *
+   * @return a NumericIndicator wrapped around a VolumeIndicator
+   */
+  public static VolumeIndicator volume(final BarSeries bs) {
+    return new VolumeIndicator(bs);
+  }
+
+
+  public NumFactory getNumFactory() {
+    return this.numFactory;
+  }
+
 
   /**
    * @param other the other indicator
    *
    * @return {@code this + other}, rounded as necessary
    */
-  public NumericIndicator plus(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.sum(this, other));
+  public BinaryOperation plus(final NumericIndicator other) {
+    return BinaryOperation.sum(this, other);
   }
+
 
   /**
    * @param n the other number
    *
    * @return {@code this + n}, rounded as necessary
    */
-  public NumericIndicator plus(final Number n) {
+  public BinaryOperation plus(final Number n) {
     return plus(createConstant(n));
   }
+
 
   /**
    * @param other the other indicator
    *
    * @return {@code this - other}, rounded as necessary
    */
-  public NumericIndicator minus(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.difference(this, other));
+  public BinaryOperation minus(final NumericIndicator other) {
+    return BinaryOperation.difference(this, other);
   }
 
 
@@ -140,10 +151,9 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return {@code this - n}, rounded as necessary
    */
-  public NumericIndicator minus(final Number n) {
+  public BinaryOperation minus(final Number n) {
     return minus(createConstant(n));
   }
-
 
 
   /**
@@ -151,8 +161,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return {@code this * other}, rounded as necessary
    */
-  public NumericIndicator multipliedBy(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.product(this, other));
+  public BinaryOperation multipliedBy(final NumericIndicator other) {
+    return BinaryOperation.product(this, other);
   }
 
 
@@ -171,8 +181,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return {@code this / other}, rounded as necessary
    */
-  public NumericIndicator dividedBy(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.quotient(this, other));
+  public BinaryOperation dividedBy(final NumericIndicator other) {
+    return BinaryOperation.quotient(this, other);
   }
 
 
@@ -192,8 +202,8 @@ public class NumericIndicator implements Indicator<Num> {
    * @return the smaller of {@code this} and {@code other}; if they are equal,
    *     {@code this} is returned.
    */
-  public NumericIndicator min(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.min(this, other));
+  public BinaryOperation min(final NumericIndicator other) {
+    return BinaryOperation.min(this, other);
   }
 
 
@@ -203,7 +213,7 @@ public class NumericIndicator implements Indicator<Num> {
    * @return the smaller of {@code this} and {@code n}; if they are equal,
    *     {@code this} is returned.
    */
-  public NumericIndicator min(final Number n) {
+  public BinaryOperation min(final Number n) {
     return min(createConstant(n));
   }
 
@@ -214,8 +224,8 @@ public class NumericIndicator implements Indicator<Num> {
    * @return the greater of {@code this} and {@code other}; if they are equal,
    *     {@code this} is returned.
    */
-  public NumericIndicator max(final Indicator<Num> other) {
-    return NumericIndicator.of(BinaryOperation.max(this, other));
+  public BinaryOperation max(final NumericIndicator other) {
+    return BinaryOperation.max(this, other);
   }
 
 
@@ -225,7 +235,7 @@ public class NumericIndicator implements Indicator<Num> {
    * @return the greater of {@code this} and {@code n}; if they are equal,
    *     {@code this} is returned.
    */
-  public NumericIndicator max(final Number n) {
+  public BinaryOperation max(final Number n) {
     return max(createConstant(n));
   }
 
@@ -235,8 +245,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return {@code abs(this)}
    */
-  public NumericIndicator abs() {
-    return NumericIndicator.of(UnaryOperation.abs(this));
+  public UnaryOperation abs() {
+    return UnaryOperation.abs(this);
   }
 
 
@@ -245,8 +255,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return {@code √(this)}
    */
-  public NumericIndicator sqrt() {
-    return NumericIndicator.of(UnaryOperation.sqrt(this));
+  public UnaryOperation sqrt() {
+    return UnaryOperation.sqrt(this);
   }
 
 
@@ -261,23 +271,39 @@ public class NumericIndicator implements Indicator<Num> {
   }
 
 
-    /**
-     * @param barCount the time frame
-     *
-     * @return the {@link SMAIndicator} of {@code this}
-     */
-    public NumericIndicator sma(final int barCount) {
-        return NumericIndicator.of(new SMAIndicator(this.delegate, barCount));
-    }
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link SMAIndicator} of {@code this}
+   */
+  public SMAIndicator sma(final int barCount) {
+    return new SMAIndicator(this, barCount);
+  }
 
-    /**
-     * @param barCount the time frame
-     *
-     * @return the {@link EMAIndicator} of {@code this}
-     */
-    public NumericIndicator ema(final int barCount) {
-        return NumericIndicator.of(new EMAIndicator(this.delegate, barCount));
-    }
+
+  /**
+   * @param barCount the time frame
+   *
+   * @return the {@link EMAIndicator} of {@code this}
+   */
+  public EMAIndicator ema(final int barCount) {
+    return new EMAIndicator(this, barCount);
+  }
+
+
+  public ZLEMAIndicator zlema(final int barCount) {
+    return new ZLEMAIndicator(this, barCount);
+  }
+
+
+  public MMAIndicator mma(final int barCount) {
+    return new MMAIndicator(this, barCount);
+  }
+
+
+  public LWMAIndicator lwma(final int barCount) {
+    return new LWMAIndicator(this, barCount);
+  }
 
 
   /**
@@ -285,8 +311,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return the {@link StandardDeviationIndicator} of {@code this}
    */
-  public NumericIndicator stddev(final int barCount) {
-    return NumericIndicator.of(new StandardDeviationIndicator(this, barCount));
+  public StandardDeviationIndicator stddev(final int barCount) {
+    return new StandardDeviationIndicator(this, barCount);
   }
 
 
@@ -295,8 +321,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return the {@link HighestValueIndicator} of {@code this}
    */
-  public NumericIndicator highest(final int barCount) {
-    return NumericIndicator.of(new HighestValueIndicator(this, barCount));
+  public HighestValueIndicator highest(final int barCount) {
+    return new HighestValueIndicator(this, barCount);
   }
 
 
@@ -305,8 +331,8 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return the {@link LowestValueIndicator} of {@code this}
    */
-  public NumericIndicator lowest(final int barCount) {
-    return NumericIndicator.of(new LowestValueIndicator(this, barCount));
+  public LowestValueIndicator lowest(final int barCount) {
+    return new LowestValueIndicator(this, barCount);
   }
 
 
@@ -315,118 +341,114 @@ public class NumericIndicator implements Indicator<Num> {
    *
    * @return the {@link PreviousValueIndicator} of {@code this}
    */
-  public NumericIndicator previous(final int barCount) {
-    return NumericIndicator.of(new PreviousValueIndicator(this, barCount));
+  public PreviousValueIndicator previous(final int barCount) {
+    return new PreviousValueIndicator(this, barCount);
   }
+
 
   /**
    * @return the {@link PreviousValueIndicator} of {@code this} with
    *     {@code barCount=1}
    */
-  public Indicator<Num> previous() {
+  public PreviousValueIndicator previous() {
     return previous(1);
   }
 
-    /**
-     * @param other the other indicator
-     *
-     * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code other}
-     */
-    public Rule crossedOver(final Indicator<Num> other) {
-        return new CrossedUpIndicatorRule(this.delegate, other);
-    }
 
-    /**
-     * @param n the other number
-     *
-     * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code n}
-     */
-    public Rule crossedOver(final Number n) {
-        return crossedOver(createConstant(n));
-    }
+  /**
+   * Returns sum of last barCount values
+   *
+   * @param barCount how many values sum up
+   *
+   * @return sum indicator
+   */
+  public RunningTotalIndicator runningTotal(final int barCount) {
+    return new RunningTotalIndicator(this, barCount);
+  }
 
-    /**
-     * @param other the other indicator
-     *
-     * @return the {@link CrossedDownIndicatorRule} of {@code this} and
-     *         {@code other}
-     */
-    public Rule crossedUnder(final Indicator<Num> other) {
-        return new CrossedDownIndicatorRule(this.delegate, other);
-    }
 
-    /**
-     * @param n the other number
-     *
-     * @return the {@link CrossedDownIndicatorRule} of {@code this} and {@code n}
-     */
-    public Rule crossedUnder(final Number n) {
-        return crossedUnder(createConstant(n));
-    }
+  /**
+   * @param other the other indicator
+   *
+   * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code other}
+   */
+  public CrossedUpIndicatorRule crossedOver(final NumericIndicator other) {
+    return new CrossedUpIndicatorRule(this, other);
+  }
 
-    /**
-     * @param other the other indicator
-     *
-     * @return the {@link OverIndicatorRule} of {@code this} and {@code other}
-     */
-    public Rule isGreaterThan(final Indicator<Num> other) {
-        return new OverIndicatorRule(this.delegate, other);
-    }
 
-    /**
-     * @param n the other number
-     *
-     * @return the {@link OverIndicatorRule} of {@code this} and {@code n}
-     */
-    public Rule isGreaterThan(final Number n) {
-        return isGreaterThan(createConstant(n));
-    }
+  /**
+   * @param n the other number
+   *
+   * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code n}
+   */
+  public CrossedUpIndicatorRule crossedOver(final Number n) {
+    return crossedOver(createConstant(n));
+  }
 
-    /**
-     * @param other the other indicator
-     *
-     * @return the {@link UnderIndicatorRule} of {@code this} and {@code other}
-     */
-    public Rule isLessThan(final Indicator<Num> other) {
-        return new UnderIndicatorRule(this.delegate, other);
-    }
 
-    /**
-     * @param n the other number
-     *
-     * @return the {@link UnderIndicatorRule} of {@code this} and {@code n}
-     */
-    public Rule isLessThan(final Number n) {
-        return isLessThan(createConstant(n));
-    }
+  /**
+   * @param other the other indicator
+   *
+   * @return the {@link CrossedDownIndicatorRule} of {@code this} and
+   *     {@code other}
+   */
+  public CrossedDownIndicatorRule crossedUnder(final NumericIndicator other) {
+    return new CrossedDownIndicatorRule(this, other);
+  }
 
-    private Indicator<Num> createConstant(final Number n) {
-        return new ConstantIndicator<>(getBarSeries(), getBarSeries().numFactory().numOf(n));
-    }
 
-    @Override
-    public Num getValue() {
-        return this.delegate.getValue();
-    }
+  /**
+   * @param n the other number
+   *
+   * @return the {@link CrossedDownIndicatorRule} of {@code this} and {@code n}
+   */
+  public CrossedDownIndicatorRule crossedUnder(final Number n) {
+    return crossedUnder(createConstant(n));
+  }
 
-    @Override
-    public BarSeries getBarSeries() {
-        return this.delegate.getBarSeries();
-    }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.delegate.refresh(tick);
-    }
+  /**
+   * @param other the other indicator
+   *
+   * @return the {@link OverIndicatorRule} of {@code this} and {@code other}
+   */
+  public OverIndicatorRule isGreaterThan(final NumericIndicator other) {
+    return new OverIndicatorRule(this, other);
+  }
 
-    @Override
-    public boolean isStable() {
-        return this.delegate.isStable();
-    }
 
-    @Override
-    public String toString() {
-        return this.delegate.toString();
-    }
+  /**
+   * @param n the other number
+   *
+   * @return the {@link OverIndicatorRule} of {@code this} and {@code n}
+   */
+  public OverIndicatorRule isGreaterThan(final Number n) {
+    return isGreaterThan(createConstant(n));
+  }
 
+
+  /**
+   * @param other the other indicator
+   *
+   * @return the {@link UnderIndicatorRule} of {@code this} and {@code other}
+   */
+  public UnderIndicatorRule isLessThan(final NumericIndicator other) {
+    return new UnderIndicatorRule(this, other);
+  }
+
+
+  /**
+   * @param n the other number
+   *
+   * @return the {@link UnderIndicatorRule} of {@code this} and {@code n}
+   */
+  public UnderIndicatorRule isLessThan(final Number n) {
+    return isLessThan(createConstant(n));
+  }
+
+
+  private ConstantNumericIndicator createConstant(final Number n) {
+    return new ConstantNumericIndicator(getNumFactory().numOf(n));
+  }
 }

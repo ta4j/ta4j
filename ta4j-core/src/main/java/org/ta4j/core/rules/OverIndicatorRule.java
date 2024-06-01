@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -27,7 +27,8 @@ import java.time.Instant;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,10 +41,10 @@ import org.ta4j.core.num.Num;
 public class OverIndicatorRule extends AbstractRule {
 
     /** The first indicator. */
-    private final Indicator<Num> first;
+    private final NumericIndicator first;
 
     /** The second indicator. */
-    private final Indicator<Num> second;
+    private final NumericIndicator second;
 
     /**
      * Constructor.
@@ -51,8 +52,8 @@ public class OverIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public OverIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(threshold));
+    public OverIndicatorRule(final NumericIndicator indicator, final Number threshold) {
+        this(indicator, indicator.getNumFactory().numOf(threshold));
     }
 
     /**
@@ -61,8 +62,8 @@ public class OverIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold the threshold
      */
-    public OverIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
+    public OverIndicatorRule(final NumericIndicator indicator, final Num threshold) {
+        this(indicator, new ConstantNumericIndicator(threshold));
     }
 
     /**
@@ -71,7 +72,7 @@ public class OverIndicatorRule extends AbstractRule {
      * @param first  the first indicator
      * @param second the second indicator
      */
-    public OverIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
+    public OverIndicatorRule(final NumericIndicator first, final NumericIndicator second) {
         this.first = first;
         this.second = second;
     }

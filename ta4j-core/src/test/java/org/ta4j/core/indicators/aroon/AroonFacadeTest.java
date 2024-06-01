@@ -31,12 +31,11 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class AroonFacadeTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 
@@ -196,8 +195,8 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
 
   @Test
   public void testCreation() {
-    final AroonFacade facade = new AroonFacade(this.data, 5);
-    assertEquals(this.data, facade.down().getBarSeries());
+    final var facade = new AroonFacade(this.data, 5);
+    assertEquals(this.data.numFactory(), facade.down().getNumFactory());
   }
 
 

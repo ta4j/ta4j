@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.helpers;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,29 +35,32 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the open price of a bar.
  */
-public class VolumeIndicator extends AbstractIndicator<Num> {
+public class VolumeIndicator extends SeriesRelatedNumericIndicator {
 
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
-    public VolumeIndicator(final BarSeries series) {
-        super(series);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   */
+  public VolumeIndicator(final BarSeries series) {
+    super(series);
+  }
 
-    @Override
-    public Num getValue() {
-        return getBarSeries().getBar().volume();
-    }
 
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
+  @Override
+  public Num getValue() {
+    return getBarSeries().getBar().volume();
+  }
 
-    @Override
-    public boolean isStable() {
-        return true;
-    }
+
+  @Override
+  public void refresh(final Instant tick) {
+    // NOOP
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return true;
+  }
 }

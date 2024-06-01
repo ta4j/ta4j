@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -27,8 +27,9 @@ import java.time.Instant;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,69 +38,78 @@ import org.ta4j.core.num.Num;
  */
 public class CrossedDownIndicatorRule extends AbstractRule {
 
-    /** The cross indicator */
-    private final CrossIndicator cross;
+  /** The cross indicator */
+  private final CrossIndicator cross;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param threshold a threshold
-     */
-    public CrossedDownIndicatorRule(final Indicator<Num> indicator, final Number threshold) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(threshold));
-    }
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param threshold a threshold
-     */
-    public CrossedDownIndicatorRule(final Indicator<Num> indicator, final Num threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator the indicator
+   * @param threshold a threshold
+   */
+  public CrossedDownIndicatorRule(final NumericIndicator indicator, final Number threshold) {
+    this(indicator, indicator.getNumFactory().numOf(threshold));
+  }
 
-    /**
-     * Constructor.
-     *
-     * @param first  the first indicator
-     * @param second the second indicator
-     */
-    public CrossedDownIndicatorRule(final Indicator<Num> first, final Indicator<Num> second) {
-        this.cross = new CrossIndicator(first, second);
-    }
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        final boolean satisfied = this.cross.getValue();
-        traceIsSatisfied(satisfied);
-        return satisfied;
-    }
+  /**
+   * Constructor.
+   *
+   * @param indicator the indicator
+   * @param threshold a threshold
+   */
+  public CrossedDownIndicatorRule(final NumericIndicator indicator, final Num threshold) {
+    this(indicator, new ConstantNumericIndicator(threshold));
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.cross.refresh(tick);
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.cross.isStable();
-    }
+  /**
+   * Constructor.
+   *
+   * @param first the first indicator
+   * @param second the second indicator
+   */
+  public CrossedDownIndicatorRule(final NumericIndicator first, final NumericIndicator second) {
+    this.cross = new CrossIndicator(first, second);
+  }
 
-    /** @return the initial lower indicator */
-    public Indicator<Num> getLow() {
-        return this.cross.getLow();
-    }
 
-    /** @return the initial upper indicator */
-    public Indicator<Num> getUp() {
-        return this.cross.getUp();
-    }
+  /** This rule does not use the {@code tradingRecord}. */
+  @Override
+  public boolean isSatisfied(final TradingRecord tradingRecord) {
+    final boolean satisfied = this.cross.getValue();
+    traceIsSatisfied(satisfied);
+    return satisfied;
+  }
 
-    @Override
-    public String toString() {
-        return "CrossedDownIndicatorRule{cross=" + this.cross + '}';
-    }
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.cross.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.cross.isStable();
+  }
+
+
+  /** @return the initial lower indicator */
+  public NumericIndicator getLow() {
+    return this.cross.getLow();
+  }
+
+
+  /** @return the initial upper indicator */
+  public NumericIndicator getUp() {
+    return this.cross.getUp();
+  }
+
+
+  @Override
+  public String toString() {
+    return "CrossedDownIndicatorRule{cross=" + this.cross + '}';
+  }
 }

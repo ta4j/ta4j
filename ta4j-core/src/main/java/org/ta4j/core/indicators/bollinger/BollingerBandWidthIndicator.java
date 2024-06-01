@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.bollinger;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width</a>
  */
-public class BollingerBandWidthIndicator extends AbstractIndicator<Num> {
+public class BollingerBandWidthIndicator extends NumericIndicator {
 
   private final BollingerBandsUpperIndicator bbu;
   private final BollingerBandsMiddleIndicator bbm;
@@ -53,10 +53,11 @@ public class BollingerBandWidthIndicator extends AbstractIndicator<Num> {
    * @param bbl the lower band Indicator.
    */
   public BollingerBandWidthIndicator(
-      final BollingerBandsUpperIndicator bbu, final BollingerBandsMiddleIndicator bbm,
+      final BollingerBandsUpperIndicator bbu,
+      final BollingerBandsMiddleIndicator bbm,
       final BollingerBandsLowerIndicator bbl
   ) {
-    super(bbm.getBarSeries());
+    super(bbm.getNumFactory());
     this.bbu = bbu;
     this.bbm = bbm;
     this.bbl = bbl;
@@ -67,7 +68,7 @@ public class BollingerBandWidthIndicator extends AbstractIndicator<Num> {
     return this.bbu.getValue()
         .minus(this.bbl.getValue())
         .dividedBy(this.bbm.getValue())
-        .multipliedBy(getBarSeries().numFactory().hundred());
+        .multipliedBy(getNumFactory().hundred());
   }
 
 

@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -33,70 +32,77 @@ import org.ta4j.core.num.Num;
  * Running Total aka Cumulative Sum indicator
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
+ *     "https://en.wikipedia.org/wiki/Running_total">https://en.wikipedia.org/wiki/Running_total</a>
  */
 public class RunningTotalIndicator extends NumericIndicator {
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final PreviousValueIndicator previousValue;
-    private Num previousSum;
-    private Num value;
-    private int processedBars;
-    private Instant currentTick = Instant.EPOCH;
+  private final NumericIndicator indicator;
+  private final int barCount;
+  private final PreviousValueIndicator previousValue;
+  private Num previousSum;
+  private Num value;
+  private int processedBars;
+  private Instant currentTick = Instant.EPOCH;
 
-    public RunningTotalIndicator(final Indicator<Num> indicator, final int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.previousSum = indicator.getBarSeries().numFactory().zero();
-        this.previousValue = new PreviousValueIndicator(indicator, barCount);
+
+  public RunningTotalIndicator(final NumericIndicator indicator, final int barCount) {
+    super(indicator.getNumFactory());
+    this.indicator = indicator;
+    this.barCount = barCount;
+    this.previousSum = getNumFactory().zero();
+    this.previousValue = new PreviousValueIndicator(indicator, barCount);
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  protected Num calculate() {
+    final var newSum = partialSum();
+    return newSum;
+  }
+
+
+  private Num partialSum() {
+    final var indicatorValue = this.indicator.getValue();
+
+    var sum = this.previousSum.plus(indicatorValue);
+
+    if (this.previousValue.isStable()) {
+      sum = sum.minus(this.previousValue.getValue());
     }
 
-    @Override
-    public Num getValue() {
-        return this.value;
+    this.previousSum = sum;
+    return sum;
+  }
+
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " barCount: " + this.barCount;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      ++this.processedBars;
+      this.previousValue.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.processedBars = 1;
+      this.previousValue.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    protected Num calculate() {
-        final var newSum = partialSum();
-        return newSum;
-    }
 
-    private Num partialSum() {
-        final var indicatorValue = this.indicator.getValue();
-
-        var sum = this.previousSum.plus(indicatorValue);
-
-        if (this.previousValue.isStable()) {
-            sum = sum.minus(this.previousValue.getValue());
-        }
-
-        this.previousSum = sum;
-        return sum;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount;
-    }
-
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            ++this.processedBars;
-            this.previousValue.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        } else if (tick.isBefore(this.currentTick)) {
-            this.processedBars = 1;
-            this.previousValue.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
-
-    @Override
-    public boolean isStable() {
-        return this.processedBars >= this.barCount && this.indicator.isStable();
-    }
+  @Override
+  public boolean isStable() {
+    return this.processedBars >= this.barCount && this.indicator.isStable();
+  }
 }

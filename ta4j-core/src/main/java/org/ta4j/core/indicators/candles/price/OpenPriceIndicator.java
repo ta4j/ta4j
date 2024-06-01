@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.candles.price;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns the open price of a bar.
  */
-public class OpenPriceIndicator extends AbstractIndicator<Num> {
+public class OpenPriceIndicator extends SeriesRelatedNumericIndicator {
 
     /**
      * Constructor.

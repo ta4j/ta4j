@@ -67,7 +67,7 @@ public class FixedIndicatorTest {
   @Test
   public void getValueOnFixedBooleanIndicator() {
     final var series = new MockBarSeriesBuilder().withDefaultData().build();
-    final var fixedBooleanIndicator = new FixedBooleanIndicator(series, false, false, true, false, true);
+    final var fixedBooleanIndicator = new FixedBooleanIndicator(false, false, true, false, true);
     series.replaceStrategy(new MockStrategy(fixedBooleanIndicator));
 
     series.advance();

@@ -61,7 +61,7 @@
 //        Num FOUR = numFactory.numOf(4);
 //        Num minusFOUR = numFactory.numOf(-4);
 //        BarSeries series = new MockBarSeriesBuilder().build();
-//        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
+//        ConstantNumericIndicator<Num> constantIndicator = new ConstantNumericIndicator<Num>(series, FOUR);
 //
 //        transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);
 //        transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFactory.numOf(3),
@@ -74,14 +74,14 @@
 //                BooleanTransformType.isLessThanOrEqual);
 //
 //        transIsNaN = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isNaN);
-//        transIsNegative = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, minusFOUR),
+//        transIsNegative = new BooleanTransformIndicator(new ConstantNumericIndicator<Num>(series, minusFOUR),
 //                BooleanTransformSimpleType.isNegative);
 //        transIsNegativeOrZero = new BooleanTransformIndicator(constantIndicator,
 //                BooleanTransformSimpleType.isNegativeOrZero);
 //        transIsPositive = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isPositive);
 //        transIsPositiveOrZero = new BooleanTransformIndicator(constantIndicator,
 //                BooleanTransformSimpleType.isPositiveOrZero);
-//        transIsZero = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, numFactory.numOf(0)),
+//        transIsZero = new BooleanTransformIndicator(new ConstantNumericIndicator<Num>(series, numFactory.numOf(0)),
 //                BooleanTransformSimpleType.isZero);
 //    }
 //

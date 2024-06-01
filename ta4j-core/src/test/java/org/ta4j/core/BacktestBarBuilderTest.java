@@ -37,7 +37,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BacktestBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestBarBuilderTest extends AbstractIndicatorTest<Num> {
 
     public BacktestBarBuilderTest(NumFactory numFactory) {
         super(numFactory);

@@ -28,53 +28,61 @@ import java.time.Instant;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Average true range indicator.
  */
-public class ATRIndicator extends AbstractIndicator<Num> {
+public class ATRIndicator extends NumericIndicator {
 
-    private final MMAIndicator averageTrueRangeIndicator;
+  private final MMAIndicator averageTrueRangeIndicator;
 
-    /**
-     * Constructor.
-     *
-     * @param series   the bar series
-     * @param barCount the time frame
-     */
-    public ATRIndicator(final BarSeries series, final int barCount) {
-        this(new TRIndicator(series), barCount);
-    }
 
-    /**
-     * Constructor.
-     *
-     * @param tr       the {@link TRIndicator}
-     * @param barCount the time frame
-     */
-    public ATRIndicator(final TRIndicator tr, final int barCount) {
-        super(tr.getBarSeries());
-        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the bar series
+   * @param barCount the time frame
+   */
+  public ATRIndicator(final BarSeries series, final int barCount) {
+    this(series, new TRIndicator(series), barCount);
+  }
 
-    @Override
-    public Num getValue() {
-        return this.averageTrueRangeIndicator.getValue();
-    }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.averageTrueRangeIndicator.refresh(tick);
-    }
+  /**
+   * Constructor.
+   *
+   * @param series the series
+   * @param tr the {@link TRIndicator}
+   * @param barCount the time frame
+   */
+  public ATRIndicator(final BarSeries series, final NumericIndicator tr, final int barCount) {
+    super(series.numFactory());
+    this.averageTrueRangeIndicator = new MMAIndicator(tr, barCount);
+  }
 
-    @Override
-    public boolean isStable() {
-        return this.averageTrueRangeIndicator.isStable();
-    }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " " + this.averageTrueRangeIndicator;
-    }
+  @Override
+  public Num getValue() {
+    return this.averageTrueRangeIndicator.getValue();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.averageTrueRangeIndicator.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.averageTrueRangeIndicator.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " " + this.averageTrueRangeIndicator;
+  }
 }

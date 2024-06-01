@@ -26,11 +26,11 @@ package org.ta4j.core.indicators.candles;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.SeriesRelatedBooleanIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,10 +44,10 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
  *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
-public class DojiIndicator extends AbstractIndicator<Boolean> {
+public class DojiIndicator extends SeriesRelatedBooleanIndicator {
 
   /** Body height. */
-  private final Indicator<Num> bodyHeightInd;
+  private final NumericIndicator bodyHeightInd;
 
   /** Average body height. */
   private final PreviousValueIndicator averageBodyHeightInd;

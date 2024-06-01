@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.bollinger;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 
@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
  *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce</a>
  */
-public class PercentBIndicator extends AbstractIndicator<Num> {
+public class PercentBIndicator extends NumericIndicator {
 
   private final Indicator<Num> indicator;
   private final BollingerBandsUpperIndicator bbu;
@@ -54,13 +54,13 @@ public class PercentBIndicator extends AbstractIndicator<Num> {
    * @param barCount the time frame
    * @param k the K multiplier (usually 2.0)
    */
-  public PercentBIndicator(final Indicator<Num> indicator, final int barCount, final double k) {
-    super(indicator.getBarSeries());
+  public PercentBIndicator(final NumericIndicator indicator, final int barCount, final double k) {
+    super(indicator.getNumFactory());
     this.indicator = indicator;
     final var bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
     final var sd = new StandardDeviationIndicator(indicator, barCount);
-    this.bbu = new BollingerBandsUpperIndicator(bbm, sd, getBarSeries().numFactory().numOf(k));
-    this.bbl = new BollingerBandsLowerIndicator(bbm, sd, getBarSeries().numFactory().numOf(k));
+    this.bbu = new BollingerBandsUpperIndicator(bbm, sd, getNumFactory().numOf(k));
+    this.bbl = new BollingerBandsLowerIndicator(bbm, sd, getNumFactory().numOf(k));
   }
 
 

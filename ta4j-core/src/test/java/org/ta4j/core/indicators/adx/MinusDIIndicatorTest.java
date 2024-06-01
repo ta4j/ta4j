@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -29,48 +29,53 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import java.util.List;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
+import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MinusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class MinusDIIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private final ExternalIndicatorTest xls;
+  private final ExternalIndicatorTest xls;
 
-    public MinusDIIndicatorTest(final NumFactory nf) {
-        super((data, params) -> new MinusDIIndicator(data, (int) params[0]), nf);
-        this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13, this.numFactory);
-    }
 
-    @Test
-    public void xlsTest1() throws Exception {
-        assertXlsValues(1, 0.0);
-    }
+  public MinusDIIndicatorTest(final NumFactory nf) {
+    super(nf);
+    this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13, this.numFactory);
+  }
 
-    @Test
-    public void xlsTest3() throws Exception {
-        assertXlsValues(3, 21.0711);
-    }
 
-    @Test
-    public void xlsTest13() throws Exception {
-        assertXlsValues(13, 20.9020);
-    }
+  @Test
+  public void xlsTest1() throws Exception {
+    assertXlsValues(1, 0.0);
+  }
 
-    private void assertXlsValues(final int x, final double expected) throws Exception {
-        final var xlsSeries = this.xls.getSeries();
-        final var indicator = getIndicator(xlsSeries, x);
-        final var expectedIndicator = this.xls.getIndicator(x);
-        xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
 
-        assertIndicatorEquals(expectedIndicator, indicator);
-        assertEquals(expected, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
-    }
+  @Test
+  public void xlsTest3() throws Exception {
+    assertXlsValues(3, 21.0711);
+  }
+
+
+  @Test
+  public void xlsTest13() throws Exception {
+    assertXlsValues(13, 20.9020);
+  }
+
+
+  private void assertXlsValues(final int x, final double expected) throws Exception {
+    final var xlsSeries = this.xls.getSeries();
+    final var indicator = new MinusDIIndicator(xlsSeries, x);
+    final var expectedIndicator = this.xls.getIndicator(x);
+    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator, expectedIndicator))));
+
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, indicator));
+    assertEquals(expected, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+  }
 
 }

@@ -36,7 +36,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private BacktestBarSeries data;
 

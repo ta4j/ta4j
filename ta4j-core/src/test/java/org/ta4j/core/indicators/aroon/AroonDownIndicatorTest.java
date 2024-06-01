@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -24,7 +24,9 @@
 package org.ta4j.core.indicators.aroon;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNext;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.fastForward;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.List;
@@ -35,122 +37,109 @@ import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class AroonDownIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private BacktestBarSeries data;
+  private BacktestBarSeries data;
 
-    public AroonDownIndicatorTest(final NumFactory numFunction) {
-        super(null, numFunction);
+
+  public AroonDownIndicatorTest(final NumFactory numFunction) {
+    super(numFunction);
+  }
+
+
+  @Before
+  public void init() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("Aroon data").build();
+    // FB, daily, 9.19.'17                       // barcount before
+    this.data.barBuilder().lowPrice(167.15).add(); // 0 -> unstable
+    this.data.barBuilder().lowPrice(168.20).add(); // 1 -> unstable
+    this.data.barBuilder().lowPrice(166.41).add(); // 0 -> unstable
+    this.data.barBuilder().lowPrice(166.18).add(); // 0 -> unstable
+    this.data.barBuilder().lowPrice(166.33).add(); // 1 -> unstable
+    this.data.barBuilder().lowPrice(165.00).add(); // 0 -> (5 - 0) / 5 * 100 = 100
+    this.data.barBuilder().lowPrice(167.63).add(); // 1 -> (5 - 1) / 5 * 100 = 80
+    this.data.barBuilder().lowPrice(171.97).add(); // 2 -> (5 - 2) / 5 * 100 = 60
+    this.data.barBuilder().lowPrice(171.31).add(); // 3 -> (5 - 3) / 5 * 100 = 40
+    this.data.barBuilder().lowPrice(169.55).add(); // 4 -> (5 - 4) / 5 * 100 = 20
+    this.data.barBuilder().lowPrice(169.57).add(); // 5 -> (5 - 5) / 5 * 100 = 0
+    this.data.barBuilder().lowPrice(170.27).add();
+    this.data.barBuilder().lowPrice(170.80).add();
+    this.data.barBuilder().lowPrice(172.20).add();
+    this.data.barBuilder().lowPrice(175.00).add();
+    this.data.barBuilder().lowPrice(172.06).add();
+    this.data.barBuilder().lowPrice(170.50).add();
+    this.data.barBuilder().lowPrice(170.26).add();
+    this.data.barBuilder().lowPrice(169.34).add();
+    this.data.barBuilder().lowPrice(170.36).add();
+
+  }
+
+
+  @Test
+  public void upDownAndHigh() {
+    final var aroonDownIndicator = new AroonDownIndicator(this.data, 5);
+    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
+
+    fastForward(this.data, 6);
+    assertNext(this.data, 100, aroonDownIndicator);
+    assertNext(this.data, 80, aroonDownIndicator);
+    assertNext(this.data, 60, aroonDownIndicator);
+    assertNext(this.data, 40, aroonDownIndicator);
+    assertNext(this.data, 20, aroonDownIndicator);
+    assertNext(this.data, 0, aroonDownIndicator);
+    assertNext(this.data, 0, aroonDownIndicator);
+    assertNext(this.data, 40, aroonDownIndicator);
+    assertNext(this.data, 20, aroonDownIndicator);
+    assertNext(this.data, 0, aroonDownIndicator);
+    assertNext(this.data, 0, aroonDownIndicator);
+    assertNext(this.data, 0, aroonDownIndicator);
+    assertNext(this.data, 100, aroonDownIndicator);
+    assertNext(this.data, 100, aroonDownIndicator);
+    assertNext(this.data, 80, aroonDownIndicator);
+  }
+
+
+  @Test
+  public void onlyNaNValues() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("NaN test").build();
+    for (long i = 0; i <= 1000; i++) {
+      series.barBuilder().openPrice(NaN).closePrice(NaN).highPrice(NaN).lowPrice(NaN).volume(NaN).add();
     }
 
-    @Before
-    public void init() {
-      this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("Aroon data").build();
-        // FB, daily, 9.19.'17                       // barcount before
-      this.data.barBuilder().lowPrice(167.15).add(); // 0 -> unstable
-      this.data.barBuilder().lowPrice(168.20).add(); // 1 -> unstable
-      this.data.barBuilder().lowPrice(166.41).add(); // 0 -> unstable
-      this.data.barBuilder().lowPrice(166.18).add(); // 0 -> unstable
-      this.data.barBuilder().lowPrice(166.33).add(); // 1 -> unstable
-      this.data.barBuilder().lowPrice(165.00).add(); // 0 -> (5 - 0) / 5 * 100 = 100
-      this.data.barBuilder().lowPrice(167.63).add(); // 1 -> (5 - 1) / 5 * 100 = 80
-      this.data.barBuilder().lowPrice(171.97).add(); // 2 -> (5 - 2) / 5 * 100 = 60
-      this.data.barBuilder().lowPrice(171.31).add(); // 3 -> (5 - 3) / 5 * 100 = 40
-      this.data.barBuilder().lowPrice(169.55).add(); // 4 -> (5 - 4) / 5 * 100 = 20
-      this.data.barBuilder().lowPrice(169.57).add(); // 5 -> (5 - 5) / 5 * 100 = 0
-      this.data.barBuilder().lowPrice(170.27).add();
-      this.data.barBuilder().lowPrice(170.80).add();
-      this.data.barBuilder().lowPrice(172.20).add();
-      this.data.barBuilder().lowPrice(175.00).add();
-      this.data.barBuilder().lowPrice(172.06).add();
-      this.data.barBuilder().lowPrice(170.50).add();
-      this.data.barBuilder().lowPrice(170.26).add();
-      this.data.barBuilder().lowPrice(169.34).add();
-      this.data.barBuilder().lowPrice(170.36).add();
+    final var aroonDownIndicator = new AroonDownIndicator(series, 5);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
 
+    while (series.advance()) {
+      assertEquals(NaN.toString(), aroonDownIndicator.getValue().toString());
     }
+  }
 
-    @Test
-    public void upDownAndHigh() {
-        final var aroonDownIndicator = new AroonDownIndicator(this.data, 5);
-      this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
 
-      for (int i = 0; i < 6; i++) {
-        this.data.advance();
+  @Test
+  public void naNValuesInInterval() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("NaN test").build();
+    for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
+      final Num lowPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
+      series.barBuilder().lowPrice(lowPrice).add();
+    }
+    series.barBuilder().lowPrice(numOf(10d)).add();
+
+    final var aroonDownIndicator = new AroonDownIndicator(series, 5);
+    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
+
+    for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+      series.advance();
+      if (i % 2 != 0 && i < 11) {
+        assertEquals(NaN.toString(), aroonDownIndicator.getValue().toString());
+      } else if (i < 11) {
+        assertNumEquals(series.numFactory().hundred().toString(), aroonDownIndicator.getValue());
+      } else {
+        assertNumEquals(series.numFactory().numOf(80).toString(), aroonDownIndicator.getValue());
       }
-
-      assertNumEquals(100, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(80, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(60, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(40, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(20, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(0, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(0, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(40, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(20, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(0, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(0, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(0, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(100, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(100, aroonDownIndicator.getValue());
-      this.data.advance();
-      assertNumEquals(80, aroonDownIndicator.getValue());
     }
-
-    @Test
-    public void onlyNaNValues() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("NaN test").build();
-        for (long i = 0; i <= 1000; i++) {
-            series.barBuilder().openPrice(NaN).closePrice(NaN).highPrice(NaN).lowPrice(NaN).volume(NaN).add();
-        }
-
-        final var aroonDownIndicator = new AroonDownIndicator(series, 5);
-      series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
-
-        while (series.advance()) {
-            assertEquals(NaN.toString(), aroonDownIndicator.getValue().toString());
-        }
-    }
-
-    @Test
-    public void naNValuesInInterval() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withName("NaN test").build();
-        for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            final Num lowPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
-            series.barBuilder().lowPrice(lowPrice).add();
-        }
-        series.barBuilder().lowPrice(numOf(10d)).add();
-
-        final var aroonDownIndicator = new AroonDownIndicator(series, 5);
-      series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-          series.advance();
-            if (i % 2 != 0 && i < 11) {
-              assertEquals(NaN.toString(), aroonDownIndicator.getValue().toString());
-            } else if (i < 11) {
-              assertNumEquals(series.numFactory().hundred().toString(), aroonDownIndicator.getValue());
-            }  else {
-              assertNumEquals(series.numFactory().numOf(80).toString(), aroonDownIndicator.getValue());
-            }
-        }
-    }
+  }
 }

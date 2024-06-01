@@ -37,7 +37,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Num> {
     private BacktestBarSeries series;
 
     public AwesomeOscillatorIndicatorTest(final NumFactory numFactory) {

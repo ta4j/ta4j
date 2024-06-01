@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -56,13 +57,13 @@ public class TestUtils {
   }
 
 
-  public static void assertNextNaN(final BacktestBarSeries data, final Indicator<Num> indicator) {
+  public static void assertNextNaN(final BacktestBarSeries data, final NumericIndicator indicator) {
     data.advance();
     assertNumEquals(NaN.NaN, indicator.getValue());
   }
 
 
-  public static void assertNext(final BacktestBarSeries data, final double expected, final Indicator<Num> indicator) {
+  public static void assertNext(final BacktestBarSeries data, final double expected, final NumericIndicator indicator) {
     data.advance();
     assertNumEquals(expected, indicator.getValue());
   }
@@ -184,17 +185,23 @@ public class TestUtils {
    * @param expected indicator of expected values
    * @param actual indicator of actual values
    */
-  public static void assertIndicatorEquals(final Indicator<Num> expected, final Indicator<Num> actual) {
-    org.junit.Assert.assertEquals("Size does not match,", getBarSeries(expected).getBarCount(),
-        getBarSeries(actual).getBarCount()
+  public static void assertIndicatorEquals(
+      final TestIndicator<Num> expected,
+      final TestIndicator<Num> actual
+  ) {
+    assertEquals(
+        "Size does not match,",
+        expected.getBarSeries().getBarCount(),
+        actual.getBarSeries().getBarCount()
     );
-    while (getBarSeries(expected).advance()) {
-      getBarSeries(actual).advance();
+
+    while (expected.getBarSeries().advance()) {
+      advanceIfTwoSeries(expected, actual);
 
       if (actual.isStable()) {
         assertEquals(
             String.format("Failed at index %s: %s",
-                getBarSeries(expected).getCurrentIndex(), actual
+                expected.getBarSeries().getCurrentIndex(), actual
             ),
             expected.getValue().doubleValue(), actual.getValue().doubleValue(), GENERAL_OFFSET
         );
@@ -203,8 +210,10 @@ public class TestUtils {
   }
 
 
-  private static BacktestBarSeries getBarSeries(final Indicator<Num> indicator) {
-    return (BacktestBarSeries) indicator.getBarSeries();
+  private static void advanceIfTwoSeries(final TestIndicator<Num> expected, final TestIndicator<Num> actual) {
+    if (!expected.getBarSeries().equals(actual.getBarSeries())) {
+      actual.getBarSeries().advance();
+    }
   }
 
 
@@ -215,12 +224,17 @@ public class TestUtils {
    * @param expected indicator of expected values
    * @param actual indicator of actual values
    */
-  public static void assertIndicatorNotEquals(final Indicator<Num> expected, final Indicator<Num> actual) {
-    if (getBarSeries(expected).getBarCount() != getBarSeries(actual).getBarCount()) {
+  public static void assertIndicatorNotEquals(
+      final TestIndicator<Num> expected,
+      final TestIndicator<Num> actual
+  ) {
+    if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
       return;
     }
-    while (getBarSeries(expected).advance()) {
-      getBarSeries(actual).advance();
+
+    while (expected.getBarSeries().advance()) {
+      advanceIfTwoSeries(expected, actual);
+
       if (Math.abs(expected.getValue().doubleValue() - actual.getValue().doubleValue()) > GENERAL_OFFSET) {
         return;
       }
@@ -284,13 +298,16 @@ public class TestUtils {
    * @param actual indicator of actual values
    */
   public static void assertIndicatorEquals(
-      final Indicator<Num> expected, final Indicator<Num> actual,
+      final TestIndicator<Num> expected,
+      final TestIndicator<Num> actual,
       final Num delta
   ) {
-    org.junit.Assert.assertEquals("Size does not match,", getBarSeries(expected).getBarCount(),
-        getBarSeries(actual).getBarCount()
+    assertEquals(
+        "Size does not match,",
+        expected.getBarSeries().getBarCount(),
+        actual.getBarSeries().getBarCount()
     );
-    while (getBarSeries(expected).advance()) {
+    while (expected.getBarSeries().advance()) {
       // convert to DecimalNum via String (auto-precision) avoids Cast Class
       // Exception
       final Num exp = DecimalNum.valueOf(expected.getValue().toString());
@@ -310,7 +327,7 @@ public class TestUtils {
           actString = actString.substring(0, minLen) + "..";
         }
         throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s",
-            getBarSeries(expected).getCurrentIndex(), expString, actString
+            expected.getBarSeries().getCurrentIndex(), expString, actString
         ));
       }
     }
@@ -326,13 +343,14 @@ public class TestUtils {
    * @param delta num offset to which the indicators must be different
    */
   public static void assertIndicatorNotEquals(
-      final Indicator<Num> expected, final Indicator<Num> actual,
+      final TestIndicator<Num> expected,
+      final TestIndicator<Num> actual,
       final Num delta
   ) {
-    if (getBarSeries(expected).getBarCount() != getBarSeries(actual).getBarCount()) {
+    if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
       return;
     }
-    while (getBarSeries(expected).advance()) {
+    while (expected.getBarSeries().advance()) {
       final Num exp = DecimalNum.valueOf(expected.getValue().toString());
       final Num act = DecimalNum.valueOf(actual.getValue().toString());
       final Num result = exp.minus(act).abs();

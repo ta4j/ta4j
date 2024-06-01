@@ -41,7 +41,7 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class LiveTradingTest extends AbstractIndicatorTest<LiveBarSeries, Num> {
+public class LiveTradingTest extends AbstractIndicatorTest<Num> {
 
   public LiveTradingTest(final NumFactory numFactory) {
     super(numFactory);

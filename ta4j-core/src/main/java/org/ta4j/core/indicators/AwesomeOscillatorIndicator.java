@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -28,6 +28,7 @@ import java.time.Instant;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,76 +36,83 @@ import org.ta4j.core.num.Num;
  *
  * @see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
-public class AwesomeOscillatorIndicator extends AbstractIndicator<Num> {
+public class AwesomeOscillatorIndicator extends NumericIndicator {
 
-    private final SMAIndicator shortSma;
-    private final SMAIndicator longSma;
-    private Num value;
-    private Instant currentTick = Instant.EPOCH;
+  private final SMAIndicator shortSma;
+  private final SMAIndicator longSma;
+  private Num value;
+  private Instant currentTick = Instant.EPOCH;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator     (normally {@link MedianPriceIndicator})
-     * @param shortBarCount (normally 5)
-     * @param longBarCOunt  (normally 34)
-     */
-    public AwesomeOscillatorIndicator(final Indicator<Num> indicator, final int shortBarCount, final int longBarCOunt) {
-        super(indicator.getBarSeries());
-        this.shortSma = new SMAIndicator(indicator, shortBarCount);
-        this.longSma = new SMAIndicator(indicator, longBarCOunt);
+
+  /**
+   * Constructor.
+   *
+   * @param indicator (normally {@link MedianPriceIndicator})
+   * @param shortBarCount (normally 5)
+   * @param longBarCOunt (normally 34)
+   */
+  public AwesomeOscillatorIndicator(final NumericIndicator indicator, final int shortBarCount, final int longBarCOunt) {
+    super(indicator.getNumFactory());
+    this.shortSma = new SMAIndicator(indicator, shortBarCount);
+    this.longSma = new SMAIndicator(indicator, longBarCOunt);
+  }
+
+
+  /**
+   * Constructor with:
+   *
+   * <ul>
+   * <li>{@code barCountSma1} = 5
+   * <li>{@code barCountSma2} = 34
+   * </ul>
+   *
+   * @param indicator (normally {@link MedianPriceIndicator})
+   */
+  public AwesomeOscillatorIndicator(final NumericIndicator indicator) {
+    this(indicator, 5, 34);
+  }
+
+
+  /**
+   * Constructor with:
+   *
+   * <ul>
+   * <li>{@code indicator} = {@link MedianPriceIndicator}
+   * <li>{@code barCountSma1} = 5
+   * <li>{@code barCountSma2} = 34
+   * </ul>
+   *
+   * @param series the bar series
+   */
+  public AwesomeOscillatorIndicator(final BarSeries series) {
+    this(new MedianPriceIndicator(series), 5, 34);
+  }
+
+
+  protected Num calculate() {
+    return this.shortSma.getValue().minus(this.longSma.getValue());
+  }
+
+
+  @Override
+  public Num getValue() {
+    return this.value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    if (tick.isAfter(this.currentTick)) {
+      this.shortSma.refresh(tick);
+      this.longSma.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
     }
+  }
 
-    /**
-     * Constructor with:
-     *
-     * <ul>
-     * <li>{@code barCountSma1} = 5
-     * <li>{@code barCountSma2} = 34
-     * </ul>
-     *
-     * @param indicator (normally {@link MedianPriceIndicator})
-     */
-    public AwesomeOscillatorIndicator(final Indicator<Num> indicator) {
-        this(indicator, 5, 34);
-    }
 
-    /**
-     * Constructor with:
-     *
-     * <ul>
-     * <li>{@code indicator} = {@link MedianPriceIndicator}
-     * <li>{@code barCountSma1} = 5
-     * <li>{@code barCountSma2} = 34
-     * </ul>
-     *
-     * @param series the bar series
-     */
-    public AwesomeOscillatorIndicator(final BarSeries series) {
-        this(new MedianPriceIndicator(series), 5, 34);
-    }
-
-    protected Num calculate() {
-        return this.shortSma.getValue().minus(this.longSma.getValue());
-    }
-
-    @Override
-    public Num getValue() {
-        return this.value;
-    }
-
-    @Override
-    public void refresh(final Instant tick) {
-        if (tick.isAfter(this.currentTick)) {
-            this.shortSma.refresh(tick);
-            this.longSma.refresh(tick);
-            this.value = calculate();
-            this.currentTick = tick;
-        }
-    }
-
-    @Override
-    public boolean isStable() {
-        return this.shortSma.isStable() && this.longSma.isStable();
-    }
+  @Override
+  public boolean isStable() {
+    return this.shortSma.isStable() && this.longSma.isStable();
+  }
 }

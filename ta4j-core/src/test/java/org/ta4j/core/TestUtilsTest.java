@@ -39,15 +39,15 @@ import java.util.function.Consumer;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class TestUtilsTest extends AbstractIndicatorTest<Num> {
 
   private static final String stringDouble = "1234567890.12345";
   private static final String diffStringDouble = "1234567890.12346";
@@ -63,8 +63,8 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
   private static Num diffNumInt;
   private static Num numDouble;
   private static Num diffNumDouble;
-  private static final AtomicReference<Indicator<Num>> indicator = new AtomicReference<>();
-  private static final AtomicReference<Indicator<Num>> diffIndicator = new AtomicReference<>();
+  private static final AtomicReference<TestIndicator<Num>> indicator = new AtomicReference<>();
+  private static final AtomicReference<TestIndicator<Num>> diffIndicator = new AtomicReference<>();
 
 
   public TestUtilsTest(final NumFactory numFactory) {
@@ -85,9 +85,9 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
   }
 
 
-  private BarSeries randomSeries(Consumer<Indicator<Num>> consumer) {
-    var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-        .withStrategyFactory(s -> createStrategy(s, consumer))
+  private BarSeries randomSeries(final Consumer<TestIndicator<Num>> consumer) {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+        .withStrategyFactory(s -> createStrategy((BacktestBarSeries) s, consumer))
         .build();
     Instant time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault()).toInstant();
     double random;
@@ -111,9 +111,9 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
   }
 
 
-  private BacktestStrategy createStrategy(final BarSeries series, final Consumer<Indicator<Num>> consumer) {
+  private BacktestStrategy createStrategy(final BacktestBarSeries series, final Consumer<TestIndicator<Num>> consumer) {
     final var indicator = new ClosePriceIndicator(series);
-    consumer.accept(indicator);
+    consumer.accept(new TestIndicator<>(series, indicator));
     return new MockStrategy(new MockRule(List.of(indicator)));
   }
 

@@ -35,7 +35,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class WMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
   public WMAIndicatorTest(final NumFactory numFactory) {
     super(numFactory);
