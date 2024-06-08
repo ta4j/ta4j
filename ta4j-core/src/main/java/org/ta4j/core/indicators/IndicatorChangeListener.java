@@ -25,65 +25,11 @@
 package org.ta4j.core.indicators;
 
 import java.time.Instant;
-import java.util.Optional;
-
-import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
  * @author Lukáš Kvídera
  */
-public class NamedIndicator<T> implements Indicator<T> {
+public interface IndicatorChangeListener {
 
-  private final String name;
-  private final Indicator<T> indicator;
-
-
-  private NamedIndicator(final String name, final Indicator<T> indicator) {
-    this.name = name;
-    this.indicator = indicator;
-  }
-
-
-  public static <T> NamedIndicator<T> of(final String name, final Indicator<T> indicator) {
-    return new NamedIndicator<>(name, indicator);
-  }
-
-
-  public Optional<NumericIndicator> getNumericIndicator() {
-    if (this.indicator instanceof final NumericIndicator numericIndicator) {
-      return Optional.of(numericIndicator);
-    }
-
-    return Optional.empty();
-  }
-
-
-  @Override
-  public T getValue() {
-    return this.indicator.getValue();
-  }
-
-
-  @Override
-  public void refresh(final Instant tick) {
-    this.indicator.refresh(tick);
-  }
-
-
-  @Override
-  public boolean isStable() {
-    return this.indicator.isStable();
-  }
-
-
-  public String getName() {
-    return this.name;
-  }
-
-
-  @Override
-  public String toString() {
-    return this.indicator.toString();
-  }
+  void accept(Instant tick, Indicator<?> indicator);
 }
-

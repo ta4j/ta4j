@@ -31,11 +31,16 @@ import org.ta4j.core.indicators.average.EMAIndicator;
 import org.ta4j.core.indicators.average.LWMAIndicator;
 import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.average.TripleEMAIndicator;
 import org.ta4j.core.indicators.average.ZLEMAIndicator;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.indicators.candles.price.HighPriceIndicator;
+import org.ta4j.core.indicators.candles.price.LowPriceIndicator;
+import org.ta4j.core.indicators.candles.price.OpenPriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -81,13 +86,23 @@ public abstract class NumericIndicator implements Indicator<Num> {
   }
 
 
-  /**
-   * Creates a fluent version of the ClosePriceIndicator.
-   *
-   * @return a NumericIndicator wrapped around a ClosePriceIndicator
-   */
   public static ClosePriceIndicator closePrice(final BarSeries bs) {
     return new ClosePriceIndicator(bs);
+  }
+
+
+  public static OpenPriceIndicator openPrice(final BarSeries bs) {
+    return new OpenPriceIndicator(bs);
+  }
+
+
+  public static LowPriceIndicator lowPrice(final BarSeries bs) {
+    return new LowPriceIndicator(bs);
+  }
+
+
+  public static HighPriceIndicator highPrice(final BarSeries bs) {
+    return new HighPriceIndicator(bs);
   }
 
 
@@ -291,6 +306,11 @@ public abstract class NumericIndicator implements Indicator<Num> {
   }
 
 
+  public TripleEMAIndicator tripleEma(final int barCount) {
+    return new TripleEMAIndicator(this, barCount);
+  }
+
+
   public ZLEMAIndicator zlema(final int barCount) {
     return new ZLEMAIndicator(this, barCount);
   }
@@ -313,6 +333,11 @@ public abstract class NumericIndicator implements Indicator<Num> {
    */
   public StandardDeviationIndicator stddev(final int barCount) {
     return new StandardDeviationIndicator(this, barCount);
+  }
+
+
+  public static MedianPriceIndicator medianPrice(final BarSeries series) {
+    return new MedianPriceIndicator(series);
   }
 
 

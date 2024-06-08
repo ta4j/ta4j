@@ -36,46 +36,62 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
  */
 public class AroonFacade {
 
-    private final AroonUpIndicator up;
-    private final AroonDownIndicator down;
+  private final AroonUpIndicator up;
+  private final AroonDownIndicator down;
 
-    /**
-     * Create the Aroon facade.
-     *
-     * @param series   the bar series
-     * @param barCount the number of periods used for the indicators
-     */
-    public AroonFacade(final BarSeries series, final int barCount) {
-        this.up = new AroonUpIndicator(series, barCount);
-        this.down = new AroonDownIndicator(series, barCount);
-    }
 
-    /**
-     * A fluent AroonUp indicator.
-     *
-     * @return a NumericIndicator wrapped around a cached AroonUpIndicator
-     */
-    public AroonUpIndicator up() {
-        return this.up;
-    }
+  /**
+   * Create the Aroon facade.
+   *
+   * @param series the bar series
+   * @param barCount the number of periods used for the indicators
+   */
+  public AroonFacade(final BarSeries series, final int barCount) {
+    this.up = new AroonUpIndicator(series, barCount);
+    this.down = new AroonDownIndicator(series, barCount);
+  }
 
-    /**
-     * A fluent AroonDown indicator.
-     *
-     * @return a NumericIndicator wrapped around a cached AroonDownIndicator
-     */
-    public AroonDownIndicator down() {
-        return this.down;
-    }
 
-    /**
-     * A lightweight fluent AroonOscillator.
-     *
-     * @return an uncached object that calculates the difference between AoonUp and
-     *         AroonDown
-     */
-    public NumericIndicator oscillator() {
-        return this.up.minus(this.down);
-    }
+  /**
+   * Create the Aroon facade.
+   *
+   * @param series the bar series
+   * @param barCount the number of periods used for the indicators
+   */
+  public AroonFacade(final BarSeries series, final NumericIndicator indicator, final int barCount) {
+    this.up = new AroonUpIndicator(series, indicator, barCount);
+    this.down = new AroonDownIndicator(series, indicator, barCount);
+  }
+
+
+  /**
+   * A fluent AroonUp indicator.
+   *
+   * @return a NumericIndicator wrapped around a cached AroonUpIndicator
+   */
+  public AroonUpIndicator up() {
+    return this.up;
+  }
+
+
+  /**
+   * A fluent AroonDown indicator.
+   *
+   * @return a NumericIndicator wrapped around a cached AroonDownIndicator
+   */
+  public AroonDownIndicator down() {
+    return this.down;
+  }
+
+
+  /**
+   * A lightweight fluent AroonOscillator.
+   *
+   * @return an uncached object that calculates the difference between AoonUp and
+   *     AroonDown
+   */
+  public NumericIndicator oscillator() {
+    return this.up.minus(this.down);
+  }
 
 }

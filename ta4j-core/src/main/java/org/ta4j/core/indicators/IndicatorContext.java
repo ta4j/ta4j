@@ -25,6 +25,8 @@
 package org.ta4j.core.indicators;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -33,6 +35,7 @@ import java.util.function.Consumer;
  */
 public class IndicatorContext {
   private final Set<Indicator<?>> indicators;
+  private final Set<IndicatorChangeListener> changeListeners = new HashSet<>();
 
 
   private IndicatorContext(final Indicator<?>... indicators) {
@@ -40,14 +43,54 @@ public class IndicatorContext {
   }
 
 
+  private IndicatorContext() {
+    this.indicators = new HashSet<>();
+  }
+
+
+  /**
+   * Creates immutable context with defined indicators.
+   *
+   * @param indicators that will be refreshed
+   *
+   * @return instance of {@link IndicatorContext}
+   */
   public static IndicatorContext of(final Indicator<?>... indicators) {
     return new IndicatorContext(indicators);
+  }
+
+
+  /**
+   * Creates mutable context with defined indicators.
+   *
+   * @return mutable instance of {@link IndicatorContext}
+   */
+  public static IndicatorContext empty() {
+    return new IndicatorContext();
+  }
+
+
+  public void register(final IndicatorChangeListener changeListener) {
+    this.changeListeners.add(changeListener);
+  }
+
+
+  public void add(final Indicator<?> indicator) {
+    this.indicators.add(indicator);
+  }
+
+
+  public void addAll(final Indicator<?>... indicator) {
+    this.indicators.addAll(List.of(indicator));
   }
 
 
   public void refresh(final Instant tick) {
     for (final var indicator : this.indicators) {
       indicator.refresh(tick);
+      for (final var changeListener : this.changeListeners) {
+        changeListener.accept(tick, indicator);
+      }
     }
   }
 
