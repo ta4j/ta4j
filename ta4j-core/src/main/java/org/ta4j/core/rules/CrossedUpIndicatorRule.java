@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.Instant;
-
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
@@ -99,17 +97,5 @@ public class CrossedUpIndicatorRule extends AbstractRule {
   @Override
   public String toString() {
     return "CrossedUpIndicatorRule{cross=" + this.cross + '}';
-  }
-
-
-  @Override
-  public void refresh(final Instant tick) {
-    this.cross.refresh(tick);
-  }
-
-
-  @Override
-  public boolean isStable() {
-    return this.cross.isStable();
   }
 }

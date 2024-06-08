@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.Instant;
-
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
@@ -87,19 +85,5 @@ public class UnderIndicatorRule extends AbstractRule {
     final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
     traceIsSatisfied(satisfied);
     return satisfied;
-  }
-
-
-  @Override
-  public void refresh(final Instant tick) {
-    this.first.refresh(tick);
-    this.second.refresh(tick);
-    setCurrentTick(tick);
-  }
-
-
-  @Override
-  public boolean isStable() {
-    return this.first.isStable() && this.second.isStable();
   }
 }

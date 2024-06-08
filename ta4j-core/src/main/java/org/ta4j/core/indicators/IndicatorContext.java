@@ -1,8 +1,8 @@
-/**
+
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
- * authors (see AUTHORS)
+ * Copyright (c) 2024 Lukáš Kvídera
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -21,37 +21,47 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+
+package org.ta4j.core.indicators;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
-import org.ta4j.core.indicators.Indicator;
+/**
+ * @author Lukáš Kvídera
+ */
+public class IndicatorContext {
+  private final Set<Indicator<?>> indicators;
 
-public class MockRule implements Rule {
 
-    private final List<Indicator<?>> indicators;
+  private IndicatorContext(final Indicator<?>... indicators) {
+    this.indicators = Set.of(indicators);
+  }
 
-    public MockRule(final Indicator<?>... indicators) {
-       this(List.of(indicators));
+
+  public static IndicatorContext of(final Indicator<?>... indicators) {
+    return new IndicatorContext(indicators);
+  }
+
+
+  public void refresh(final Instant tick) {
+    for (final var indicator : this.indicators) {
+      indicator.refresh(tick);
     }
+  }
 
-    public MockRule(final List<Indicator<?>> indicators) {
-        this.indicators = indicators;
-    }
 
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        return false;
+  public void inspect(final Consumer<NamedIndicator<?>> consumer) {
+    for (final var indicator : this.indicators) {
+      if (indicator instanceof final NamedIndicator<?> namedIndicator) {
+        consumer.accept(namedIndicator);
+      }
     }
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.indicators.forEach(indicator -> indicator.refresh(tick));
-    }
 
-    @Override
-    public boolean isStable() {
-        return this.indicators.stream().allMatch(Indicator::isStable);
-    }
+  public boolean isStable() {
+    return this.indicators.stream().allMatch(Indicator::isStable);
+  }
 }

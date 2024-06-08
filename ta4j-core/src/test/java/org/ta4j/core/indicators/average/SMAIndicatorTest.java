@@ -27,12 +27,9 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
@@ -71,7 +68,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void usingBarCount3UsingClosePrice() {
     final var indicator = NumericIndicator.closePrice(this.data).sma(3);
-    this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+    this.data.addStrategy(new MockStrategy(indicator));
 
     this.data.advance();
     assertNumEquals((0d + 0d + 1d) / 3, indicator.getValue());
@@ -107,7 +104,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
     this.data.barBuilder().closePrice(5.).add();
 
     final var indicator = NumericIndicator.closePrice(this.data).sma(3);
-    this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+    this.data.addStrategy(new MockStrategy(indicator));
     // unstable bars skipped, unpredictable results
 
     this.data.advance();
@@ -134,7 +131,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void whenBarCountIs1ResultShouldBeIndicatorValue() {
     final var indicator = NumericIndicator.closePrice(this.data).sma(1);
-    this.data.addStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+    this.data.addStrategy(new MockStrategy(indicator));
 
     while (this.data.advance()) {
       assertEquals(this.data.getBar().closePrice(), indicator.getValue());
@@ -148,7 +145,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
 
     final var actualIndicator = NumericIndicator.closePrice(series).sma(3);
     final var expectedIndicator = this.xls.getIndicator(3);
-    series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+    series.addStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(326.6333, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -162,7 +159,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
     final var actualIndicator = NumericIndicator.closePrice(series).sma(1);
     final var expectedIndicator = this.xls.getIndicator(1);
 
-    series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+    series.addStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(329.0, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -173,11 +170,11 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Num> {
   public void externalData13() throws Exception {
     final var series = this.xls.getSeries();
     final Indicator<Num> xlsClose = new ClosePriceIndicator(series);
-    series.addStrategy(new MockStrategy(new MockRule(List.of(xlsClose))));
+    series.addStrategy(new MockStrategy(xlsClose));
 
     final var actualIndicator = NumericIndicator.closePrice(series).sma(13);
     final var expectedIndicator = this.xls.getIndicator(13);
-    series.addStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+    series.addStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(327.7846, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);

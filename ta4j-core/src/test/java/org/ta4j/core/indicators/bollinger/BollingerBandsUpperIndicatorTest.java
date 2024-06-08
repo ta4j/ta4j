@@ -70,7 +70,7 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Num>
     final var bbmSMA = new BollingerBandsMiddleIndicator(this.sma);
     final var standardDeviation = new StandardDeviationIndicator(this.closePrice, this.barCount);
     final var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
-    this.data.replaceStrategy(new MockStrategy(bbuSMA, bbuSMA, standardDeviation));
+    this.data.replaceStrategy(new MockStrategy(bbuSMA, bbmSMA, standardDeviation));
 
     fastForward(this.data, 3);
     assertNext(this.data, 4.0000, bbuSMA);

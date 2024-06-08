@@ -25,10 +25,7 @@ package org.ta4j.core.indicators.adx;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
-
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarSeries;
@@ -39,54 +36,61 @@ import org.ta4j.core.num.NumFactory;
 
 public class MinusDMIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    public MinusDMIndicatorTest(final NumFactory numFactory) {
-        super(numFactory);
-    }
+  public MinusDMIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+  }
 
-    @Test
-    public void zeroDirectionalMovement() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-        final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
-        final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
-        final var down = prepareIndicator(series, yesterdayBar, todayBar);
-        assertNumEquals(0, down.getValue());
-    }
 
-    @Test
-    public void zeroDirectionalMovement2() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-        final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(12).build();
-        final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
-        final var down = prepareIndicator(series, yesterdayBar, todayBar);
-        assertNumEquals(0, down.getValue());
-    }
+  @Test
+  public void zeroDirectionalMovement() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
+    final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
+    final var down = prepareIndicator(series, yesterdayBar, todayBar);
+    assertNumEquals(0, down.getValue());
+  }
 
-    @Test
-    public void zeroDirectionalMovement3() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-        final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(6).build();
-        final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
-        final var down = prepareIndicator(series, yesterdayBar, todayBar);
-        assertNumEquals(0, down.getValue());
-    }
 
-    private static MinusDMIndicator prepareIndicator(final BacktestBarSeries series, final BacktestBar yesterdayBar,
-            final BacktestBar todayBar) {
-        final var down = new MinusDMIndicator(series);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(down))));
-        series.addBar(yesterdayBar);
-        series.addBar(todayBar);
-        series.advance();
-        series.advance();
-        return down;
-    }
+  @Test
+  public void zeroDirectionalMovement2() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(12).build();
+    final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
+    final var down = prepareIndicator(series, yesterdayBar, todayBar);
+    assertNumEquals(0, down.getValue());
+  }
 
-    @Test
-    public void positiveDirectionalMovement() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
-        final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(20).build();
-        final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
-        final var down = prepareIndicator(series, yesterdayBar, todayBar);
-        assertNumEquals(16, down.getValue());
-    }
+
+  @Test
+  public void zeroDirectionalMovement3() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(6).build();
+    final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
+    final var down = prepareIndicator(series, yesterdayBar, todayBar);
+    assertNumEquals(0, down.getValue());
+  }
+
+
+  private static MinusDMIndicator prepareIndicator(
+      final BacktestBarSeries series, final BacktestBar yesterdayBar,
+      final BacktestBar todayBar
+  ) {
+    final var down = new MinusDMIndicator(series);
+    series.replaceStrategy(new MockStrategy(down));
+    series.addBar(yesterdayBar);
+    series.addBar(todayBar);
+    series.advance();
+    series.advance();
+    return down;
+  }
+
+
+  @Test
+  public void positiveDirectionalMovement() {
+    final var series = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+    final var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(20).build();
+    final var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
+    final var down = prepareIndicator(series, yesterdayBar, todayBar);
+    assertNumEquals(16, down.getValue());
+  }
 }

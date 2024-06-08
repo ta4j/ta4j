@@ -71,5 +71,4 @@ public interface BarSeries {
      * @param strategy register new strategy and possibly replace the old one
      */
     void replaceStrategy(final Strategy strategy);
-
 }

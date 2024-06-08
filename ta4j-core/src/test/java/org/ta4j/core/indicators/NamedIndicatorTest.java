@@ -1,8 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
- * authors (see AUTHORS)
+ * Copyright (c) 2024 Lukáš Kvídera
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -21,33 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.Indicator;
+package org.ta4j.core.indicators;
 
-/**
- * Satisfied when the value of the boolean {@link Indicator indicator} is
- * {@code true}.
- */
-public class BooleanIndicatorRule extends AbstractRule {
 
-    private final Indicator<Boolean> indicator;
+import static org.assertj.core.api.Assertions.assertThat;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the boolean indicator
-     */
-    public BooleanIndicatorRule(final Indicator<Boolean> indicator) {
-        this.indicator = indicator;
-    }
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        final boolean satisfied = this.indicator.getValue();
-        traceIsSatisfied(satisfied);
-        return satisfied;
-    }
+class NamedIndicatorTest {
+
+  @Test
+  void testGetName() {
+    final var numNamedIndicator = NumericIndicator.closePrice(new MockBarSeriesBuilder().build()).named("Name");
+    assertThat(numNamedIndicator.getName()).isEqualTo("Name");
+  }
+
+
+  @Test
+  void testGetValue() {
+    final var numFactory = DoubleNumFactory.getInstance();
+    final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+    final var namedIndicator = NumericIndicator.closePrice(series).named("Name");
+
+    series.advance();
+    assertThat(namedIndicator.getValue()).isEqualTo(numFactory.numOf(1.0));
+  }
 }

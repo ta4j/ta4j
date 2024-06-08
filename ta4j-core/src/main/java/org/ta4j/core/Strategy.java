@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -33,65 +33,69 @@ import java.time.Instant;
  */
 public interface Strategy {
 
-    /**
-     * @return the name of the strategy
-     */
-    String getName();
+  /**
+   * @return the name of the strategy
+   */
+  String getName();
 
-    /**
-     * @return the entry rule
-     */
-    Rule getEntryRule();
+  /**
+   * @return the entry rule
+   */
+  Rule getEntryRule();
 
-    /**
-     * @return the exit rule
-     */
-    Rule getExitRule();
+  /**
+   * @return the exit rule
+   */
+  Rule getExitRule();
 
-    /**
-     * Refreshes state based on last bar.
-     *
-     * Called when new bar is added to BarSeries
-     *
-     * Backtesting may rewind time to past
-     *
-     * @param tick current time
-     */
-    void refresh(Instant tick);
+  /**
+   * Refreshes state of internal {@link org.ta4j.core.indicators.IndicatorContext} based on last bar.
+   *
+   * Called when new bar is added to BarSeries
+   *
+   * Backtesting may rewind time to past
+   *
+   * @param tick current time
+   *
+   * @see org.ta4j.core.indicators.IndicatorContext
+   */
+  void refresh(Instant tick);
 
-    /**
-     * @return true if this strategy is stable at current moment, false otherwise
-     *         (unstable)
-     */
-    boolean isStable();
+  /**
+   * @return true if this strategy is stable at current moment, false otherwise
+   *     (unstable)
+   */
+  boolean isStable();
 
-    /**
-     * @return true to recommend to enter, false otherwise
-     */
-    default boolean shouldEnter() {
-        return shouldEnter(null);
-    }
+  /**
+   * @return true to recommend to enter, false otherwise
+   */
+  default boolean shouldEnter() {
+    return shouldEnter(null);
+  }
 
-    /**
-     * @param tradingRecord the potentially needed trading history
-     * @return true to recommend to enter, false otherwise
-     */
-    default boolean shouldEnter(final TradingRecord tradingRecord) {
-        return isStable() && getEntryRule().isSatisfied(tradingRecord);
-    }
+  /**
+   * @param tradingRecord the potentially needed trading history
+   *
+   * @return true to recommend to enter, false otherwise
+   */
+  default boolean shouldEnter(final TradingRecord tradingRecord) {
+    return isStable() && getEntryRule().isSatisfied(tradingRecord);
+  }
 
-    /**
-     * @return true to recommend to exit, false otherwise
-     */
-    default boolean shouldExit() {
-        return shouldExit(null);
-    }
+  /**
+   * @return true to recommend to exit, false otherwise
+   */
+  default boolean shouldExit() {
+    return shouldExit(null);
+  }
 
-    /**
-     * @param tradingRecord the potentially needed trading history
-     * @return true to recommend to exit, false otherwise
-     */
-    default boolean shouldExit(final TradingRecord tradingRecord) {
-        return isStable() && getExitRule().isSatisfied(tradingRecord);
-    }
+  /**
+   * @param tradingRecord the potentially needed trading history
+   *
+   * @return true to recommend to exit, false otherwise
+   */
+  default boolean shouldExit(final TradingRecord tradingRecord) {
+    return isStable() && getExitRule().isSatisfied(tradingRecord);
+  }
 }

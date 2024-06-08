@@ -28,12 +28,9 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNext;
 import static org.ta4j.core.TestUtils.fastForward;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
@@ -68,7 +65,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void firstValueShouldBeEqualsToFirstDataValue() {
     final var actualIndicator = NumericIndicator.closePrice(this.data).mma(1);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator))));
+    this.data.replaceStrategy(new MockStrategy(actualIndicator));
     this.data.advance();
     assertEquals(64.75, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
   }
@@ -77,7 +74,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void mmaUsingBarCount10UsingClosePrice() {
     final var actualIndicator = NumericIndicator.closePrice(this.data).mma(10);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator))));
+    this.data.replaceStrategy(new MockStrategy(actualIndicator));
 
 
     fastForward(this.data, 10);
@@ -110,7 +107,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Num> {
     final var xlsSeries = this.xls.getSeries();
     final var actualIndicator = NumericIndicator.closePrice(xlsSeries).mma(barCount);
     final var expectedIndicator = this.xls.getIndicator(barCount);
-    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+    xlsSeries.replaceStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, actualIndicator));
     assertEquals(expected, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);

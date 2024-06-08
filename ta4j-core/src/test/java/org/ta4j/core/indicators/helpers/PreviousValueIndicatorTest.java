@@ -29,12 +29,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.Random;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.candles.price.OpenPriceIndicator;
@@ -68,7 +66,7 @@ public class PreviousValueIndicatorTest {
     @Test
     public void testIsStable1() {
         final var prevValueIndicator = new PreviousValueIndicator(new OpenPriceIndicator(this.series));
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(prevValueIndicator))));
+        this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
         assertFalse(prevValueIndicator.isStable());
         this.series.advance();
@@ -80,7 +78,7 @@ public class PreviousValueIndicatorTest {
     @Test
     public void testIsStable2() {
         final var prevValueIndicator = new PreviousValueIndicator(new OpenPriceIndicator(this.series), 2);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(prevValueIndicator))));
+        this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
         assertFalse(prevValueIndicator.isStable());
         this.series.advance();
@@ -92,7 +90,7 @@ public class PreviousValueIndicatorTest {
     @Test
     public void testIsStable3() {
         final var prevValueIndicator = new PreviousValueIndicator(new OpenPriceIndicator(this.series), 3);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(prevValueIndicator))));
+        this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
         assertFalse(prevValueIndicator.isStable());
         this.series.advance();
@@ -109,7 +107,7 @@ public class PreviousValueIndicatorTest {
         // test 1 with openPrice-indicator
         final var openPriceIndicator = new OpenPriceIndicator(this.series);
         final var prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(prevValueIndicator))));
+        this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
         this.series.advance();
         for (int i = 0; i < this.series.getBarCount() / 2 - 1; i++) {

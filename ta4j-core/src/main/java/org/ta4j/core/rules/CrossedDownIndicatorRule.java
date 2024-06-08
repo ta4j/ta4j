@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.Instant;
-
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
@@ -81,18 +79,6 @@ public class CrossedDownIndicatorRule extends AbstractRule {
     final boolean satisfied = this.cross.getValue();
     traceIsSatisfied(satisfied);
     return satisfied;
-  }
-
-
-  @Override
-  public void refresh(final Instant tick) {
-    this.cross.refresh(tick);
-  }
-
-
-  @Override
-  public boolean isStable() {
-    return this.cross.isStable();
   }
 
 

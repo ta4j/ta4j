@@ -25,11 +25,8 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
@@ -59,7 +56,7 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Num> {
     @Test
     public void calculateWithSma2AndSma3() {
         final var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(this.series), 2, 3);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(awesome))));
+        this.series.replaceStrategy(new MockStrategy(awesome));
         // pass to stable range
         this.series.advance();
         this.series.advance();
@@ -71,7 +68,7 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Num> {
     @Test
     public void withSma1AndSma2() {
         final var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(this.series), 1, 2);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(awesome))));
+        this.series.replaceStrategy(new MockStrategy(awesome));
         // pass to stable range
         this.series.advance();
         assertValues(this.series, -1.5, awesome);

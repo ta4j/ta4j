@@ -27,11 +27,8 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -58,7 +55,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Num> {
     @Test
     public void lowestValueIndicatorUsingBarCount5UsingClosePrice() {
         final LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(this.data), 5);
-        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(lowestValue))));
+        this.data.replaceStrategy(new MockStrategy((lowestValue)));
         this.data.advance();
         assertNumEquals("1.0", lowestValue.getValue());
         this.data.advance();
@@ -91,7 +88,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Num> {
     @Test
     public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         final var lowestValue = new LowestValueIndicator(new ClosePriceIndicator(this.data), 5);
-        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(lowestValue))));
+        this.data.replaceStrategy(new MockStrategy(lowestValue));
 
         this.data.advance();
         assertNumEquals("1.0", lowestValue.getValue());
@@ -100,7 +97,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Num> {
     @Test
     public void lowestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         final var lowestValue = new LowestValueIndicator(new ClosePriceIndicator(this.data), 500);
-        this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(lowestValue))));
+        this.data.replaceStrategy(new MockStrategy(lowestValue));
 
         for (int i = 0; i < this.data.getBarCount(); i++) {
             this.data.advance();
@@ -118,7 +115,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Num> {
         }
 
         final var lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 5);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(lowestValue))));
+        series.replaceStrategy(new MockStrategy(lowestValue));
 
         while (series.advance()) {
             assertEquals(NaN.toString(), lowestValue.getValue().toString());
@@ -133,7 +130,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Num> {
         }
 
         final var lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 2);
-        series.replaceStrategy(new MockStrategy(new MockRule(List.of(lowestValue))));
+        series.replaceStrategy(new MockStrategy(lowestValue));
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             series.advance();

@@ -26,11 +26,8 @@ package org.ta4j.core.indicators.adx;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
@@ -73,7 +70,7 @@ public class PlusDIIndicatorTest extends AbstractIndicatorTest<Num> {
     final var xlsSeries = this.xls.getSeries();
     final var actualIndicator = new PlusDIIndicator(xlsSeries, x);
     final var expectedIndicator = this.xls.getIndicator(x);
-    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(actualIndicator, expectedIndicator))));
+    xlsSeries.replaceStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, actualIndicator));
     assertEquals(expected, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);

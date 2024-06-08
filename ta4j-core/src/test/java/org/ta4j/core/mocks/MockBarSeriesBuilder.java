@@ -28,11 +28,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.StrategyFactory;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
+import org.ta4j.core.indicators.IndicatorContext;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -118,7 +118,7 @@ public class MockBarSeriesBuilder extends BacktestBarSeriesBuilder {
   public BacktestBarSeries build() {
     withBarBuilderFactory(new MockBarBuilderFactory());
     if (!this.strategy) {
-      withStrategyFactory(x -> new MockStrategy(new MockRule(List.of())));
+      withStrategyFactory(x -> new MockStrategy(IndicatorContext.of()));
     }
     final var series = super.build();
     if (this.data != null) {

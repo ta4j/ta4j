@@ -33,7 +33,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -112,9 +111,9 @@ public class TestUtilsTest extends AbstractIndicatorTest<Num> {
 
 
   private BacktestStrategy createStrategy(final BacktestBarSeries series, final Consumer<TestIndicator<Num>> consumer) {
-    final var indicator = new ClosePriceIndicator(series);
-    consumer.accept(new TestIndicator<>(series, indicator));
-    return new MockStrategy(new MockRule(List.of(indicator)));
+    final var closePrice = new ClosePriceIndicator(series);
+    consumer.accept(new TestIndicator<>(series, closePrice));
+    return new MockStrategy(closePrice);
   }
 
 

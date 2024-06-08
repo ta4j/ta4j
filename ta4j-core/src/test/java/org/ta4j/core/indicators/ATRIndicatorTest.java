@@ -26,11 +26,8 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
@@ -98,7 +95,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<Num> {
         .trades(0)
         .add();
     final var indicator = NumericIndicator.atr(series, 3);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(indicator))));
+    series.replaceStrategy(new MockStrategy(indicator));
 
     series.advance();
     var value = indicator.getValue().doubleValue();
@@ -126,7 +123,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<Num> {
     final var xlsSeries = this.xls.getSeries();
     final var indicator = NumericIndicator.atr(xlsSeries, 1);
     final var expected = this.xls.getIndicator(1);
-    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+    xlsSeries.replaceStrategy(new MockStrategy(expected, indicator));
 
     assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(4.8, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -138,7 +135,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<Num> {
     final var xlsSeries = this.xls.getSeries();
     final var indicator = NumericIndicator.atr(xlsSeries, 3);
     final var expected = this.xls.getIndicator(3);
-    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+    xlsSeries.replaceStrategy(new MockStrategy(expected, indicator));
 
     assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(7.4225, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -150,7 +147,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<Num> {
     final var xlsSeries = this.xls.getSeries();
     final var indicator = NumericIndicator.atr(xlsSeries, 13);
     final var expected = this.xls.getIndicator(13);
-    xlsSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(expected, indicator))));
+    xlsSeries.replaceStrategy(new MockStrategy(expected, indicator));
 
     assertIndicatorEquals(expected, new TestIndicator<>(xlsSeries, indicator));
     assertEquals(8.8082, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);

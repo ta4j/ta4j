@@ -27,11 +27,8 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -61,7 +58,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void highestValueUsingBarCount5UsingClosePrice() {
     final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 5);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    this.data.replaceStrategy(new MockStrategy(highestValue));
 
     for (int i = 0; i < 5; i++) {
       this.data.advance();
@@ -89,7 +86,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
     final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 5);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    this.data.replaceStrategy(new MockStrategy(highestValue));
     this.data.advance();
 
     assertNumEquals("1.0", highestValue.getValue());
@@ -99,7 +96,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
     final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(this.data), 500);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    this.data.replaceStrategy(new MockStrategy(highestValue));
     for (int i = 0; i < 12; i++) {
       this.data.advance();
     }
@@ -122,7 +119,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Num> {
     }
 
     final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    series.replaceStrategy(new MockStrategy(highestValue));
 
     while (series.advance()) {
       assertEquals(NaN.toString(), highestValue.getValue().toString());
@@ -145,7 +142,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Num> {
     }
 
     final var highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(highestValue))));
+    series.replaceStrategy(new MockStrategy(highestValue));
 
     // index is the biggest of (index, index-1)
     for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {

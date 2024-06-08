@@ -27,11 +27,8 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -80,7 +77,7 @@ public class AroonUpIndicatorTest {
   @Test
   public void upAndSlowDown() {
     final var arronUp = new AroonUpIndicator(this.data, 5);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(arronUp))));
+    this.data.replaceStrategy(new MockStrategy(arronUp));
 
     for (int i = 0; i < 6; i++) {
       this.data.advance();
@@ -132,7 +129,7 @@ public class AroonUpIndicatorTest {
     }
 
     final var aroonUpIndicator = new AroonUpIndicator(series, 5);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonUpIndicator))));
+    series.replaceStrategy(new MockStrategy(aroonUpIndicator));
 
     while (series.advance()) {
       assertEquals(NaN.toString(), aroonUpIndicator.getValue().toString());
@@ -155,7 +152,7 @@ public class AroonUpIndicatorTest {
     }
 
     final var aroonUpIndicator = new AroonUpIndicator(series, 5);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonUpIndicator))));
+    series.replaceStrategy(new MockStrategy(aroonUpIndicator));
 
     for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
       series.advance();

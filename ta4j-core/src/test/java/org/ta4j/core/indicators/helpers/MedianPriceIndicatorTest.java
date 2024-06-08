@@ -25,11 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -64,7 +61,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Num> {
     this.barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(9).lowPrice(3).add();
 
     this.average = new MedianPriceIndicator(this.barSeries);
-    this.barSeries.replaceStrategy(new MockStrategy(new MockRule(List.of(this.average))));
+    this.barSeries.replaceStrategy(new MockStrategy(this.average));
   }
 
 

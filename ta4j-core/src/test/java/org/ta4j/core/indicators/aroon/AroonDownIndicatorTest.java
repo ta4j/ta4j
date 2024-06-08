@@ -29,11 +29,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.fastForward;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -82,7 +79,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Num> {
   @Test
   public void upDownAndHigh() {
     final var aroonDownIndicator = new AroonDownIndicator(this.data, 5);
-    this.data.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
+    this.data.replaceStrategy(new MockStrategy(aroonDownIndicator));
 
     fastForward(this.data, 6);
     assertNext(this.data, 100, aroonDownIndicator);
@@ -111,7 +108,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Num> {
     }
 
     final var aroonDownIndicator = new AroonDownIndicator(series, 5);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
+    series.replaceStrategy(new MockStrategy(aroonDownIndicator));
 
     while (series.advance()) {
       assertEquals(NaN.toString(), aroonDownIndicator.getValue().toString());
@@ -129,7 +126,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Num> {
     series.barBuilder().lowPrice(numOf(10d)).add();
 
     final var aroonDownIndicator = new AroonDownIndicator(series, 5);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(aroonDownIndicator))));
+    series.replaceStrategy(new MockStrategy(aroonDownIndicator));
 
     for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
       series.advance();

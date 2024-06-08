@@ -1,8 +1,8 @@
-/**
+
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
- * authors (see AUTHORS)
+ * Copyright (c) 2024 Lukáš Kvídera
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -21,33 +21,57 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.Indicator;
+package org.ta4j.core.indicators;
+
+import java.time.Instant;
 
 /**
- * Satisfied when the value of the boolean {@link Indicator indicator} is
- * {@code true}.
+ * @author Lukáš Kvídera
  */
-public class BooleanIndicatorRule extends AbstractRule {
+public class NamedIndicator<T> implements Indicator<T> {
 
-    private final Indicator<Boolean> indicator;
+  private final String name;
+  private final Indicator<T> indicator;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the boolean indicator
-     */
-    public BooleanIndicatorRule(final Indicator<Boolean> indicator) {
-        this.indicator = indicator;
-    }
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        final boolean satisfied = this.indicator.getValue();
-        traceIsSatisfied(satisfied);
-        return satisfied;
-    }
+  private NamedIndicator(final String name, final Indicator<T> indicator) {
+    this.name = name;
+    this.indicator = indicator;
+  }
+
+
+  public static <T> NamedIndicator<T> of(final String name, final Indicator<T> indicator) {
+    return new NamedIndicator<>(name, indicator);
+  }
+
+
+  @Override
+  public T getValue() {
+    return this.indicator.getValue();
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.indicator.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.indicator.isStable();
+  }
+
+
+  public String getName() {
+    return this.name;
+  }
+
+
+  @Override
+  public String toString() {
+    return this.indicator.toString();
+  }
 }
+

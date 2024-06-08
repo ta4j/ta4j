@@ -26,11 +26,8 @@ package org.ta4j.core.indicators.adx;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.TestIndicator;
 import org.ta4j.core.TestUtils;
@@ -56,7 +53,7 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<Num> {
     final var series = this.xls.getSeries();
     final var actualIndicator = NumericIndicator.adx(series, 1, 1);
     final var expectedIndicator = this.xls.getIndicator(1, 1);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+    series.replaceStrategy(new MockStrategy(expectedIndicator, actualIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(100.0, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -68,7 +65,7 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<Num> {
     final var series = this.xls.getSeries();
     final var actualIndicator = NumericIndicator.adx(series, 3, 2);
     final var expectedIndicator = this.xls.getIndicator(3, 2);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+    series.replaceStrategy(new MockStrategy(expectedIndicator, actualIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(12.1330, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -80,7 +77,7 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<Num> {
     final var series = this.xls.getSeries();
     final var actualIndicator = NumericIndicator.adx(series, 13, 8);
     final var expectedIndicator = this.xls.getIndicator(13, 8);
-    series.replaceStrategy(new MockStrategy(new MockRule(List.of(expectedIndicator, actualIndicator))));
+    series.replaceStrategy(new MockStrategy(expectedIndicator, actualIndicator));
 
     assertIndicatorEquals(expectedIndicator, new TestIndicator<>(series, actualIndicator));
     assertEquals(7.3884, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);

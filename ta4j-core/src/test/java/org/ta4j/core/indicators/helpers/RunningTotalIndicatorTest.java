@@ -25,11 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -41,27 +38,29 @@ import org.ta4j.core.num.NumFactory;
 
 public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Num> {
 
-    private BacktestBarSeries data;
+  private BacktestBarSeries data;
 
 
   public RunningTotalIndicatorTest(final NumFactory numFactory) {
     super(numFactory);
-    }
+  }
 
-    @Before
-    public void setUp() {
-      this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 5, 6).build();
-    }
 
-    @Test
-    public void calculate() {
-      final Indicator<Num> runningTotal = NumericIndicator.closePrice(this.data).runningTotal(3);
-      this.data.addStrategy(new MockStrategy(new MockRule(List.of(runningTotal))));
+  @Before
+  public void setUp() {
+    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 5, 6).build();
+  }
 
-      final double[] expected = new double[] {1.0, 3.0, 6.0, 9.0, 12.0, 15.0};
-        for (int i = 0; i < expected.length; i++) {
-          this.data.advance();
-            assertNumEquals(expected[i], runningTotal.getValue());
-        }
+
+  @Test
+  public void calculate() {
+    final Indicator<Num> runningTotal = NumericIndicator.closePrice(this.data).runningTotal(3);
+    this.data.addStrategy(new MockStrategy(runningTotal));
+
+    final double[] expected = new double[] {1.0, 3.0, 6.0, 9.0, 12.0, 15.0};
+    for (final double v : expected) {
+      this.data.advance();
+      assertNumEquals(v, runningTotal.getValue());
     }
+  }
 }

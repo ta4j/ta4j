@@ -37,28 +37,39 @@ import org.ta4j.core.BarSeries;
  */
 public interface Indicator<T> {
 
-    /**
-     * @return the value of the indicator
-     */
-    T getValue();
+  /**
+   * @return the value of the indicator
+   */
+  T getValue();
 
-    /**
-     * updates its state based on current bar
-     *
-     * Implementation of indicator should be aware of that it may be called multiple
-     * times for single bar. If there is extensive calculation, implementation may
-     * count on that for each bar there will be discrete time passed that may be
-     * used for caching purposes.
-     *
-     * Backtesting may rewind time to past, this event should invalidate calculated
-     * value.
-     *
-     * @param tick current time
-     */
-    void refresh(Instant tick);
+  /**
+   * updates its state based on current bar
+   *
+   * Implementation of indicator should be aware of that it may be called multiple
+   * times for single bar. If there is extensive calculation, implementation may
+   * count on that for each bar there will be discrete time passed that may be
+   * used for caching purposes.
+   *
+   * Backtesting may rewind time to past, this event should invalidate calculated
+   * value.
+   *
+   * @param tick current time
+   */
+  void refresh(Instant tick);
 
-    /**
-     * @return true if indicator is stabilized
-     */
-    boolean isStable();
+  /**
+   * @return true if indicator is stabilized
+   */
+  boolean isStable();
+
+  /**
+   * Wrapperd indicator that assigns name to this instance.
+   *
+   * @param name to assign
+   *
+   * @return named instance if this indicator
+   */
+  default NamedIndicator<T> named(final String name) {
+    return NamedIndicator.of(name, this);
+  }
 }

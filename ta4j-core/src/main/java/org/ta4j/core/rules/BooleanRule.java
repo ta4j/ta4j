@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.time.Instant;
-
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -32,38 +30,30 @@ import org.ta4j.core.TradingRecord;
  */
 public class BooleanRule extends AbstractRule {
 
-    /** An always-true rule. */
-    public static final BooleanRule TRUE = new BooleanRule(true);
+  /** An always-true rule. */
+  public static final BooleanRule TRUE = new BooleanRule(true);
 
-    /** An always-false rule. */
-    public static final BooleanRule FALSE = new BooleanRule(false);
+  /** An always-false rule. */
+  public static final BooleanRule FALSE = new BooleanRule(false);
 
-    private final boolean satisfied;
+  private final boolean satisfied;
 
-    /**
-     * Constructor.
-     *
-     * @param satisfied true for the rule to be always satisfied, false to be never
-     *                  satisfied
-     */
-    private BooleanRule(final boolean satisfied) {
-        this.satisfied = satisfied;
-    }
 
-    /** This rule does not use the {@code tradingRecord}. */
-    @Override
-    public boolean isSatisfied(final TradingRecord tradingRecord) {
-        traceIsSatisfied(this.satisfied);
-        return this.satisfied;
-    }
+  /**
+   * Constructor.
+   *
+   * @param satisfied true for the rule to be always satisfied, false to be never
+   *     satisfied
+   */
+  private BooleanRule(final boolean satisfied) {
+    this.satisfied = satisfied;
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        // NOOP
-    }
 
-    @Override
-    public boolean isStable() {
-        return true;
-    }
+  /** This rule does not use the {@code tradingRecord}. */
+  @Override
+  public boolean isSatisfied(final TradingRecord tradingRecord) {
+    traceIsSatisfied(this.satisfied);
+    return this.satisfied;
+  }
 }

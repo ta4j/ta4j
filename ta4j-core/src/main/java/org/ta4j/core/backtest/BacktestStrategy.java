@@ -31,133 +31,157 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.IndicatorContext;
 
 /**
  * Base implementation of a {@link Strategy}.
  */
 public class BacktestStrategy implements Strategy {
 
-    /** The logger. */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+  /** The logger. */
+  protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The name of the strategy. */
-    private final String name;
+  /** The name of the strategy. */
+  private final String name;
 
-    /** The entry rule. */
-    private final Rule entryRule;
+  /** The entry rule. */
+  private final Rule entryRule;
 
-    /** The exit rule. */
-    private final Rule exitRule;
+  /** The exit rule. */
+  private final Rule exitRule;
+  private final IndicatorContext indicatorContext;
 
-    /** Recording of execution of this strategy */
-    private BackTestTradingRecord tradingRecord;
+  /** Recording of execution of this strategy */
+  private BackTestTradingRecord tradingRecord;
 
-    /** Current time */
-    private Instant currentTick;
+  /** Current time */
+  private Instant currentTick;
 
-    /**
-     * Constructor.
-     *
-     * @param name      the name of the strategy
-     * @param entryRule the entry rule
-     * @param exitRule  the exit rule
-     */
-    public BacktestStrategy(final String name, final Rule entryRule, final Rule exitRule) {
-        if (entryRule == null || exitRule == null) {
-            throw new IllegalArgumentException("Rules cannot be null");
-        }
-        this.name = name;
-        this.entryRule = entryRule;
-        this.exitRule = exitRule;
+
+  /**
+   * Constructor.
+   *
+   * @param name the name of the strategy
+   * @param entryRule the entry rule
+   * @param exitRule the exit rule
+   */
+  public BacktestStrategy(
+      final String name,
+      final Rule entryRule,
+      final Rule exitRule,
+      final IndicatorContext indicatorContext
+  ) {
+    this.indicatorContext = indicatorContext;
+    if (entryRule == null || exitRule == null) {
+      throw new IllegalArgumentException("Rules cannot be null");
     }
-
-    @Override
-    public String getName() {
-        return this.name;
+    if (indicatorContext == null) {
+      throw new IllegalArgumentException("IndicatorContext cannot be null");
     }
+    this.name = name;
+    this.entryRule = entryRule;
+    this.exitRule = exitRule;
+  }
 
-    @Override
-    public Rule getEntryRule() {
-        return this.entryRule;
-    }
 
-    @Override
-    public Rule getExitRule() {
-        return this.exitRule;
-    }
+  @Override
+  public String getName() {
+    return this.name;
+  }
 
-    @Override
-    public boolean isStable() {
-        return this.entryRule.isStable() && this.exitRule.isStable();
-    }
 
-    /**
-     * @return true to recommend a trade, false otherwise (no recommendation)
-     */
-    public boolean shouldOperate() {
-        final Position position = this.tradingRecord.getCurrentPosition();
-        if (position.isNew()) {
-            return shouldEnter(this.tradingRecord);
-        } else if (position.isOpened()) {
-            return shouldExit(this.tradingRecord);
-        }
-        return false;
-    }
+  @Override
+  public Rule getEntryRule() {
+    return this.entryRule;
+  }
 
-    @Override
-    public boolean shouldEnter(final TradingRecord tradingRecord) {
-        final boolean enter = Strategy.super.shouldEnter(tradingRecord);
-        traceShouldEnter(enter);
-        return enter;
-    }
 
-    @Override
-    public boolean shouldExit(final TradingRecord tradingRecord) {
-        final boolean exit = Strategy.super.shouldExit(tradingRecord);
-        traceShouldExit(exit);
-        return exit;
-    }
+  @Override
+  public Rule getExitRule() {
+    return this.exitRule;
+  }
 
-    @Override
-    public void refresh(final Instant tick) {
-        this.entryRule.refresh(tick);
-        this.exitRule.refresh(tick);
-        this.currentTick = tick;
-    }
 
-    /**
-     * Traces the {@code shouldEnter()} method calls.
-     *
-     * @param enter true if the strategy should enter, false otherwise
-     */
-    protected void traceShouldEnter(final boolean enter) {
-        if (this.log.isTraceEnabled()) {
-            this.log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), this.currentTick, enter);
-        }
-    }
+  @Override
+  public boolean isStable() {
+    return this.indicatorContext.isStable();
+  }
 
-    /**
-     * Traces the {@code shouldExit()} method calls.
-     *
-     * @param exit true if the strategy should exit, false otherwise
-     */
-    protected void traceShouldExit(final boolean exit) {
-        if (this.log.isTraceEnabled()) {
-            this.log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), this.currentTick, exit);
-        }
-    }
 
-    public TradingRecord getTradeRecord() {
-        return this.tradingRecord;
+  /**
+   * @return true to recommend a trade, false otherwise (no recommendation)
+   */
+  public boolean shouldOperate() {
+    final Position position = this.tradingRecord.getCurrentPosition();
+    if (position.isNew()) {
+      return shouldEnter(this.tradingRecord);
+    } else if (position.isOpened()) {
+      return shouldExit(this.tradingRecord);
     }
+    return false;
+  }
 
-    public void register(final BackTestTradingRecord backTestTradingRecord) {
-        this.tradingRecord = backTestTradingRecord;
-    }
 
-    @Override
-    public String toString() {
-        return "BacktestStrategy{" + "className='" + getClass().getSimpleName() + '\'' + ", name='" + this.name + '\''
-                + ", entryRule=" + this.entryRule + ", exitRule=" + this.exitRule + '}';
+  @Override
+  public boolean shouldEnter(final TradingRecord tradingRecord) {
+    final boolean enter = Strategy.super.shouldEnter(tradingRecord);
+    traceShouldEnter(enter);
+    return enter;
+  }
+
+
+  @Override
+  public boolean shouldExit(final TradingRecord tradingRecord) {
+    final boolean exit = Strategy.super.shouldExit(tradingRecord);
+    traceShouldExit(exit);
+    return exit;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.indicatorContext.refresh(tick);
+    this.currentTick = tick;
+  }
+
+
+  /**
+   * Traces the {@code shouldEnter()} method calls.
+   *
+   * @param enter true if the strategy should enter, false otherwise
+   */
+  protected void traceShouldEnter(final boolean enter) {
+    if (this.log.isTraceEnabled()) {
+      this.log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), this.currentTick, enter);
     }
+  }
+
+
+  /**
+   * Traces the {@code shouldExit()} method calls.
+   *
+   * @param exit true if the strategy should exit, false otherwise
+   */
+  protected void traceShouldExit(final boolean exit) {
+    if (this.log.isTraceEnabled()) {
+      this.log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), this.currentTick, exit);
+    }
+  }
+
+
+  public TradingRecord getTradeRecord() {
+    return this.tradingRecord;
+  }
+
+
+  public void register(final BackTestTradingRecord backTestTradingRecord) {
+    this.tradingRecord = backTestTradingRecord;
+  }
+
+
+  @Override
+  public String toString() {
+    return "BacktestStrategy{" + "className='" + getClass().getSimpleName() + '\'' + ", name='" + this.name + '\''
+           + ", entryRule=" + this.entryRule + ", exitRule=" + this.exitRule + '}';
+  }
 }

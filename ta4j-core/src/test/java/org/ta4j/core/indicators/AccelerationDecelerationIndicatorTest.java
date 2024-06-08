@@ -27,11 +27,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.MockRule;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -60,7 +57,7 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
         final var shortBarCount = 2;
         final var longBarCount = 3;
         final var acceleration = new AccelerationDecelerationIndicator(this.series, shortBarCount, longBarCount);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(acceleration))));
+        this.series.replaceStrategy(new MockStrategy(acceleration));
 
         this.series.advance();
         assertFalse(acceleration.isStable());
@@ -97,7 +94,7 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
     @Test
     public void withSma1AndSma2() {
         final var acceleration = new AccelerationDecelerationIndicator(this.series, 1, 2);
-        this.series.replaceStrategy(new MockStrategy(new MockRule(List.of(acceleration))));
+        this.series.replaceStrategy(new MockStrategy(acceleration));
         this.series.advance();
         assertNumEquals(0, acceleration.getValue());
         this.series.advance();

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import org.junit.Test;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.IndicatorContext;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -60,7 +61,7 @@ public class LiveTradingTest extends AbstractIndicatorTest<Num> {
           smaTest.add(sma);
           final var entryRule = sma.isGreaterThan(5);
           final var exitRule = sma.isLessThan(11);
-          return new BacktestStrategy("LiveSMA", entryRule, exitRule);
+          return new BacktestStrategy("LiveSMA", entryRule, exitRule, IndicatorContext.of(sma));
         })
         .build();
 

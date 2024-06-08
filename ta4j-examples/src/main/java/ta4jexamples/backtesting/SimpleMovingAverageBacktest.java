@@ -36,6 +36,7 @@ import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.indicators.IndicatorContext;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.reports.TradingStatement;
@@ -105,8 +106,11 @@ public class SimpleMovingAverageBacktest {
   private static BacktestStrategy create3DaySmaStrategy(final BacktestBarSeries series) {
     final var closePrice = NumericIndicator.closePrice(series);
     final var sma = closePrice.sma(3);
-    return new BacktestStrategy("", sma.isLessThan(closePrice),
-        sma.isGreaterThan(closePrice)
+    return new BacktestStrategy(
+        "",
+        sma.isLessThan(closePrice),
+        sma.isGreaterThan(closePrice),
+        IndicatorContext.of(sma)
     );
   }
 
@@ -117,7 +121,8 @@ public class SimpleMovingAverageBacktest {
     return new BacktestStrategy(
         "",
         sma.isLessThan(closePrice),
-        sma.isGreaterThan(closePrice)
+        sma.isGreaterThan(closePrice),
+        IndicatorContext.of(sma)
     );
   }
 }
