@@ -30,12 +30,11 @@ import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Rule;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestStrategy;
+import org.ta4j.core.indicators.IndicatorContext;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.reports.PerformanceReport;
@@ -59,33 +58,35 @@ public class SimpleMovingAverageRangeBacktest {
     final List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
     for (int i = start; i <= stop; i += step) {
       final var p = i;
-      strategies.add(x -> new BacktestStrategy("Sma(" + p + ")", createEntryRule(x, p), createExitRule(x, p)));
+      final var series = CsvBarsLoader.loadAppleIncSeries();
+      final var closePrice = NumericIndicator.closePrice(series);
+      final var sma = closePrice.sma(p);
+      final var entryRule = new OverIndicatorRule(sma, closePrice);
+      final var exitRule = new UnderIndicatorRule(sma, closePrice);
+      strategies.add(x -> new BacktestStrategy(
+          "Sma(" + p + ")",
+          entryRule,
+          exitRule,
+          IndicatorContext.of(sma, closePrice)
+      ));
     }
 
     final var series = CsvBarsLoader.loadAppleIncSeries();
     final var backtestExecutor = new BacktestExecutor(series);
+    final var closePrice = NumericIndicator.closePrice(series);
+    final var sma = closePrice.sma(3);
+    final var entryRule = new OverIndicatorRule(sma, closePrice);
+    final var exitRule = new UnderIndicatorRule(sma, closePrice);
+
+
     final List<TradingStatement> tradingStatements =
         backtestExecutor.execute(
-            new BacktestStrategy("SMA", createEntryRule(series, 3), createExitRule(series, 3)),
+            new BacktestStrategy("SMA", entryRule, exitRule, IndicatorContext.of(sma, closePrice)),
             DecimalNum.valueOf(50),
             Trade.TradeType.BUY
         );
 
     LOG.info(printReport(tradingStatements));
-  }
-
-
-  private static Rule createEntryRule(final BarSeries series, final int barCount) {
-    final var closePrice = NumericIndicator.closePrice(series);
-    final var sma = closePrice.sma(barCount);
-    return new UnderIndicatorRule(sma, closePrice);
-  }
-
-
-  private static Rule createExitRule(final BarSeries series, final int barCount) {
-    final var closePrice = NumericIndicator.closePrice(series);
-    final var sma = closePrice.sma(barCount);
-    return new OverIndicatorRule(sma, closePrice);
   }
 
 
