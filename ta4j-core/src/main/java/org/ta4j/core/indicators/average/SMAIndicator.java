@@ -43,6 +43,7 @@ public class SMAIndicator extends NumericIndicator {
   private Num value;
   private int processedBars;
   private Instant currentTick = Instant.EPOCH;
+  private final Num divisor;
 
 
   /**
@@ -55,13 +56,13 @@ public class SMAIndicator extends NumericIndicator {
     super(indicator.getNumFactory());
     this.sum = new RunningTotalIndicator(indicator, barCount);
     this.barCount = barCount;
+    this.divisor = getNumFactory().numOf(this.barCount);
   }
 
 
   protected Num calculate() {
     final var sum = partialSum();
-    // TODO extract divisor to constant
-    return sum.dividedBy(getNumFactory().numOf(this.barCount));
+    return sum.dividedBy(this.divisor);
   }
 
 
