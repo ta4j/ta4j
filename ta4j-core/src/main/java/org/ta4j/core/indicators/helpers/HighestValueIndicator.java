@@ -24,12 +24,11 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.function.Predicate;
+import java.util.Deque;
+import java.util.LinkedList;
 
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,9 +43,11 @@ public class HighestValueIndicator extends NumericIndicator {
   private final int barCount;
 
   /** circular array */
-  private final ArrayList<Num> data;
+  private final Num[] window;
+  private final Deque<Integer> deque = new LinkedList<>();
   private Num value;
   private int barsPassed;
+  private Instant currentTick = Instant.EPOCH;
 
 
   /**
@@ -59,17 +60,34 @@ public class HighestValueIndicator extends NumericIndicator {
     super(indicator.getNumFactory());
     this.indicator = indicator;
     this.barCount = barCount;
-    this.data = new ArrayList<>(barCount);
-    for (int i = 0; i < barCount; i++) {
-      this.data.add(NaN.NaN);
-    }
+    this.window = new Num[barCount];
   }
 
 
   protected Num calculate() {
-    final var indicatorValue = this.indicator.getValue();
-    this.data.set(this.barsPassed % this.barCount, indicatorValue);
-    return this.data.stream().filter(Predicate.not(Num::isNaN)).max(Num::compareTo).orElse(NaN.NaN);
+    final int actualIndex = this.barsPassed % this.barCount;
+
+    if (this.barsPassed >= this.barCount) {
+      final int outgoingIndex = (this.barsPassed - this.barCount) % this.barCount;
+      if (!this.deque.isEmpty() && this.deque.peekFirst() == outgoingIndex) {
+        this.deque.pollFirst();
+      }
+    }
+
+    final var currentValue = this.indicator.getValue();
+    this.window[actualIndex] = currentValue;
+
+    while (!this.deque.isEmpty() && (
+        this.window[this.deque.peekLast()].isLessThan(currentValue)
+        || this.window[this.deque.peekLast()].isNaN()
+    )) {
+      this.deque.pollLast();
+    }
+
+    this.deque.offerLast(actualIndex);
+    this.barsPassed++;
+
+    return this.window[this.deque.peekFirst()];
   }
 
 
@@ -81,8 +99,11 @@ public class HighestValueIndicator extends NumericIndicator {
 
   @Override
   public void refresh(final Instant tick) {
-    ++this.barsPassed;
-    this.value = calculate();
+    if (tick.isAfter(this.currentTick)) {
+      this.indicator.refresh(tick);
+      this.value = calculate();
+      this.currentTick = tick;
+    }
   }
 
 
