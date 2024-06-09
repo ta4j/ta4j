@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.17
 - **Added signal line and histogram to MACDIndicator**
 - **Implemented inner cache for SMAIndicator**
+- Added getTransactionCostModel, getHoldingCostModel, getTrades in TradingRecord
 
 
 ## 0.16 (released May 15, 2024)
