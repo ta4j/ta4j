@@ -62,10 +62,10 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Num> {
     assertNext(this.data, 0.0, varianceIndicator);
     assertFalse(varianceIndicator.isStable());
 
-    assertNext(this.data, 0.0, varianceIndicator);
+    assertNext(this.data, 0.1667, varianceIndicator);
     assertFalse(varianceIndicator.isStable());
 
-    assertNext(this.data, 0.0, varianceIndicator);
+    assertNext(this.data, 0.6667, varianceIndicator);
     assertFalse(varianceIndicator.isStable());
 
     // stable date bellow
@@ -117,5 +117,6 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Num> {
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 0.5, var);
     assertNext(this.data, 4.5, var);
+    assertNext(this.data, 40.5, var);
   }
 }

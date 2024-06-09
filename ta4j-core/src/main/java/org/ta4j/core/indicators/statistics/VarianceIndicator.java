@@ -25,23 +25,23 @@ package org.ta4j.core.indicators.statistics;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.average.SMAIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.utils.CircularNumArray;
 
 /**
  * Variance indicator.
  */
 public class VarianceIndicator extends NumericIndicator {
 
+  private final NumericIndicator indicator;
   private final int barCount;
   private final Num divisor;
-  private final SMAIndicator mean;
-  private final CircularNumArray values;
-  private final NumericIndicator indicator;
-  private Instant currentTick = Instant.EPOCH;
+  private Num mean;
+  private final PreviousValueIndicator oldestValue;
+  private int currentIndex;
   private Num value;
+  private Instant currentTick = Instant.EPOCH;
 
 
   /**
@@ -52,46 +52,67 @@ public class VarianceIndicator extends NumericIndicator {
    */
   public VarianceIndicator(final NumericIndicator indicator, final int barCount) {
     super(indicator.getNumFactory());
-    this.barCount = barCount;
-    this.indicator = indicator;
-    this.divisor = getNumFactory().numOf(this.barCount - 1);
-    this.mean = new SMAIndicator(indicator, barCount);
-
     if (barCount <= 1) {
       throw new IllegalArgumentException("barCount must be greater than 1");
     }
 
-    this.values = new CircularNumArray(barCount);
+    this.barCount = barCount;
+    this.indicator = indicator;
+    this.divisor = getNumFactory().numOf(barCount - 1);
+    this.mean = getNumFactory().zero();
+    this.oldestValue = new PreviousValueIndicator(indicator, barCount);
+    this.value = getNumFactory().zero();
   }
 
 
   protected Num calculate() {
-    this.values.addLast(this.indicator.getValue());
-
-    Num variance = getNumFactory().zero();
-    // cannot use RunningTotalIndicator because mean is changing each tick
-    final Num average = this.mean.getValue();
-    for (final var val : this.values) {
-      final var diff = val.minus(average);
-      final Num pow = diff.multipliedBy(diff);
-      variance = variance.plus(pow);
+    if (this.currentIndex < this.barCount) {
+      return add(this.indicator.getValue());
     }
 
-    variance = variance.dividedBy(this.divisor);
-    return variance;
+    final var oldValue = this.oldestValue.getValue();
+    return dropOldestAndAddNew(oldValue, this.indicator.getValue());
+  }
+
+
+  public Num add(final Num x) {
+    this.currentIndex++;
+    final var delta = x.minus(this.mean);
+    this.mean = this.mean.plus(delta.dividedBy(getNumFactory().numOf(this.currentIndex)));
+    return this.value.plus(delta.multipliedBy(x.minus(this.mean)));
+  }
+
+
+  private Num dropOldestAndAddNew(final Num x, final Num y) {
+    final var deltaYX = y.minus(x);
+    final var deltaX = x.minus(this.mean);
+    final var deltaY = y.minus(this.mean);
+    this.mean = this.mean.plus(deltaYX.dividedBy(getNumFactory().numOf(this.barCount)));
+    final var deltaYp = y.minus(this.mean);
+    return this.value.minus(
+            getNumFactory().numOf(this.barCount)
+                .multipliedBy(
+                    deltaX.multipliedBy(deltaX)
+                        .minus(deltaY.multipliedBy(deltaYp))
+                        .dividedBy(this.divisor)
+                )
+        )
+        .minus(deltaYX.multipliedBy(deltaYp).dividedBy(this.divisor))
+        ;
   }
 
 
   @Override
   public Num getValue() {
-    return this.value;
+    return this.value.dividedBy(this.divisor);
   }
 
 
   @Override
   public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
-      this.mean.refresh(tick);
+      this.indicator.refresh(tick);
+      this.oldestValue.refresh(tick);
       this.value = calculate();
       this.currentTick = tick;
     }
@@ -100,7 +121,7 @@ public class VarianceIndicator extends NumericIndicator {
 
   @Override
   public boolean isStable() {
-    return this.indicator.isStable() && this.mean.isStable();
+    return this.currentIndex >= this.barCount && this.indicator.isStable();
   }
 
 
