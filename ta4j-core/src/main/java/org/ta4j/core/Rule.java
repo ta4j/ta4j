@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,11 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.NotRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.XorRule;
+
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
  * strategy}. A trading rule can consist of a combination of other rules.
@@ -31,39 +36,42 @@ public interface Rule {
 
   Rule NOOP = tradingRecord -> false;
 
-  //
-  //    /**
-  //     * @param rule another trading rule
-  //     * @return a rule which is the AND combination of this rule with the provided
-  //     *         one
-  //     */
-  //    default Rule and(Rule rule) {
-  //        return new AndRule(this, rule);
-  //    }
-  //
-  //    /**
-  //     * @param rule another trading rule
-  //     * @return a rule which is the OR combination of this rule with the provided one
-  //     */
-  //    default Rule or(Rule rule) {
-  //        return new OrRule(this, rule);
-  //    }
-  //
-  //    /**
-  //     * @param rule another trading rule
-  //     * @return a rule which is the XOR combination of this rule with the provided
-  //     *         one
-  //     */
-  //    default Rule xor(Rule rule) {
-  //        return new XorRule(this, rule);
-  //    }
-  //
-  //    /**
-  //     * @return a rule which is the logical negation of this rule
-  //     */
-  //    default Rule negation() {
-  //        return new NotRule(this);
-  //    }
+
+  /**
+   * @param rule another trading rule
+   *
+   * @return a rule which is the AND combination of this rule with the provided
+   *     one
+   */
+  default Rule and(final Rule rule) {
+    return new AndRule(this, rule);
+  }
+
+  /**
+   * @param rule another trading rule
+   *
+   * @return a rule which is the OR combination of this rule with the provided one
+   */
+  default Rule or(final Rule rule) {
+    return new OrRule(this, rule);
+  }
+
+  /**
+   * @param rule another trading rule
+   *
+   * @return a rule which is the XOR combination of this rule with the provided
+   *     one
+   */
+  default Rule xor(final Rule rule) {
+    return new XorRule(this, rule);
+  }
+
+  /**
+   * @return a rule which is the logical negation of this rule
+   */
+  default Rule negation() {
+    return new NotRule(this);
+  }
 
   /**
    * @return true if this rule is satisfied for the provided index, false
