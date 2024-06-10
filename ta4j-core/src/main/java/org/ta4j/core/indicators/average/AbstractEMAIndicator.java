@@ -93,7 +93,7 @@ public abstract class AbstractEMAIndicator extends NumericIndicator {
 
   @Override
   public boolean isStable() {
-    return this.barsPassed > this.barCount && this.indicator.isStable();
+    return this.barsPassed >= this.barCount && this.indicator.isStable();
   }
 
 
