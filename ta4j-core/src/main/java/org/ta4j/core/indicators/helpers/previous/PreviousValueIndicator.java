@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,27 +21,22 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.helpers.previous;
 
 import java.time.Instant;
 import java.util.LinkedList;
 
-import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.Indicator;
 
 /**
  * Returns the (n-th) previous value of an indicator.
- *
- * If the (n-th) previous index is below the first index from the bar series,
- * then {@link NaN#NaN} is returned.
  */
-public class PreviousValueIndicator extends NumericIndicator {
+abstract class PreviousValueIndicator<T> implements Indicator<T> {
 
   private final int n;
-  private final NumericIndicator indicator;
-  private final LinkedList<Num> previousValues = new LinkedList<>();
-  private Num value;
+  private final Indicator<T> indicator;
+  private final LinkedList<T> previousValues = new LinkedList<>();
+  private T value;
   private Instant currentTick = Instant.EPOCH;
 
 
@@ -50,7 +45,7 @@ public class PreviousValueIndicator extends NumericIndicator {
    *
    * @param indicator the indicator from which to calculate the previous value
    */
-  public PreviousValueIndicator(final NumericIndicator indicator) {
+  protected PreviousValueIndicator(final Indicator<T> indicator) {
     this(indicator, 1);
   }
 
@@ -61,8 +56,7 @@ public class PreviousValueIndicator extends NumericIndicator {
    * @param indicator the indicator from which to calculate the previous value
    * @param n parameter defines the previous n-th value
    */
-  public PreviousValueIndicator(final NumericIndicator indicator, final int n) {
-    super(indicator.getNumFactory());
+  protected PreviousValueIndicator(final Indicator<T> indicator, final int n) {
     if (n < 1) {
       throw new IllegalArgumentException("n must be positive number, but was: " + n);
     }
@@ -71,7 +65,7 @@ public class PreviousValueIndicator extends NumericIndicator {
   }
 
 
-  protected Num calculate() {
+  protected T calculate() {
     final var currentValue = this.indicator.getValue();
     this.previousValues.addLast(currentValue);
 
@@ -79,7 +73,7 @@ public class PreviousValueIndicator extends NumericIndicator {
       return this.previousValues.removeFirst();
     }
 
-    return getNumFactory().zero();
+    return null;
   }
 
 
@@ -91,14 +85,14 @@ public class PreviousValueIndicator extends NumericIndicator {
 
 
   @Override
-  public Num getValue() {
+  public T getValue() {
     return this.value;
   }
 
 
   @Override
   public void refresh(final Instant tick) {
-    if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+    if (tick.isAfter(this.currentTick)) {
       this.indicator.refresh(tick);
       this.value = calculate();
       this.currentTick = tick;

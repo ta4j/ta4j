@@ -27,9 +27,8 @@ import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.SeriesRelatedBooleanIndicator;
-import org.ta4j.core.indicators.average.SMAIndicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -50,7 +49,7 @@ public class DojiIndicator extends SeriesRelatedBooleanIndicator {
   private final NumericIndicator bodyHeightInd;
 
   /** Average body height. */
-  private final PreviousValueIndicator averageBodyHeightInd;
+  private final PreviousNumericValueIndicator averageBodyHeightInd;
 
   /** The factor used when checking if a candle is Doji. */
   private final Num factor;
@@ -69,7 +68,7 @@ public class DojiIndicator extends SeriesRelatedBooleanIndicator {
   public DojiIndicator(final BarSeries series, final int barCount, final double bodyFactor) {
     super(series);
     this.bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
-    this.averageBodyHeightInd = new PreviousValueIndicator(new SMAIndicator(this.bodyHeightInd, barCount), 1);
+    this.averageBodyHeightInd = this.bodyHeightInd.sma(barCount).previous();
     this.factor = getBarSeries().numFactory().numOf(bodyFactor);
   }
 

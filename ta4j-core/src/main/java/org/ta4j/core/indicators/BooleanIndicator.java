@@ -23,5 +23,17 @@
  */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.indicators.helpers.previous.PreviousBooleanValueIndicator;
+import org.ta4j.core.rules.BooleanIndicatorRule;
+
 public abstract class BooleanIndicator implements Indicator<Boolean> {
+
+  public BooleanIndicatorRule toRule() {
+    return new BooleanIndicatorRule(this);
+  }
+
+
+  public PreviousBooleanValueIndicator previous(final int barCount) {
+    return new PreviousBooleanValueIndicator(this, barCount);
+  }
 }

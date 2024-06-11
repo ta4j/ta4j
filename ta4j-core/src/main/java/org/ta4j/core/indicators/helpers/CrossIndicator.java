@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.helpers;
 import java.time.Instant;
 
 import org.ta4j.core.indicators.BooleanIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
@@ -41,25 +42,29 @@ public class CrossIndicator extends BooleanIndicator {
 
   /** Lower indicator */
   private final NumericIndicator low;
+  private final PreviousNumericValueIndicator previousUp;
+  private final PreviousNumericValueIndicator previousLow;
   private Boolean value;
   private Instant currentTick = Instant.EPOCH;
 
 
   /**
-   * Constructor.
-   *
    * @param up the upper indicator
    * @param low the lower indicator
+   * @param barCount test whether crossed up within las barCount
    */
-  public CrossIndicator(final NumericIndicator up, final NumericIndicator low) {
+  public CrossIndicator(final NumericIndicator up, final NumericIndicator low, final int barCount) {
     this.up = up;
     this.low = low;
+    this.previousUp = up.previous(barCount);
+    this.previousLow = low.previous(barCount);
   }
 
 
   protected Boolean calculate() {
-    // TODO previous value should be opposite or equal
-    return this.up.getValue().isGreaterThan(this.low.getValue());
+    final var greaterThanNow = this.up.getValue().isGreaterThan(this.low.getValue());
+    final var lessThanPreviously = this.previousUp.getValue().isLessThanOrEqual(this.previousLow.getValue());
+    return greaterThanNow && lessThanPreviously;
   }
 
 
@@ -71,9 +76,11 @@ public class CrossIndicator extends BooleanIndicator {
 
   @Override
   public void refresh(final Instant tick) {
-    if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+    if (tick.isAfter(this.currentTick)) {
       this.low.refresh(tick);
       this.up.refresh(tick);
+      this.previousUp.refresh(tick);
+      this.previousLow.refresh(tick);
       this.value = calculate();
       this.currentTick = tick;
     }
@@ -82,7 +89,7 @@ public class CrossIndicator extends BooleanIndicator {
 
   @Override
   public boolean isStable() {
-    return this.up.isStable() && this.low.isStable();
+    return this.up.isStable() && this.low.isStable() && this.previousUp.isStable() && this.previousLow.isStable();
   }
 
 

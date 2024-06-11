@@ -28,8 +28,7 @@ import java.time.Instant;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.SeriesRelatedBooleanIndicator;
-import org.ta4j.core.indicators.average.SMAIndicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.CircularBarArray;
 import org.ta4j.core.utils.CircularIndicatorArray;
@@ -46,7 +45,7 @@ public class ThreeBlackCrowsIndicator extends SeriesRelatedBooleanIndicator {
   private final CircularIndicatorArray lowerShadows = new CircularIndicatorArray(3);
 
   /** Average lower shadow. */
-  private final PreviousValueIndicator averageLowerShadowInd;
+  private final PreviousNumericValueIndicator averageLowerShadowInd;
 
   /** Factor used when checking if a candle has a very short lower shadow. */
   private final Num factor;
@@ -67,10 +66,10 @@ public class ThreeBlackCrowsIndicator extends SeriesRelatedBooleanIndicator {
   public ThreeBlackCrowsIndicator(final BarSeries series, final int barCount, final double factor) {
     super(series);
     final var lowerShadowIndicator = new LowerShadowIndicator(series);
-    this.lowerShadows.addLast(new PreviousValueIndicator(lowerShadowIndicator, 3));
-    this.lowerShadows.addLast(new PreviousValueIndicator(lowerShadowIndicator, 2));
-    this.lowerShadows.addLast(new PreviousValueIndicator(lowerShadowIndicator, 1));
-    this.averageLowerShadowInd = new PreviousValueIndicator(new SMAIndicator(lowerShadowIndicator, barCount), 4);
+    this.lowerShadows.addLast(lowerShadowIndicator.previous(3));
+    this.lowerShadows.addLast(lowerShadowIndicator.previous(2));
+    this.lowerShadows.addLast(lowerShadowIndicator.previous());
+    this.averageLowerShadowInd = lowerShadowIndicator.sma(barCount).previous(4);
     this.factor = series.numFactory().numOf(factor);
   }
 

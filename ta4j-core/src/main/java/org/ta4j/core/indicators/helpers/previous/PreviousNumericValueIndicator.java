@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -15,42 +15,35 @@
  * copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
+package org.ta4j.core.indicators.helpers.previous;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.BooleanIndicator;
-import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Satisfied when the value of the boolean {@link Indicator indicator} is
- * {@code true}.
+ * @author Lukáš Kvídera
  */
-public class BooleanIndicatorRule extends AbstractRule {
+public class PreviousNumericValueIndicator extends PreviousValueIndicator<Num> {
 
-  private final BooleanIndicator indicator;
+  private final NumFactory numFactory;
 
 
-  /**
-   * Constructor.
-   *
-   * @param indicator the boolean indicator
-   */
-  public BooleanIndicatorRule(final BooleanIndicator indicator) {
-    this.indicator = indicator;
+  public PreviousNumericValueIndicator(final NumericIndicator indicator, final int n) {
+    super(indicator, n);
+    this.numFactory = indicator.getNumFactory();
   }
 
 
-  /** This rule does not use the {@code tradingRecord}. */
   @Override
-  public boolean isSatisfied(final TradingRecord tradingRecord) {
-    final boolean satisfied = this.indicator.getValue();
-    traceIsSatisfied(satisfied);
-    return satisfied;
+  public Num getValue() {
+    final var value = super.getValue();
+    return value == null ? this.numFactory.zero() : value;
   }
 }

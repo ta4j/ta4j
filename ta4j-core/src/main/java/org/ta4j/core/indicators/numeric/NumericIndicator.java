@@ -38,17 +38,16 @@ import org.ta4j.core.indicators.candles.price.HighPriceIndicator;
 import org.ta4j.core.indicators.candles.price.LowPriceIndicator;
 import org.ta4j.core.indicators.candles.price.OpenPriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
+import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.rules.CrossedDownIndicatorRule;
-import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
@@ -364,18 +363,18 @@ public abstract class NumericIndicator implements Indicator<Num> {
   /**
    * @param barCount the time frame
    *
-   * @return the {@link PreviousValueIndicator} of {@code this}
+   * @return the {@link PreviousNumericValueIndicator} of {@code this}
    */
-  public PreviousValueIndicator previous(final int barCount) {
-    return new PreviousValueIndicator(this, barCount);
+  public PreviousNumericValueIndicator previous(final int barCount) {
+    return new PreviousNumericValueIndicator(this, barCount);
   }
 
 
   /**
-   * @return the {@link PreviousValueIndicator} of {@code this} with
+   * @return the {@link PreviousNumericValueIndicator} of {@code this} with
    *     {@code barCount=1}
    */
-  public PreviousValueIndicator previous() {
+  public PreviousNumericValueIndicator previous() {
     return previous(1);
   }
 
@@ -393,21 +392,34 @@ public abstract class NumericIndicator implements Indicator<Num> {
 
 
   /**
+   * Whether cross over occured in last 5 bars.
+   *
    * @param other the other indicator
    *
-   * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code other}
+   * @return the {@link CrossIndicator} of {@code this} and {@code other}
    */
-  public CrossedUpIndicatorRule crossedOver(final NumericIndicator other) {
-    return new CrossedUpIndicatorRule(this, other);
+  public CrossIndicator crossedOver(final NumericIndicator other) {
+    return crossedOver(other, 1);
+  }
+
+
+  /**
+   * @param other the other indicator
+   * @param barCount test whether cross occured within last barCount
+   *
+   * @return the {@link CrossIndicator} of {@code this} and {@code other}
+   */
+  public CrossIndicator crossedOver(final NumericIndicator other, final int barCount) {
+    return new CrossIndicator(this, other, barCount);
   }
 
 
   /**
    * @param n the other number
    *
-   * @return the {@link CrossedUpIndicatorRule} of {@code this} and {@code n}
+   * @return the {@link CrossIndicator} of {@code this} and {@code n}
    */
-  public CrossedUpIndicatorRule crossedOver(final Number n) {
+  public CrossIndicator crossedOver(final Number n) {
     return crossedOver(createConstant(n));
   }
 
@@ -415,20 +427,20 @@ public abstract class NumericIndicator implements Indicator<Num> {
   /**
    * @param other the other indicator
    *
-   * @return the {@link CrossedDownIndicatorRule} of {@code this} and
+   * @return the {@link CrossIndicator} of {@code this} and
    *     {@code other}
    */
-  public CrossedDownIndicatorRule crossedUnder(final NumericIndicator other) {
-    return new CrossedDownIndicatorRule(this, other);
+  public CrossIndicator crossedUnder(final NumericIndicator other) {
+    return new CrossIndicator(other, this , 1);
   }
 
 
   /**
    * @param n the other number
    *
-   * @return the {@link CrossedDownIndicatorRule} of {@code this} and {@code n}
+   * @return the {@link CrossIndicator} of {@code this} and {@code n}
    */
-  public CrossedDownIndicatorRule crossedUnder(final Number n) {
+  public CrossIndicator crossedUnder(final Number n) {
     return crossedUnder(createConstant(n));
   }
 

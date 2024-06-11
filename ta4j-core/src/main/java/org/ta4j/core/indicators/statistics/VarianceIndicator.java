@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.statistics;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -37,8 +37,8 @@ public class VarianceIndicator extends NumericIndicator {
   private final NumericIndicator indicator;
   private final int barCount;
   private final Num divisor;
+  private final PreviousNumericValueIndicator oldestValue;
   private Num mean;
-  private final PreviousValueIndicator oldestValue;
   private int currentIndex;
   private Num value;
   private Instant currentTick = Instant.EPOCH;
@@ -60,7 +60,7 @@ public class VarianceIndicator extends NumericIndicator {
     this.indicator = indicator;
     this.divisor = getNumFactory().numOf(barCount - 1);
     this.mean = getNumFactory().zero();
-    this.oldestValue = new PreviousValueIndicator(indicator, barCount);
+    this.oldestValue = indicator.previous(barCount);
     this.value = getNumFactory().zero();
   }
 

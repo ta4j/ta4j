@@ -1,4 +1,4 @@
-/**
+/*4
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import java.time.Instant;
 
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -37,7 +38,7 @@ import org.ta4j.core.num.Num;
 public class RunningTotalIndicator extends NumericIndicator {
   private final NumericIndicator indicator;
   private final int barCount;
-  private final PreviousValueIndicator previousValue;
+  private final PreviousNumericValueIndicator previousValue;
   private Num previousSum;
   private Num value;
   private int processedBars;
@@ -49,7 +50,7 @@ public class RunningTotalIndicator extends NumericIndicator {
     this.indicator = indicator;
     this.barCount = barCount;
     this.previousSum = getNumFactory().zero();
-    this.previousValue = new PreviousValueIndicator(indicator, barCount);
+    this.previousValue = new PreviousNumericValueIndicator(indicator, barCount);
   }
 
 
@@ -60,12 +61,6 @@ public class RunningTotalIndicator extends NumericIndicator {
 
 
   protected Num calculate() {
-    final var newSum = partialSum();
-    return newSum;
-  }
-
-
-  private Num partialSum() {
     final var indicatorValue = this.indicator.getValue();
 
     var sum = this.previousSum.plus(indicatorValue);
@@ -89,11 +84,6 @@ public class RunningTotalIndicator extends NumericIndicator {
   public void refresh(final Instant tick) {
     if (tick.isAfter(this.currentTick)) {
       ++this.processedBars;
-      this.previousValue.refresh(tick);
-      this.value = calculate();
-      this.currentTick = tick;
-    } else if (tick.isBefore(this.currentTick)) {
-      this.processedBars = 1;
       this.previousValue.refresh(tick);
       this.value = calculate();
       this.currentTick = tick;

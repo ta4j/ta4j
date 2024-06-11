@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.average;
 import java.time.Instant;
 
 import org.ta4j.core.indicators.Indicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -43,7 +43,7 @@ public class ZLEMAIndicator extends NumericIndicator {
   private final int barCount;
   private final Num k;
   private final Num oneMinusK;
-  private final PreviousValueIndicator lagPreviousValue;
+  private final PreviousNumericValueIndicator lagPreviousValue;
   private final int lag;
   private int barsPassed;
   private Num value;
@@ -68,7 +68,7 @@ public class ZLEMAIndicator extends NumericIndicator {
       throw new IllegalArgumentException("The bar count must be greater than 2");
     }
 
-    this.lagPreviousValue = new PreviousValueIndicator(indicator, this.lag);
+    this.lagPreviousValue = indicator.previous(this.lag);
   }
 
 
