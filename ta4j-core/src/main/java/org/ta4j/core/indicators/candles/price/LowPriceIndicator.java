@@ -60,4 +60,10 @@ public class LowPriceIndicator extends SeriesRelatedNumericIndicator {
     public void refresh(final Instant tick) {
         // NOOP
     }
+
+
+    @Override
+    public String toString() {
+        return String.format("Low() => %s", getValue());
+    }
 }

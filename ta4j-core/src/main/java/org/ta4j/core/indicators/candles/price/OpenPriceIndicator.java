@@ -60,4 +60,10 @@ public class OpenPriceIndicator extends SeriesRelatedNumericIndicator {
     public boolean isStable() {
         return true;
     }
+
+
+    @Override
+    public String toString() {
+        return String.format("Open() => %s", getValue());
+    }
 }

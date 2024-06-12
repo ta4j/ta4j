@@ -101,7 +101,7 @@ public class SMAIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("SMA(%d) => %s", this.barCount, getValue());
   }
 
 }

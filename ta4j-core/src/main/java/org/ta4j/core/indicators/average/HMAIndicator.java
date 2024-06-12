@@ -95,7 +95,7 @@ public class HMAIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("HMA(%d) => %s", this.barCount, getValue());
   }
 
 }

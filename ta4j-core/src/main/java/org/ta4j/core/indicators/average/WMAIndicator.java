@@ -103,6 +103,6 @@ public class WMAIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("WMA(%d) => %s", this.barCount, getValue());
   }
 }

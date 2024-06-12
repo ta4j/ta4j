@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,10 +34,8 @@ import org.ta4j.core.Rule;
  */
 public abstract class AbstractRule implements Rule {
 
-    /** The logger */
-    protected final transient Logger log = LoggerFactory.getLogger(getClass());
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The class name */
     private final String className = getClass().getSimpleName();
 
     private Instant currentTick;
@@ -49,7 +47,8 @@ public abstract class AbstractRule implements Rule {
      */
     protected void traceIsSatisfied(final boolean isSatisfied) {
         if (this.log.isTraceEnabled()) {
-            this.log.trace("{}#isSatisfied({}): {}", this.className, this.currentTick, isSatisfied);
+            // TODO
+            this.log.trace("{}", this);
         }
     }
 

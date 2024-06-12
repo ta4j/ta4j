@@ -64,4 +64,10 @@ public class HighPriceIndicator extends SeriesRelatedNumericIndicator {
   public void refresh(final Instant tick) {
     // NOOP
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("High() => %s", getValue());
+  }
 }

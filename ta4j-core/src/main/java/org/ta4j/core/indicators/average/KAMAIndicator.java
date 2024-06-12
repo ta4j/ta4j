@@ -149,4 +149,10 @@ public class KAMAIndicator extends NumericIndicator {
   public boolean isStable() {
     return this.barsPassed >= this.barCountEffectiveRatio;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("KAMA(%d) => %s", this.barCountEffectiveRatio, getValue());
+  }
 }

@@ -107,6 +107,13 @@ public class CrossIndicator extends BooleanIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " " + this.low + " " + this.up;
+    return String.format(
+        "Cross(%s, %s, %s, %s) => %s",
+        this.up,
+        this.low,
+        this.previousUp,
+        this.previousLow,
+        getValue()
+    );
   }
 }

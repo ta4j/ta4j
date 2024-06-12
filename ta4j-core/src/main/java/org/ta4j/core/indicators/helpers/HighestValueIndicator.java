@@ -115,6 +115,6 @@ public class HighestValueIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("HiVa(%s, %s) => %s", this.indicator, this.barCount, getValue());
   }
 }

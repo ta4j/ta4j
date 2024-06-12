@@ -62,4 +62,10 @@ public class NotRule extends AbstractRule {
   public Rule getRuleToNegate() {
     return this.ruleToNegate;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("NotRule[%s] => %s", this.ruleToNegate, isSatisfied());
+  }
 }

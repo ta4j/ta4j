@@ -127,6 +127,6 @@ public class VarianceIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("VAR(%s, %s) => %s", this.indicator, this.barCount, getValue());
   }
 }

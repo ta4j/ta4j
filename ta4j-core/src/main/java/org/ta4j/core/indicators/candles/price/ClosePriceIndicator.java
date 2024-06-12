@@ -64,4 +64,10 @@ public class ClosePriceIndicator extends SeriesRelatedNumericIndicator {
     return true;
   }
 
+
+  @Override
+  public String toString() {
+    return String.format("Close() => %s", getValue());
+  }
+
 }

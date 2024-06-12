@@ -77,6 +77,6 @@ public class BollingerBandsMiddleIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " deviation: " + this.indicator;
+    return String.format("BolBaMid(%s) => %s", this.indicator, getValue());
   }
 }

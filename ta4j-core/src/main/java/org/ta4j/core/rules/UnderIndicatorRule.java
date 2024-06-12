@@ -86,4 +86,10 @@ public class UnderIndicatorRule extends AbstractRule {
     traceIsSatisfied(satisfied);
     return satisfied;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("UnderRule[%s, %s] => %s", this.first, this.second, isSatisfied());
+  }
 }

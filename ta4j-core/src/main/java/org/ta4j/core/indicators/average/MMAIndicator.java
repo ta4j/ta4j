@@ -44,4 +44,10 @@ public class MMAIndicator extends AbstractEMAIndicator {
   public MMAIndicator(final NumericIndicator indicator, final int barCount) {
     super(indicator, barCount, 1.0 / barCount);
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("MMA(%d) => %s", getBarCount(), getValue());
+  }
 }

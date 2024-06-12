@@ -106,4 +106,9 @@ public class UnaryOperation extends NumericIndicator {
     return this.operand.isStable();
   }
 
+
+  @Override
+  public String toString() {
+    return String.format("UI<%s> => %s", this.operand, getValue());
+  }
 }

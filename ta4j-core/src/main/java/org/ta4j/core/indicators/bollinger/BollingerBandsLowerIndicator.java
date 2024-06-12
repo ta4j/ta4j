@@ -111,6 +111,6 @@ public class BollingerBandsLowerIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "k: " + this.k + "deviation: " + this.indicator + "series: " + this.bbm;
+    return String.format("BolBaLo(%s, %s) => %s", this.bbm, this.k, getValue());
   }
 }

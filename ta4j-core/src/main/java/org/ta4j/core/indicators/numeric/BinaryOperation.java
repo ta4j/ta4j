@@ -180,4 +180,9 @@ public class BinaryOperation extends NumericIndicator {
     return this.left.isStable() && this.right.isStable();
   }
 
+
+  @Override
+  public String toString() {
+    return String.format("BI<%s, %s> => %s", this.left, this.right, getValue());
+  }
 }

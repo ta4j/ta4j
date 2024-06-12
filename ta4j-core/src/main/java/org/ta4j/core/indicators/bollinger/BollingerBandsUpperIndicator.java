@@ -110,6 +110,6 @@ public class BollingerBandsUpperIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "k: " + this.k + "deviation: " + this.deviation + "series" + this.bbm;
+    return String.format("BolBaUp(%s, %s) => %s", this.bbm, this.k, getValue());
   }
 }

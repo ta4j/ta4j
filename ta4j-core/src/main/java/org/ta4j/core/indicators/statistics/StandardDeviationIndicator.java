@@ -79,4 +79,10 @@ public class StandardDeviationIndicator extends NumericIndicator {
   public boolean isStable() {
     return this.variance.isStable();
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("STDDEV(%s) => %s", this.variance, getValue());
+  }
 }

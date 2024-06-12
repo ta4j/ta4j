@@ -53,4 +53,10 @@ public class BooleanIndicatorRule extends AbstractRule {
     traceIsSatisfied(satisfied);
     return satisfied;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("BoolIndRule[%s] => %s", this.indicator, this.indicator.getValue());
+  }
 }

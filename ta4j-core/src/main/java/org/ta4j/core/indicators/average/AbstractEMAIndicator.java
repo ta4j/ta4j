@@ -64,6 +64,11 @@ public abstract class AbstractEMAIndicator extends NumericIndicator {
   }
 
 
+  protected int getBarCount() {
+    return this.barCount;
+  }
+
+
   @Override
   public Num getValue() {
     return this.currentValue;

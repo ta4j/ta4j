@@ -56,4 +56,10 @@ public class BooleanRule extends AbstractRule {
     traceIsSatisfied(this.satisfied);
     return this.satisfied;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("BoolRule[%s] => %s", this.satisfied, isSatisfied());
+  }
 }

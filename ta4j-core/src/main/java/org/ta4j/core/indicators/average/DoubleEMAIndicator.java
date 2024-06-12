@@ -37,7 +37,6 @@ import org.ta4j.core.num.Num;
  */
 public class DoubleEMAIndicator extends NumericIndicator {
 
-  private final int barCount;
   private final EMAIndicator ema;
   private final EMAIndicator emaEma;
   private Instant currentTick = Instant.EPOCH;
@@ -52,7 +51,6 @@ public class DoubleEMAIndicator extends NumericIndicator {
    */
   public DoubleEMAIndicator(final NumericIndicator indicator, final int barCount) {
     super(indicator.getNumFactory());
-    this.barCount = barCount;
     this.ema = new EMAIndicator(indicator, barCount);
     this.emaEma = new EMAIndicator(this.ema, barCount);
   }
@@ -88,6 +86,6 @@ public class DoubleEMAIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("DoEMA(%d) => %s", this.ema.getBarCount(), getValue());
   }
 }

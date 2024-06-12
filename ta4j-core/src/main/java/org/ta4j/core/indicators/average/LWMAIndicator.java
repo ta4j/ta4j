@@ -90,12 +90,6 @@ public class LWMAIndicator extends NumericIndicator {
 
 
   @Override
-  public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
-  }
-
-
-  @Override
   public Num getValue() {
     return this.value;
   }
@@ -114,5 +108,11 @@ public class LWMAIndicator extends NumericIndicator {
   @Override
   public boolean isStable() {
     return false;
+  }
+
+
+  @Override
+  public String toString() {
+    return String.format("LWMA(%d) => %s", this.barCount, getValue());
   }
 }

@@ -79,8 +79,7 @@ abstract class PreviousValueIndicator<T> implements Indicator<T> {
 
   @Override
   public String toString() {
-    final String nInfo = this.n == 1 ? "" : "(" + this.n + ")";
-    return getClass().getSimpleName() + nInfo + "[" + this.indicator + "]";
+    return String.format("PREV(%s) => %s", this.indicator, getValue());
   }
 
 

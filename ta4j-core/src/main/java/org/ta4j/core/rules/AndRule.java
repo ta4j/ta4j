@@ -72,4 +72,10 @@ public class AndRule extends AbstractRule {
   public Rule getRule2() {
     return this.rule2;
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("UnderRule[%s, %s] => %s", this.rule1, this.rule2, isSatisfied());
+  }
 }

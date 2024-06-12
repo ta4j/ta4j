@@ -94,4 +94,10 @@ public class PercentBIndicator extends NumericIndicator {
   public boolean isStable() {
     return this.indicator.isStable() && this.bbl.isStable() && this.bbu.isStable();
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("%%Bi(%s) => %s", this.indicator, getValue());
+  }
 }

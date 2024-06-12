@@ -114,12 +114,6 @@ public class AroonDownIndicator extends NumericIndicator {
 
 
   @Override
-  public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
-  }
-
-
-  @Override
   public Num getValue() {
     return this.value;
   }
@@ -140,5 +134,11 @@ public class AroonDownIndicator extends NumericIndicator {
   @Override
   public boolean isStable() {
     return this.index > this.barCount && this.lowIndicator.isStable() && this.lowestLowValueIndicator.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return String.format("AroonDown(%s) => %s", this.lowIndicator, getValue());
   }
 }

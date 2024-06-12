@@ -42,4 +42,10 @@ public class EMAIndicator extends AbstractEMAIndicator {
   public EMAIndicator(final NumericIndicator indicator, final int barCount) {
     super(indicator, barCount, (2.0 / (barCount + 1)));
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("EMA(%d) => %s", getBarCount(), getValue());
+  }
 }

@@ -75,12 +75,6 @@ public class TripleEMAIndicator extends NumericIndicator {
 
 
   @Override
-  public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
-  }
-
-
-  @Override
   public Num getValue() {
     return this.value;
   }
@@ -101,5 +95,11 @@ public class TripleEMAIndicator extends NumericIndicator {
   @Override
   public boolean isStable() {
     return this.ema.isStable() && this.emaEma.isStable() && this.emaEmaEma.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return String.format("TrEMA(%d) => %s", this.barCount, getValue());
   }
 }

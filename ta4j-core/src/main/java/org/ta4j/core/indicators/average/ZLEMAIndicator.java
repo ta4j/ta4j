@@ -89,12 +89,6 @@ public class ZLEMAIndicator extends NumericIndicator {
 
 
   @Override
-  public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
-  }
-
-
-  @Override
   public Num getValue() {
     return this.value;
   }
@@ -115,5 +109,11 @@ public class ZLEMAIndicator extends NumericIndicator {
   @Override
   public boolean isStable() {
     return this.barsPassed >= this.lag && this.lagPreviousValue.isStable() && this.indicator.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return String.format("ZLEMA(%d) => %s", this.barCount, getValue());
   }
 }

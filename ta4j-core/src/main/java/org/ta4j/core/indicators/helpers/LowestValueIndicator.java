@@ -96,12 +96,6 @@ public class LowestValueIndicator extends NumericIndicator {
 
 
   @Override
-  public String toString() {
-    return getClass().getSimpleName() + " " + this.indicator;
-  }
-
-
-  @Override
   public Num getValue() {
     return this.value;
   }
@@ -120,5 +114,11 @@ public class LowestValueIndicator extends NumericIndicator {
   @Override
   public boolean isStable() {
     return this.barsPassed >= this.barCount && this.indicator.isStable();
+  }
+
+
+  @Override
+  public String toString() {
+    return String.format("LoVa(%s, %s) => %s", this.indicator, this.barCount, getValue());
   }
 }

@@ -94,4 +94,10 @@ public class BollingerBandWidthIndicator extends NumericIndicator {
   public boolean isStable() {
     return this.bbl.isStable() && this.bbu.isStable() && this.bbm.isStable();
   }
+
+
+  @Override
+  public String toString() {
+    return String.format("BolBaWidth(%s, %s, %s) => %s", this.bbu, this.bbm, this.bbl, getValue());
+  }
 }
