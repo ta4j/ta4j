@@ -46,6 +46,7 @@ import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
@@ -335,6 +336,11 @@ public abstract class NumericIndicator implements Indicator<Num> {
   }
 
 
+  public VarianceIndicator var(final int barCount) {
+    return new VarianceIndicator(this, barCount);
+  }
+
+
   public static MedianPriceIndicator medianPrice(final BarSeries series) {
     return new MedianPriceIndicator(series);
   }
@@ -431,7 +437,7 @@ public abstract class NumericIndicator implements Indicator<Num> {
    *     {@code other}
    */
   public CrossIndicator crossedUnder(final NumericIndicator other) {
-    return new CrossIndicator(other, this , 1);
+    return new CrossIndicator(other, this, 1);
   }
 
 
