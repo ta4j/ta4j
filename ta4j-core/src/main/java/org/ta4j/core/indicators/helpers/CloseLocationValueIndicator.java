@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  */
 public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
-    private final Num zero = numOf(0);
+    private final Num zero;
 
     /**
      * Constructor.
@@ -45,6 +45,7 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
      */
     public CloseLocationValueIndicator(BarSeries series) {
         super(series);
+        this.zero = zero();
     }
 
     @Override
@@ -59,6 +60,7 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
         return diffHighLow.isNaN() ? zero : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

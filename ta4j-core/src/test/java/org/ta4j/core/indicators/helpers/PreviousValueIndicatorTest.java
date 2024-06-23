@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.num.NaN;
 
 public class PreviousValueIndicatorTest {
 
@@ -74,21 +75,22 @@ public class PreviousValueIndicatorTest {
 
         // test 1 with openPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), openPriceIndicator.getValue(0));
+        assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
+
         for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i - 1));
         }
 
         // test 2 with lowPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
+        assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
         for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i - 1));
         }
 
         // test 3 with highPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
+        assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
         for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i - 1));
         }
@@ -105,8 +107,8 @@ public class PreviousValueIndicatorTest {
 
         // test 1 with volume-indicator
         prevValueIndicator = new PreviousValueIndicator(volumeIndicator, n);
-        for (int i = 0; i < n; i++) {
-            assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(0));
+        for (int i = 1; i < n; i++) {
+            assertEquals(prevValueIndicator.getValue(i), i - n < 0 ? NaN.NaN : volumeIndicator.getValue(0));
         }
         for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i - n));
@@ -114,8 +116,8 @@ public class PreviousValueIndicatorTest {
 
         // test 2 with ema-indicator
         prevValueIndicator = new PreviousValueIndicator(emaIndicator, n);
-        for (int i = 0; i < n; i++) {
-            assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(0));
+        for (int i = 1; i < n; i++) {
+            assertEquals(prevValueIndicator.getValue(i), i - n < 0 ? NaN.NaN : emaIndicator.getValue(0));
         }
         for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i - n));

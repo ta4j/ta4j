@@ -35,6 +35,8 @@ import java.util.function.Function;
  */
 public class DoubleNum implements Num {
 
+    private static final long serialVersionUID = 1L;
+
     public static final DoubleNum ZERO = DoubleNum.valueOf(0);
     private static final DoubleNum ONE = DoubleNum.valueOf(1);
     private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);

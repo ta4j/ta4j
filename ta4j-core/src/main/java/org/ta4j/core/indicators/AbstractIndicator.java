@@ -34,7 +34,7 @@ import org.ta4j.core.Indicator;
 public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     /** The logger. */
-    protected final transient Logger log = LoggerFactory.getLogger(getClass());
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final BarSeries series;
 

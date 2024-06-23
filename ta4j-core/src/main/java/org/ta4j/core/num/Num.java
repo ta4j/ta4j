@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.num;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -37,7 +38,7 @@ import java.util.function.Function;
  * @see DoubleNum
  * @see DecimalNum
  */
-public interface Num extends Comparable<Num> {
+public interface Num extends Comparable<Num>, Serializable {
 
     /**
      * @return the Num of 0

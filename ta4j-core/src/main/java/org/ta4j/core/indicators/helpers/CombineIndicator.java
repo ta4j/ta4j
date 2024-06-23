@@ -65,6 +65,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
         return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

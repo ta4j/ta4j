@@ -118,6 +118,10 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         // required maps for the acceleration factor, the trend direction and the
         // last extreme value.
         // Cache doesn't require more than current and previous values.
+        if (index < getBarSeries().getBeginIndex()) {
+            return NaN;
+        }
+
         seriesStartIndex = getBarSeries().getRemovedBarsCount();
         if (index < seriesStartIndex) {
             index = seriesStartIndex;

@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net profit and loss in percentage criterion (relative PnL, excludes trading
- * costs), returned in decimal format.
+ * costs), returned in percentage format (e.g. 1 = 1%).
  *
  * <p>
  * Defined as the position profit over the purchase price. The profit or loss in
@@ -44,8 +44,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
-            return pnl;
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
         }
         return series.zero();
     }

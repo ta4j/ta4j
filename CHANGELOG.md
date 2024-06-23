@@ -1,6 +1,13 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.16 (unreleased)
+## 0.17
+- **Added signal line and histogram to MACDIndicator**
+- **Implemented inner cache for SMAIndicator**
+- Added getTransactionCostModel, getHoldingCostModel, getTrades in TradingRecord
+- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
+
+
+## 0.16 (released May 15, 2024)
 
 ### Breaking
 - **Upgraded to Java 11**
@@ -21,10 +28,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
 - **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
-- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
+- **BarSeries#getBeginIndex()** methode returns correct begin index for bar series with max bar count
 
 ### Fixed
--  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
+- **Fixed** **SuperTrendIndicator** fixed calculation when close price is the same as the previous Super Trend indicator value
+- **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
 - catch NumberFormatException if `DecimalNum.valueOf(Number)` is `NaN`
 - **ProfitCriterion** fixed excludeCosts functionality as it was reversed
@@ -34,8 +42,19 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ThreeWhiteSoldiersIndicator** fixed eliminated instance variable holding possible wrong value
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
 - **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- sets `ClosePriceDifferenceIndicator#getUnstableBars` = `1`
+- sets `ClosePriceRatioIndicator#getUnstableBars` = `1`
+- sets `ConvergenceDivergenceIndicator#getUnstableBars` = `barCount`
+- sets `GainIndicator#getUnstableBars` = `1`
+- sets `HighestValueIndicator#getUnstableBars` = `barCount`
+- sets `LossIndicator#getUnstableBars` = `1`
+- sets `LowestValueIndicator#getUnstableBars` = `barCount`
+- sets `TRIndicator#getUnstableBars` = `1`
+- sets `PreviousValueIndicator#getUnstableBars` = `n` (= the n-th previous index)
+- **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 - **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
+- **Num** implements Serializable
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
@@ -59,6 +78,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **AverageReturnPerBarCriterion** improved calculation
 - **ZLEMAIndicator** improved calculation
 - **InPipeRule** improved calculation
+- **SumIndicator** improved calculation
 - updated pom.xml: slf4j-api to 2.0.7
 - updated pom.xml: org.apache.poi to 5.2.3
 - updated pom.xml: maven-jar-plugin to 3.3.0

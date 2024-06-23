@@ -59,8 +59,9 @@ public class LossIndicator extends CachedIndicator<Num> {
         return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }

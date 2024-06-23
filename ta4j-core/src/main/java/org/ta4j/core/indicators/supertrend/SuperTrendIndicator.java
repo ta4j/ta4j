@@ -76,7 +76,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         Num upperBand = superTrendUpperBandIndicator.getValue(i);
 
         if (previousValue.isEqual(superTrendUpperBandIndicator.getValue(i - 1))) {
-            if (closePrice.isLessThan(upperBand)) {
+            if (closePrice.isLessThanOrEqual(upperBand)) {
                 value = upperBand;
             } else if (closePrice.isGreaterThan(upperBand)) {
                 value = lowerBand;
@@ -84,7 +84,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         if (previousValue.isEqual(superTrendLowerBandIndicator.getValue(i - 1))) {
-            if (closePrice.isGreaterThan(lowerBand)) {
+            if (closePrice.isGreaterThanOrEqual(lowerBand)) {
                 value = lowerBand;
             } else if (closePrice.isLessThan(lowerBand)) {
                 value = upperBand;

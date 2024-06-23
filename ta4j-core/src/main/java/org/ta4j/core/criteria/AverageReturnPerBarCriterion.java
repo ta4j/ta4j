@@ -31,10 +31,14 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion, returned in decimal format.
- *
+ * 
  * <p>
- * The {@link ReturnCriterion gross return} raised to the power of 1 divided by
- * {@link NumberOfBarsCriterion number of bars}.
+ * It uses the following formula to accurately capture the compounding effect of
+ * returns over the specified number of bars:
+ *
+ * <pre>
+ * AverageReturnPerBar = pow({@link ReturnCriterion gross return}, 1/ {@link NumberOfBarsCriterion number of bars})
+ * </pre>
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
@@ -44,6 +48,9 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num bars = numberOfBars.calculate(series, position);
+        // If a simple division was used (grossreturn/bars), compounding would not be
+        // considered, leading to inaccuracies in the calculation.
+        // Therefore we need to use "pow" to accurately capture the compounding effect.
         return bars.isZero() ? series.one() : grossReturn.calculate(series, position).pow(series.one().dividedBy(bars));
     }
 

@@ -57,10 +57,10 @@ public class Position implements Serializable {
     private final TradeType startingType;
 
     /** The cost model for transactions of the asset */
-    private final CostModel transactionCostModel;
+    private final transient CostModel transactionCostModel;
 
     /** The cost model for holding the asset */
-    private final CostModel holdingCostModel;
+    private final transient CostModel holdingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
     public Position() {
@@ -298,9 +298,10 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross return of the position if it is closed. The gross return
-     * excludes any trading costs.
+     * excludes any trading costs (and includes the base).
      *
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(Num)
      */
     public Num getGrossReturn() {
         if (isOpened()) {
@@ -312,11 +313,12 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross return of the position, if it exited at the provided
-     * price. The gross return excludes any trading costs.
+     * price. The gross return excludes any trading costs (and includes the base).
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
      * @return the gross return of the position in percent
+     * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(Num finalPrice) {
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
@@ -325,11 +327,12 @@ public class Position implements Serializable {
     /**
      * Calculates the gross return of the position. If either the entry or exit
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
-     * The gross return excludes any trading costs.
+     * The gross return excludes any trading costs (and includes the base).
      *
      * @param barSeries
      * @return the gross return in percent with entry and exit prices from the
      *         barSeries
+     * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);

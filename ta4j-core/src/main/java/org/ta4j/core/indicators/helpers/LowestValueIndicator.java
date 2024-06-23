@@ -65,9 +65,10 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
         return lowest;
     }
 
+    /** @return {@link #barCount} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return barCount;
     }
 
     @Override

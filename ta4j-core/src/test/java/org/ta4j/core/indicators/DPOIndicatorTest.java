@@ -34,6 +34,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -64,7 +65,8 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         // compare results to alternative calculation for each index
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertEquals(dpo.getValue(i), cp.getValue(i).minus(sma.getValue(i - timeShift)));
+            assertEquals(dpo.getValue(i),
+                    i - timeShift < 0 ? NaN.NaN : cp.getValue(i).minus(sma.getValue(i - timeShift)));
         }
 
         assertNumEquals(0.111999, dpo.getValue(9));

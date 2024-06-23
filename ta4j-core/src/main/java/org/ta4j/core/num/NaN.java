@@ -45,6 +45,8 @@ import java.util.function.Function;
  */
 public class NaN implements Num {
 
+    private static final long serialVersionUID = 1L;
+
     /** A static Not-a-Number instance. */
     public static final Num NaN = new NaN();
 

@@ -64,8 +64,9 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     }
 
+    /** @return {@code 1} */
     @Override
     public int getUnstableBars() {
-        return 0;
+        return 1;
     }
 }
