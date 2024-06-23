@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2024 Ta4j Organization & respective
@@ -79,16 +79,20 @@ class LiveBarSeries implements BarSeries {
 
   @Override
   public void addBar(final Bar bar) {
-     this.bar = bar;
+    if (this.bar != null && bar.endTime().isBefore(this.bar.endTime())) {
+      throw new IllegalArgumentException("New Bar is before current bar");
+    }
 
-     if (this.strategy != null) {
-       this.strategy.refresh(bar.endTime());
-     }
+    this.bar = bar;
+
+    if (this.strategy != null) {
+      this.strategy.refresh(bar.endTime());
+    }
   }
 
 
   @Override
   public void replaceStrategy(final Strategy strategy) {
-     this.strategy = strategy;
+    this.strategy = strategy;
   }
 }
