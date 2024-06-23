@@ -152,7 +152,7 @@ public class BacktestStrategy implements Strategy {
    */
   protected void traceShouldEnter(final boolean enter) {
     if (this.log.isTraceEnabled()) {
-      this.log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), this.currentTick, enter);
+      this.log.trace(">>> {}#shouldEnter({}): {}", getName(), this.currentTick, enter);
     }
   }
 
@@ -164,7 +164,7 @@ public class BacktestStrategy implements Strategy {
    */
   protected void traceShouldExit(final boolean exit) {
     if (this.log.isTraceEnabled()) {
-      this.log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), this.currentTick, exit);
+      this.log.trace(">>> {}#shouldExit({}): {}", getName(), this.currentTick, exit);
     }
   }
 
