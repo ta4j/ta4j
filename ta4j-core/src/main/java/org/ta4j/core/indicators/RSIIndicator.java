@@ -26,8 +26,6 @@ package org.ta4j.core.indicators;
 import java.time.Instant;
 
 import org.ta4j.core.indicators.average.MMAIndicator;
-import org.ta4j.core.indicators.helpers.GainIndicator;
-import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -53,8 +51,8 @@ public class RSIIndicator extends NumericIndicator {
    */
   public RSIIndicator(final NumericIndicator indicator, final int barCount) {
     super(indicator.getNumFactory());
-    this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
-    this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
+    this.averageGainIndicator = indicator.gain().mma(barCount);
+    this.averageLossIndicator = indicator.loss().mma(barCount);
     this.value = getNumFactory().zero();
   }
 
