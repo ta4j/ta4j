@@ -101,6 +101,6 @@ abstract class PreviousValueIndicator<T> implements Indicator<T> {
 
   @Override
   public boolean isStable() {
-    return this.previousValues.size() == this.n;
+    return this.previousValues.size() == this.n && this.value != null;
   }
 }

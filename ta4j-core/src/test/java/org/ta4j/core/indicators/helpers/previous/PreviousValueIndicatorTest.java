@@ -71,9 +71,13 @@ public class PreviousValueIndicatorTest {
     final var prevValueIndicator = NumericIndicator.openPrice(this.series).previous();
     this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
+    // no value
     assertFalse(prevValueIndicator.isStable());
     this.series.advance();
-    assertTrue(prevValueIndicator.isStable());
+
+    // previous value prepared, but no current value
+    assertFalse(prevValueIndicator.isStable());
+
     this.series.advance();
     assertTrue(prevValueIndicator.isStable());
   }
@@ -88,6 +92,8 @@ public class PreviousValueIndicatorTest {
     this.series.advance();
     assertFalse(prevValueIndicator.isStable());
     this.series.advance();
+    assertFalse(prevValueIndicator.isStable());
+    this.series.advance();
     assertTrue(prevValueIndicator.isStable());
   }
 
@@ -97,6 +103,8 @@ public class PreviousValueIndicatorTest {
     final var prevValueIndicator = NumericIndicator.openPrice(this.series).previous(3);
     this.series.replaceStrategy(new MockStrategy(prevValueIndicator));
 
+    assertFalse(prevValueIndicator.isStable());
+    this.series.advance();
     assertFalse(prevValueIndicator.isStable());
     this.series.advance();
     assertFalse(prevValueIndicator.isStable());

@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.numeric;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.average.EMAIndicator;
 import org.ta4j.core.indicators.average.LWMAIndicator;
@@ -39,7 +40,9 @@ import org.ta4j.core.indicators.candles.price.LowPriceIndicator;
 import org.ta4j.core.indicators.candles.price.OpenPriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
@@ -103,6 +106,21 @@ public abstract class NumericIndicator implements Indicator<Num> {
 
   public static HighPriceIndicator highPrice(final BarSeries bs) {
     return new HighPriceIndicator(bs);
+  }
+
+
+  public GainIndicator gain() {
+    return new GainIndicator(this);
+  }
+
+
+  public LossIndicator loss() {
+    return new LossIndicator(this);
+  }
+
+
+  public RSIIndicator rsi(final int barCount) {
+    return new RSIIndicator(this, barCount);
   }
 
 

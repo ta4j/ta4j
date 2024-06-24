@@ -361,4 +361,13 @@ public class TestUtils {
     throw new AssertionError("Indicators match to " + delta);
   }
 
+
+  public static void assertUnstable(final Indicator<?> indicator) {
+    assertFalse(indicator.isStable());
+  }
+
+
+  public static void assertStable(final Indicator<?> indicator) {
+    assertTrue(indicator.isStable());
+  }
 }
