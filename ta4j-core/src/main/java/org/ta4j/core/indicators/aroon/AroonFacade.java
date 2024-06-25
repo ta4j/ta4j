@@ -36,8 +36,8 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
  */
 public class AroonFacade {
 
-  private final AroonUpIndicator up;
-  private final AroonDownIndicator down;
+
+  private final AroonOscillatorIndicator oscillator;
 
 
   /**
@@ -47,8 +47,7 @@ public class AroonFacade {
    * @param barCount the number of periods used for the indicators
    */
   public AroonFacade(final BarSeries series, final int barCount) {
-    this.up = new AroonUpIndicator(series, barCount);
-    this.down = new AroonDownIndicator(series, barCount);
+    this.oscillator = new AroonOscillatorIndicator(series, barCount);
   }
 
 
@@ -59,8 +58,7 @@ public class AroonFacade {
    * @param barCount the number of periods used for the indicators
    */
   public AroonFacade(final BarSeries series, final NumericIndicator indicator, final int barCount) {
-    this.up = new AroonUpIndicator(series, indicator, barCount);
-    this.down = new AroonDownIndicator(series, indicator, barCount);
+    this.oscillator = new AroonOscillatorIndicator(series, indicator, barCount);
   }
 
 
@@ -70,7 +68,7 @@ public class AroonFacade {
    * @return a NumericIndicator wrapped around a cached AroonUpIndicator
    */
   public AroonUpIndicator up() {
-    return this.up;
+    return this.oscillator.getAroonUpIndicator();
   }
 
 
@@ -80,7 +78,7 @@ public class AroonFacade {
    * @return a NumericIndicator wrapped around a cached AroonDownIndicator
    */
   public AroonDownIndicator down() {
-    return this.down;
+    return this.oscillator.getAroonDownIndicator();
   }
 
 
@@ -91,7 +89,6 @@ public class AroonFacade {
    *     AroonDown
    */
   public NumericIndicator oscillator() {
-    return this.up.minus(this.down);
+    return this.oscillator;
   }
-
 }
