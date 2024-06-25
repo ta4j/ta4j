@@ -38,7 +38,6 @@ import org.ta4j.core.num.Num;
  */
 public class AroonOscillatorIndicator extends NumericIndicator {
 
-  private final int barCount;
   private final AroonUpIndicator aroonUpIndicator;
   private final AroonDownIndicator aroonDownIndicator;
   private Instant currentTick = Instant.EPOCH;
@@ -53,9 +52,15 @@ public class AroonOscillatorIndicator extends NumericIndicator {
    */
   public AroonOscillatorIndicator(final BarSeries series, final int barCount) {
     super(series.numFactory());
-    this.barCount = barCount;
     this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
     this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
+  }
+
+
+  public AroonOscillatorIndicator(final BarSeries series, final NumericIndicator indicator, final int barCount) {
+    super(series.numFactory());
+    this.aroonUpIndicator = new AroonUpIndicator(series, indicator, barCount);
+    this.aroonDownIndicator = new AroonDownIndicator(series, indicator, barCount);
   }
 
 
@@ -66,7 +71,7 @@ public class AroonOscillatorIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("AROON(%s, %s) => %s", this.aroonDownIndicator, this.aroonUpIndicator, getValue());
   }
 
 

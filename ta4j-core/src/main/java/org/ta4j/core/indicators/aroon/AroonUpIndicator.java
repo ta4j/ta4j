@@ -141,7 +141,7 @@ public class AroonUpIndicator extends NumericIndicator {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " barCount: " + this.barCount;
+    return String.format("AroonUp(%s) => %s", this.highIndicator, getValue());
   }
 
 }
