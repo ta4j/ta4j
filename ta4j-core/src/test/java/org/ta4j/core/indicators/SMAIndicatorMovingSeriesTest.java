@@ -61,7 +61,7 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
         randomAccessAfterFourAdditions();
     }
 
-    private void firstAddition() {        
+    private void firstAddition() {
         data.addBar(new MockBar(ZonedDateTime.now(), 5., numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
@@ -78,7 +78,8 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
     }
 
     private void secondAddition() {
-        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 10., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 10.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -94,7 +95,8 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
     }
 
     private void thirdAddition() {
-        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 20., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 20.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -110,7 +112,8 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
     }
 
     private void fourthAddition() {
-        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 30., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 30.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -142,8 +145,10 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void whenBarCountIs1ResultShouldBeIndicatorValue() {
-        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5., numFunction));
-        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5.,
+                numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5.,
+                numFunction));
 
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
