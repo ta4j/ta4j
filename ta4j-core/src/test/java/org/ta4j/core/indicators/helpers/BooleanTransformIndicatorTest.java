@@ -41,6 +41,7 @@ import org.ta4j.core.num.Num;
 public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
     private BooleanTransformIndicator transEquals;
+    private BooleanTransformIndicator transNotEquals;
     private BooleanTransformIndicator transIsGreaterThan;
     private BooleanTransformIndicator transIsGreaterThanOrEqual;
     private BooleanTransformIndicator transIsLessThan;
@@ -65,6 +66,7 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
 
         transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);
+        transNotEquals = new BooleanTransformIndicator(constantIndicator, minusFOUR, BooleanTransformType.notEquals);
         transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(3),
                 BooleanTransformType.isGreaterThan);
         transIsGreaterThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
@@ -89,6 +91,7 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     @Test
     public void getValue() {
         assertTrue(transEquals.getValue(0));
+        assertTrue(transNotEquals.getValue(0));
         assertTrue(transIsGreaterThan.getValue(0));
         assertTrue(transIsGreaterThanOrEqual.getValue(0));
         assertTrue(transIsLessThan.getValue(0));

@@ -49,6 +49,12 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
         /**
          * Transforms the decimal indicator to a boolean indicator by
+         * !indicator.equals(coefficient).
+         */
+        notEquals,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
          * indicator.isGreaterThan(coefficient).
          */
         isGreaterThan,
@@ -155,6 +161,8 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
             switch (type) {
             case equals:
                 return val.equals(coefficient);
+            case notEquals:
+                return !val.equals(coefficient);
             case isGreaterThan:
                 return val.isGreaterThan(coefficient);
             case isGreaterThanOrEqual:
