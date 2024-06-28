@@ -34,36 +34,36 @@ import java.util.function.Predicate;
  */
 public class BooleanTransformIndicator<T> extends CachedIndicator<Boolean> {
 
-    public static BooleanTransformIndicator<Num> equals(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.equals(coefficient));
+    public static BooleanTransformIndicator<Num> equals(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.equals(constant));
     }
 
-    public static BooleanTransformIndicator<Num> notEquals(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> !num.equals(coefficient));
+    public static BooleanTransformIndicator<Num> notEquals(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> !num.equals(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isEqual(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isEqual(coefficient));
+    public static BooleanTransformIndicator<Num> isEqual(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.isEqual(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isNotEqual(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> !num.isEqual(coefficient));
+    public static BooleanTransformIndicator<Num> isNotEqual(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> !num.isEqual(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isGreaterThan(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThan(coefficient));
+    public static BooleanTransformIndicator<Num> isGreaterThan(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThan(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isGreaterThanOrEqual(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThanOrEqual(coefficient));
+    public static BooleanTransformIndicator<Num> isGreaterThanOrEqual(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThanOrEqual(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isLessThan(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThan(coefficient));
+    public static BooleanTransformIndicator<Num> isLessThan(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThan(constant));
     }
 
-    public static BooleanTransformIndicator<Num> isLessThanOrEqual(Indicator<Num> indicator, Num coefficient) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThanOrEqual(coefficient));
+    public static BooleanTransformIndicator<Num> isLessThanOrEqual(Indicator<Num> indicator, Num constant) {
+        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThanOrEqual(constant));
     }
 
     public static BooleanTransformIndicator<Num> isZero(Indicator<Num> indicator) {
