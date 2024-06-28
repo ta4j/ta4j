@@ -4,7 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Added signal line and histogram to MACDIndicator**
 - **Implemented inner cache for SMAIndicator**
 - Added getTransactionCostModel, getHoldingCostModel, getTrades in TradingRecord
-
+- **BooleanTransformIndicator** remove enum constraint in favor of more flexible `Predicate`
 
 ## 0.16 (released May 15, 2024)
 
