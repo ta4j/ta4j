@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
+import java.time.ZonedDateTime;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -37,9 +38,9 @@ import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public SMAIndicatorMovingSerieTest(Function<Number, Num> numFunction) {
+    public SMAIndicatorMovingSeriesTest(Function<Number, Num> numFunction) {
         super((data, params) -> new SMAIndicator(data, (int) params[0]), numFunction);
     }
 
@@ -61,7 +62,7 @@ public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator
     }
 
     private void firstAddition() {
-        data.addBar(new MockBar(5., numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now(), 5., numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -77,7 +78,8 @@ public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator
     }
 
     private void secondAddition() {
-        data.addBar(new MockBar(10., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 10.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -93,7 +95,8 @@ public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator
     }
 
     private void thirdAddition() {
-        data.addBar(new MockBar(20., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 20.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -109,7 +112,8 @@ public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator
     }
 
     private void fourthAddition() {
-        data.addBar(new MockBar(30., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 30.,
+                numFunction));
         Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
@@ -141,8 +145,10 @@ public class SMAIndicatorMovingSerieTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void whenBarCountIs1ResultShouldBeIndicatorValue() {
-        data.addBar(new MockBar(5., numFunction));
-        data.addBar(new MockBar(5., numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5.,
+                numFunction));
+        data.addBar(new MockBar(data.isEmpty() ? ZonedDateTime.now() : data.getLastBar().getEndTime().plusHours(1), 5.,
+                numFunction));
 
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
