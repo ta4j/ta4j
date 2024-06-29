@@ -1,9 +1,14 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ## 0.17
-- **Added signal line and histogram to MACDIndicator**
-- **Implemented inner cache for SMAIndicator**
-- Added getTransactionCostModel, getHoldingCostModel, getTrades in TradingRecord
+
+- Added signal line and histogram to **MACDIndicator**
+- Implemented inner cache for **SMAIndicator**
+- Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
+- **BooleanTransformIndicator** remove enum constraint in favor of more flexible `Predicate`
+- Fixed **ta4jexamples** project still pointing to old (0.16) version of **ta4j-core**
+- Renamed **SMAIndicatorMovingSerieTest** to **SMAIndicatorMovingSeriesTest**
+- Fixed **SMAIndicatorMovingSeriesTest** test flakiness where on fast enough build machines the mock bars are created with the exact same end time
 - **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
 
 
