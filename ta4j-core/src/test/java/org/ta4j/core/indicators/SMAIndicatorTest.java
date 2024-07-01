@@ -36,6 +36,7 @@ import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -43,8 +44,8 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     private final ExternalIndicatorTest xls;
 
-    public SMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
-        super((data, params) -> new SMAIndicator((Indicator<Num>) data, (int) params[0]), numFunction);
+    public SMAIndicatorTest(Function<Number, Num> numFunction) {
+        super((data, params) -> new SMAIndicator(data, (int) params[0]), numFunction);
         xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFunction);
     }
 
@@ -56,7 +57,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingBarCount3UsingClosePrice() throws Exception {
+    public void usingBarCount3UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         assertNumEquals(1, indicator.getValue(0));
@@ -75,7 +76,22 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void whenBarCountIs1ResultShouldBeIndicatorValue() throws Exception {
+    public void usingBarCount3UsingClosePriceMovingSerie() {
+        data.setMaximumBarCount(13);
+        data.addBar(new MockBar(5., numFunction));
+
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
+
+        // unstable bars skipped, unpredictable results
+        assertNumEquals((3d + 4d + 3d) / 3, indicator.getValue(data.getBeginIndex() + 3));
+        assertNumEquals((4d + 3d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 4));
+        assertNumEquals((3d + 4d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 5));
+        assertNumEquals((4d + 5d + 4d) / 3, indicator.getValue(data.getBeginIndex() + 6));
+        assertNumEquals((3d + 2d + 5d) / 3, indicator.getValue(data.getBeginIndex() + 12));
+    }
+
+    @Test
+    public void whenBarCountIs1ResultShouldBeIndicatorValue() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
             assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));

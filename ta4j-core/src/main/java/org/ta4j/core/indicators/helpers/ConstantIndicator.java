@@ -52,6 +52,7 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
         return value;
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;

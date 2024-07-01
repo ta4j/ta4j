@@ -94,7 +94,7 @@ public class Trade implements Serializable {
     private Num cost;
 
     /** The cost model for trade execution. */
-    private CostModel costModel;
+    private transient CostModel costModel;
 
     /**
      * Constructor.

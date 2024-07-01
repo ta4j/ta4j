@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
@@ -35,17 +36,18 @@ import org.ta4j.core.num.Num;
 
 public class CrossedUpIndicatorRuleTest {
 
-    private CrossedUpIndicatorRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(new BaseBarSeries(), 8d, 9d, 10d, 12d, 9d, 11d,
-                12d, 13d);
-        rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+        series = new BaseBarSeries();
     }
 
     @Test
     public void isSatisfied() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 8, 9, 10, 12, 9, 11, 12, 13);
+        CrossedUpIndicatorRule rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));
@@ -54,5 +56,31 @@ public class CrossedUpIndicatorRuleTest {
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
         assertFalse(rule.isSatisfied(7));
+    }
+
+    @Test
+    public void onlyThresholdBetweenFirstBarAndLastBar() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 9, 10, 10, 10, 11);
+        CrossedUpIndicatorRule rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertTrue(rule.isSatisfied(4));
+    }
+
+    @Test
+    public void repeatedlyHittingThresholdAfterCrossUp() {
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 9, 10, 11, 10, 11, 10, 11);
+        CrossedUpIndicatorRule rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertTrue("first cross up", rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
     }
 }

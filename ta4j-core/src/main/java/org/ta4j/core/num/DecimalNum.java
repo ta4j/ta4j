@@ -49,6 +49,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class DecimalNum implements Num {
 
+    private static final long serialVersionUID = 1L;
+
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
 
@@ -187,7 +189,7 @@ public final class DecimalNum implements Num {
      * @throws NumberFormatException if {@code val} is {@code "NaN"}
      */
     public static DecimalNum valueOf(DoubleNum val) {
-        return valueOf(val.toString());
+        return valueOf(val.doubleValue());
     }
 
     /**

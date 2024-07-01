@@ -25,13 +25,18 @@ package org.ta4j.core.num;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -344,6 +349,31 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         BigDecimal numBD = BigDecimal.valueOf(Double.valueOf("3E11"));
         Num sqrt = numOf(numBD).sqrt();
         assertNumEquals("547722.55750516611345696978280080", sqrt);
+    }
+
+    @Test
+    public void testSerialization() throws Exception {
+        Num numVal = numFunction.apply(1.3);
+        serializeDeserialize(numVal);
+    }
+
+    private static void serializeDeserialize(Num o) throws IOException, ClassNotFoundException {
+        byte[] array;
+        try (var baos = new ByteArrayOutputStream()) {
+            try (var out = new ObjectOutputStream(baos)) {
+                out.writeObject(o);
+                array = baos.toByteArray();
+            }
+
+        }
+        try (var baos = new ByteArrayInputStream(array)) {
+            try (var out = new ObjectInputStream(baos)) {
+                var deserialized = (Num) out.readObject();
+                assertNotSame(o, deserialized);
+                assertEquals(deserialized.doubleValue(), o.doubleValue());
+            }
+
+        }
     }
 
 }

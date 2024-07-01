@@ -49,6 +49,7 @@ public class AmountIndicator extends CachedIndicator<Num> {
         return getBarSeries().getBar(index).getAmount();
     }
 
+    /** @return {@code 0} */
     @Override
     public int getUnstableBars() {
         return 0;
