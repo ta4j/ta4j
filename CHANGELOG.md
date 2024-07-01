@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed **ta4jexamples** project still pointing to old (0.16) version of **ta4j-core**
 - Renamed **SMAIndicatorMovingSerieTest** to **SMAIndicatorMovingSeriesTest**
 - Fixed **SMAIndicatorMovingSeriesTest** test flakiness where on fast enough build machines the mock bars are created with the exact same end time
+- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
 
 
 ## 0.16 (released May 15, 2024)
