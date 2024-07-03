@@ -25,7 +25,6 @@ package org.ta4j.core.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
@@ -34,26 +33,20 @@ import org.ta4j.core.num.Num;
 /**
  * Versus "enter and hold" criterion, returned in decimal format.
  *
+ * <p>
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of an "enter and hold". The "enter and hold"-strategy is done as
- * follows:
- *
- * <ul>
- * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
- * of the first bar and sell with the close price of the last bar.
- * <li>For {@link #tradeType} = {@link TradeType#SELL}: Sell with the close
- * price of the first bar and buy with the close price of the last bar.
- * </ul>
+ * value of an {@link EnterAndHoldCriterion}.
  */
 public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
-    private final TradeType tradeType;
     private final AnalysisCriterion criterion;
+    private final EnterAndHoldCriterion enterAndHoldCriterion;
 
     /**
      * Constructor for buy-and-hold strategy.
      *
-     * @param criterion the criterion to be compared
+     * @param criterion the criterion to be compared to
+     *                  {@link EnterAndHoldCriterion}
      */
     public VersusEnterAndHoldCriterion(AnalysisCriterion criterion) {
         this(TradeType.BUY, criterion);
@@ -63,27 +56,26 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * Constructor.
      *
      * @param tradeType the {@link TradeType} used to open the position
-     * @param criterion the criterion to be compared
+     * @param criterion the criterion to be compared to
+     *                  {@link EnterAndHoldCriterion}
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
-        this.tradeType = tradeType;
         this.criterion = criterion;
+        this.enterAndHoldCriterion = new EnterAndHoldCriterion(tradeType, criterion);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        int beginIndex = position.getEntry().getIndex();
-        int endIndex = series.getEndIndex();
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
-        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, position).dividedBy(enterAndHoldCriterion.calculate(series, position));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
-        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
+        if (series.isEmpty()) {
+            return series.numFactory().one();
+        }
+        return criterion.calculate(series, tradingRecord)
+                .dividedBy(enterAndHoldCriterion.calculate(series, tradingRecord));
     }
 
     /** The higher the criterion value, the better. */
@@ -92,11 +84,9 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
-        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
-        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
-        return fakeRecord;
+    @Override
+    public String toString() {
+        return criterion.getClass().getSimpleName() + " vs. " + enterAndHoldCriterion.getClass().getSimpleName();
     }
 
 }
