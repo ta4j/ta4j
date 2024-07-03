@@ -23,10 +23,6 @@
  */
 package org.ta4j.core;
 
-import static org.ta4j.core.num.NaN.NaN;
-
-import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,8 +30,8 @@ import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link BarSeries}.
@@ -47,23 +43,20 @@ public class BaseBarSeries implements BarSeries {
     /** The logger. */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The {@link #name} for an unnamed bar series. */
-    private static final String UNNAMED_SERIES_NAME = "unnamed_series";
-
-    /** Any instance of Num to determine its Num type. */
-    protected final transient Num num;
-
     /** The name of the bar series. */
     private final String name;
 
     /** The list of bars of the bar series. */
     private final List<Bar> bars;
+    private final BarBuilderFactory barBuilderFactory;
+
+    private final NumFactory numFactory;
 
     /** The begin index of the bar series */
-    private int seriesBeginIndex;
+    private int seriesBeginIndex = -1;
 
     /** The end index of the bar series. */
-    private int seriesEndIndex;
+    private int seriesEndIndex = -1;
 
     /** The maximum number of bars for the bar series. */
     private int maximumBarCount = Integer.MAX_VALUE;
@@ -77,111 +70,32 @@ public class BaseBarSeries implements BarSeries {
      */
     private final boolean constrained;
 
-    /** Constructor with {@link #name} = {@link #UNNAMED_SERIES_NAME}. */
-    public BaseBarSeries() {
-        this(UNNAMED_SERIES_NAME);
-    }
-
     /**
      * Constructor.
      *
-     * @param name the name of the bar series
+     * @param name              the name of the bar series
+     * @param bars              the list of bars of the bar series
+     * @param seriesBeginIndex  the begin index (inclusive) of the bar series
+     * @param seriesEndIndex    the end index (inclusive) of the bar series
+     * @param constrained       true to constrain the bar series (i.e. indexes
+     *                          cannot change), false otherwise
+     * @param numFactory        the factory of numbers used in series {@link Num Num
+     *                          implementation}
+     * @param barBuilderFactory factory for creating bars of this series
      */
-    public BaseBarSeries(String name) {
-        this(name, new ArrayList<>());
-    }
-
-    /**
-     * Constructor with {@link #name} = {@link #UNNAMED_SERIES_NAME}.
-     *
-     * @param bars the list of bars of the bar series
-     */
-    public BaseBarSeries(List<Bar> bars) {
-        this(UNNAMED_SERIES_NAME, bars);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param name the name of the bar series
-     * @param bars the list of bars of the bar series
-     */
-    public BaseBarSeries(String name, List<Bar> bars) {
-        this(name, bars, 0, bars.size() - 1, false);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param name the name of the bar series
-     * @param num  any instance of Num to determine its Num function; with this, we
-     *             can convert a {@link Number} to a {@link Num Num implementation}
-     */
-    public BaseBarSeries(String name, Num num) {
-        this(name, new ArrayList<>(), num);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param name the name of the bar series
-     * @param bars the list of bars of the bar series
-     * @param num  any instance of Num to determine its Num function; with this, we
-     *             can convert a {@link Number} to a {@link Num Num implementation}
-     */
-    public BaseBarSeries(String name, List<Bar> bars, Num num) {
-        this(name, bars, 0, bars.size() - 1, false, num);
-    }
-
-    /**
-     * Constructor.
-     * <p/>
-     * Creates a BaseBarSeries with default {@link DecimalNum} as type for the data
-     * and all operations on it
-     *
-     * @param name             the name of the bar series
-     * @param bars             the list of bars of the bar series
-     * @param seriesBeginIndex the begin index (inclusive) of the bar series
-     * @param seriesEndIndex   the end index (inclusive) of the bar series
-     * @param constrained      true to constrain the bar series (i.e. indexes cannot
-     *                         change), false otherwise
-     */
-    private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum.ZERO);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param name             the name of the bar series
-     * @param bars             the list of bars of the bar series
-     * @param seriesBeginIndex the begin index (inclusive) of the bar series
-     * @param seriesEndIndex   the end index (inclusive) of the bar series
-     * @param constrained      true to constrain the bar series (i.e. indexes cannot
-     *                         change), false otherwise
-     * @param num              any instance of Num to determine its Num function;
-     *                         with this, we can convert a {@link Number} to a
-     *                         {@link Num Num implementation}
-     */
-    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
+    BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
+            final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
         this.name = name;
+        this.numFactory = numFactory;
 
         this.bars = new ArrayList<>(bars);
+        this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
         if (bars.isEmpty()) {
             // Bar list empty
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
-            this.num = num;
             return;
-        }
-        // Bar list not empty: take Function of first bar
-        this.num = bars.get(0).getClosePrice();
-        // Bar list not empty: checking num types
-        if (!checkBars(bars)) {
-            throw new IllegalArgumentException(String.format(
-                    "Num implementation of bars: %s" + " does not match to Num implementation of bar series: %s",
-                    bars.get(0).getClosePrice().getClass(), num.function()));
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -204,7 +118,7 @@ public class BaseBarSeries implements BarSeries {
      * @return a new list of bars with tick from startIndex (inclusive) to endIndex
      *         (exclusive)
      */
-    private static List<Bar> cut(List<Bar> bars, final int startIndex, final int endIndex) {
+    private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
 
@@ -213,13 +127,13 @@ public class BaseBarSeries implements BarSeries {
      * @param index  an out of bounds bar index
      * @return a message for an OutOfBoundsException
      */
-    private static String buildOutOfBoundsMessage(BaseBarSeries series, int index) {
+    private static String buildOutOfBoundsMessage(final BaseBarSeries series, final int index) {
         return String.format("Size of series: %s bars, %s bars removed, index = %s", series.bars.size(),
                 series.removedBarsCount, index);
     }
 
     @Override
-    public BaseBarSeries getSubSeries(int startIndex, int endIndex) {
+    public BaseBarSeries getSubSeries(final int startIndex, final int endIndex) {
         if (startIndex < 0) {
             throw new IllegalArgumentException(String.format("the startIndex: %s must not be negative", startIndex));
         }
@@ -227,116 +141,88 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
-        if (!bars.isEmpty()) {
-            int start = startIndex - getRemovedBarsCount();
-            int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeries(getName(), cut(bars, start, end), num);
+        if (!this.bars.isEmpty()) {
+            final int start = startIndex - getRemovedBarsCount();
+            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
+            return new BaseBarSeriesBuilder().withName(getName())
+                    .withBars(cut(this.bars, start, end))
+                    .withNumFactory(this.numFactory)
+                    .build();
         }
-        return new BaseBarSeries(name, num);
+        return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
 
     }
 
     @Override
-    public Num num() {
-        return num;
+    public NumFactory numFactory() {
+        return this.numFactory;
     }
 
-    /**
-     * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction}
-     * used by this bar series.
-     *
-     * @param bars a List of Bar objects.
-     * @return false if a Num implementation of at least one Bar does not fit.
-     */
-    private boolean checkBars(List<Bar> bars) {
-        for (Bar bar : bars) {
-            if (!checkBar(bar)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Checks if the {@link Num} implementation of a {@link Bar} fits to the
-     * NumFunction used by this bar series.
-     *
-     * @param bar a Bar object.
-     * @return false if another Num implementation is used than by this bar series.
-     * @see Num
-     * @see Bar
-     * @see #addBar(Duration, ZonedDateTime)
-     */
-    private boolean checkBar(Bar bar) {
-        if (bar.getClosePrice() == null) {
-            return true; // bar has not been initialized with data (uses deprecated constructor)
-        }
-        // all other constructors initialize at least the close price, check if Num
-        // implementation fits to numFunction
-        Class<? extends Num> f = one().getClass();
-        return f == bar.getClosePrice().getClass() || bar.getClosePrice().equals(NaN);
+    @Override
+    public BaseBarConvertibleBuilder barBuilder() {
+        return barBuilderFactory.createBarBuilder(this);
     }
 
     @Override
     public String getName() {
-        return name;
+        return this.name;
     }
 
     @Override
-    public Bar getBar(int i) {
-        int innerIndex = i - removedBarsCount;
+    public Bar getBar(final int i) {
+        int innerIndex = i - this.removedBarsCount;
         if (innerIndex < 0) {
             if (i < 0) {
                 // Cannot return the i-th bar if i < 0
                 throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, i));
             }
-            if (log.isTraceEnabled()) {
-                log.trace("Bar series `{}` ({} bars): bar {} already removed, use {}-th instead", name, bars.size(), i,
-                        removedBarsCount);
+            if (this.log.isTraceEnabled()) {
+                this.log.trace("Bar series `{}` ({} bars): bar {} already removed, use {}-th instead", this.name,
+                        this.bars.size(), i, this.removedBarsCount);
             }
-            if (bars.isEmpty()) {
-                throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, removedBarsCount));
+            if (this.bars.isEmpty()) {
+                throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, this.removedBarsCount));
             }
             innerIndex = 0;
-        } else if (innerIndex >= bars.size()) {
+        } else if (innerIndex >= this.bars.size()) {
             // Cannot return the n-th bar if n >= bars.size()
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, i));
         }
-        return bars.get(innerIndex);
+        return this.bars.get(innerIndex);
     }
 
     @Override
     public int getBarCount() {
-        if (seriesEndIndex < 0) {
+        if (this.seriesEndIndex < 0) {
             return 0;
         }
-        final int startIndex = Math.max(removedBarsCount, seriesBeginIndex);
-        return seriesEndIndex - startIndex + 1;
+        final int startIndex = Math.max(this.removedBarsCount, this.seriesBeginIndex);
+        return this.seriesEndIndex - startIndex + 1;
     }
 
     @Override
     public List<Bar> getBarData() {
-        return bars;
+        return this.bars;
     }
 
     @Override
     public int getBeginIndex() {
-        return seriesBeginIndex;
+        return this.seriesBeginIndex;
     }
 
     @Override
     public int getEndIndex() {
-        return seriesEndIndex;
+        return this.seriesEndIndex;
     }
 
     @Override
     public int getMaximumBarCount() {
-        return maximumBarCount;
+        return this.maximumBarCount;
     }
 
     @Override
-    public void setMaximumBarCount(int maximumBarCount) {
-        if (constrained) {
+    public void setMaximumBarCount(final int maximumBarCount) {
+        if (this.constrained) {
             throw new IllegalStateException("Cannot set a maximum bar count on a constrained bar series");
         }
         if (maximumBarCount <= 0) {
@@ -348,29 +234,28 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public int getRemovedBarsCount() {
-        return removedBarsCount;
+        return this.removedBarsCount;
     }
 
     /**
-     * @apiNote to add bar data direclty you can use
-     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
      * @throws NullPointerException if {@code bar} is {@code null}
      */
     @Override
-    public void addBar(Bar bar, boolean replace) {
+    public void addBar(final Bar bar, final boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
-        if (!checkBar(bar)) {
+        if (!numFactory.produces(bar.getClosePrice())) {
             throw new IllegalArgumentException(
-                    String.format("Cannot add Bar with data type: %s to series with data" + "type: %s",
-                            bar.getClosePrice().getClass(), one().getClass()));
+                    String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                            bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
-        if (!bars.isEmpty()) {
+
+        if (!this.bars.isEmpty()) {
             if (replace) {
-                bars.set(bars.size() - 1, bar);
+                this.bars.set(this.bars.size() - 1, bar);
                 return;
             }
-            final int lastBarIndex = bars.size() - 1;
-            ZonedDateTime seriesEndTime = bars.get(lastBarIndex).getEndTime();
+            final int lastBarIndex = this.bars.size() - 1;
+            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
@@ -378,81 +263,46 @@ public class BaseBarSeries implements BarSeries {
             }
         }
 
-        bars.add(bar);
-        if (seriesBeginIndex == -1) {
+        this.bars.add(bar);
+        if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:
-            seriesBeginIndex = 0;
+            this.seriesBeginIndex = 0;
         }
-        seriesEndIndex++;
+        this.seriesEndIndex++;
         removeExceedingBars();
     }
 
     @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime) {
-        this.addBar(new BaseBar(timePeriod, endTime, function()));
+    public void addTrade(final Number price, final Number amount) {
+        addTrade(numFactory().numOf(price), numFactory().numOf(amount));
     }
 
     @Override
-    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(
-                new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero()));
-    }
-
-    @Override
-    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
-            Num amount) {
-        this.addBar(
-                new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
-    }
-
-    @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume) {
-        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero()));
-    }
-
-    @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount) {
-        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
-    }
-
-    @Override
-    public void addTrade(Number price, Number amount) {
-        addTrade(numOf(price), numOf(amount));
-    }
-
-    @Override
-    public void addTrade(String price, String amount) {
-        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
-    }
-
-    @Override
-    public void addTrade(Num tradeVolume, Num tradePrice) {
+    public void addTrade(final Num tradeVolume, final Num tradePrice) {
         getLastBar().addTrade(tradeVolume, tradePrice);
     }
 
     @Override
-    public void addPrice(Num price) {
+    public void addPrice(final Num price) {
         getLastBar().addPrice(price);
     }
 
     /**
      * Removes the first N bars that exceed the {@link #maximumBarCount}.
      */
-    private void removeExceedingBars() {
-        int barCount = bars.size();
-        if (barCount > maximumBarCount) {
+    protected void removeExceedingBars() {
+        final int barCount = this.bars.size();
+        if (barCount > this.maximumBarCount) {
             // Removing old bars
-            int nbBarsToRemove = barCount - maximumBarCount;
+            final int nbBarsToRemove = barCount - this.maximumBarCount;
             if (nbBarsToRemove == 1) {
-                bars.remove(0);
+                this.bars.remove(0);
             } else {
-                bars.subList(0, nbBarsToRemove).clear();
+                this.bars.subList(0, nbBarsToRemove).clear();
             }
             // Updating removed bars count
-            removedBarsCount += nbBarsToRemove;
-            seriesBeginIndex = Math.max(seriesBeginIndex, removedBarsCount);
+            this.removedBarsCount += nbBarsToRemove;
+            this.seriesBeginIndex = Math.max(this.seriesBeginIndex, this.removedBarsCount);
         }
     }
 

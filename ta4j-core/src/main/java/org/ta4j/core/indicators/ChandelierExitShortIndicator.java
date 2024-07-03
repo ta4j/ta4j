@@ -66,7 +66,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
         super(series);
         this.low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
         this.atr = new ATRIndicator(series, barCount);
-        this.k = numOf(k);
+        this.k = getBarSeries().numFactory().numOf(k);
     }
 
     @Override

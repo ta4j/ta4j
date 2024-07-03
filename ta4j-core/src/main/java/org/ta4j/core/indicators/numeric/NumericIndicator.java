@@ -353,7 +353,7 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     private Indicator<Num> createConstant(Number n) {
-        return new ConstantIndicator<>(getBarSeries(), numOf(n));
+        return new ConstantIndicator<>(getBarSeries(), getBarSeries().numFactory().numOf(n));
     }
 
     @Override

@@ -25,18 +25,16 @@ package org.ta4j.core.indicators.bollinger;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -46,13 +44,15 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
 
     private SMAIndicator sma;
 
-    public BollingerBandsLowerIndicatorTest(Function<Number, Num> numFunction) {
-        super(null, numFunction);
+    public BollingerBandsLowerIndicatorTest(NumFactory numFactory) {
+        super(null, numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
+                .build();
         barCount = 3;
         closePrice = new ClosePriceIndicator(data);
         sma = new SMAIndicator(closePrice, barCount);
@@ -61,9 +61,9 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
     @Test
     public void bollingerBandsLowerUsingSMAAndStandardDeviation() {
 
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, barCount);
-        BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
+        var bbmSMA = new BollingerBandsMiddleIndicator(sma);
+        var standardDeviation = new StandardDeviationIndicator(closePrice, barCount);
+        var bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
         assertNumEquals(2, bblSMA.getK());
 
@@ -75,8 +75,7 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(2.7239, bblSMA.getValue(5));
         assertNumEquals(2.367, bblSMA.getValue(6));
 
-        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation,
-                numFunction.apply(1.5));
+        var bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, numFactory.numOf(1.5));
 
         assertNumEquals(1.5, bblSMAwithK.getK());
 

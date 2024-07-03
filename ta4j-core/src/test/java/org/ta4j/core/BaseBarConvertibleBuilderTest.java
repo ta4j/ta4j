@@ -30,31 +30,31 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 @RunWith(Parameterized.class)
 public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BaseBarConvertibleBuilderTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BaseBarConvertibleBuilderTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void testBuildBigDecimal() {
-        new BaseBarConvertibleBuilder<BigDecimal>(DecimalNum::valueOf);
 
         final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarConvertibleBuilder<BigDecimal>(this::numOf).timePeriod(duration)
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        final var bar = series.barBuilder()
+                .timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(BigDecimal.valueOf(101.0))
                 .highPrice(BigDecimal.valueOf(103))

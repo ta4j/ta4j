@@ -27,7 +27,6 @@ import static junit.framework.TestCase.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -37,8 +36,8 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
 
@@ -50,31 +49,31 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     private List<Strategy> strategies;
 
-    public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new ReturnCriterion(), numFunction);
+    public AbstractAnalysisCriterionTest(NumFactory numFactory) {
+        super(params -> new ReturnCriterion(), numFactory);
     }
 
     @Before
     public void setUp() {
         alwaysStrategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
         buyAndHoldStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(4));
-        strategies = new ArrayList<Strategy>();
+        strategies = new ArrayList<>();
         strategies.add(alwaysStrategy);
         strategies.add(buyAndHoldStrategy);
     }
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        MockBarSeries series = new MockBarSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
-        BarSeriesManager manager = new BarSeriesManager(series);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(6.0, 9.0, 6.0, 6.0).build();
+        var manager = new BarSeriesManager(series);
         Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        MockBarSeries series = new MockBarSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
-        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(6.0, 3.0, 6.0, 6.0).build();
+        var manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }

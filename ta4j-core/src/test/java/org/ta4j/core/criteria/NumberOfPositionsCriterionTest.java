@@ -27,27 +27,27 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfPositionsCriterionTest(Function<Number, Num> numFunction) {
+    public NumberOfPositionsCriterionTest(NumFactory numFactory) {
         super(params -> params.length == 0 ? new NumberOfPositionsCriterion()
-                : new NumberOfPositionsCriterion((boolean) params[0]), numFunction);
+                : new NumberOfPositionsCriterion((boolean) params[0]), numFactory);
     }
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0, buyAndHold.calculate(series, new BaseTradingRecord()));
@@ -55,7 +55,9 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithTwoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
@@ -65,7 +67,9 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnePosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         Position position = new Position();
         AnalysisCriterion positionsCriterion = getCriterion();
 

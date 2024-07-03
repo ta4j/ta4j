@@ -43,7 +43,6 @@ public class IIIIndicator extends CachedIndicator<Num> {
     private final HighPriceIndicator highPriceIndicator;
     private final LowPriceIndicator lowPriceIndicator;
     private final VolumeIndicator volumeIndicator;
-    private final Num two;
 
     /**
      * Constructor.
@@ -56,15 +55,16 @@ public class IIIIndicator extends CachedIndicator<Num> {
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.volumeIndicator = new VolumeIndicator(series);
-        this.two = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
         if (index == getBarSeries().getBeginIndex()) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
-        final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
+        final Num doubledClosePrice = getBarSeries().numFactory()
+                .two()
+                .multipliedBy(closePriceIndicator.getValue(index));
         final Num high = highPriceIndicator.getValue(index);
         final Num low = lowPriceIndicator.getValue(index);
         final Num highMinusLow = high.minus(low);

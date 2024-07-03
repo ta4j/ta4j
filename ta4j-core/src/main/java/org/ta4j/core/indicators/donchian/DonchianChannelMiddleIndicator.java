@@ -51,7 +51,8 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return (this.lower.getValue(index).plus(this.upper.getValue(index))).dividedBy(numOf(2));
+        return (this.lower.getValue(index).plus(this.upper.getValue(index)))
+                .dividedBy(getBarSeries().numFactory().two());
     }
 
     @Override

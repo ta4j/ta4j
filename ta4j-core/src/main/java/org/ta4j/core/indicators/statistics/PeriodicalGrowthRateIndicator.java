@@ -79,7 +79,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.one = one();
+        this.one = getBarSeries().numFactory().one();
     }
 
     /**
@@ -107,7 +107,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             }
         }
 
-        return totalProduct.pow(one.dividedBy(numOf(completeTimeFrames)));
+        return totalProduct.pow(one.dividedBy(getBarSeries().numFactory().numOf(completeTimeFrames)));
     }
 
     @Override
@@ -117,11 +117,13 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
         int helpPartialTimeframe = index % barCount;
         // TODO: implement Num.floor()
-        Num helpFullTimeframes = numOf(
-                Math.floor(numOf(indicator.getBarSeries().getBarCount()).dividedBy(numOf(barCount)).doubleValue()));
-        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
+        final var numFactory = getBarSeries().numFactory();
+        Num helpFullTimeframes = numFactory.numOf(Math.floor(numFactory.numOf(indicator.getBarSeries().getBarCount())
+                .dividedBy(numFactory.numOf(barCount))
+                .doubleValue()));
+        Num helpIndexTimeframes = numFactory.numOf(index).dividedBy(numFactory.numOf(barCount));
 
-        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
+        Num helpPartialTimeframeHeld = numFactory.numOf(helpPartialTimeframe).dividedBy(numFactory.numOf(barCount));
         Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:

@@ -25,12 +25,11 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Testing the RWILowIndicator
@@ -43,9 +42,9 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
      */
     private final ExternalIndicatorTest xls;
 
-    public RWILowIndicatorTest(Function<Number, Num> numFunction) {
-        super((data, params) -> new RWILowIndicator(data, (int) params[0]), numFunction);
-        xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 9, numFunction);
+    public RWILowIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new RWILowIndicator(data, (int) params[0]), numFactory);
+        xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 9, numFactory);
     }
 
     @Test

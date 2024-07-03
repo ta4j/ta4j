@@ -37,9 +37,6 @@ import org.ta4j.core.num.Num;
  */
 public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
-    private final Num hundred;
-    private final Num zero;
-
     private final Indicator<Num> indicator;
     private final int barCount;
 
@@ -53,25 +50,26 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.zero = zero();
-        this.hundred = hundred();
     }
 
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num squaredAverage = zero;
+        final var numFactory = getBarSeries().numFactory();
+        Num squaredAverage = numFactory.zero();
         Num highestValue = indicator.getValue(startIndex);
         for (int i = startIndex; i <= index; i++) {
             Num currentValue = indicator.getValue(i);
             if (currentValue.isGreaterThan(highestValue)) {
                 highestValue = currentValue;
             }
-            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(hundred);
+            Num percentageDrawdown = currentValue.minus(highestValue)
+                    .dividedBy(highestValue)
+                    .multipliedBy(numFactory.hundred());
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
-        squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
+        squaredAverage = squaredAverage.dividedBy(numFactory.numOf(numberOfObservations));
         return squaredAverage.sqrt();
     }
 

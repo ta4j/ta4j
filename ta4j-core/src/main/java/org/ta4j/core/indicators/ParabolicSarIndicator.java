@@ -74,7 +74,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * @param series the bar series for this indicator
      */
     public ParabolicSarIndicator(BarSeries series) {
-        this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
+        this(series, series.numFactory().numOf(0.02), series.numFactory().numOf(0.2), series.numFactory().numOf(0.02));
     }
 
     /**
@@ -85,7 +85,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * @param maxA   maximum acceleration
      */
     public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA) {
-        this(series, aF, maxA, series.numOf(0.02));
+        this(series, aF, maxA, series.numFactory().numOf(0.02));
     }
 
     /**
@@ -140,7 +140,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index == seriesStartIndex) {
             lastExtreme.put(index, getBarSeries().getBar(index).getClosePrice());
-            lastAf.put(index, zero());
+            lastAf.put(index, getBarSeries().numFactory().zero());
             isUpTrendMap.put(index, false);
             return sar; // no trend detection possible for the first value
         } else if (index == seriesStartIndex + 1) { // start trend detection

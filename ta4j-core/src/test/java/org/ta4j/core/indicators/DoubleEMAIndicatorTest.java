@@ -25,34 +25,33 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public DoubleEMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public DoubleEMAIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71,
-                0.53, 0.73, 0.77, 0.67, 0.68);
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71, 0.53, 0.73, 0.77, 0.67, 0.68)
+                .build();
         closePrice = new ClosePriceIndicator(data);
     }
 
     @Test
     public void doubleEMAUsingBarCount5UsingClosePrice() {
-        DoubleEMAIndicator doubleEma = new DoubleEMAIndicator(closePrice, 5);
+        var doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
         assertNumEquals(0.73, doubleEma.getValue(0));
         assertNumEquals(0.7244, doubleEma.getValue(1));

@@ -47,7 +47,6 @@ public class VWAPIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> typicalPrice;
     private final Indicator<Num> volume;
-    private final Num zero;
 
     /**
      * Constructor.
@@ -60,7 +59,6 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.typicalPrice = new TypicalPriceIndicator(series);
         this.volume = new VolumeIndicator(series);
-        this.zero = zero();
     }
 
     @Override
@@ -69,6 +67,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
             return typicalPrice.getValue(index);
         }
         int startIndex = Math.max(0, index - barCount + 1);
+        final var zero = getBarSeries().numFactory().zero();
         Num cumulativeTPV = zero;
         Num cumulativeVolume = zero;
         for (int i = startIndex; i <= index; i++) {

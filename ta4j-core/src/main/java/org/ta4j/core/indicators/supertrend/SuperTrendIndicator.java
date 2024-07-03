@@ -34,7 +34,6 @@ import org.ta4j.core.num.Num;
  */
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final Num ZERO = zero();
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
@@ -65,9 +64,10 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int i) {
-        Num value = ZERO;
-        if (i == 0)
+        Num value = getBarSeries().numFactory().zero();
+        if (i == 0) {
             return value;
+        }
 
         Bar bar = getBarSeries().getBar(i);
         Num closePrice = bar.getClosePrice();

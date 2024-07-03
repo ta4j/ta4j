@@ -42,7 +42,6 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private final DeMarkPivotPointIndicator pivotPointIndicator;
     private final DeMarkPivotLevel level;
-    private final Num two;
 
     public enum DeMarkPivotLevel {
         RESISTANCE, SUPPORT,
@@ -62,12 +61,11 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
         this.level = level;
-        this.two = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num x = pivotPointIndicator.getValue(index).multipliedBy(numOf(4));
+        Num x = pivotPointIndicator.getValue(index).multipliedBy(getBarSeries().numFactory().numOf(4));
         Num result;
 
         if (level == DeMarkPivotLevel.SUPPORT) {
@@ -95,7 +93,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
             low = getBarSeries().getBar(i).getLowPrice().min(low);
         }
 
-        return x.dividedBy(two).minus(low);
+        return x.dividedBy(getBarSeries().numFactory().two()).minus(low);
     }
 
     private Num calculateSupport(Num x, int index) {
@@ -109,6 +107,6 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
             high = getBarSeries().getBar(i).getHighPrice().max(high);
         }
 
-        return x.dividedBy(two).minus(high);
+        return x.dividedBy(getBarSeries().numFactory().two()).minus(high);
     }
 }

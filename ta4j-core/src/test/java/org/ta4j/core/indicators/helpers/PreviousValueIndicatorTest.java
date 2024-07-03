@@ -32,8 +32,8 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 
 public class PreviousValueIndicatorTest {
@@ -51,15 +51,22 @@ public class PreviousValueIndicatorTest {
 
     @Before
     public void setUp() {
-        Random r = new Random();
-        this.series = new BaseBarSeries("test");
+        var r = new Random();
+        this.series = new MockBarSeriesBuilder().withName("test").build();
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
             double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
             ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
-            series.addBar(dateTime, open, close, max, min, i);
+            series.barBuilder()
+                    .endTime(dateTime)
+                    .openPrice(open)
+                    .closePrice(close)
+                    .highPrice(max)
+                    .lowPrice(min)
+                    .volume(i)
+                    .add();
         }
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);

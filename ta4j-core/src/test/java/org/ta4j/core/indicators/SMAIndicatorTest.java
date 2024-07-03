@@ -27,8 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,24 +34,26 @@ import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private final ExternalIndicatorTest xls;
 
-    public SMAIndicatorTest(Function<Number, Num> numFunction) {
-        super((data, params) -> new SMAIndicator(data, (int) params[0]), numFunction);
-        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFunction);
+    public SMAIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new SMAIndicator(data, (int) params[0]), numFactory);
+        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFactory);
     }
 
     private BarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
+                .build();
     }
 
     @Test
@@ -78,7 +78,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void usingBarCount3UsingClosePriceMovingSerie() {
         data.setMaximumBarCount(13);
-        data.addBar(new MockBar(5., numFunction));
+        data.barBuilder().closePrice(5.).add();
 
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 

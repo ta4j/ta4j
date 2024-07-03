@@ -43,7 +43,6 @@ public class CMOIndicator extends CachedIndicator<Num> {
     private final GainIndicator gainIndicator;
     private final LossIndicator lossIndicator;
     private final int barCount;
-    private final Num hundred;
 
     /**
      * Constructor.
@@ -56,19 +55,19 @@ public class CMOIndicator extends CachedIndicator<Num> {
         this.gainIndicator = new GainIndicator(indicator);
         this.lossIndicator = new LossIndicator(indicator);
         this.barCount = barCount;
-        this.hundred = hundred();
     }
 
     @Override
     protected Num calculate(int index) {
-        Num sumOfGains = zero();
-        Num sumOfLosses = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sumOfGains = numFactory.zero();
+        Num sumOfLosses = numFactory.zero();
         for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
             sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
 
-        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(hundred);
+        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(numFactory.hundred());
     }
 
     @Override

@@ -30,6 +30,7 @@ import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 
@@ -37,7 +38,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     private final String fileName;
     private final int column;
     private BarSeries cachedSeries = null;
-    private final Function<Number, Num> numFunction;
+    private final NumFactory numFactory;
 
     /**
      * Constructor.
@@ -46,11 +47,11 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @param fileName file name of the file containing the workbook
      * @param column   column number containing the calculated indicator values
      */
-    public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
+    public XLSIndicatorTest(Class<?> clazz, String fileName, int column, NumFactory numFactory) {
         this.clazz = clazz;
         this.fileName = fileName;
         this.column = column;
-        this.numFunction = numFunction;
+        this.numFactory = numFactory;
     }
 
     /**
@@ -62,7 +63,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     @Override
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFactory);
         }
         return cachedSeries;
     }
@@ -76,7 +77,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      */
     @Override
     public Indicator<Num> getIndicator(Object... params) throws Exception {
-        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
+        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().numFactory(), params);
     }
 
 }

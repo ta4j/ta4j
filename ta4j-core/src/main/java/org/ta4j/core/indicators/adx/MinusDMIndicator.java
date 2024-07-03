@@ -48,17 +48,17 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         final Bar prevBar = getBarSeries().getBar(index - 1);
         final Bar currentBar = getBarSeries().getBar(index);
 
         final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
         final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
-        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(zero())) {
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(getBarSeries().numFactory().zero())) {
             return downMove;
         } else {
-            return numOf(0);
+            return getBarSeries().numFactory().zero();
         }
     }
 

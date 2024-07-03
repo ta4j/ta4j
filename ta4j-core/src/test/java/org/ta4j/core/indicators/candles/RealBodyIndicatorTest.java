@@ -25,42 +25,35 @@ package org.ta4j.core.indicators.candles;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class RealBodyIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries series;
 
-    public RealBodyIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public RealBodyIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
-        // open, close, high, low
-        bars.add(new MockBar(10, 18, 20, 10, numFunction));
-        bars.add(new MockBar(17, 20, 21, 17, numFunction));
-        bars.add(new MockBar(15, 15, 16, 14, numFunction));
-        bars.add(new MockBar(15, 11, 15, 8, numFunction));
-        bars.add(new MockBar(11, 12, 12, 10, numFunction));
-        series = new MockBarSeries(bars);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(10).add();
+        series.barBuilder().openPrice(17).closePrice(20).highPrice(21).lowPrice(17).add();
+        series.barBuilder().openPrice(15).closePrice(15).highPrice(16).lowPrice(14).add();
+        series.barBuilder().openPrice(15).closePrice(11).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).add();
     }
 
     @Test
     public void getValue() {
-        RealBodyIndicator body = new RealBodyIndicator(series);
+        var body = new RealBodyIndicator(series);
         assertNumEquals(8, body.getValue(0));
         assertNumEquals(3, body.getValue(1));
         assertNumEquals(0, body.getValue(2));

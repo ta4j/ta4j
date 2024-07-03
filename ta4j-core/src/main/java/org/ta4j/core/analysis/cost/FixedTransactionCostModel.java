@@ -58,12 +58,12 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
-        Num pricePerAsset = position.getEntry().getPricePerAsset();
-        Num multiplier = pricePerAsset.one();
+        final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
+        Num multiplier = numFactory.one();
         if (position.isClosed()) {
-            multiplier = pricePerAsset.numOf(2);
+            multiplier = numFactory.numOf(2);
         }
-        return pricePerAsset.numOf(feePerTrade).multipliedBy(multiplier);
+        return numFactory.numOf(feePerTrade).multipliedBy(multiplier);
     }
 
     /**
@@ -82,7 +82,7 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Num price, Num amount) {
-        return price.numOf(feePerTrade);
+        return price.getNumFactory().numOf(feePerTrade);
     }
 
     @Override

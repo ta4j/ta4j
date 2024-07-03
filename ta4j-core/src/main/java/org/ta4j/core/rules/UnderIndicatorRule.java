@@ -50,7 +50,8 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param threshold the threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), indicator.numOf(threshold)));
+        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(),
+                indicator.getBarSeries().numFactory().numOf(threshold)));
     }
 
     /**

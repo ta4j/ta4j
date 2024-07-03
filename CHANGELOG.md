@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Renamed **SMAIndicatorMovingSerieTest** to **SMAIndicatorMovingSeriesTest**
 - Fixed **SMAIndicatorMovingSeriesTest** test flakiness where on fast enough build machines the mock bars are created with the exact same end time
 - **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
+- Extracted NumFactory as source of numbers with defined precision
 
 
 ## 0.16 (released May 15, 2024)

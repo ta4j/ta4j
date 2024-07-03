@@ -25,34 +25,35 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class CMOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public CMOIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public CMOIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        series = new MockBarSeries(numFunction, 21.27, 22.19, 22.08, 22.47, 22.48, 22.53, 22.23, 21.43, 21.24, 21.29,
-                22.15, 22.39, 22.38, 22.61, 23.36, 24.05, 24.75, 24.83, 23.95, 23.63, 23.82, 23.87, 23.15, 23.19, 23.10,
-                22.65, 22.48, 22.87, 22.93, 22.91);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(21.27, 22.19, 22.08, 22.47, 22.48, 22.53, 22.23, 21.43, 21.24, 21.29, 22.15, 22.39, 22.38,
+                        22.61, 23.36, 24.05, 24.75, 24.83, 23.95, 23.63, 23.82, 23.87, 23.15, 23.19, 23.10, 22.65,
+                        22.48, 22.87, 22.93, 22.91)
+                .build();
     }
 
     @Test
     public void dpo() {
-        CMOIndicator cmo = new CMOIndicator(new ClosePriceIndicator(series), 9);
+        var cmo = new CMOIndicator(new ClosePriceIndicator(series), 9);
 
         assertNumEquals(85.1351, cmo.getValue(5));
         assertNumEquals(53.9326, cmo.getValue(6));

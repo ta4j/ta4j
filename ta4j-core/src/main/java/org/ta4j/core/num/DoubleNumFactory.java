@@ -21,40 +21,62 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.num;
 
-import static junit.framework.TestCase.assertEquals;
+public class DoubleNumFactory implements NumFactory {
 
-import java.util.function.Function;
+    private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-
-public class NumndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    private NumIndicator closePrice;
-    private BarSeries barSeries;
-
-    public NumndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    private DoubleNumFactory() {
+        // hidden
     }
 
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        closePrice = new NumIndicator(barSeries, Bar::getClosePrice);
+    @Override
+    public Num minusOne() {
+        return DoubleNum.MINUS_ONE;
     }
 
-    @Test
-    public void indicatorShouldRetrieveBarClosePrice() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
-        }
+    @Override
+    public Num zero() {
+        return DoubleNum.ZERO;
+    }
+
+    @Override
+    public Num one() {
+        return DoubleNum.ONE;
+    }
+
+    @Override
+    public Num two() {
+        return DoubleNum.TWO;
+    }
+
+    @Override
+    public Num three() {
+        return DoubleNum.THREE;
+    }
+
+    @Override
+    public Num hundred() {
+        return DoubleNum.HUNDRED;
+    }
+
+    @Override
+    public Num thousand() {
+        return DoubleNum.THOUSAND;
+    }
+
+    @Override
+    public Num numOf(final Number number) {
+        return DoubleNum.valueOf(number);
+    }
+
+    @Override
+    public Num numOf(final String number) {
+        return DoubleNum.valueOf(number);
+    }
+
+    public static DoubleNumFactory getInstance() {
+        return DOUBLE_NUM_FACTORY;
     }
 }

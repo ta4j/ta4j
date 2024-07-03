@@ -51,7 +51,7 @@ public class InPipeRule extends AbstractRule {
      * @param lower the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
-        this(ref, ref.numOf(upper), ref.numOf(lower));
+        this(ref, ref.getBarSeries().numFactory().numOf(upper), ref.getBarSeries().numFactory().numOf(lower));
     }
 
     /**

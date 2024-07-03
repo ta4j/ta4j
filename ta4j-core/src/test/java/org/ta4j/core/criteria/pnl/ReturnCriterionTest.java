@@ -27,8 +27,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
@@ -36,19 +34,21 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractCriterionTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class ReturnCriterionTest extends AbstractCriterionTest {
 
-    public ReturnCriterionTest(Function<Number, Num> numFunction) {
+    public ReturnCriterionTest(NumFactory numFunction) {
         super(params -> params.length == 1 ? new ReturnCriterion((boolean) params[0]) : new ReturnCriterion(),
                 numFunction);
     }
 
     @Test
     public void calculateWithWinningLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
@@ -63,7 +63,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithLosingLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
@@ -78,7 +78,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateReturnWithWinningShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
@@ -93,7 +93,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateReturnWithLosingShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 100, 80, 85, 130).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
@@ -108,7 +108,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
         // with base percentage should return 1
         AnalysisCriterion retWithBase = getCriterion();
@@ -121,7 +121,7 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOpenedPosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
         // with base percentage should return 1
         AnalysisCriterion retWithBase = getCriterion();
@@ -141,10 +141,10 @@ public class ReturnCriterionTest extends AbstractCriterionTest {
     @Test
     public void testCalculateOneOpenPosition() {
         // with base percentage should return 1
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(), 1);
 
         // without base percentage should return 0
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(false), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(false), 0);
     }
 
     @Test

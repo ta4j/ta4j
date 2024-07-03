@@ -54,7 +54,7 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(1000);
+            return getBarSeries().numFactory().thousand();
         }
 
         Bar currentBar = getBarSeries().getBar(index);

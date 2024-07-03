@@ -75,8 +75,8 @@ public class ChopIndicator extends CachedIndicator<Num> {
         this.hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
         this.lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
-        this.log10n = numOf(Math.log10(ciTimeFrame));
-        this.scaleUpTo = numOf(scaleTo);
+        this.log10n = getBarSeries().numFactory().numOf(Math.log10(ciTimeFrame));
+        this.scaleUpTo = getBarSeries().numFactory().numOf(scaleTo);
     }
 
     @Override
@@ -87,7 +87,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
         }
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
-        return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
+        return scaleUpTo.multipliedBy(getBarSeries().numFactory().numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
     }
 
     @Override

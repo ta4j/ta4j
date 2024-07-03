@@ -25,68 +25,228 @@ package org.ta4j.core.indicators.keltner;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public KeltnerChannelMiddleIndicatorTest(Function<Number, Num> function) {
-        super(function);
+    public KeltnerChannelMiddleIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
 
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(11577.43, 11670.75, 11711.47, 11577.35, numFunction));
-        bars.add(new MockBar(11670.90, 11691.18, 11698.22, 11635.74, numFunction));
-        bars.add(new MockBar(11688.61, 11722.89, 11742.68, 11652.89, numFunction));
-        bars.add(new MockBar(11716.93, 11697.31, 11736.74, 11667.46, numFunction));
-        bars.add(new MockBar(11696.86, 11674.76, 11726.94, 11599.68, numFunction));
-        bars.add(new MockBar(11672.34, 11637.45, 11677.33, 11573.87, numFunction));
-        bars.add(new MockBar(11638.51, 11671.88, 11704.12, 11635.48, numFunction));
-        bars.add(new MockBar(11673.62, 11755.44, 11782.23, 11673.62, numFunction));
-        bars.add(new MockBar(11753.70, 11731.90, 11757.25, 11700.53, numFunction));
-        bars.add(new MockBar(11732.13, 11787.38, 11794.15, 11698.83, numFunction));
-        bars.add(new MockBar(11783.82, 11837.93, 11858.78, 11777.99, numFunction));
-        bars.add(new MockBar(11834.21, 11825.29, 11861.24, 11798.46, numFunction));
-        bars.add(new MockBar(11823.70, 11822.80, 11845.16, 11744.77, numFunction));
-        bars.add(new MockBar(11822.95, 11871.84, 11905.48, 11822.80, numFunction));
-        bars.add(new MockBar(11873.43, 11980.52, 11982.94, 11867.98, numFunction));
-        bars.add(new MockBar(11980.52, 11977.19, 11985.97, 11898.74, numFunction));
-        bars.add(new MockBar(11978.85, 11985.44, 12020.52, 11961.83, numFunction));
-        bars.add(new MockBar(11985.36, 11989.83, 12019.53, 11971.93, numFunction));
-        bars.add(new MockBar(11824.39, 11891.93, 11891.93, 11817.88, numFunction));
-        bars.add(new MockBar(11892.50, 12040.16, 12050.75, 11892.50, numFunction));
-        bars.add(new MockBar(12038.27, 12041.97, 12057.91, 12018.51, numFunction));
-        bars.add(new MockBar(12040.68, 12062.26, 12080.54, 11981.05, numFunction));
-        bars.add(new MockBar(12061.73, 12092.15, 12092.42, 12025.78, numFunction));
-        bars.add(new MockBar(12092.38, 12161.63, 12188.76, 12092.30, numFunction));
-        bars.add(new MockBar(12152.70, 12233.15, 12238.79, 12150.05, numFunction));
-        bars.add(new MockBar(12229.29, 12239.89, 12254.23, 12188.19, numFunction));
-        bars.add(new MockBar(12239.66, 12229.29, 12239.66, 12156.94, numFunction));
-        bars.add(new MockBar(12227.78, 12273.26, 12285.94, 12180.48, numFunction));
-        bars.add(new MockBar(12266.83, 12268.19, 12276.21, 12235.91, numFunction));
-        bars.add(new MockBar(12266.75, 12226.64, 12267.66, 12193.27, numFunction));
-        bars.add(new MockBar(12219.79, 12288.17, 12303.16, 12219.79, numFunction));
-        bars.add(new MockBar(12287.72, 12318.14, 12331.31, 12253.24, numFunction));
-        bars.add(new MockBar(12389.74, 12212.79, 12389.82, 12176.31, numFunction));
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        data = new MockBarSeries(bars);
+        data.addBar(data.barBuilder()
+                .openPrice(11577.43)
+                .closePrice(11670.75)
+                .highPrice(11711.47)
+                .lowPrice(11577.35)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11670.90)
+                .closePrice(11691.18)
+                .highPrice(11698.22)
+                .lowPrice(11635.74)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11688.61)
+                .closePrice(11722.89)
+                .highPrice(11742.68)
+                .lowPrice(11652.89)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11716.93)
+                .closePrice(11697.31)
+                .highPrice(11736.74)
+                .lowPrice(11667.46)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11696.86)
+                .closePrice(11674.76)
+                .highPrice(11726.94)
+                .lowPrice(11599.68)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11672.34)
+                .closePrice(11637.45)
+                .highPrice(11677.33)
+                .lowPrice(11573.87)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11638.51)
+                .closePrice(11671.88)
+                .highPrice(11704.12)
+                .lowPrice(11635.48)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11673.62)
+                .closePrice(11755.44)
+                .highPrice(11782.23)
+                .lowPrice(11673.62)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11753.70)
+                .closePrice(11731.90)
+                .highPrice(11757.25)
+                .lowPrice(11700.53)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11732.13)
+                .closePrice(11787.38)
+                .highPrice(11794.15)
+                .lowPrice(11698.83)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11783.82)
+                .closePrice(11837.93)
+                .highPrice(11858.78)
+                .lowPrice(11777.99)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11834.21)
+                .closePrice(11825.29)
+                .highPrice(11861.24)
+                .lowPrice(11798.46)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11823.70)
+                .closePrice(11822.80)
+                .highPrice(11845.16)
+                .lowPrice(11744.77)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11822.95)
+                .closePrice(11871.84)
+                .highPrice(11905.48)
+                .lowPrice(11822.80)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11873.43)
+                .closePrice(11980.52)
+                .highPrice(11982.94)
+                .lowPrice(11867.98)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11980.52)
+                .closePrice(11977.19)
+                .highPrice(11985.97)
+                .lowPrice(11898.74)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11978.85)
+                .closePrice(11985.44)
+                .highPrice(12020.52)
+                .lowPrice(11961.83)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11985.36)
+                .closePrice(11989.83)
+                .highPrice(12019.53)
+                .lowPrice(11971.93)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11824.39)
+                .closePrice(11891.93)
+                .highPrice(11891.93)
+                .lowPrice(11817.88)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(11892.50)
+                .closePrice(12040.16)
+                .highPrice(12050.75)
+                .lowPrice(11892.50)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12038.27)
+                .closePrice(12041.97)
+                .highPrice(12057.91)
+                .lowPrice(12018.51)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12040.68)
+                .closePrice(12062.26)
+                .highPrice(12080.54)
+                .lowPrice(11981.05)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12061.73)
+                .closePrice(12092.15)
+                .highPrice(12092.42)
+                .lowPrice(12025.78)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12092.38)
+                .closePrice(12161.63)
+                .highPrice(12188.76)
+                .lowPrice(12092.30)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12152.70)
+                .closePrice(12233.15)
+                .highPrice(12238.79)
+                .lowPrice(12150.05)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12229.29)
+                .closePrice(12239.89)
+                .highPrice(12254.23)
+                .lowPrice(12188.19)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12239.66)
+                .closePrice(12229.29)
+                .highPrice(12239.66)
+                .lowPrice(12156.94)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12227.78)
+                .closePrice(12273.26)
+                .highPrice(12285.94)
+                .lowPrice(12180.48)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12266.83)
+                .closePrice(12268.19)
+                .highPrice(12276.21)
+                .lowPrice(12235.91)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12266.75)
+                .closePrice(12226.64)
+                .highPrice(12267.66)
+                .lowPrice(12193.27)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12219.79)
+                .closePrice(12288.17)
+                .highPrice(12303.16)
+                .lowPrice(12219.79)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12287.72)
+                .closePrice(12318.14)
+                .highPrice(12331.31)
+                .lowPrice(12253.24)
+                .build());
+        data.addBar(data.barBuilder()
+                .openPrice(12389.74)
+                .closePrice(12212.79)
+                .highPrice(12389.82)
+                .lowPrice(12176.31)
+                .build());
+
     }
 
     @Test

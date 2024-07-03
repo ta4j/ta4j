@@ -56,7 +56,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = zero();
+        Num absoluteDeviations = getBarSeries().numFactory().zero();
 
         final Num average = sma.getValue(index);
         final int startIndex = Math.max(0, index - barCount + 1);
@@ -66,7 +66,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(numOf(nbValues));
+        return absoluteDeviations.dividedBy(getBarSeries().numFactory().numOf(nbValues));
     }
 
     @Override

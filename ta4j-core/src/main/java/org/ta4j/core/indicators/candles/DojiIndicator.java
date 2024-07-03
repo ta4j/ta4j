@@ -64,7 +64,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
         super(series);
         this.bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
         this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
-        this.factor = numOf(bodyFactor);
+        this.factor = getBarSeries().numFactory().numOf(bodyFactor);
     }
 
     @Override

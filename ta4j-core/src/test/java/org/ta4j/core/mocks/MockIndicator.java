@@ -70,10 +70,4 @@ public class MockIndicator implements Indicator<Num> {
     public BarSeries getBarSeries() {
         return series;
     }
-
-    @Override
-    public Num numOf(Number number) {
-        return series.numOf(number);
-    }
-
 }

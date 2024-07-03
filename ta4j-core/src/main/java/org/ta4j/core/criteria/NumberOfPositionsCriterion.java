@@ -58,12 +58,12 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return series.one();
+        return series.numFactory().one();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.numOf(tradingRecord.getPositionCount());
+        return series.numFactory().numOf(tradingRecord.getPositionCount());
     }
 
     /**

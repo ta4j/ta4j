@@ -25,28 +25,29 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public MACDIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public MACDIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     private BarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79,
-                36.83, 37.10, 38.01, 38.50, 38.99);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79, 36.83, 37.10, 38.01,
+                        38.50, 38.99)
+                .build();
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -56,7 +57,7 @@ public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void macdUsingPeriod5And10() {
-        MACDIndicator macdIndicator = new MACDIndicator(new ClosePriceIndicator(data), 5, 10);
+        var macdIndicator = new MACDIndicator(new ClosePriceIndicator(data), 5, 10);
         assertNumEquals(0.0, macdIndicator.getValue(0));
         assertNumEquals(-0.05757, macdIndicator.getValue(1));
         assertNumEquals(-0.17488, macdIndicator.getValue(2));

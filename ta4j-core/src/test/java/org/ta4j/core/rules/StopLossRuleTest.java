@@ -26,39 +26,39 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public StopLossRuleTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public StopLossRuleTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
+        closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 120, 100, 150, 110, 100)
+                .build());
     }
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
-        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
+        var rule = new StopLossRule(closePrice, numOf(5));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -80,11 +80,11 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForSell() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
-        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
+        var rule = new StopLossRule(closePrice, numOf(5));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));

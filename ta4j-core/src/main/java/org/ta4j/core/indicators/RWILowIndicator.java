@@ -55,7 +55,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num minRWIL = zero();
+        Num minRWIL = getBarSeries().numFactory().zero();
         for (int n = 2; n <= barCount; n++) {
             minRWIL = minRWIL.max(calcRWIHFor(index, n));
         }
@@ -73,7 +73,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
         Num low = series.getBar(index).getLowPrice();
         Num highN = series.getBar(index + 1 - n).getHighPrice();
         Num atrN = new ATRIndicator(series, n).getValue(index);
-        Num sqrtN = numOf(n).sqrt();
+        Num sqrtN = series.numFactory().numOf(n).sqrt();
 
         return highN.minus(low).dividedBy(atrN.multipliedBy(sqrtN));
     }

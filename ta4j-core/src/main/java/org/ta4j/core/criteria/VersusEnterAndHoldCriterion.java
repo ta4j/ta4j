@@ -72,7 +72,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (series.isEmpty()) {
-            return series.one();
+            return series.numFactory().one();
         }
         return criterion.calculate(series, tradingRecord)
                 .dividedBy(enterAndHoldCriterion.calculate(series, tradingRecord));

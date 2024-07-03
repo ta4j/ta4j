@@ -73,7 +73,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
-        this.multiplier = numOf(-100);
+        this.multiplier = getBarSeries().numFactory().numOf(-100);
     }
 
     @Override

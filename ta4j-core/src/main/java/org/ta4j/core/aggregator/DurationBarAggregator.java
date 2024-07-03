@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -90,7 +91,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().zero();
+        final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();
@@ -134,8 +135,16 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
-                        volume, amount, trades);
+                final Bar aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
+                        .endTime(beginTime.plus(timePeriod))
+                        .openPrice(open)
+                        .highPrice(high)
+                        .lowPrice(low)
+                        .closePrice(close)
+                        .volume(volume)
+                        .amount(amount)
+                        .trades(trades)
+                        .build();
                 aggregated.add(aggregatedBar);
             }
         }

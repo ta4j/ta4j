@@ -53,7 +53,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, Position position) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(numOf(1)));
+        values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().one()));
 
         calculate(position);
         fillToTheEnd(barSeries.getEndIndex());
@@ -79,7 +79,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(one()));
+        values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
 
         calculate(tradingRecord, finalIndex);
         fillToTheEnd(finalIndex);
@@ -102,11 +102,6 @@ public class CashFlow implements Indicator<Num> {
     @Override
     public BarSeries getBarSeries() {
         return barSeries;
-    }
-
-    @Override
-    public Num numOf(Number number) {
-        return barSeries.numOf(number);
     }
 
     /**
@@ -146,12 +141,12 @@ public class CashFlow implements Indicator<Num> {
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
         // Trade is not valid if net balance at the entryIndex is negative
-        if (values.get(values.size() - 1).isGreaterThan(values.get(0).numOf(0))) {
+        if (values.get(values.size() - 1).isGreaterThan(values.get(0).getNumFactory().numOf(0))) {
             int startingIndex = Math.max(begin, 1);
 
             int nPeriods = endIndex - entryIndex;
             Num holdingCost = position.getHoldingCost(endIndex);
-            Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+            Num avgCost = holdingCost.dividedBy(holdingCost.getNumFactory().numOf(nPeriods));
 
             // Add intermediate cash flows during position
             Num netEntryPrice = position.getEntry().getNetPrice();
@@ -185,7 +180,7 @@ public class CashFlow implements Indicator<Num> {
         if (isLongTrade) {
             ratio = exitPrice.dividedBy(entryPrice);
         } else {
-            ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
+            ratio = entryPrice.getNumFactory().numOf(2).minus(exitPrice.dividedBy(entryPrice));
         }
 
         return ratio;

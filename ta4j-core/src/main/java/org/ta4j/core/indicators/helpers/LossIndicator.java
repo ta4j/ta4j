@@ -52,11 +52,12 @@ public class LossIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         Num actualValue = indicator.getValue(index);
         Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue) : zero();
+        return actualValue.isLessThan(previousValue) ? previousValue.minus(actualValue)
+                : getBarSeries().numFactory().zero();
     }
 
     /** @return {@code 1} */

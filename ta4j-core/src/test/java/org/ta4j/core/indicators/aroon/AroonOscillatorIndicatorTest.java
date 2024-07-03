@@ -35,7 +35,7 @@ import java.util.Locale;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AroonOscillatorIndicatorTest {
     private BarSeries data;
@@ -205,19 +205,26 @@ public class AroonOscillatorIndicatorTest {
                         + "2017/01/03,116.8600,20635600.0000,116.0300,117.8400,115.5100\n";
 
         String[] dataLine = rawData.split("\n");
-        data = new BaseBarSeries("FB_daily");
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.getDefault());
+        data = new MockBarSeriesBuilder().withName("FB_daily").build();
+        var dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.getDefault());
         for (int i = dataLine.length - 1; i >= 0; i--) {
             String[] tickData = dataLine[i].split(",");
             ZonedDateTime date = LocalDate.parse(tickData[0], dtf).atStartOfDay(ZoneId.systemDefault());
-            data.addBar(date, tickData[3], tickData[4], tickData[5], tickData[1], tickData[2]);
+            data.barBuilder()
+                    .endTime(date)
+                    .openPrice(tickData[3])
+                    .highPrice(tickData[4])
+                    .lowPrice(tickData[5])
+                    .closePrice(tickData[1])
+                    .volume(tickData[2])
+                    .add();
         }
 
     }
 
     @Test
     public void test() {
-        AroonOscillatorIndicator aroonOscillator = new AroonOscillatorIndicator(data, 25);
+        var aroonOscillator = new AroonOscillatorIndicator(data, 25);
         assertNotNull(aroonOscillator.getAroonUpIndicator());
         assertNotNull(aroonOscillator.getAroonDownIndicator());
 

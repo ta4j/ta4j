@@ -27,8 +27,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
 public class ConstantIndicatorTest {
@@ -36,8 +35,8 @@ public class ConstantIndicatorTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
+        var series = new MockBarSeriesBuilder().build();
+        constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(30.33));
     }
 
     @Test

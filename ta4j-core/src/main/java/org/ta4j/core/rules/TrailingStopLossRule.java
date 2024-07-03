@@ -96,7 +96,8 @@ public class TrailingStopLossRule extends AbstractRule {
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
-        Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
+        final var hundred = highestCloseNum.getNumFactory().hundred();
+        Num lossRatioThreshold = hundred.minus(lossPercentage).dividedBy(hundred);
         Num currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
@@ -105,7 +106,8 @@ public class TrailingStopLossRule extends AbstractRule {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
-        Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
+        final var hundred = lowestCloseNum.getNumFactory().hundred();
+        Num lossRatioThreshold = hundred.plus(lossPercentage).dividedBy(hundred);
         Num currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }

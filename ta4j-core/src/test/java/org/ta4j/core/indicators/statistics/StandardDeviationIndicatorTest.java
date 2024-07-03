@@ -25,32 +25,31 @@ package org.ta4j.core.indicators.statistics;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public StandardDeviationIndicatorTest(Function<Number, Num> numFunction) {
+    public StandardDeviationIndicatorTest(NumFactory numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
     }
 
     @Test
     public void standardDeviationUsingBarCount4UsingClosePrice() {
-        StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
+        var sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
         assertNumEquals(0, sdv.getValue(0));
         assertNumEquals(Math.sqrt(0.25), sdv.getValue(1));
@@ -67,7 +66,7 @@ public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Test
     public void standardDeviationShouldBeZeroWhenBarCountIs1() {
-        StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
+        var sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, sdv.getValue(3));
         assertNumEquals(0, sdv.getValue(8));
     }

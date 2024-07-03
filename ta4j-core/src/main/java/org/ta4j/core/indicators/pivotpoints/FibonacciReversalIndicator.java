@@ -80,7 +80,7 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
             FibReversalTyp fibReversalTyp) {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
-        this.fibonacciFactor = numOf(fibonacciFactor);
+        this.fibonacciFactor = getBarSeries().numFactory().numOf(fibonacciFactor);
         this.fibReversalTyp = fibReversalTyp;
     }
 

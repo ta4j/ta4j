@@ -38,7 +38,6 @@ import org.ta4j.core.num.Num;
 public class ROCVIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final Num hundred;
 
     /**
      * Constructor.
@@ -49,7 +48,6 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.hundred = hundred();
     }
 
     @Override
@@ -57,7 +55,9 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         int nIndex = Math.max(index - barCount, 0);
         Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
         Num currentValue = getBarSeries().getBar(index).getVolume();
-        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
+        return currentValue.minus(nPeriodsAgoValue)
+                .dividedBy(nPeriodsAgoValue)
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override

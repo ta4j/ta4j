@@ -29,10 +29,10 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceStrictType;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceType;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
 public class ConvergenceDivergenceIndicatorTest {
@@ -63,7 +63,7 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
+        BarSeries series = new MockBarSeriesBuilder().build();
         refPosCon = new FixedDecimalIndicator(series, 1, 2, 3, 4, 5, 8, 3, 2, -2, 1);
         otherPosCon = new FixedDecimalIndicator(series, 10, 20, 30, 40, 50, 60, 7, 5, 3, 2);
 

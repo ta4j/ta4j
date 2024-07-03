@@ -27,8 +27,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -36,16 +34,17 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     private AnalysisCriterion rrc;
 
-    public ReturnOverMaxDrawdownCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new ReturnOverMaxDrawdownCriterion(), numFunction);
+    public ReturnOverMaxDrawdownCriterionTest(NumFactory numFactory) {
+        super(params -> new ReturnOverMaxDrawdownCriterion(), numFactory);
     }
 
     @Before
@@ -55,7 +54,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterion() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 95, 100, 90, 95, 80, 120)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series));
 
@@ -68,7 +69,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
         assertTrue(rrc.calculate(series, tradingRecord).isNaN());
@@ -76,13 +77,15 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterionWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
         assertTrue(rrc.calculate(series, new BaseTradingRecord()).isNaN());
     }
 
     @Test
     public void withOnePosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 95, 95, 100, 90, 95, 80, 120)
+                .build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         AnalysisCriterion ratioCriterion = getCriterion();
@@ -98,7 +101,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testNoDrawDownForTradingRecord() {
-        final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 95, 100, 90, 95, 80, 120)
+                .build();
         final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series));
 
@@ -109,7 +114,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testNoDrawDownForPosition() {
-        final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 95, 100, 90, 95, 80, 120)
+                .build();
         final Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         final Num result = rrc.calculate(series, position);

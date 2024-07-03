@@ -29,7 +29,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,9 +36,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -48,19 +48,19 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             24.35, 23.75, 24.09 };
     BarSeries data;
 
-    public IndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public IndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, typicalPrices);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(typicalPrices).build();
     }
 
     @Test
     public void toDouble() {
         List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFunction::apply)
+                .mapToObj(numFactory::numOf)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
@@ -76,7 +76,7 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void shouldProvideStream() {
         List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFunction::apply)
+                .mapToObj(numFactory::numOf)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 

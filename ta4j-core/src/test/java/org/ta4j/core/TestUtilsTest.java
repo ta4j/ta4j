@@ -32,12 +32,12 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -58,8 +58,8 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     private static Indicator<Num> indicator;
     private static Indicator<Num> diffIndicator;
 
-    public TestUtilsTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public TestUtilsTest(NumFactory numFactory) {
+        super(numFactory);
         numStringDouble = numOf(bigDecimalDouble);
         diffNumStringDouble = numOf(diffBigDecimalDouble);
         numInt = numOf(aInt);
@@ -73,15 +73,23 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     private BarSeries randomSeries() {
-        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder();
-        BarSeries series = builder.withNumTypeOf(numFunction).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {
             random = Math.random();
             time = time.plusDays(i);
-            series.addBar(new BaseBar(Duration.ofDays(1), time, random, random, random, random, random, random, 0,
-                    numFunction));
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(time)
+                    .openPrice(random)
+                    .closePrice(random)
+                    .highPrice(random)
+                    .lowPrice(random)
+                    .amount(random)
+                    .volume(random)
+                    .trades(0)
+                    .add();
         }
         return series;
     }

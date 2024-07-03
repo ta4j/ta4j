@@ -51,7 +51,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(BarSeries series, int barCount) {
         super(series);
-        this.factor = numOf(0.015);
+        this.factor = getBarSeries().numFactory().numOf(0.015);
         this.typicalPriceInd = new TypicalPriceIndicator(series);
         this.smaInd = new SMAIndicator(typicalPriceInd, barCount);
         this.meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
@@ -64,7 +64,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
         final Num typicalPriceAvg = smaInd.getValue(index);
         final Num meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
     }

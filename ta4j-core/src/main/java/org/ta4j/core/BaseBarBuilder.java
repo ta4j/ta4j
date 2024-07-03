@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.Objects;
 
 import org.ta4j.core.num.Num;
 
@@ -42,9 +43,10 @@ public class BaseBarBuilder {
     private Num volume;
     private Num amount;
     private long trades;
+    private BarSeries baseBarSeries;
 
     /** Constructor to build a {@code BaseBar}. */
-    BaseBarBuilder() {
+    public BaseBarBuilder() {
     }
 
     /**
@@ -128,7 +130,16 @@ public class BaseBarBuilder {
         return this;
     }
 
+    public BaseBarBuilder bindTo(final BarSeries baseBarSeries) {
+        this.baseBarSeries = Objects.requireNonNull(baseBarSeries);
+        return this;
+    }
+
     public BaseBar build() {
         return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+    }
+
+    public void add() {
+        baseBarSeries.addBar(build());
     }
 }

@@ -51,7 +51,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param excludeTradingCosts set to true to exclude trading costs
+     * @param excludeCosts set to true to exclude trading costs
      */
     public ProfitCriterion(boolean excludeCosts) {
         this.excludeCosts = excludeCosts;
@@ -61,9 +61,9 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = excludeCosts ? position.getGrossProfit() : position.getProfit();
-            return profit.isPositive() ? profit : series.zero();
+            return profit.isPositive() ? profit : series.numFactory().zero();
         }
-        return series.zero();
+        return series.numFactory().zero();
     }
 
     @Override
@@ -72,7 +72,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.zero(), Num::plus);
+                .reduce(series.numFactory().zero(), Num::plus);
     }
 
     /** The higher the criterion value (= the higher the profit), the better. */

@@ -58,34 +58,6 @@ public interface Indicator<T> {
     BarSeries getBarSeries();
 
     /**
-     * @return the Num of 0
-     */
-    default Num zero() {
-        return getBarSeries().zero();
-    }
-
-    /**
-     * @return the Num of 1
-     */
-    default Num one() {
-        return getBarSeries().one();
-    }
-
-    /**
-     * @return the Num of 100
-     */
-    default Num hundred() {
-        return getBarSeries().hundred();
-    }
-
-    /**
-     * @return the {@link Num Num extending class} for the given {@link Number}
-     */
-    default Num numOf(Number number) {
-        return getBarSeries().numOf(number);
-    }
-
-    /**
      * @return all values from {@code this} Indicator over {@link #getBarSeries()}
      *         as a Stream
      */
@@ -111,5 +83,4 @@ public interface Indicator<T> {
                 .map(Num::doubleValue)
                 .toArray(Double[]::new);
     }
-
 }
