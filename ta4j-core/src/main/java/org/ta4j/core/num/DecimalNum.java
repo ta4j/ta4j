@@ -304,6 +304,11 @@ public final class DecimalNum implements Num {
         return (number -> DecimalNum.valueOf(number.toString(), mathContext.getPrecision()));
     }
 
+    @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
+    }
+
     /**
      * Returns the underlying {@link BigDecimal} delegate.
      *
@@ -324,8 +329,8 @@ public final class DecimalNum implements Num {
     }
 
     @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
+    public BigDecimal bigDecimalValue() {
+        return delegate;
     }
 
     @Override
