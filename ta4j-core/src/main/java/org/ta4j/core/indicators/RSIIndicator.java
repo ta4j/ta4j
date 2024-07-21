@@ -63,7 +63,7 @@ public class RSIIndicator extends NumericIndicator {
     final var averageLoss = this.averageLossIndicator.getValue();
     final var numFactory = getNumFactory();
     if (averageLoss.isZero()) {
-      return averageGain.isZero() ? numFactory.zero() : numFactory.hundred();
+      return averageGain.isZero() ? numFactory.fifty() : numFactory.hundred();
     }
 
     final var relativeStrength = averageGain.dividedBy(averageLoss);

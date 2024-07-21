@@ -53,9 +53,12 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Num> {
 
   @Before
   public void setUp() {
-    this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
-        .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
-            50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20, 51.30, 51.10
+    this.data = new MockBarSeriesBuilder()
+        .withNumFactory(this.numFactory)
+        .withData(
+            50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07,
+            50.01, 50.14, 50.22, 50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62,
+            50.90, 50.82, 50.86, 51.20, 51.30, 51.10
         )
         .build();
   }
@@ -109,6 +112,31 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Num> {
     assertNext(this.data, 76.2770, indicator);
     assertNext(this.data, 77.9908, indicator);
     assertNext(this.data, 67.4895, indicator);
+  }
+
+
+  @Test
+  public void noGainNoLossShouldReturn50BecauseNothingHappens() {
+    final var noMovementSeries = new MockBarSeriesBuilder()
+        .withNumFactory(this.numFactory)
+        .withData(
+            51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10,
+            51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10, 51.10
+        )
+        .build();
+    final var indicator = NumericIndicator.closePrice(noMovementSeries).rsi(4);
+    noMovementSeries.replaceStrategy(new MockStrategy(indicator));
+    fastForward(noMovementSeries, 10);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
+    assertNext(noMovementSeries, 50.00, indicator);
   }
 
 

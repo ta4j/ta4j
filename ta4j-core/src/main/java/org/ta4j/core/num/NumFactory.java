@@ -51,12 +51,17 @@ public interface NumFactory {
     Num three();
 
     /**
+     * @return the Num of 50
+     */
+    Num fifty();
+
+    /**
      * @return the Num of 100
      */
     Num hundred();
 
     /**
-     * @return the Num of 100
+     * @return the Num of 1000
      */
     Num thousand();
 
