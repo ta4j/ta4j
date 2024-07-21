@@ -72,7 +72,7 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusSeconds((data.size() + 1 - i)))
+                    .endTime(ZonedDateTime.now().minusMinutes((data.size() + 1 - i)))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
