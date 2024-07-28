@@ -49,9 +49,6 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
     private final Indicator<Num> keltnerChannelLowerBandLow;
     private final Indicator<Num> keltnerChannelUpperBandMid;
     private final Indicator<Num> keltnerChannelLowerBandMid;
-    private final KeltnerChannelMiddleIndicator keltnerChannelMidLine;
-
-    private final ATRIndicator averageTrueRange;
 
     private final Indicator<Num> bollingerBandUpperLine;
     private final Indicator<Num> bollingerBandLowerLine;
@@ -86,8 +83,8 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
         this.bollingerBandUpperLine = bollingerBand.upper();
         this.bollingerBandLowerLine = bollingerBand.lower();
 
-        this.keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        this.averageTrueRange = new ATRIndicator(series, barCount);
+        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
+        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
 
         this.keltnerChannelUpperBandLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
                 keltnerShiftFactorLow);
