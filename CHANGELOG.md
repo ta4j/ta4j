@@ -19,7 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - Added signal line and histogram to **MACDIndicator**
 - Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
-- Added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
+- Added `Num.bigDecimalValue(DoubleNum)` to convert Num to pgpa BigDecimal
 - Added 'TrailingAverageTrueRangeStopLossRule'
 - Added 'AverageTrueRangeStopLossRule'
 - Added 'AverageTrueRangeStopGainRule'
