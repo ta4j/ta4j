@@ -49,6 +49,9 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
     private final Indicator<Num> keltnerChannelLowerBandLow;
     private final Indicator<Num> keltnerChannelUpperBandMid;
     private final Indicator<Num> keltnerChannelLowerBandMid;
+    private final KeltnerChannelMiddleIndicator keltnerChannelMidLine;
+
+    private final ATRIndicator averageTrueRange;
 
     private final Indicator<Num> bollingerBandUpperLine;
     private final Indicator<Num> bollingerBandLowerLine;
@@ -83,8 +86,8 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
         this.bollingerBandUpperLine = bollingerBand.upper();
         this.bollingerBandLowerLine = bollingerBand.lower();
 
-        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
+        this.keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
+        this.averageTrueRange = new ATRIndicator(series, barCount);
 
         this.keltnerChannelUpperBandLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
                 keltnerShiftFactorLow);
@@ -114,13 +117,25 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        Num bbLower = bollingerBandLowerLine.getValue(index);
-        Num bbUpper = bollingerBandUpperLine.getValue(index);
+        boolean preSqueeze = bollingerBandLowerLine.getValue(index)
+                .isGreaterThan(keltnerChannelLowerBandLow.getValue(index))
+                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandLow.getValue(index));
+        boolean originalSqueeze = bollingerBandLowerLine.getValue(index)
+                .isGreaterThan(keltnerChannelLowerBandMid.getValue(index))
+                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandMid.getValue(index));
+        boolean extremeSqueeze = bollingerBandLowerLine.getValue(index)
+                .isGreaterThan(keltnerChannelLowerBandHigh.getValue(index))
+                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandHigh.getValue(index));
 
-        return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
-                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)
-                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandHigh, keltnerChannelUpperBandHigh,
-                        index);
+        return preSqueeze || originalSqueeze || extremeSqueeze;
+
+//        Num bbLower = bollingerBandLowerLine.getValue(index);
+//        Num bbUpper = bollingerBandUpperLine.getValue(index);
+//
+//        return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
+//                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)
+//                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandHigh, keltnerChannelUpperBandHigh,
+//                        index);
     }
 
     /**
