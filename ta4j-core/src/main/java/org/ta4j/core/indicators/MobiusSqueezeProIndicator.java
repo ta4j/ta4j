@@ -117,25 +117,13 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        boolean preSqueeze = bollingerBandLowerLine.getValue(index)
-                .isGreaterThan(keltnerChannelLowerBandLow.getValue(index))
-                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandLow.getValue(index));
-        boolean originalSqueeze = bollingerBandLowerLine.getValue(index)
-                .isGreaterThan(keltnerChannelLowerBandMid.getValue(index))
-                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandMid.getValue(index));
-        boolean extremeSqueeze = bollingerBandLowerLine.getValue(index)
-                .isGreaterThan(keltnerChannelLowerBandHigh.getValue(index))
-                && bollingerBandUpperLine.getValue(index).isLessThan(keltnerChannelUpperBandHigh.getValue(index));
+        Num bbLower = bollingerBandLowerLine.getValue(index);
+        Num bbUpper = bollingerBandUpperLine.getValue(index);
 
-        return preSqueeze || originalSqueeze || extremeSqueeze;
-
-//        Num bbLower = bollingerBandLowerLine.getValue(index);
-//        Num bbUpper = bollingerBandUpperLine.getValue(index);
-//
-//        return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
-//                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)
-//                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandHigh, keltnerChannelUpperBandHigh,
-//                        index);
+        return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
+                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)
+                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandHigh, keltnerChannelUpperBandHigh,
+                        index);
     }
 
     /**
