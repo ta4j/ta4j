@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  * The indicator returns true when a squeeze is detected, which can signal a
  * potential breakout or significant price move.
  */
-public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
+public class SqueezeProIndicator extends CachedIndicator<Boolean> {
 
     private final Indicator<Num> keltnerChannelUpperBandHigh;
     private final Indicator<Num> keltnerChannelLowerBandHigh;
@@ -61,7 +61,7 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
      * @param series   the bar series
      * @param barCount the time frame
      */
-    public MobiusSqueezeProIndicator(BarSeries series, int barCount) {
+    public SqueezeProIndicator(BarSeries series, int barCount) {
         this(series, barCount, 2, 1, 1.5, 2);
     }
 
@@ -75,8 +75,8 @@ public class MobiusSqueezeProIndicator extends CachedIndicator<Boolean> {
      * @param keltnerShiftFactorMid  the Keltner Channel middle band multiplier
      * @param keltnerShiftFactorLow  the Keltner Channel low band multiplier
      */
-    public MobiusSqueezeProIndicator(BarSeries series, int barCount, double bollingerBandK,
-            double keltnerShiftFactorHigh, double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
+    public SqueezeProIndicator(BarSeries series, int barCount, double bollingerBandK,
+                               double keltnerShiftFactorHigh, double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
         super(series);
 
         BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);

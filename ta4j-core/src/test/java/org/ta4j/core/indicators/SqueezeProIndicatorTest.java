@@ -38,9 +38,9 @@ import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public MobiusSqueezeProIndicatorTest(Function<Number, Num> numFunction) {
+    public SqueezeProIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -53,7 +53,7 @@ public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicat
             series.addBar(startDateTime.plusDays(i), i, i, i, i);
         }
 
-        MobiusSqueezeProIndicator indicator = new MobiusSqueezeProIndicator(series, 20);
+        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 20);
 
         // The indicator should be false for the first 20 bars (unstable period)
         for (int i = 0; i < 20; i++) {
@@ -77,7 +77,7 @@ public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicat
             series.addBar(startDateTime.plusDays(i), i, i + 10, i - 10, i);
         }
 
-        MobiusSqueezeProIndicator indicator = new MobiusSqueezeProIndicator(series, 10, 2.5, 1.2, 1.7, 2.2);
+        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 10, 2.5, 1.2, 1.7, 2.2);
 
         // The indicator should be false for the first 10 bars (unstable period)
         for (int i = 0; i < 10; i++) {
@@ -113,7 +113,7 @@ public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicat
         KeltnerChannelLowerIndicator keltnerChannelLower = new KeltnerChannelLowerIndicator(keltnerChannelMidLine,
                 averageTrueRange, keltnerShiftFactor);
 
-        MobiusSqueezeProIndicator indicator = new MobiusSqueezeProIndicator(series, barCount);
+        SqueezeProIndicator indicator = new SqueezeProIndicator(series, barCount);
 
         // Find an index where the squeeze condition is true
         int squeezeIndex = -1;
@@ -141,7 +141,7 @@ public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicat
             series.addBar(startDateTime.plusDays(i), i, i + 1, i - 1, i * 2);
         }
 
-        MobiusSqueezeProIndicator indicator = new MobiusSqueezeProIndicator(series, 20);
+        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 20);
 
         for (int i = 20; i < 38; i++) {
             assertFalse("No squeeze should be detected at index " + i, indicator.getValue(i));
@@ -166,7 +166,7 @@ public class MobiusSqueezeProIndicatorTest extends AbstractIndicatorTest<Indicat
         double keltnerShiftFactorMid = 1.5;
         double keltnerShiftFactorLow = 2.0;
 
-        MobiusSqueezeProIndicator indicator = new MobiusSqueezeProIndicator(series, barCount, bollingerBandK,
+        SqueezeProIndicator indicator = new SqueezeProIndicator(series, barCount, bollingerBandK,
                 keltnerShiftFactorHigh, keltnerShiftFactorMid, keltnerShiftFactorLow);
 
         BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
