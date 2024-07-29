@@ -75,8 +75,8 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
      * @param keltnerShiftFactorMid  the Keltner Channel middle band multiplier
      * @param keltnerShiftFactorLow  the Keltner Channel low band multiplier
      */
-    public SqueezeProIndicator(BarSeries series, int barCount, double bollingerBandK,
-                               double keltnerShiftFactorHigh, double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
+    public SqueezeProIndicator(BarSeries series, int barCount, double bollingerBandK, double keltnerShiftFactorHigh,
+            double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
         super(series);
 
         BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
