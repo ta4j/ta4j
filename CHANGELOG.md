@@ -20,6 +20,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added signal line and histogram to **MACDIndicator**
 - Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
 - Added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
+- Added **RecentSwingHighIndicator**
+- Added **RecentSwingLowIndicator**
 
 
 ## 0.16 (released May 15, 2024)
@@ -143,8 +145,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added "TradeExecutionModel" to modify trade execution during backtesting
 - added **NumIndicator** to calculate any `Num`-value for a `Bar`
 - added **RunningTotalIndicator** to calculate a cumulative sum for a period.
-- added **RecentSwingHighIndicator**
-- added **RecentSwingLowIndicator**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
