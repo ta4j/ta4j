@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.num;
 
+import java.math.BigDecimal;
 import java.util.function.Function;
 
 /**
@@ -89,6 +90,11 @@ public class NaN implements Num {
     @Override
     public double doubleValue() {
         return Double.NaN;
+    }
+
+    @Override
+    public BigDecimal bigDecimalValue() {
+        return null;
     }
 
     @Override

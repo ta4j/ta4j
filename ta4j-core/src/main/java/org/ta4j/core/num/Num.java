@@ -319,15 +319,6 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
-     * Converts this {@code Num} to a {@code double}.
-     *
-     * @return this {@code Num} converted to a {@code double}
-     */
-    default double doubleValue() {
-        return getDelegate().doubleValue();
-    }
-
-    /**
      * Converts this {@code Num} to an {@code integer}.
      *
      * @return this {@code Num} converted to an {@code integer}
@@ -353,6 +344,22 @@ public interface Num extends Comparable<Num>, Serializable {
     default float floatValue() {
         return getDelegate().floatValue();
     }
+
+    /**
+     * Converts this {@code Num} to a {@code double}.
+     *
+     * @return this {@code Num} converted to a {@code double}
+     */
+    default double doubleValue() {
+        return getDelegate().doubleValue();
+    }
+
+    /**
+     * Converts this {@code Num} to a {@code BigDecimal}.
+     *
+     * @return this {@code Num} converted to a {@code BigDecimal}
+     */
+    BigDecimal bigDecimalValue();
 
     @Override
     int hashCode();

@@ -25,6 +25,7 @@ package org.ta4j.core.num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.BigDecimal;
 import java.util.function.Function;
 
 /**
@@ -147,13 +148,18 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
+    }
+
+    @Override
     public Double getDelegate() {
         return delegate;
     }
 
     @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
+    public BigDecimal bigDecimalValue() {
+        return Double.isNaN(delegate) || Double.isInfinite(delegate) ? null : BigDecimal.valueOf(delegate);
     }
 
     @Override
