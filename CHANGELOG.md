@@ -23,7 +23,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added new `SqueezeProIndicator` which identifies trading opportunities by comparing Bollinger Band and Keltner Channel values
 - Added **RecentSwingHighIndicator**
 - Added **RecentSwingLowIndicator**
-
+- Added **KalmanFilterIndicator**
 
 ## 0.16 (released May 15, 2024)
 
