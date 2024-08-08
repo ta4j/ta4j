@@ -21,6 +21,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
 - Added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
 - Added new `SqueezeProIndicator` which identifies trading opportunities by comparing Bollinger Band and Keltner Channel values
+- Added **RecentSwingHighIndicator**
+- Added **RecentSwingLowIndicator**
 
 
 ## 0.16 (released May 15, 2024)
