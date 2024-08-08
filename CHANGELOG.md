@@ -23,6 +23,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added **AverageTrueRangeTrailingStopLossRule**
 - Added **AverageTrueRangeStopLossRule**
 - Added **AverageTrueRangeStopGainRule**
+- Added **SqueezeProIndicator**
 - Added **RecentSwingHighIndicator**
 - Added **RecentSwingLowIndicator**
 
