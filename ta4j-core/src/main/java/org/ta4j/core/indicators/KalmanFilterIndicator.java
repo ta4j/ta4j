@@ -47,7 +47,6 @@ import org.ta4j.core.num.Num;
 public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final KalmanFilter filter;
-    private int lastUpdatedIndex;
 
     /**
      * Constructs a KalmanFilterIndicator with the given indicator and default noise
@@ -93,8 +92,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
 
         this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
-
-        this.lastUpdatedIndex = 0;
     }
 
     /**
@@ -111,12 +108,11 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        for (int i = lastUpdatedIndex + 1; i <= index; i++) {
+        for (int i = Math.max(index, this.filter.getStateDimension()); i <= index; i++) {
             this.filter.predict();
             this.filter.correct(new double[] { this.indicator.getValue(i).doubleValue() });
         }
 
-        this.lastUpdatedIndex = Math.max(index, this.lastUpdatedIndex);
         double kalmanValue = this.filter.getStateEstimation()[0];
 
         return numOf(kalmanValue);
