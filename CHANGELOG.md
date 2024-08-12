@@ -20,7 +20,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added signal line and histogram to **MACDIndicator**
 - Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
 - Added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
-- Added new `SqueezeProIndicator` which identifies trading opportunities by comparing Bollinger Band and Keltner Channel values
+- Added **AverageTrueRangeTrailingStopLossRule**
+- Added **AverageTrueRangeStopLossRule**
+- Added **AverageTrueRangeStopGainRule**
+- Added **SqueezeProIndicator**
 - Added **RecentSwingHighIndicator**
 - Added **RecentSwingLowIndicator**
 - Added **KalmanFilterIndicator**
