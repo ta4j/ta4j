@@ -26,7 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added **SqueezeProIndicator**
 - Added **RecentSwingHighIndicator**
 - Added **RecentSwingLowIndicator**
-
+- Added **KalmanFilterIndicator**
 
 ## 0.16 (released May 15, 2024)
 
