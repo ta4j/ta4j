@@ -221,7 +221,8 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test(expected = IllegalArgumentException.class)
     public void testConstructor_AllowedEqualBarsNegative() {
-        RecentSwingLowIndicator swingLowIndicator = new RecentSwingLowIndicator(new LowPriceIndicator(series), 1, 1, -1);
+        RecentSwingLowIndicator swingLowIndicator = new RecentSwingLowIndicator(new LowPriceIndicator(series), 1, 1,
+                -1);
     }
 
 }

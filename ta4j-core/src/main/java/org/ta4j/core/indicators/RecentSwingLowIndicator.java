@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- * <p>
+ *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
- * <p>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * <p>
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * <p>
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -44,22 +44,23 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
      * Constructs a RecentSwingLowIndicator
      *
      * @param indicator           The Indicator to be analyzed.
-     * @param precedingHigherBars For a bar to be identified as a swing low, it
-     *                            must have a lower low than this number of bars
-     *                            both immediately preceding
-     * @param followingHigherBars For a bar to be identified as a swing low, it
-     *                            must have a lower low than this number of bars
-     *                            both immediately following
+     * @param precedingHigherBars For a bar to be identified as a swing low, it must
+     *                            have a lower low than this number of bars
+     *                            immediately preceding it.
+     * @param followingHigherBars For a bar to be identified as a swing low, it must
+     *                            have a lower low than this number of bars
+     *                            immediately following it.
      * @param allowedEqualBars    For a looser definition of swing low, instead of
      *                            requiring the surrounding bars to be strictly
-     *                            higher lows we allow this number of equal lows
-     *                            to either side (i.e. flat-ish valley)
-     * @throws IllegalArgumentException if precedingHigherBars is less than or
-     *                                  equal to 0.
+     *                            higher lows we allow this number of equal lows to
+     *                            either side (i.e. flat-ish valley)
+     * @throws IllegalArgumentException if precedingHigherBars is less than or equal
+     *                                  to 0.
      * @throws IllegalArgumentException if followingHigherBars is less 0.
      * @throws IllegalArgumentException if allowedEqualBars is less than 0.
      */
-    public RecentSwingLowIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars, int allowedEqualBars) {
+    public RecentSwingLowIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
+            int allowedEqualBars) {
         super(indicator);
 
         if (precedingHigherBars <= 0) {
@@ -102,10 +103,6 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
     }
 
     private boolean isSwingLow(int index) {
-        if (index < getUnstableBars() || index >= getBarSeries().getBarCount()) {
-            return false;
-        }
-
         Num currentPrice = this.indicator.getValue(index);
 
         // Check bars before
@@ -146,7 +143,8 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
         int higherBarsCount = 0;
         int equalBarsCount = 0;
 
-        for (int i = index + 1; i < index + followingHigherBars + allowedEqualBars + 1 && i < getBarSeries().getBarCount(); i++) {
+        for (int i = index + 1; i < index + followingHigherBars + allowedEqualBars + 1
+                && i < getBarSeries().getBarCount(); i++) {
             Num comparisonPrice = this.indicator.getValue(i);
 
             if (currentPrice.isEqual(comparisonPrice)) {
@@ -169,6 +167,10 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getUnstableBars() || index >= getBarSeries().getBarCount()) {
+            return NaN;
+        }
+
         for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
             if (isSwingLow(i)) {
                 return this.indicator.getValue(i);
