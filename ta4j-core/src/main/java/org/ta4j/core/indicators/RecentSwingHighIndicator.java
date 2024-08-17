@@ -24,8 +24,11 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Recent Swing High Indicator.
@@ -34,25 +37,26 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
     private final int surroundingLowerBars;
     private final int allowedEqualBars;
+    Indicator<Num> indicator;
 
     /**
      * Constructs a RecentSwingHighIndicator
      *
-     * @param series               The BarSeries to be analyzed.
+     * @param indicator            The Indicator to be analyzed.
      * @param surroundingLowerBars For a bar to be identified as a swing high, it
      *                             must have a higher high than this number of bars
      *                             both immediately preceding and immediately
      *                             following
-     * @param allowedEqualBars     For a looser definition of peak, instead of
+     * @param allowedEqualBars     For a looser definition of swing high, instead of
      *                             requiring the surrounding bars to be strictly
      *                             lower highs we allow this number of equal highs
-     *                             to either side (i.e. flat-ish peak or plateau)
+     *                             to either side (i.e. flat-ish valley)
      * @throws IllegalArgumentException if surroundingLowerBars is less than or
      *                                  equal to 0.
      * @throws IllegalArgumentException if allowedEqualBars is less than 0.
      */
-    public RecentSwingHighIndicator(BarSeries series, int surroundingLowerBars, int allowedEqualBars) {
-        super(series);
+    public RecentSwingHighIndicator(Indicator<Num> indicator, int surroundingLowerBars, int allowedEqualBars) {
+        super(indicator);
 
         if (surroundingLowerBars <= 0) {
             throw new IllegalArgumentException("surroundingLowerBars must be greater than 0");
@@ -62,95 +66,111 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
         }
         this.surroundingLowerBars = surroundingLowerBars;
         this.allowedEqualBars = allowedEqualBars;
+        this.indicator = indicator;
     }
 
     /**
-     * * Constructs a RecentSwingHighIndicator with the specified BarSeries and
-     * surrounding lower bars count and a default allowed equal bars count of 0
+     * Constructs a RecentSwingHighIndicator with the specified BarSeries (and
+     * defaulting to use HighPriceIndicator) and surrounding higher bars count and a
+     * default allowed equal bars of 0
      *
-     * @param series
-     * @param surroundingLowerBars
+     * @param series               The BarSeries to be analyzed.
+     * @param surroundingLowerBars The number of bars to consider on each side that
+     *                             must have lower highs to identify a swing high.
      */
     public RecentSwingHighIndicator(BarSeries series, int surroundingLowerBars) {
-        this(series, surroundingLowerBars, 0);
+        this(new HighPriceIndicator(series), surroundingLowerBars, 0);
     }
 
     /**
-     * Constructs a RecentSwingHighIndicator with the specified BarSeries, a default
-     * surrounding lower bars count of 2, and a default allowed equal bars count of
-     * 0
+     * Constructs a RecentSwingHighIndicator with the specified BarSeries (and
+     * defaulting to use HighPriceIndicator) and surrounding higher bars count
+     * defaulted to 2, and a default allowed equal bars of 0
      *
-     * @param series The BarSeries to be analyzed.
+     * @param series The BarSeries to be analyzed. must have lower highs to identify
+     *               a swing high.
      */
     public RecentSwingHighIndicator(BarSeries series) {
-        this(series, 2, 0);
+        this(new HighPriceIndicator(series), 2, 0);
     }
 
-    /**
-     * Validates if the specified bar at currentIndex, considering the direction,
-     * meets the criteria for being a swing high.
-     *
-     * @param currentIndex The index of the current bar.
-     * @param direction    The direction for comparison (-1 for previous bars, 1 for
-     *                     following bars).
-     * @return true if the bar at currentIndex is a swing high considering the
-     *         specified direction; false otherwise.
-     */
-    private boolean validateBars(int currentIndex, int direction) {
-        Num currentHighPrice = getBarSeries().getBar(currentIndex).getHighPrice();
+    private boolean isSwingHigh(int index) {
+        if (index < surroundingLowerBars || index >= getBarSeries().getBarCount()) {
+            return false;
+        }
+
+        Num currentPrice = this.indicator.getValue(index);
+
+        // Check bars before
+        if (!checkPrecedingBars(index, currentPrice)) {
+            return false;
+        }
+
+        // Check bars after (up to the current calculation index)
+        return checkFollowingBars(index, currentPrice);
+    }
+
+    private boolean checkPrecedingBars(int index, Num currentPrice) {
         int lowerBarsCount = 0;
         int equalBarsCount = 0;
 
-        for (int i = currentIndex + direction; i >= getBarSeries().getBeginIndex()
-                && i <= getBarSeries().getEndIndex(); i += direction) {
-            Num comparisonHighPrice = getBarSeries().getBar(i).getHighPrice();
+        for (int i = index - 1; i >= index - surroundingLowerBars - allowedEqualBars && i >= 0; i--) {
+            Num comparisonPrice = this.indicator.getValue(i);
 
-            if (currentHighPrice.isEqual(comparisonHighPrice)) {
+            if (currentPrice.isEqual(comparisonPrice)) {
                 equalBarsCount++;
-
                 if (equalBarsCount > allowedEqualBars) {
                     return false;
                 }
-            } else if (currentHighPrice.isGreaterThan(comparisonHighPrice)) {
+            } else if (currentPrice.isLessThan(comparisonPrice)) {
+                return false;
+            } else {
                 lowerBarsCount++;
                 if (lowerBarsCount == surroundingLowerBars) {
                     return true;
                 }
-            } else {
-                break;
             }
         }
-        return false;
+
+        return lowerBarsCount == surroundingLowerBars;
     }
 
-    /**
-     * Calculates the most recent swing high value up to the specified index.
-     *
-     * @param index The bar index up to which the calculation is done.
-     * @return The value of the most recent swing high if it exists; NaN otherwise.
-     */
-    @Override
-    protected Num calculate(int index) {
-        if (index < surroundingLowerBars) {
-            return NaN;
-        }
+    private boolean checkFollowingBars(int index, Num currentPrice) {
+        int lowerBarsCount = 0;
+        int equalBarsCount = 0;
 
-        for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
-            if (validateBars(i, -1) && validateBars(i, 1)) {
-                return getBarSeries().getBar(i).getHighPrice();
+        for (int i = index + 1; i < index + surroundingLowerBars + allowedEqualBars + 1
+                && i < getBarSeries().getBarCount(); i++) {
+            Num comparisonPrice = this.indicator.getValue(i);
+
+            if (currentPrice.isEqual(comparisonPrice)) {
+                equalBarsCount++;
+                if (equalBarsCount > allowedEqualBars) {
+                    return false;
+                }
+            } else if (currentPrice.isLessThan(comparisonPrice)) {
+                return false;
+            } else {
+                lowerBarsCount++;
+                if (lowerBarsCount == surroundingLowerBars) {
+                    return true;
+                }
             }
         }
 
+        return lowerBarsCount == surroundingLowerBars;
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
+            if (isSwingHigh(i)) {
+                return this.indicator.getValue(i);
+            }
+        }
         return NaN;
     }
 
-    /**
-     * Returns the number of unstable bars as defined by the surroundingBars
-     * parameter.
-     *
-     * @return The number of unstable bars.
-     */
-    @Override
     public int getUnstableBars() {
         return surroundingLowerBars;
     }
