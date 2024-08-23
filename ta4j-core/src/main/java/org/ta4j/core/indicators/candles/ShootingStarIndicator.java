@@ -26,27 +26,30 @@ package org.ta4j.core.indicators.candles;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.trend.DownTrendIndicator;
+import org.ta4j.core.indicators.trend.UpTrendIndicator;
 
 /**
- * Inverted hammer candle indicator.
+ * Shooting star candle indicator.
+ *
+ * @see <a href="https://www.investopedia.com/terms/s/shootingstar.asp">
+ *      https://www.investopedia.com/terms/s/shootingstar.asp</a>
  */
-public class InvertedHammerIndicator extends CachedIndicator<Boolean> {
-
+public class ShootingStarIndicator extends CachedIndicator<Boolean> {
     private static final double BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 1d;
     private static final double BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 2d;
 
     private final RealBodyIndicator realBodyIndicator;
-    private final DownTrendIndicator trendIndicator;
+    private final UpTrendIndicator trendIndicator;
 
     /**
      * Constructor.
      *
      * @param series the bar series
      */
-    public InvertedHammerIndicator(final BarSeries series) {
+    public ShootingStarIndicator(final BarSeries series) {
         super(series);
         this.realBodyIndicator = new RealBodyIndicator(series);
-        this.trendIndicator = new DownTrendIndicator(series);
+        this.trendIndicator = new UpTrendIndicator(series);
     }
 
     @Override
