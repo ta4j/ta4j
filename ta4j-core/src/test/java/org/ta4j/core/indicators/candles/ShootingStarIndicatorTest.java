@@ -79,8 +79,6 @@ public class ShootingStarIndicatorTest extends AbstractIndicatorTest<Indicator<B
         return bars;
     }
 
-    // TODO: FIX THE TESTS BELOW
-
     @Test
     public void getValueAsShootingStar() {
         final var shootingStar = new ShootingStarIndicator(this.uptrendSeries);

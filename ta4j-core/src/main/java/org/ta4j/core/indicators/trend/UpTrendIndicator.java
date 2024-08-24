@@ -31,17 +31,23 @@ import org.ta4j.core.indicators.adx.PlusDIIndicator;
 
 public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
-    private static final int UNSTABLE_BARS = 5;
+    private static final int DEFAULT_UNSTABLE_BARS = 5;
 
     private final ADXIndicator directionStrengthIndicator;
     private final MinusDIIndicator minusDIIndicator;
     private final PlusDIIndicator plusDIIndicator;
+    private final int unstableBars;
 
     public UpTrendIndicator(final BarSeries series) {
+        this(series, DEFAULT_UNSTABLE_BARS);
+    }
+
+    public UpTrendIndicator(final BarSeries series, int unstableBars) {
         super(series);
-        this.directionStrengthIndicator = new ADXIndicator(series, UNSTABLE_BARS);
-        this.minusDIIndicator = new MinusDIIndicator(series, UNSTABLE_BARS);
-        this.plusDIIndicator = new PlusDIIndicator(series, UNSTABLE_BARS);
+        this.unstableBars = unstableBars;
+        this.directionStrengthIndicator = new ADXIndicator(series, unstableBars);
+        this.minusDIIndicator = new MinusDIIndicator(series, unstableBars);
+        this.plusDIIndicator = new PlusDIIndicator(series, unstableBars);
     }
 
     @Override
@@ -55,6 +61,6 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     public int getUnstableBars() {
-        return UNSTABLE_BARS;
+        return unstableBars;
     }
 }

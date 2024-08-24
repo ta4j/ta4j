@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.indicators.trend.UpTrendIndicator;
 
 /**
@@ -35,11 +34,14 @@ import org.ta4j.core.indicators.trend.UpTrendIndicator;
  *      https://www.investopedia.com/terms/s/shootingstar.asp</a>
  */
 public class ShootingStarIndicator extends CachedIndicator<Boolean> {
-    private static final double BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 1d;
-    private static final double BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 2d;
+
+    private static final double DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 1d;
+    private static final double DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 2d;
 
     private final RealBodyIndicator realBodyIndicator;
     private final UpTrendIndicator trendIndicator;
+    private final double bodyToBottomWickRatio;
+    private final double bodyToUpperWickRatio;
 
     /**
      * Constructor.
@@ -50,6 +52,23 @@ public class ShootingStarIndicator extends CachedIndicator<Boolean> {
         super(series);
         this.realBodyIndicator = new RealBodyIndicator(series);
         this.trendIndicator = new UpTrendIndicator(series);
+        this.bodyToBottomWickRatio = DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT;
+        this.bodyToUpperWickRatio = DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT;
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series                the bar series
+     * @param bodyToBottomWickRatio the body to bottom wick ratio
+     * @param bodyToUpperWickRatio  the body to upper wick ratio
+     */
+    public ShootingStarIndicator(final BarSeries series, double bodyToBottomWickRatio, double bodyToUpperWickRatio) {
+        super(series);
+        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.trendIndicator = new UpTrendIndicator(series);
+        this.bodyToBottomWickRatio = bodyToBottomWickRatio;
+        this.bodyToUpperWickRatio = bodyToUpperWickRatio;
     }
 
     @Override
@@ -67,9 +86,8 @@ public class ShootingStarIndicator extends CachedIndicator<Boolean> {
         final var bottomWickHeight = bottomBodyBoundary.minus(lowPrice);
         final var upperWickHeight = highPrice.minus(upperBodyBoundary);
 
-        return upperWickHeight.dividedBy(bodyHeight).isGreaterThan(numOf(BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT))
-                && bottomWickHeight.dividedBy(bodyHeight)
-                        .isLessThanOrEqual(numOf(BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT))
+        return upperWickHeight.dividedBy(bodyHeight).isGreaterThan(numOf(this.bodyToUpperWickRatio))
+                && bottomWickHeight.dividedBy(bodyHeight).isLessThanOrEqual(numOf(this.bodyToBottomWickRatio))
                 && this.trendIndicator.getValue(index);
     }
 
