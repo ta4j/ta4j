@@ -34,12 +34,14 @@ import org.ta4j.core.indicators.average.MMAIndicator;
 import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.average.TripleEMAIndicator;
 import org.ta4j.core.indicators.average.ZLEMAIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandFacade;
 import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 import org.ta4j.core.indicators.candles.price.HighPriceIndicator;
 import org.ta4j.core.indicators.candles.price.LowPriceIndicator;
 import org.ta4j.core.indicators.candles.price.OpenPriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
@@ -106,6 +108,16 @@ public abstract class NumericIndicator implements Indicator<Num> {
 
   public static HighPriceIndicator highPrice(final BarSeries bs) {
     return new HighPriceIndicator(bs);
+  }
+
+
+  public static BollingerBandFacade bollingerBands(final BarSeries bs, final int barCount, final Number k) {
+    return new BollingerBandFacade(bs, barCount, k);
+  }
+
+
+  public DifferenceIndicator difference() {
+    return new DifferenceIndicator(this);
   }
 
 
