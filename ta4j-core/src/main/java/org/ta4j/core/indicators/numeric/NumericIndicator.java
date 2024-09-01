@@ -50,6 +50,7 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
+import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.Num;
@@ -366,7 +367,12 @@ public abstract class NumericIndicator implements Indicator<Num> {
   }
 
 
-  public VarianceIndicator var(final int barCount) {
+  public MeanDeviationIndicator meanDeviation(final int barCount) {
+    return new MeanDeviationIndicator(this, barCount);
+  }
+
+
+  public VarianceIndicator variance(final int barCount) {
     return new VarianceIndicator(this, barCount);
   }
 
