@@ -52,6 +52,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.statistics.CovarianceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
+import org.ta4j.core.indicators.statistics.SigmaIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.Num;
@@ -375,6 +376,11 @@ public abstract class NumericIndicator implements Indicator<Num> {
 
   public VarianceIndicator variance(final int barCount) {
     return new VarianceIndicator(this, barCount);
+  }
+
+
+  public SigmaIndicator sigma(final int barCount) {
+    return new SigmaIndicator(this, barCount);
   }
 
 
