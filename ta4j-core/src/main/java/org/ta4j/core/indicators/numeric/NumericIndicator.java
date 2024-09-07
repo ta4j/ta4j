@@ -54,6 +54,7 @@ import org.ta4j.core.indicators.statistics.CovarianceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.indicators.statistics.SigmaIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.StandardErrorIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -366,6 +367,11 @@ public abstract class NumericIndicator implements Indicator<Num> {
    */
   public StandardDeviationIndicator stddev(final int barCount) {
     return new StandardDeviationIndicator(this, barCount);
+  }
+
+
+  public StandardErrorIndicator stderr(final int barCount) {
+    return new StandardErrorIndicator(this, barCount);
   }
 
 
