@@ -122,7 +122,7 @@ public class CovarianceIndicator extends NumericIndicator {
 
   @Override
   public boolean isStable() {
-    return this.window.size() == this.barCount;
+    return this.window.size() == this.barCount && this.indicator1.isStable() && this.indicator2.isStable();
   }
 
 
