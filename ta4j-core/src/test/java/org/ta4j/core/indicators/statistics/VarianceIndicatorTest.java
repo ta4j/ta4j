@@ -32,7 +32,7 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -55,7 +55,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Num> {
 
   @Test
   public void varianceUsingBarCount4UsingClosePrice() {
-    final var varianceIndicator = new VarianceIndicator(new ClosePriceIndicator(this.data), 4);
+    final var varianceIndicator = NumericIndicator.closePrice(this.data).variance(4);
     this.data.replaceStrategy(new MockStrategy(varianceIndicator));
 
     // unstable values may produce garbage, this is why they are called unstable
@@ -86,37 +86,37 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Num> {
 
   @Test(expected = IllegalArgumentException.class)
   public void varianceShouldBeZeroWhenBarCountIs1() {
-    new VarianceIndicator(new ClosePriceIndicator(this.data), 1);
+    NumericIndicator.closePrice(this.data).variance(1);
   }
 
 
   @Test
   public void varianceUsingBarCount2UsingClosePrice() {
-    final var var = new VarianceIndicator(new ClosePriceIndicator(this.data), 2);
-    this.data.replaceStrategy(new MockStrategy(var));
+    final var variance = NumericIndicator.closePrice(this.data).variance(2);
+    this.data.replaceStrategy(new MockStrategy(variance));
 
-    assertNext(this.data, 0.0, var);
-    assertFalse(var.isStable());
+    assertNext(this.data, 0.0, variance);
+    assertFalse(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertTrue(var.isStable());
+    assertNext(this.data, 0.5, variance);
+    assertTrue(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertTrue(var.isStable());
+    assertNext(this.data, 0.5, variance);
+    assertTrue(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertTrue(var.isStable());
+    assertNext(this.data, 0.5, variance);
+    assertTrue(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertTrue(var.isStable());
+    assertNext(this.data, 0.5, variance);
+    assertTrue(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertTrue(var.isStable());
+    assertNext(this.data, 0.5, variance);
+    assertTrue(variance.isStable());
 
-    assertNext(this.data, 0.5, var);
-    assertNext(this.data, 0.5, var);
-    assertNext(this.data, 0.5, var);
-    assertNext(this.data, 4.5, var);
-    assertNext(this.data, 40.5, var);
+    assertNext(this.data, 0.5, variance);
+    assertNext(this.data, 0.5, variance);
+    assertNext(this.data, 0.5, variance);
+    assertNext(this.data, 4.5, variance);
+    assertNext(this.data, 40.5, variance);
   }
 }
