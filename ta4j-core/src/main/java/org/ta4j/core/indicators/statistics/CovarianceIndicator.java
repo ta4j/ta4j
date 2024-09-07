@@ -41,11 +41,8 @@ public class CovarianceIndicator extends NumericIndicator {
   private Num sumX;
   private Num sumXY;
   private Num sumY;
-  private Num meanX;
-  private Num meanY;
   private final int barCount;
   private Instant currentTick = Instant.EPOCH;
-  private Num covariance;
   private Num value;
 
 
@@ -64,9 +61,6 @@ public class CovarianceIndicator extends NumericIndicator {
     this.sumX = getNumFactory().zero();
     this.sumXY = getNumFactory().zero();
     this.sumY = getNumFactory().zero();
-    this.meanX = getNumFactory().zero();
-    this.meanY = getNumFactory().zero();
-    this.covariance = getNumFactory().zero();
   }
 
 
@@ -83,9 +77,7 @@ public class CovarianceIndicator extends NumericIndicator {
     }
 
     // Update the mean and covariance
-    updateMeanAndCovariance(newValue);
-
-    return this.covariance;
+    return updateMeanAndCovariance(newValue);
   }
 
 
@@ -96,17 +88,16 @@ public class CovarianceIndicator extends NumericIndicator {
   }
 
 
-  private void updateMeanAndCovariance(final XY newValue) {
+  private Num updateMeanAndCovariance(final XY newValue) {
     this.sumX = this.sumX.plus(newValue.x());
     this.sumY = this.sumY.plus(newValue.y());
     this.sumXY = this.sumXY.plus(newValue.x().multipliedBy(newValue.y()));
 
-    this.meanX = this.sumX.dividedBy(getNumFactory().numOf(this.window.size()));
-    this.meanY = this.sumY.dividedBy(getNumFactory().numOf(this.window.size()));
+    final var divisor = getNumFactory().numOf(this.window.size());
+    final var meanX = this.sumX.dividedBy(divisor);
+    final var meanY = this.sumY.dividedBy(divisor);
 
-    this.covariance = this.sumXY.dividedBy(getNumFactory().numOf(this.window.size())).minus(
-        this.meanX.multipliedBy(this.meanY)
-    );
+    return this.sumXY.dividedBy(divisor).minus(meanX.multipliedBy(meanY));
   }
 
 
