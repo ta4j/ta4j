@@ -53,6 +53,7 @@ import org.ta4j.core.indicators.helpers.previous.PreviousNumericValueIndicator;
 import org.ta4j.core.indicators.statistics.CovarianceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.indicators.statistics.SigmaIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.StandardErrorIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
@@ -547,5 +548,10 @@ public abstract class NumericIndicator implements Indicator<Num> {
 
   private ConstantNumericIndicator createConstant(final Number n) {
     return new ConstantNumericIndicator(getNumFactory().numOf(n));
+  }
+
+
+  public SimpleLinearRegressionIndicator simpleLinearRegression(final int barCount) {
+    return new SimpleLinearRegressionIndicator(this, barCount);
   }
 }
