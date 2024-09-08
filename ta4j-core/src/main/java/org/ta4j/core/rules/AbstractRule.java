@@ -34,25 +34,27 @@ import org.ta4j.core.Rule;
  */
 public abstract class AbstractRule implements Rule {
 
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+  protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final String className = getClass().getSimpleName();
+  private final String className = getClass().getSimpleName();
 
-    private Instant currentTick;
+  private Instant currentTick;
 
-    /**
-     * Traces the {@code isSatisfied()} method calls.
-     *
-     * @param isSatisfied true if the rule is satisfied, false otherwise
-     */
-    protected void traceIsSatisfied(final boolean isSatisfied) {
-        if (this.log.isTraceEnabled()) {
-            // TODO
-            this.log.trace("{}", this);
-        }
+
+  /**
+   * Traces the {@code isSatisfied()} method calls.
+   *
+   * @param isSatisfied true if the rule is satisfied, false otherwise
+   */
+  protected void traceIsSatisfied(final boolean isSatisfied) {
+    if (this.log.isTraceEnabled()) {
+      // TODO
+      this.log.trace("{}", this);
     }
+  }
 
-    protected void setCurrentTick(final Instant currentTick) {
-        this.currentTick = currentTick;
-    }
+
+  protected void setCurrentTick(final Instant currentTick) {
+    this.currentTick = currentTick;
+  }
 }

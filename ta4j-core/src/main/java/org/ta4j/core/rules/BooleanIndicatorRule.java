@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.BooleanIndicator;
 import org.ta4j.core.indicators.Indicator;
 
@@ -46,9 +45,8 @@ public class BooleanIndicatorRule extends AbstractRule {
   }
 
 
-  /** This rule does not use the {@code tradingRecord}. */
   @Override
-  public boolean isSatisfied(final TradingRecord tradingRecord) {
+  public boolean isSatisfied() {
     final boolean satisfied = this.indicator.getValue();
     traceIsSatisfied(satisfied);
     return satisfied;

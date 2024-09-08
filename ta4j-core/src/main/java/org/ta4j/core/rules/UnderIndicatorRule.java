@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -79,9 +78,8 @@ public class UnderIndicatorRule extends AbstractRule {
   }
 
 
-  /** This rule does not use the {@code tradingRecord}. */
   @Override
-  public boolean isSatisfied(final TradingRecord tradingRecord) {
+  public boolean isSatisfied() {
     final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
     traceIsSatisfied(satisfied);
     return satisfied;

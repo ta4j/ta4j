@@ -71,31 +71,14 @@ public interface Strategy {
    * @return true to recommend to enter, false otherwise
    */
   default boolean shouldEnter() {
-    return shouldEnter(null);
+    return isStable() && getEntryRule().isSatisfied();
   }
 
-  /**
-   * @param tradingRecord the potentially needed trading history
-   *
-   * @return true to recommend to enter, false otherwise
-   */
-  default boolean shouldEnter(final TradingRecord tradingRecord) {
-    return isStable() && getEntryRule().isSatisfied(tradingRecord);
-  }
 
   /**
    * @return true to recommend to exit, false otherwise
    */
   default boolean shouldExit() {
-    return shouldExit(null);
-  }
-
-  /**
-   * @param tradingRecord the potentially needed trading history
-   *
-   * @return true to recommend to exit, false otherwise
-   */
-  default boolean shouldExit(final TradingRecord tradingRecord) {
-    return isStable() && getExitRule().isSatisfied(tradingRecord);
+    return isStable() && getExitRule().isSatisfied();
   }
 }

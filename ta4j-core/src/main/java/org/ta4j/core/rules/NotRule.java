@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
 
 /**
  * An opposite (logical operator: NOT) rule (i.e. a rule that is the negation of
@@ -51,8 +50,8 @@ public class NotRule extends AbstractRule {
 
 
   @Override
-  public boolean isSatisfied(final TradingRecord tradingRecord) {
-    final boolean satisfied = !this.ruleToNegate.isSatisfied(tradingRecord);
+  public boolean isSatisfied() {
+    final boolean satisfied = !this.ruleToNegate.isSatisfied();
     traceIsSatisfied(satisfied);
     return satisfied;
   }

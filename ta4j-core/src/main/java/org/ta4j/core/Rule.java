@@ -34,7 +34,7 @@ import org.ta4j.core.rules.XorRule;
  */
 public interface Rule {
 
-  Rule NOOP = tradingRecord -> false;
+  Rule NOOP = () -> false;
 
 
   /**
@@ -77,15 +77,5 @@ public interface Rule {
    * @return true if this rule is satisfied for the provided index, false
    *     otherwise
    */
-  default boolean isSatisfied() {
-    return isSatisfied(null);
-  }
-
-  /**
-   * @param tradingRecord the potentially needed trading history
-   *
-   * @return true if this rule is satisfied for the provided index, false
-   *     otherwise
-   */
-  boolean isSatisfied(TradingRecord tradingRecord);
+  boolean isSatisfied();
 }

@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.TradingRecord;
-
 /**
  * Satisfied when the rule has been initialized with {@code true}.
  */
@@ -50,9 +48,8 @@ public class BooleanRule extends AbstractRule {
   }
 
 
-  /** This rule does not use the {@code tradingRecord}. */
   @Override
-  public boolean isSatisfied(final TradingRecord tradingRecord) {
+  public boolean isSatisfied() {
     traceIsSatisfied(this.satisfied);
     return this.satisfied;
   }
