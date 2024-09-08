@@ -114,25 +114,25 @@ public class BacktestStrategy implements Strategy {
   public boolean shouldOperate() {
     final Position position = this.tradingRecord.getCurrentPosition();
     if (position.isNew()) {
-      return shouldEnter(this.tradingRecord);
+      return shouldEnter();
     } else if (position.isOpened()) {
-      return shouldExit(this.tradingRecord);
+      return shouldExit();
     }
     return false;
   }
 
 
   @Override
-  public boolean shouldEnter(final TradingRecord tradingRecord) {
-    final boolean enter = Strategy.super.shouldEnter(tradingRecord);
+  public boolean shouldEnter() {
+    final boolean enter = Strategy.super.shouldEnter();
     traceShouldEnter(enter);
     return enter;
   }
 
 
   @Override
-  public boolean shouldExit(final TradingRecord tradingRecord) {
-    final boolean exit = Strategy.super.shouldExit(tradingRecord);
+  public boolean shouldExit() {
+    final boolean exit = Strategy.super.shouldExit();
     traceShouldExit(exit);
     return exit;
   }
