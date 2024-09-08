@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers.previous;
 
 import java.time.Instant;
 
-import org.ta4j.core.indicators.BooleanIndicator;
+import org.ta4j.core.indicators.bool.BooleanIndicator;
 
 /**
  * @author Lukáš Kvídera

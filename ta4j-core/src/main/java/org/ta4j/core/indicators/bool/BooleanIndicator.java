@@ -1,8 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
- * authors (see AUTHORS)
+ * Copyright (c) 2024 Lukáš Kvídera
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -21,8 +20,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.bool;
 
+import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.indicators.helpers.previous.PreviousBooleanValueIndicator;
 import org.ta4j.core.rules.BooleanIndicatorRule;
 

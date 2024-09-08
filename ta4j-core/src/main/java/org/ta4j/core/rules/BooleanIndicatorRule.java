@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.rules;
 
-import org.ta4j.core.indicators.BooleanIndicator;
 import org.ta4j.core.indicators.Indicator;
+import org.ta4j.core.indicators.bool.BooleanIndicator;
 
 /**
  * Satisfied when the value of the boolean {@link Indicator indicator} is
