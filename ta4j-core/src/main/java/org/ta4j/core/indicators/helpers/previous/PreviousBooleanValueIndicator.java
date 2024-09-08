@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,27 +23,39 @@
  */
 package org.ta4j.core.indicators.helpers.previous;
 
+import java.time.Instant;
+
 import org.ta4j.core.indicators.BooleanIndicator;
 
 /**
  * @author Lukáš Kvídera
  */
-public class PreviousBooleanValueIndicator extends PreviousValueIndicator<Boolean> {
+public class PreviousBooleanValueIndicator extends BooleanIndicator {
 
 
-  public PreviousBooleanValueIndicator(final BooleanIndicator indicator) {
-    super(indicator);
-  }
+  private final PreviousValueHelper<Boolean> previousValueHelper;
 
 
   public PreviousBooleanValueIndicator(final BooleanIndicator indicator, final int n) {
-    super(indicator, n);
+    this.previousValueHelper = new PreviousValueHelper<>(indicator, n);
   }
 
 
   @Override
   public Boolean getValue() {
-    final var value = super.getValue();
+    final var value = this.previousValueHelper.getValue();
     return value != null && value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.previousValueHelper.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.previousValueHelper.isStable();
   }
 }

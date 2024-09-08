@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers.previous;
 
+import java.time.Instant;
+
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -30,20 +32,34 @@ import org.ta4j.core.num.NumFactory;
 /**
  * @author Lukáš Kvídera
  */
-public class PreviousNumericValueIndicator extends PreviousValueIndicator<Num> {
+public class PreviousNumericValueIndicator extends NumericIndicator {
 
   private final NumFactory numFactory;
+  private final PreviousValueHelper<Num> previousValueHelper;
 
 
   public PreviousNumericValueIndicator(final NumericIndicator indicator, final int n) {
-    super(indicator, n);
+    super(indicator.getNumFactory());
     this.numFactory = indicator.getNumFactory();
+    this.previousValueHelper = new PreviousValueHelper<>(indicator, n);
   }
 
 
   @Override
   public Num getValue() {
-    final var value = super.getValue();
+    final var value = this.previousValueHelper.getValue();
     return value == null ? this.numFactory.zero() : value;
+  }
+
+
+  @Override
+  public void refresh(final Instant tick) {
+    this.previousValueHelper.refresh(tick);
+  }
+
+
+  @Override
+  public boolean isStable() {
+    return this.previousValueHelper.isStable();
   }
 }

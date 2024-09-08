@@ -31,7 +31,7 @@ import org.ta4j.core.indicators.Indicator;
 /**
  * Returns the (n-th) previous value of an indicator.
  */
-abstract class PreviousValueIndicator<T> implements Indicator<T> {
+class PreviousValueHelper<T> implements Indicator<T> {
 
   private final int n;
   private final Indicator<T> indicator;
@@ -44,19 +44,9 @@ abstract class PreviousValueIndicator<T> implements Indicator<T> {
    * Constructor.
    *
    * @param indicator the indicator from which to calculate the previous value
-   */
-  protected PreviousValueIndicator(final Indicator<T> indicator) {
-    this(indicator, 1);
-  }
-
-
-  /**
-   * Constructor.
-   *
-   * @param indicator the indicator from which to calculate the previous value
    * @param n parameter defines the previous n-th value
    */
-  protected PreviousValueIndicator(final Indicator<T> indicator, final int n) {
+  public PreviousValueHelper(final Indicator<T> indicator, final int n) {
     if (n < 1) {
       throw new IllegalArgumentException("n must be positive number, but was: " + n);
     }
