@@ -24,6 +24,7 @@
 package org.ta4j.core;
 
 import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.XorRule;
@@ -34,7 +35,7 @@ import org.ta4j.core.rules.XorRule;
  */
 public interface Rule {
 
-  Rule NOOP = () -> false;
+  Rule NOOP = BooleanRule.FALSE;
 
 
   /**
