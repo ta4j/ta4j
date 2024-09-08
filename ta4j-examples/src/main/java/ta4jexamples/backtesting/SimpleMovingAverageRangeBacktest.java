@@ -23,7 +23,7 @@
  */
 package ta4jexamples.backtesting;
 
-import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -42,23 +42,23 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvBarsLoader;
+import org.ta4j.csv.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 
   private static final Logger LOG = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
 
 
-  public static void main(final String[] args) throws IOException {
+  public static void main(final String[] args) {
 
     final int start = 3;
     final int stop = 3;
     final int step = 5;
 
-    final List<Function<BacktestBarSeries, BacktestStrategy>> strategies = new ArrayList<>();
+    final var strategies = new ArrayList<Function<BacktestBarSeries, BacktestStrategy>>();
     for (int i = start; i <= stop; i += step) {
       final var p = i;
-      final var series = CsvBarsLoader.loadAppleIncSeries();
+      final var series = CsvBarsLoader.load(Paths.get("./target/classes/appleinc_bars_from_20130101_usd.csv"));
       final var closePrice = NumericIndicator.closePrice(series);
       final var sma = closePrice.sma(p);
       final var entryRule = new OverIndicatorRule(sma, closePrice);
@@ -71,7 +71,7 @@ public class SimpleMovingAverageRangeBacktest {
       ));
     }
 
-    final var series = CsvBarsLoader.loadAppleIncSeries();
+    final var series = CsvBarsLoader.load(Paths.get("./target/classes/appleinc_bars_from_20130101_usd.csv"));
     final var backtestExecutor = new BacktestExecutor(series);
     final var closePrice = NumericIndicator.closePrice(series);
     final var sma = closePrice.sma(3);
