@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -42,153 +42,157 @@ import org.ta4j.core.num.Num;
  */
 public interface TradingRecord {
 
-    /**
-     * @return the entry type (BUY or SELL) of the first trade in the trading
-     *         session
-     */
-    TradeType getStartingType();
+  /**
+   * @return the entry type (BUY or SELL) of the first trade in the trading
+   *     session
+   */
+  TradeType getStartingType();
 
-    /**
-     * @return the name of the TradingRecord
-     */
-    String getName();
+  /**
+   * @return the name of the TradingRecord
+   */
+  String getName();
 
-    /**
-     * Places a trade in the trading record.
-     *
-     */
-    // TODO BacktestTradingRecord
-    default void operate(int index) {
-        operate(index, NaN, NaN);
+  /**
+   * Places a trade in the trading record.
+   */
+  // TODO BacktestTradingRecord
+  default void operate(final int index) {
+    operate(index, NaN, NaN);
+  }
+
+  /**
+   * Places a trade in the trading record.
+   *
+   * @param price the trade price per asset
+   * @param amount the trade amount
+   */
+  void operate(int index, Num price, Num amount);
+
+  /**
+   * Places an entry trade in the trading record.
+   *
+   * @return true if the entry has been placed, false otherwise
+   */
+  default boolean enter(final int index) {
+    return enter(index, NaN, NaN);
+  }
+
+  /**
+   * Places an entry trade in the trading record.
+   *
+   * @param price the trade price per asset
+   * @param amount the trade amount
+   *
+   * @return true if the entry has been placed, false otherwise
+   */
+  boolean enter(int index, Num price, Num amount);
+
+  /**
+   * Places an exit trade in the trading record.
+   *
+   * @return true if the exit has been placed, false otherwise
+   */
+  default boolean exit(final int index) {
+    return exit(index, NaN, NaN);
+  }
+
+  /**
+   * Places an exit trade in the trading record.
+   *
+   * @param price the trade price per asset
+   * @param amount the trade amount
+   *
+   * @return true if the exit has been placed, false otherwise
+   */
+  boolean exit(int index, Num price, Num amount);
+
+  /**
+   * @return true if no position is open, false otherwise
+   */
+  default boolean isClosed() {
+    return !getCurrentPosition().isOpened();
+  }
+
+  /**
+   * @return the recorded closed positions
+   */
+  List<Position> getPositions();
+
+  /**
+   * @return the number of recorded closed positions
+   */
+  default int getPositionCount() {
+    return getPositions().size();
+  }
+
+  /**
+   * @return the current (open) position
+   */
+  Position getCurrentPosition();
+
+  /**
+   * @return the last closed position recorded
+   */
+  default Position getLastPosition() {
+    final var positions = getPositions();
+    if (!positions.isEmpty()) {
+      return positions.getLast();
     }
+    return null;
+  }
 
-    /**
-     * Places a trade in the trading record.
-     *
-     * @param price  the trade price per asset
-     * @param amount the trade amount
-     */
-    void operate(int index, Num price, Num amount);
+  /**
+   * @return the last trade recorded
+   */
+  Trade getLastTrade();
 
-    /**
-     * Places an entry trade in the trading record.
-     *
-     * @return true if the entry has been placed, false otherwise
-     */
-    default boolean enter(int index) {
-        return enter(index, NaN, NaN);
-    }
+  /**
+   * @param tradeType the type of the trade to get the last of
+   *
+   * @return the last trade (of the provided type) recorded
+   */
+  Trade getLastTrade(TradeType tradeType);
 
-    /**
-     * Places an entry trade in the trading record.
-     *
-     * @param price  the trade price per asset
-     * @param amount the trade amount
-     * @return true if the entry has been placed, false otherwise
-     */
-    boolean enter(int index, Num price, Num amount);
+  /**
+   * @return the last entry trade recorded
+   */
+  Trade getLastEntry();
 
-    /**
-     * Places an exit trade in the trading record.
-     *
-     * @return true if the exit has been placed, false otherwise
-     */
-    default boolean exit(int index) {
-        return exit(index, NaN, NaN);
-    }
+  /**
+   * @return the last exit trade recorded
+   */
+  Trade getLastExit();
 
-    /**
-     * Places an exit trade in the trading record.
-     *
-     * @param price  the trade price per asset
-     * @param amount the trade amount
-     * @return true if the exit has been placed, false otherwise
-     */
-    boolean exit(int index, Num price, Num amount);
+  /**
+   * @return the start of the recording (included)
+   */
+  Integer getStartIndex();
 
-    /**
-     * @return true if no position is open, false otherwise
-     */
-    default boolean isClosed() {
-        return !getCurrentPosition().isOpened();
-    }
+  /**
+   * @return the end of the recording (included)
+   */
+  Integer getEndIndex();
 
-    /**
-     * @return the recorded closed positions
-     */
-    List<Position> getPositions();
+  boolean isEmpty();
 
-    /**
-     * @return the number of recorded closed positions
-     */
-    default int getPositionCount() {
-        return getPositions().size();
-    }
-
-    /**
-     * @return the current (open) position
-     */
-    Position getCurrentPosition();
-
-    /**
-     * @return the last closed position recorded
-     */
-    default Position getLastPosition() {
-        List<Position> positions = getPositions();
-        if (!positions.isEmpty()) {
-            return positions.get(positions.size() - 1);
-        }
-        return null;
-    }
-
-    /**
-     * @return the last trade recorded
-     */
-    Trade getLastTrade();
-
-    /**
-     * @param tradeType the type of the trade to get the last of
-     * @return the last trade (of the provided type) recorded
-     */
-    Trade getLastTrade(TradeType tradeType);
-
-    /**
-     * @return the last entry trade recorded
-     */
-    Trade getLastEntry();
-
-    /**
-     * @return the last exit trade recorded
-     */
-    Trade getLastExit();
-
-    /**
-     * @return the start of the recording (included)
-     */
-    Integer getStartIndex();
-
-    /**
-     * @return the end of the recording (included)
-     */
-    Integer getEndIndex();
-
-// TODO   /**
-//     * @param series the bar series, not null
-//     * @return the {@link #getStartIndex()} if not null and greater than
-//     *         {@link BarSeries#getBeginIndex()}, otherwise
-//     *         {@link BarSeries#getBeginIndex()}
-//     */
-//    default int getStartIndex(BarSeries series) {
-//        return getStartIndex() == null ? series.getBeginIndex() : Math.max(getStartIndex(), series.getBeginIndex());
-//    }
-//
-//    /**
-//     * @param series the bar series, not null
-//     * @return the {@link #getEndIndex()} if not null and less than
-//     *         {@link BarSeries#getEndIndex()}, otherwise
-//     *         {@link BarSeries#getEndIndex()}
-//     */
-//    default int getEndIndex(BarSeries series) {
-//        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
-//    }
+  // TODO   /**
+  //     * @param series the bar series, not null
+  //     * @return the {@link #getStartIndex()} if not null and greater than
+  //     *         {@link BarSeries#getBeginIndex()}, otherwise
+  //     *         {@link BarSeries#getBeginIndex()}
+  //     */
+  //    default int getStartIndex(BarSeries series) {
+  //        return getStartIndex() == null ? series.getBeginIndex() : Math.max(getStartIndex(), series.getBeginIndex());
+  //    }
+  //
+  //    /**
+  //     * @param series the bar series, not null
+  //     * @return the {@link #getEndIndex()} if not null and less than
+  //     *         {@link BarSeries#getEndIndex()}, otherwise
+  //     *         {@link BarSeries#getEndIndex()}
+  //     */
+  //    default int getEndIndex(BarSeries series) {
+  //        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+  //    }
 }

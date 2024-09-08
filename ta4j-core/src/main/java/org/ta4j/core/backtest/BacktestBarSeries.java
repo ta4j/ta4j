@@ -323,12 +323,12 @@ public class BacktestBarSeries implements BarSeries {
   }
 
 
-  private BacktestBar getLastBar() {
+  public BacktestBar getLastBar() {
     return this.bars.getLast();
   }
 
 
-  private BacktestBar getFirstBar() {
+  public BacktestBar getFirstBar() {
     return this.bars.getFirst();
   }
 
