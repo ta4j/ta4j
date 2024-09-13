@@ -15,6 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Implemented inner cache for **SMAIndicator**
 - **BooleanTransformIndicator** remove enum constraint in favor of more flexible `Predicate`
 - **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
+- **ATRIndicator** re-use tr by passing it as a constructor param when initializing averageTrueRangeIndicator
 
 ### Removed/Deprecated
 

@@ -54,7 +54,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     public ATRIndicator(TRIndicator tr, int barCount) {
         super(tr.getBarSeries());
         this.trIndicator = tr;
-        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
+        this.averageTrueRangeIndicator = new MMAIndicator(tr, barCount);
     }
 
     @Override
