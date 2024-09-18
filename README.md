@@ -38,12 +38,12 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current ***snapshot version*** is `0.17-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current ***snapshot version*** is `0.18-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.17-SNAPSHOT</version>
+  <version>0.18-SNAPSHOT</version>
 </dependency>
 ```
 
