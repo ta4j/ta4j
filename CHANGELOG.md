@@ -1,6 +1,23 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.17
+## 0.18
+
+### Breaking
+
+
+### Fixed
+
+
+### Changed
+
+
+### Removed/Deprecated
+
+
+### Added
+
+
+## 0.17 (released September 9, 2024)
 
 ### Breaking
 - Renamed **SMAIndicatorMovingSerieTest** to **SMAIndicatorMovingSeriesTest**
