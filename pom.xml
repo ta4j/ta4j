@@ -8,7 +8,7 @@
 
     <name>Ta4j Parent</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
-    <url>http://github.com/ta4j/ta4j</url>
+    <url>https://github.com/ta4j/ta4j</url>
     <inceptionYear>2014</inceptionYear>
 
     <developers>
@@ -31,7 +31,7 @@
 
     <issueManagement>
         <system>GitHub</system>
-        <url>http://github.com/ta4j/ta4j/issues</url>
+        <url>https://github.com/ta4j/ta4j/issues</url>
     </issueManagement>
 
     <distributionManagement>
@@ -48,13 +48,13 @@
     </distributionManagement>
 
     <ciManagement>
-        <url>http://travis-ci.org/ta4j/ta4j</url>
+        <url>https://travis-ci.org/ta4j/ta4j</url>
     </ciManagement>
 
     <scm>
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
-        <url>http://github.com/ta4j/ta4j</url>
+        <url>https://github.com/ta4j/ta4j</url>
         <tag>0.17</tag>
     </scm>
 
