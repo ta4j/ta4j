@@ -43,7 +43,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series      the bar series
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
@@ -53,7 +53,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator   the {@link Indicator}
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */

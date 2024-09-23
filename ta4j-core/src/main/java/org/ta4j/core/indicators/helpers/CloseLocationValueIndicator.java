@@ -40,7 +40,7 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public CloseLocationValueIndicator(BarSeries series) {

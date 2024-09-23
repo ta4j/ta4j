@@ -41,7 +41,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */

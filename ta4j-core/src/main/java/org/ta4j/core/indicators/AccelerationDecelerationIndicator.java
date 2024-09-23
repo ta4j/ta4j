@@ -37,7 +37,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series       the bar series
      * @param barCountSma1 the bar count for {@link #awesome}
      * @param barCountSma2 the bar count for {@link #sma}
@@ -50,7 +50,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with {@code barCountSma1} = 5 and {@code barCountSma2} = 34.
-     * 
+     *
      * @param series the bar series
      */
     public AccelerationDecelerationIndicator(BarSeries series) {

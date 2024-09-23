@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * +DM indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  */
@@ -38,7 +38,7 @@ public class PlusDMIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public PlusDMIndicator(BarSeries series) {

@@ -44,7 +44,7 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public NVIIndicator(BarSeries series) {

@@ -315,7 +315,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
             assertEquals("Infinity", sqrt.toString());
             /*
              * BigDecimalNum has been replaced by PrecisionNum
-             * 
+             *
              * } else if (numOf(0).getClass().equals(BigDecimalNum.class)) {
              * assertNumEquals("1.7976931348623157000000000000000E+308", sqrt);
              * assertNumNotEquals("1.7976931348623157000000000000001E+308", sqrt);

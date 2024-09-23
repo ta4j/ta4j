@@ -54,7 +54,7 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param addBase the {@link #addBase}
      */
     public ReturnCriterion(boolean addBase) {

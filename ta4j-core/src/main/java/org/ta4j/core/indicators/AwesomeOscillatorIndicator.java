@@ -53,7 +53,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCountSma1} = 5
      * <li>{@code barCountSma2} = 34
@@ -67,7 +67,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code indicator} = {@link MedianPriceIndicator}
      * <li>{@code barCountSma1} = 5

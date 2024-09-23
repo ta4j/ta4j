@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * ADX indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  *
@@ -45,7 +45,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series      the bar series
      * @param diBarCount  the bar count for {@link DXIndicator}
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
@@ -59,7 +59,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link DXIndicator} and
      *                 {@link #averageDXIndicator}

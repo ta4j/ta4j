@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * True range indicator.
- * 
+ *
  * <pre>
  * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
  * </pre>
@@ -39,7 +39,7 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public TRIndicator(BarSeries series) {

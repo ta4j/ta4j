@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
  *
  * <p>
  * Returns constant values for a bar.
- * 
+ *
  * @param <T> the type of returned constant values (Double, Boolean, etc.)
  */
 public class FixedIndicator<T> extends AbstractIndicator<T> {
@@ -56,7 +56,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Adds the {@code value} to {@link #values}.
-     * 
+     *
      * @param value the value to add
      */
     public void addValue(T value) {

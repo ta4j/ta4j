@@ -42,7 +42,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code shortBarCount} = 12
      * <li>{@code longBarCount} = 26

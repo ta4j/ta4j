@@ -34,11 +34,11 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
- * 
+ *
  * <pre>
  * y = slope * x + intercept
  * </pre>
- * 
+ *
  * @see http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {

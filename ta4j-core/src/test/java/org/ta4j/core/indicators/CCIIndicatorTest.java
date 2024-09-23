@@ -46,7 +46,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     /**
      * Constructor.
-     * 
+     *
      * @param function
      */
     public CCIIndicatorTest(Function<Number, Num> function) {

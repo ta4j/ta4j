@@ -37,7 +37,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the time frame
      */
@@ -47,7 +47,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param tr       the {@link TRIndicator}
      * @param barCount the time frame
      */

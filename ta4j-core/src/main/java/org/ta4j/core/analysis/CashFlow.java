@@ -237,7 +237,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Pads {@link #values} with its last value up until {@code endIndex}.
-     * 
+     *
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {

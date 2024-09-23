@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator over a {@link BarSeries bar series}.
- * 
+ *
  * <p>
  * Returns a value of type <b>T</b> for each index of the bar series.
  *
@@ -47,7 +47,7 @@ public interface Indicator<T> {
     /**
      * Returns the number of bars up to which {@code this} Indicator calculates
      * wrong values.
-     * 
+     *
      * @return unstable bars
      */
     int getUnstableBars();

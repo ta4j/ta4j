@@ -43,7 +43,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCount} = 22
      * <li>{@code k} = 3

@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * DX indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  */
@@ -41,7 +41,7 @@ public class DXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link #plusDIIndicator} and
      *                 {@link #minusDIIndicator}

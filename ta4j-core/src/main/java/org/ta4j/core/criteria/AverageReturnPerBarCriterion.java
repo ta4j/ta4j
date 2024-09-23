@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion, returned in decimal format.
- * 
+ *
  * <p>
  * It uses the following formula to accurately capture the compounding effect of
  * returns over the specified number of bars:

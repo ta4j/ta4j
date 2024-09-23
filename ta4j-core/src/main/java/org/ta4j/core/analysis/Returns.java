@@ -218,7 +218,7 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Pads {@link #values} with zeros up until {@code endIndex}.
-     * 
+     *
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {

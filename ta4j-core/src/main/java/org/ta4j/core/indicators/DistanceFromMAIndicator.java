@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Distance From Moving Average
- * 
+ *
  * <pre>
  * (close - MA) / MA
  * </pre>

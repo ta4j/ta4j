@@ -65,7 +65,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator           the {@link Indicator}
      * @param percentageThreshold the threshold percentage
      */

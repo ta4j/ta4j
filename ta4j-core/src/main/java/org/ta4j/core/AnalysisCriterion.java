@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * An analysis criterion. It can be used to:
- * 
+ *
  * <ul>
  * <li>analyze the performance of a {@link Strategy strategy}
  * <li>compare several {@link Strategy strategies} together

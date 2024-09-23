@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Amount indicator.
- * 
+ *
  * <p>
  * Returns the amount of a bar.
  */
@@ -37,7 +37,7 @@ public class AmountIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public AmountIndicator(BarSeries series) {

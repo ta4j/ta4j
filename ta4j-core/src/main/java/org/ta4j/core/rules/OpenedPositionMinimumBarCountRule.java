@@ -28,7 +28,7 @@ import org.ta4j.core.TradingRecord;
 /**
  * A rule for setting the minimum number of bars up to which an open position
  * should not be closed.
- * 
+ *
  * <p>
  * Using this rule only makes sense for exit rules. For entry rules,
  * {@link OpenedPositionMinimumBarCountRule#isSatisfied(int, TradingRecord)}
@@ -43,7 +43,7 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barCount the {@link #barCount}
      */
     public OpenedPositionMinimumBarCountRule(int barCount) {

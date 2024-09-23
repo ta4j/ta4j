@@ -31,7 +31,7 @@ import org.ta4j.core.Indicator;
  *
  * <p>
  * Recursive indicators should extend this class.
- * 
+ *
  * <p>
  * This class is only here to avoid (OK, to postpone) the StackOverflowError
  * that may be thrown on the first getValue(int) call of a recursive indicator.
@@ -43,7 +43,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed.
-     * 
+     *
      * TODO: Should be variable (depending on the sub-indicators used in this
      * indicator, e.g. Indicator#getUnstableBars()).
      */

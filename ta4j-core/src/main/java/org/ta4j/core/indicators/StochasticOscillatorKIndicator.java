@@ -44,13 +44,13 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code indicator} = {@link ClosePriceIndicator}
      * <li>{@code highPriceIndicator} = {@link HighPriceIndicator}
      * <li>{@code lowPriceIndicator} = {@link LowPriceIndicator}
      * </ul>
-     * 
+     *
      * @param barSeries the bar series
      * @param barCount  the time frame
      */
@@ -61,7 +61,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator          the {@link Indicator}
      * @param barCount           the time frame
      * @param highPriceIndicator the {@link HighPriceIndicator}

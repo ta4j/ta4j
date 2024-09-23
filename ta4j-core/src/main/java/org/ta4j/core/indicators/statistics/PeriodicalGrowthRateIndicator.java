@@ -51,7 +51,7 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Further readings:
- * 
+ *
  * <ul>
  * <li>Good sumary on 'Rate of Return':
  * https://en.wikipedia.org/wiki/Rate_of_return Annual return

@@ -47,7 +47,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public IIIIndicator(BarSeries series) {

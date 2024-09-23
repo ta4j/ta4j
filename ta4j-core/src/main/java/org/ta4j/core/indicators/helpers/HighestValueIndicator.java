@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Highest value indicator.
- * 
+ *
  * <p>
  * Returns the highest indicator value from the bar series within the bar count.
  */
@@ -40,7 +40,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */

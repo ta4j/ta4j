@@ -46,7 +46,7 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
 
     /**
      * Constructor.
-     * 
+     *
      * @param performanceReportGenerator   the {@link PerformanceReportGenerator}
      * @param positionStatsReportGenerator the {@link PositionStatsReportGenerator}
      */

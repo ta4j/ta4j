@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * A fixed boolean indicator.
- * 
+ *
  * <p>
  * Returns constant {@link Boolean} values for a bar.
  */

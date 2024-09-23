@@ -40,7 +40,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code longRoCBarCount} = 14
      * <li>{@code shortRoCBarCount} = 11

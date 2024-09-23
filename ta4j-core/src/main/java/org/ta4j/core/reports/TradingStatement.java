@@ -37,7 +37,7 @@ public class TradingStatement {
 
     /**
      * Constructor.
-     * 
+     *
      * @param strategy            the {@link Strategy}
      * @param positionStatsReport the {@link PositionStatsReport}
      * @param performanceReport   the {@link PerformanceReport}

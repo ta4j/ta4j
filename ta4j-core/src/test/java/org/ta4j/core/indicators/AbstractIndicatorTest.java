@@ -65,7 +65,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param factory     IndicatorFactory for building an Indicator given data and
      *                    parameters.
      * @param numFunction the function to convert a Number into a Num implementation
@@ -89,7 +89,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Generates an Indicator from data and parameters.
-     * 
+     *
      * @param data   indicator data
      * @param params indicator parameters
      * @return Indicator<I> from data given parameters

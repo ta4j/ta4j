@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The high price indicator.
- * 
+ *
  * <p>
  * Returns the high price of a bar.
  */
@@ -37,7 +37,7 @@ public class HighPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public HighPriceIndicator(BarSeries series) {

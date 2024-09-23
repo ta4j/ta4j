@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the ratio between the current and the previous close price.
- * 
+ *
  * <pre>
  * ClosePriceRatio = currentBarClosePrice / previousBarClosePrice
  * </pre>

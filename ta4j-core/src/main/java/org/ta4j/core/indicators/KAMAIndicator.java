@@ -59,7 +59,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCountEffectiveRatio} = 10
      * <li>{@code barCountFast} = 2

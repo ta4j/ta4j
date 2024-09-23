@@ -38,7 +38,7 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the time frame
      */

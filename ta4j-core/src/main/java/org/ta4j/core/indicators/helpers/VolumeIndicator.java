@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Volume indicator.
- * 
+ *
  * <p>
  * Returns the sum of the total traded volumes from the bar series within the
  * bar count.
@@ -40,7 +40,7 @@ public class VolumeIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with {@code barCount} = 1.
-     * 
+     *
      * @param series the bar series
      */
     public VolumeIndicator(BarSeries series) {
@@ -49,7 +49,7 @@ public class VolumeIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the time frame
      */

@@ -71,7 +71,7 @@ public class DoubleNum implements Num {
 
     /**
      * Returns a {@code DoubleNum} version of the given {@code DecimalNum}.
-     * 
+     *
      * <p>
      * <b>Warning:</b> The {@code Num} returned may have inaccuracies.
      *

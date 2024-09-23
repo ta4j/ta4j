@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A {@code Trade} is defined by:
- * 
+ *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
  * executed
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  * <li>a pricePerAsset (optional)
  * <li>a trade amount (optional)
  * </ul>
- * 
+ *
  * A {@link Position position} is a pair of complementary trades.
  */
 public class Trade implements Serializable {

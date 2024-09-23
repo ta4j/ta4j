@@ -35,7 +35,7 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with {@code indicator} = {@link SMAIndicator SMAIndicator(3)}.
-     * 
+     *
      * @param indicator the indicator for the {@link SMAIndicator}
      */
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
@@ -44,7 +44,7 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      */
     public StochasticOscillatorDIndicator(Indicator<Num> indicator) {

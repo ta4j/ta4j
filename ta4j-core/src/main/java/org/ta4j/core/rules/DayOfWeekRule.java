@@ -43,7 +43,7 @@ public class DayOfWeekRule extends AbstractRule {
 
     /**
      * Constructor.
-     * 
+     *
      * @param timeIndicator the {@link DateTimeIndicator}
      * @param daysOfWeek    the days of the week
      */

@@ -38,7 +38,7 @@ public class UnaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
-     * 
+     *
      * @param operand
      * @return {@code √(operand)}
      * @see Num#sqrt
@@ -50,7 +50,7 @@ public class UnaryOperation implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is the absolute value of
      * {@code operand}.
-     * 
+     *
      * @param operand
      * @return {@code abs(operand)}
      * @see Num#abs

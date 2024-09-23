@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the sum of all indicator values.
- * 
+ *
  * <pre>
  * Sum = summand0 + summand1 + ... + summandN
  * </pre>

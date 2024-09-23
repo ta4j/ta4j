@@ -37,7 +37,7 @@ public interface TradeExecutionModel {
 
     /**
      * Executes a trade in the given {@code tradingRecord}.
-     * 
+     *
      * @param index         the trade index from {@code barSeries}
      * @param tradingRecord the trading record to place the trade
      * @param barSeries     the bar series

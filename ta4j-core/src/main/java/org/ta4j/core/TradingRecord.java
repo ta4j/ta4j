@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
 /**
  * A {@code TradingRecord} holds the full history/record of a trading session
  * when running a {@link Strategy strategy}. It can be used to:
- * 
+ *
  * <ul>
  * <li>analyze the performance of a {@link Strategy strategy}
  * <li>check whether some {@link Rule rules} are satisfied (while running a

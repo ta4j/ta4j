@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the difference between the current and the previous close price.
- * 
+ *
  * <pre>
  * ClosePriceDifference = currentBarClosePrice - previousBarClosePrice
  * </pre>

@@ -42,7 +42,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param middle      the {@link #keltnerMiddleIndicator}
      * @param ratio       the {@link #ratio}
      * @param barCountATR the bar count for the {@link ATRIndicator}
@@ -53,7 +53,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param middle the {@link #keltnerMiddleIndicator}
      * @param atr    the {@link ATRIndicator}
      * @param ratio  the {@link #ratio}

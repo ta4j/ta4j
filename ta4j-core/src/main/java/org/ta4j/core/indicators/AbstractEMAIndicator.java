@@ -37,7 +37,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator  the {@link Indicator}
      * @param barCount   the time frame
      * @param multiplier the multiplier

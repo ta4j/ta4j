@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A fixed {@code Num} indicator.
- * 
+ *
  * <p>
  * Returns constant {@link Num} values for a bar.
  */

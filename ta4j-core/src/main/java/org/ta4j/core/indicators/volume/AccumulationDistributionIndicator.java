@@ -37,7 +37,7 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public AccumulationDistributionIndicator(BarSeries series) {

@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Transform indicator.
- * 
+ *
  * <p>
  * Transforms the {@link Num} of any indicator by using common math operations.
  *

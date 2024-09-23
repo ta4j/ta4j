@@ -40,7 +40,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
-     * 
+     *
      * @param series the bar series
      */
     public SuperTrendIndicator(final BarSeries series) {
@@ -49,7 +49,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series     the bar series
      * @param barCount   the time frame for the {@code ATRIndicator}
      * @param multiplier the multiplier for the

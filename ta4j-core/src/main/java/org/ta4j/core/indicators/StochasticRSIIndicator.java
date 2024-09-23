@@ -45,7 +45,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * <p>
      * <b>Note:</b> In most cases, this constructor should be used to avoid
      * confusion about which indicator parameters to use.

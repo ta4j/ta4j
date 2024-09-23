@@ -39,7 +39,7 @@ public class BaseBarSeriesAggregator implements BarSeriesAggregator {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barAggregator the {@link BarAggregator}
      */
     public BaseBarSeriesAggregator(BarAggregator barAggregator) {

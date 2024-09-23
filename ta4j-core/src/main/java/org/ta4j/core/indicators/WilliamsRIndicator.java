@@ -48,7 +48,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries the bar series
      * @param barCount  the time frame
      */
@@ -59,7 +59,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param closePriceIndicator the {@link ClosePriceIndicator}
      * @param barCount            the time frame for {@code highPriceIndicator} and
      *                            {@code lowPriceIndicator}

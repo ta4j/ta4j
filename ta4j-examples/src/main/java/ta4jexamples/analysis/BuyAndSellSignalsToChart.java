@@ -94,7 +94,7 @@ public class BuyAndSellSignalsToChart {
             // Buy signal
             double buySignalBarTime = new Minute(
                     Date.from(series.getBar(position.getEntry().getIndex()).getEndTime().toInstant()))
-                            .getFirstMillisecond();
+                    .getFirstMillisecond();
             Marker buyMarker = new ValueMarker(buySignalBarTime);
             buyMarker.setPaint(Color.GREEN);
             buyMarker.setLabel("B");
@@ -102,7 +102,7 @@ public class BuyAndSellSignalsToChart {
             // Sell signal
             double sellSignalBarTime = new Minute(
                     Date.from(series.getBar(position.getExit().getIndex()).getEndTime().toInstant()))
-                            .getFirstMillisecond();
+                    .getFirstMillisecond();
             Marker sellMarker = new ValueMarker(sellSignalBarTime);
             sellMarker.setPaint(Color.RED);
             sellMarker.setLabel("S");

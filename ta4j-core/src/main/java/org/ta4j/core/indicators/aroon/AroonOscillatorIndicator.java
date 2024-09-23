@@ -42,7 +42,7 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the number of periods used for the indicators
      */

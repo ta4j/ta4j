@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gain indicator.
- * 
+ *
  * <p>
  * Returns the difference of the indicator value of a bar and its previous bar
  * if the indicator value of the current bar is greater than the indicator value
@@ -41,7 +41,7 @@ public class GainIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      */
     public GainIndicator(Indicator<Num> indicator) {

@@ -45,7 +45,7 @@ public class KeltnerChannelFacade {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param emaCount the bar count for the {@code EmaIndicator}
      * @param atrCount the bar count for the {@code ATRIndicator}
