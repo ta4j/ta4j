@@ -63,9 +63,6 @@ public class CsvBarsLoader {
 
         BarSeries series = new BaseBarSeries("apple_bars");
 
-        // new CSVReader(, ',', '"',
-        // 1)
-
         try {
             assert stream != null;
             try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
