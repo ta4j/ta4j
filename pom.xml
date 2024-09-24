@@ -174,10 +174,14 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>4.5</version>
                 <configuration>
-                    <header>LICENSE</header>
-                    <includes>
-                        <include>**/*.java</include>
-                    </includes>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>LICENSE</header>
+                            <includes>
+                                <include>**/*.java</include>
+                            </includes>
+                        </licenseSet>
+                    </licenseSets>
                 </configuration>
             </plugin>
 
