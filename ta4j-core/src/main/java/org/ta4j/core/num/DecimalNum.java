@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -63,7 +63,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Constructor.
-     * 
+     *
      * <p>
      * Constructs the most precise {@code Num}, because it converts a {@code String}
      * to a {@code Num} with a precision of {@link #DEFAULT_PRECISION}; only a
@@ -79,7 +79,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Constructor.
-     * 
+     *
      * <p>
      * Constructs a more precise {@code Num} than from {@code double}, because it
      * converts a {@code String} to a {@code Num} with a precision of
@@ -125,7 +125,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code String}.
-     * 
+     *
      * <p>
      * Constructs the most precise {@code Num}, because it converts a {@code String}
      * to a {@code Num} with a precision of {@link #DEFAULT_PRECISION}; only a
@@ -160,7 +160,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code Number}.
-     * 
+     *
      * <p>
      * Returns the most precise {@code Num}, because it first converts {@code val}
      * to a {@code String} and then to a {@code Num} with a precision of
@@ -177,7 +177,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code DecimalNum} version of the given {@code DoubleNum}.
-     * 
+     *
      * <p>
      * Returns the most precise {@code Num}, because it first converts {@code val}
      * to a {@code String} and then to a {@code Num} with a precision of
@@ -260,7 +260,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Returns a {@code Num} version of the given {@code BigDecimal}.
-     * 
+     *
      * <p>
      * <b>Warning:</b> The {@code Num} returned may have inaccuracies because it
      * only inherits the precision of {@code val}.
@@ -437,7 +437,7 @@ public final class DecimalNum implements Num {
     /**
      * Returns a {@code Num} whose value is {@code √(this)} with {@code precision} =
      * {@link #DEFAULT_PRECISION}.
-     * 
+     *
      * @see DecimalNum#sqrt(int)
      */
     @Override
@@ -680,7 +680,7 @@ public final class DecimalNum implements Num {
     /**
      * <b>Warning:</b> This method returns {@code true} if {@code this} and
      * {@code obj} are both {@link NaN#NaN}.
-     * 
+     *
      * @return true if {@code this} object is the same as the {@code obj} argument,
      *         as defined by the {@link #compareTo(Num) compareTo} method; false
      *         otherwise.

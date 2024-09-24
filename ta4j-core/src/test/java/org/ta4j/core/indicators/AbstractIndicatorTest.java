@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -65,7 +65,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param factory     IndicatorFactory for building an Indicator given data and
      *                    parameters.
      * @param numFunction the function to convert a Number into a Num implementation
@@ -89,7 +89,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Generates an Indicator from data and parameters.
-     * 
+     *
      * @param data   indicator data
      * @param params indicator parameters
      * @return Indicator<I> from data given parameters

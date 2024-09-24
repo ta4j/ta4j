@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,10 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average high-low indicator.
- * 
+ *
  * <p>
  * Returns the median price of a bar using the following formula:
- * 
+ *
  * <pre>
  * MedianPrice = (highPrice + lowPrice) / 2
  * </pre>
@@ -42,7 +42,7 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public MedianPriceIndicator(BarSeries series) {

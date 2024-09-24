@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,10 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Typical price indicator.
- * 
+ *
  * <p>
  * Returns the typcial price of a bar using the following formula:
- * 
+ *
  * <pre>
  * TypicalPrice = (highPrice + lowPrice + closePrice) / 3
  * </pre>
@@ -42,7 +42,7 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public TypicalPriceIndicator(BarSeries series) {

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,7 +42,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param middle      the {@link #keltnerMiddleIndicator}
      * @param ratio       the {@link #ratio}
      * @param barCountATR the bar count for the {@link ATRIndicator}
@@ -53,7 +53,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param middle the {@link #keltnerMiddleIndicator}
      * @param atr    the {@link ATRIndicator}
      * @param ratio  the {@link #ratio}

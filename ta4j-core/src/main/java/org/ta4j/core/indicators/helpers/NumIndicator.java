@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,10 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Num indicator.
- * 
+ *
  * <p>
  * Returns a {@link Num} of (or for) a bar.
- * 
+ *
  * <p>
  * <b>Hint:</b> It is recommended to use the {@code NumIndicator} with its
  * {@link #action} mainly for complex functions and not for simple get
@@ -51,7 +51,7 @@ public class NumIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries the bar series
      * @param action    the action to calculate or determine a num on the bar
      */

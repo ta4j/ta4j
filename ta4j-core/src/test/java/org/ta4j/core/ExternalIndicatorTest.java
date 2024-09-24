@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,7 +29,7 @@ public interface ExternalIndicatorTest {
 
     /**
      * Gets the BarSeries used by an external indicator calculator.
-     * 
+     *
      * @return BarSeries from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception
      */
@@ -38,7 +38,7 @@ public interface ExternalIndicatorTest {
     /**
      * Sends indicator parameters to an external indicator calculator and returns
      * the externally calculated indicator.
-     * 
+     *
      * @param params indicator parameters
      * @return Indicator<Num> from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,7 @@ public interface IndicatorFactory<D, I> {
 
     /**
      * Applies parameters and data to an IndicatorFactory and returns the Indicator.
-     * 
+     *
      * @param data   source data for building the indicator
      * @param params indicator parameters
      * @return Indicator<I> with the indicator parameters applied

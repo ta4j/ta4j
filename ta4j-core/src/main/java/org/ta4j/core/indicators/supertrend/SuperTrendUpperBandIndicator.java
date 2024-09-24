@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,7 +41,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
 
     /**
      * Constructor with {@code multiplier} = 3.
-     * 
+     *
      * @param barSeries the bar series
      */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
@@ -50,7 +50,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries    the bar series
      * @param atrIndicator the {@link #ATRIndicator}
      * @param multiplier   the multiplier

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,7 +38,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series BarSeries of the AnalysisCriterion
      * @param values AnalysisCriterion values
      */
@@ -49,7 +49,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
 
     /**
      * Gets the final criterion value.
-     * 
+     *
      * @param series   BarSeries is ignored
      * @param position is ignored
      */
@@ -60,7 +60,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
 
     /**
      * Gets the final criterion value.
-     * 
+     *
      * @param series        BarSeries is ignored
      * @param tradingRecord is ignored
      */
@@ -72,7 +72,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Compares two criterion values and returns true if first value is greater than
      * second value, false otherwise.
-     * 
+     *
      * @param criterionValue1 first value
      * @param criterionValue2 second value
      * @return boolean indicating first value is greater than second value

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,7 +45,7 @@ public class KeltnerChannelFacade {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param emaCount the bar count for the {@code EmaIndicator}
      * @param atrCount the bar count for the {@code ATRIndicator}

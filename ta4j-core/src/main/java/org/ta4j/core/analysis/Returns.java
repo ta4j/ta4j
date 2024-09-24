@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -218,7 +218,7 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Pads {@link #values} with zeros up until {@code endIndex}.
-     * 
+     *
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {

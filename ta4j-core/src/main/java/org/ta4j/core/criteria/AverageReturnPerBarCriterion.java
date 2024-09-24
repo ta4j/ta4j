@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion, returned in decimal format.
- * 
+ *
  * <p>
  * It uses the following formula to accurately capture the compounding effect of
  * returns over the specified number of bars:

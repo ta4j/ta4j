@@ -3,13 +3,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.18
 
 ### Breaking
-
+- Updated project Java JDK from 11 > 21
+- Updated Github workflows to use JDK 21
 
 ### Fixed
 
 
 ### Changed
-
+- Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
+- Updated **logback-classic** 1.4.12 > 1.5.6 to resolve [CVE-2023-6481](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
 
 ### Removed/Deprecated
 

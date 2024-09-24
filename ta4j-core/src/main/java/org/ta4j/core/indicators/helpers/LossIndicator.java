@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Loss indicator.
- * 
+ *
  * <p>
  * Returns the difference of the indicator value of a bar and its previous bar
  * if the indicator value of the current bar is less than the indicator value of
@@ -41,7 +41,7 @@ public class LossIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      */
     public LossIndicator(Indicator<Num> indicator) {

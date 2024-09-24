@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,7 +41,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     /**
      * Constructor.
-     * 
+     *
      * @param clazz    class containing the file resources
      * @param fileName file name of the file containing the workbook
      * @param column   column number containing the calculated indicator values
@@ -55,7 +55,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     /**
      * Gets the BarSeries from the XLS file.
-     * 
+     *
      * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
@@ -69,7 +69,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     /**
      * Gets the Indicator from the XLS file given the parameters.
-     * 
+     *
      * @param params indicator parameters
      * @return Indicator from the file given the parameters
      * @throws Exception if getIndicator throws IOException or DataFormatException
