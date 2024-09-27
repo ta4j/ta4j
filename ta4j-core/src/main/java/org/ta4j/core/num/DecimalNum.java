@@ -294,6 +294,11 @@ public final class DecimalNum implements Num {
         return DecimalNumFactory.getInstance(mathContext.getPrecision());
     }
 
+    @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
+    }
+
     /**
      * Returns the underlying {@link MathContext} mathContext.
      *

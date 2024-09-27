@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.candles;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.trend.DownTrendIndicator;
-import org.ta4j.core.indicators.trend.UpTrendIndicator;
 
 /**
  * Inverted hammer candle indicator.
@@ -84,8 +83,10 @@ public class InvertedHammerIndicator extends CachedIndicator<Boolean> {
         final var bottomWickHeight = bottomBodyBoundary.minus(lowPrice);
         final var upperWickHeight = highPrice.minus(upperBodyBoundary);
 
-        return upperWickHeight.dividedBy(bodyHeight).isGreaterThan(numOf(this.bodyToUpperWickRatio))
-                && bottomWickHeight.dividedBy(bodyHeight).isLessThanOrEqual(numOf(this.bodyToBottomWickRatio))
+        return upperWickHeight.dividedBy(bodyHeight)
+                .isGreaterThan(getBarSeries().numFactory().numOf(this.bodyToUpperWickRatio))
+                && bottomWickHeight.dividedBy(bodyHeight)
+                        .isLessThanOrEqual(getBarSeries().numFactory().numOf(this.bodyToBottomWickRatio))
                 && this.trendIndicator.getValue(index);
     }
 

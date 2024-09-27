@@ -115,7 +115,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
 
         double kalmanValue = this.filter.getStateEstimation()[0];
 
-        return numOf(kalmanValue);
+        return getBarSeries().numFactory().numOf(kalmanValue);
     }
 
     /**

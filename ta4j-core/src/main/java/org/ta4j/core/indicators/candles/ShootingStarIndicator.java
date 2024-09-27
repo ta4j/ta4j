@@ -86,8 +86,10 @@ public class ShootingStarIndicator extends CachedIndicator<Boolean> {
         final var bottomWickHeight = bottomBodyBoundary.minus(lowPrice);
         final var upperWickHeight = highPrice.minus(upperBodyBoundary);
 
-        return upperWickHeight.dividedBy(bodyHeight).isGreaterThan(numOf(this.bodyToUpperWickRatio))
-                && bottomWickHeight.dividedBy(bodyHeight).isLessThanOrEqual(numOf(this.bodyToBottomWickRatio))
+        return upperWickHeight.dividedBy(bodyHeight)
+                .isGreaterThan(getBarSeries().numFactory().numOf(this.bodyToUpperWickRatio))
+                && bottomWickHeight.dividedBy(bodyHeight)
+                        .isLessThanOrEqual(getBarSeries().numFactory().numOf(this.bodyToBottomWickRatio))
                 && this.trendIndicator.getValue(index);
     }
 

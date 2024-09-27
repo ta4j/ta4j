@@ -63,7 +63,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param factory    IndicatorFactory for building an Indicator given data and
      *                   parameters.
      * @param numFactory the factory to convert a Number into a Num implementation

@@ -23,67 +23,118 @@
  */
 package org.ta4j.core.rules;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.time.ZonedDateTime;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeTrailingStopLossRuleTest {
     private BarSeries series;
 
     @Before
     public void setUp() {
-        series = new BaseBarSeriesBuilder().withName("Test Series").build();
+        series = new MockBarSeriesBuilder().withName("Test Series").build();
 
-        series.addBar(ZonedDateTime.now(), 10, 12, 8, 11, 1000);
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 11, 13, 9, 12, 1000);
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 12, 14, 10, 13, 1000);
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 13, 15, 11, 14, 1000);
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 14, 16, 12, 15, 1000);
+        series.barBuilder()
+                .endTime(ZonedDateTime.now())
+                .openPrice(10)
+                .highPrice(12)
+                .lowPrice(8)
+                .closePrice(11)
+                .volume(1000)
+                .add();
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(11)
+                .highPrice(13)
+                .lowPrice(9)
+                .closePrice(12)
+                .volume(1000)
+                .add();
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(12)
+                .highPrice(14)
+                .lowPrice(10)
+                .closePrice(13)
+                .volume(1000)
+                .add();
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(13)
+                .highPrice(15)
+                .lowPrice(11)
+                .closePrice(14)
+                .volume(1000)
+                .add();
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(14)
+                .highPrice(16)
+                .lowPrice(12)
+                .closePrice(15)
+                .volume(1000)
+                .add();
     }
 
     @Test
     public void testStopLossTriggeredOnLongPosition() {
-        TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numOf(1));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
 
-        AverageTrueRangeTrailingStopLossRule rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
 
         assertFalse(rule.isSatisfied(1, tradingRecord)); // Price is still above stop loss
         assertFalse(rule.isSatisfied(2, tradingRecord)); // Price is still above stop loss
 
         // Simulate a price drop to trigger stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 11, 12, 9, 10, 1000);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(11)
+                .highPrice(12)
+                .lowPrice(9)
+                .closePrice(10)
+                .volume(1000)
+                .add();
         assertTrue(rule.isSatisfied(5, tradingRecord)); // Stop loss should trigger now
     }
 
     @Test
     public void testStopLossTriggeredOnShortPosition() {
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numOf(-1));
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
 
-        AverageTrueRangeTrailingStopLossRule rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
 
         assertFalse(rule.isSatisfied(1, tradingRecord)); // Price is still below stop loss
         assertFalse(rule.isSatisfied(2, tradingRecord)); // Price is still below stop loss
 
         // Simulate a price increase to trigger stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 15, 16, 14, 15, 1000);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(15)
+                .highPrice(16)
+                .lowPrice(14)
+                .closePrice(15)
+                .volume(1000)
+                .add();
         assertTrue(rule.isSatisfied(5, tradingRecord)); // Stop loss should trigger now
     }
 
     @Test
     public void testStopLossNotTriggered() {
-        TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numOf(1));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
 
-        AverageTrueRangeTrailingStopLossRule rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
 
         assertFalse(rule.isSatisfied(1, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));
@@ -92,26 +143,32 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
 
     @Test
     public void testCustomReferencePrice() {
-        Indicator<Num> customReferencePrice = new ClosePriceIndicator(series);
-        AverageTrueRangeTrailingStopLossRule rule = new AverageTrueRangeTrailingStopLossRule(series,
-                customReferencePrice, 3, 1.0);
+        var customReferencePrice = new ClosePriceIndicator(series);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, customReferencePrice, 3, 1.0);
 
-        TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numOf(1));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
 
         assertFalse(rule.isSatisfied(1, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));
 
         // Simulate a price drop to trigger stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 11, 12, 9, 10, 1000);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(11)
+                .highPrice(12)
+                .lowPrice(9)
+                .closePrice(10)
+                .volume(1000)
+                .add();
         assertTrue(rule.isSatisfied(5, tradingRecord));
     }
 
     @Test
     public void testEdgeCaseNoTrade() {
-        AverageTrueRangeTrailingStopLossRule rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, 3, 1.0);
 
-        TradingRecord tradingRecord = new BaseTradingRecord();
+        var tradingRecord = new BaseTradingRecord();
 
         // No trade, so the rule should never be satisfied
         assertFalse(rule.isSatisfied(0, tradingRecord));

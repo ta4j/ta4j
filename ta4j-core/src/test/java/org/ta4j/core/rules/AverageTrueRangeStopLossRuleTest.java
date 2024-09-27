@@ -23,17 +23,22 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.time.ZonedDateTime;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-
-import java.time.ZonedDateTime;
-
-import static org.junit.Assert.*;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeStopLossRuleTest {
 
@@ -41,124 +46,196 @@ public class AverageTrueRangeStopLossRuleTest {
 
     @Before
     public void setUp() {
-        series = new BaseBarSeriesBuilder().withName("AverageTrueRangeStopLossRuleTest").build();
+        series = new MockBarSeriesBuilder().withName("AverageTrueRangeStopLossRuleTest").build();
     }
 
     @Test
     public void testLongPositionStopLoss() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, 5, 1);
+        var rule = new AverageTrueRangeStopLossRule(series, 5, 1);
 
         // Enter long position
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, new LinearTransactionCostModel(0.01),
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, new LinearTransactionCostModel(0.01),
                 new ZeroCostModel());
-        tradingRecord.enter(0, series.numOf(100), series.numOf(1));
+        tradingRecord.enter(0, series.numFactory().hundred(), series.numFactory().one());
 
         // Price remains above stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 90, 95, 85, 90);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(90)
+                .highPrice(95)
+                .lowPrice(85)
+                .closePrice(90)
+                .add();
         assertFalse(rule.isSatisfied(series.getEndIndex(), tradingRecord));
 
         // Price drops below stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 90, 95, 85, 89);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(90)
+                .highPrice(95)
+                .lowPrice(85)
+                .closePrice(89)
+                .add();
         assertTrue(rule.isSatisfied(series.getEndIndex(), tradingRecord));
     }
 
     @Test
     public void testShortPositionStopLoss() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, 5, 2);
+        var rule = new AverageTrueRangeStopLossRule(series, 5, 2);
 
         // Enter short position
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL, new FixedTransactionCostModel(1),
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL, new FixedTransactionCostModel(1),
                 new ZeroCostModel());
-        tradingRecord.enter(0, series.numOf(100), series.numOf(1));
+        tradingRecord.enter(0, series.numFactory().hundred(), series.numFactory().one());
 
         // Price below stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 110, 123, 113, 123);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(110)
+                .highPrice(123)
+                .lowPrice(113)
+                .closePrice(123)
+                .add();
         assertFalse(rule.isSatisfied(series.getEndIndex(), tradingRecord));
 
         // Price rises above stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 110, 127, 117, 127);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(110)
+                .highPrice(127)
+                .lowPrice(117)
+                .closePrice(127)
+                .add();
         assertTrue(rule.isSatisfied(series.getEndIndex(), tradingRecord));
     }
 
     @Test
     public void testNoStopLoss() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, 5, 2);
+        var rule = new AverageTrueRangeStopLossRule(series, 5, 2);
 
         // Enter long position
-        TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.numOf(100), series.numOf(1));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.numFactory().hundred(), series.numFactory().one());
 
         // Price stays within stop loss range
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 98, 102, 97, 98);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(98)
+                .highPrice(102)
+                .lowPrice(97)
+                .closePrice(98)
+                .add();
 
         assertFalse(rule.isSatisfied(10, tradingRecord));
     }
 
     @Test
     public void testCustomReferencePrice() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        ClosePriceIndicator customReference = new ClosePriceIndicator(series);
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, customReference, 5, 2);
+        var customReference = new ClosePriceIndicator(series);
+        var rule = new AverageTrueRangeStopLossRule(series, customReference, 5, 2);
 
         // Enter long position
         TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.numOf(100), series.numOf(1));
+        tradingRecord.enter(0, series.numFactory().hundred(), series.numFactory().one());
 
         // Price drops below stop loss
-        series.addBar(series.getLastBar().getEndTime().plusDays(1), 90, 90, 73, 73);
+        series.barBuilder()
+                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .openPrice(90)
+                .highPrice(90)
+                .lowPrice(73)
+                .closePrice(73)
+                .add();
         assertTrue(rule.isSatisfied(series.getEndIndex(), tradingRecord));
     }
 
     @Test
     public void testNoTradingRecord() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, 5, 2);
+        var rule = new AverageTrueRangeStopLossRule(series, 5, 2);
 
         assertFalse(rule.isSatisfied(9, null));
     }
 
     @Test
     public void testClosedPosition() {
-        ZonedDateTime initialEndDateTime = ZonedDateTime.now();
+        var initialEndDateTime = ZonedDateTime.now();
 
         for (int i = 0; i < 10; i++) {
-            series.addBar(initialEndDateTime.plusDays(i), 100, 105, 95, 100);
+            series.barBuilder()
+                    .endTime(initialEndDateTime.plusDays(i))
+                    .openPrice(100)
+                    .highPrice(105)
+                    .lowPrice(95)
+                    .closePrice(100)
+                    .add();
         }
 
-        AverageTrueRangeStopLossRule rule = new AverageTrueRangeStopLossRule(series, 5, 2);
+        var rule = new AverageTrueRangeStopLossRule(series, 5, 2);
 
         // Enter and exit position
-        TradingRecord tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.numOf(100), series.numOf(1));
-        tradingRecord.exit(5, series.numOf(110), series.numOf(1));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.numFactory().hundred(), series.numFactory().one());
+        tradingRecord.exit(5, series.numFactory().hundred(), series.numFactory().one());
 
         assertFalse(rule.isSatisfied(9, tradingRecord));
     }

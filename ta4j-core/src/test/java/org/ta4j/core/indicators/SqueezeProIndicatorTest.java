@@ -23,37 +23,36 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.indicators.bollinger.BollingerBandFacade;
 import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator;
 import org.ta4j.core.indicators.keltner.KeltnerChannelMiddleIndicator;
 import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator;
-
-import java.time.ZonedDateTime;
-import java.util.function.Function;
-
-import static org.junit.Assert.*;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public SqueezeProIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public SqueezeProIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void testMobiusSqueezeProIndicatorWithDefaultParameters() {
-        BarSeries series = new BaseBarSeries();
-        ZonedDateTime startDateTime = ZonedDateTime.now();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         for (int i = 0; i < 50; i++) {
-            series.addBar(startDateTime.plusDays(i), i, i, i, i);
+            series.barBuilder().openPrice(i).closePrice(i).highPrice(i).lowPrice(i).add();
         }
 
-        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 20);
+        var indicator = new SqueezeProIndicator(series, 20);
 
         // The indicator should be false for the first 20 bars (unstable period)
         for (int i = 0; i < 20; i++) {
@@ -70,14 +69,13 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testMobiusSqueezeProIndicatorWithCustomParameters() {
-        BarSeries series = new BaseBarSeries();
-        ZonedDateTime startDateTime = ZonedDateTime.now();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         for (int i = 0; i < 50; i++) {
-            series.addBar(startDateTime.plusDays(i), i, i + 10, i - 10, i);
+            series.barBuilder().openPrice(i).highPrice(i + 10).lowPrice(i - 10).closePrice(i).add();
         }
 
-        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 10, 2.5, 1.2, 1.7, 2.2);
+        var indicator = new SqueezeProIndicator(series, 10, 2.5, 1.2, 1.7, 2.2);
 
         // The indicator should be false for the first 10 bars (unstable period)
         for (int i = 0; i < 10; i++) {
@@ -94,24 +92,23 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testSqueezeCondition() {
-        BarSeries series = new BaseBarSeries();
-        ZonedDateTime startDateTime = ZonedDateTime.now();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         for (int i = 0; i < 100; i++) {
-            series.addBar(startDateTime.plusDays(i), i, 110, 90, 100);
+            series.barBuilder().openPrice(i).highPrice(110).lowPrice(90).closePrice(100).add();
         }
 
         int barCount = 20;
         double bollingerBandK = 2.0;
         double keltnerShiftFactor = 1.5;
 
-        BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
-        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
-        KeltnerChannelUpperIndicator keltnerChannelUpper = new KeltnerChannelUpperIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactor);
-        KeltnerChannelLowerIndicator keltnerChannelLower = new KeltnerChannelLowerIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactor);
+        var bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
+        var keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
+        var averageTrueRange = new ATRIndicator(series, barCount);
+        var keltnerChannelUpper = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactor);
+        var keltnerChannelLower = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactor);
 
         SqueezeProIndicator indicator = new SqueezeProIndicator(series, barCount);
 
@@ -134,14 +131,13 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testChangingSqueezeConditions() {
-        BarSeries series = new BaseBarSeries();
-        ZonedDateTime startDateTime = ZonedDateTime.now();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         for (int i = 0; i < 100; i++) {
-            series.addBar(startDateTime.plusDays(i), i, i + 1, i - 1, i * 2);
+            series.barBuilder().openPrice(i).highPrice(i + 1).lowPrice(i - 1).closePrice(i * 2).add();
         }
 
-        SqueezeProIndicator indicator = new SqueezeProIndicator(series, 20);
+        var indicator = new SqueezeProIndicator(series, 20);
 
         for (int i = 20; i < 38; i++) {
             assertFalse("No squeeze should be detected at index " + i, indicator.getValue(i));
@@ -153,11 +149,10 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testConsistencyWithUnderlyingIndicators() {
-        BarSeries series = new BaseBarSeries();
-        ZonedDateTime startDateTime = ZonedDateTime.now();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         for (int i = 0; i < 100; i++) {
-            series.addBar(startDateTime.plusDays(i), i, i + 10, i - 10, i);
+            series.barBuilder().openPrice(i).highPrice(i + 10).lowPrice(i - 10).closePrice(i).build();
         }
 
         int barCount = 20;
@@ -166,25 +161,25 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         double keltnerShiftFactorMid = 1.5;
         double keltnerShiftFactorLow = 2.0;
 
-        SqueezeProIndicator indicator = new SqueezeProIndicator(series, barCount, bollingerBandK,
-                keltnerShiftFactorHigh, keltnerShiftFactorMid, keltnerShiftFactorLow);
+        var indicator = new SqueezeProIndicator(series, barCount, bollingerBandK, keltnerShiftFactorHigh,
+                keltnerShiftFactorMid, keltnerShiftFactorLow);
 
-        BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
-        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
+        var bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
+        var keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
+        var averageTrueRange = new ATRIndicator(series, barCount);
 
-        KeltnerChannelUpperIndicator keltnerChannelUpperHigh = new KeltnerChannelUpperIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorHigh);
-        KeltnerChannelLowerIndicator keltnerChannelLowerHigh = new KeltnerChannelLowerIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorHigh);
-        KeltnerChannelUpperIndicator keltnerChannelUpperMid = new KeltnerChannelUpperIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorMid);
-        KeltnerChannelLowerIndicator keltnerChannelLowerMid = new KeltnerChannelLowerIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorMid);
-        KeltnerChannelUpperIndicator keltnerChannelUpperLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorLow);
-        KeltnerChannelLowerIndicator keltnerChannelLowerLow = new KeltnerChannelLowerIndicator(keltnerChannelMidLine,
-                averageTrueRange, keltnerShiftFactorLow);
+        var keltnerChannelUpperHigh = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorHigh);
+        var keltnerChannelLowerHigh = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorHigh);
+        var keltnerChannelUpperMid = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorMid);
+        var keltnerChannelLowerMid = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorMid);
+        var keltnerChannelUpperLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorLow);
+        var keltnerChannelLowerLow = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
+                keltnerShiftFactorLow);
 
         for (int i = barCount; i < series.getBarCount(); i++) {
             boolean expectedSqueeze = (bollingerBand.lower()

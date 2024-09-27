@@ -24,6 +24,7 @@
 package org.ta4j.core.num;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
