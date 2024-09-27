@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,7 +41,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Constructor.
-     * 
+     *
      * @param clazz           class containing the file resources
      * @param fileName        file name of the file containing the workbook
      * @param criterionColumn column number containing the calculated criterion
@@ -60,7 +60,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     /**
      * Gets the BarSeries from the XLS file. The BarSeries is cached so that
      * subsequent calls do not execute getSeries.
-     * 
+     *
      * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
@@ -74,7 +74,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the final criterion value from the XLS file given the parameters.
-     * 
+     *
      * @param params criterion parameters
      * @return Num final criterion value
      * @throws Exception if getFinalCriterionValue throws IOException or
@@ -87,7 +87,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the trading record from the XLS file.
-     * 
+     *
      * @return TradingRecord from the file
      */
     @Override

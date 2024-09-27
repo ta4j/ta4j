@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,7 +38,7 @@ public class UnaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
-     * 
+     *
      * @param operand
      * @return {@code √(operand)}
      * @see Num#sqrt
@@ -50,7 +50,7 @@ public class UnaryOperation implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is the absolute value of
      * {@code operand}.
-     * 
+     *
      * @param operand
      * @return {@code abs(operand)}
      * @see Num#abs

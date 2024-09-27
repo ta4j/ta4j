@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
  * Percentage Volume Oscillator (PVO) indicator.
- * 
+ *
  * <pre>
  * ((12-day EMA of Volume - 26-day EMA of Volume) / 26-day EMA of Volume) x 100
  * </pre>
@@ -42,12 +42,12 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code shortBarCount} = 12
      * <li>{@code longBarCount} = 26
      * </ul>
-     * 
+     *
      * @param series the bar series {@link BarSeries}
      */
     public PVOIndicator(BarSeries series) {
@@ -56,12 +56,12 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code shortBarCount} = 12
      * <li>{@code longBarCount} = 26
      * </ul>
-     * 
+     *
      * @param series         the bar series {@link BarSeries}.
      * @param volumeBarCount the bar count for the {@link VolumeIndicator}
      */

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,11 +34,11 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
- * 
+ *
  * <pre>
  * y = slope * x + intercept
  * </pre>
- * 
+ *
  * see <a href=
  * "http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html">LinearRegression</a>
  */

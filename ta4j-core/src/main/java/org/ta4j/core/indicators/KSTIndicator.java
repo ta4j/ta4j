@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,13 +28,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Know Sure Thing (KST) indicator.
- * 
+ *
  * <pre>
  * RCMA1 = X1-Period SMA of Y1-Period Rate-of-Change
  * RCMA2 = X2-Period SMA of Y2-Period Rate-of-Change
  * RCMA3 = X3-Period SMA of Y3-Period Rate-of-Change
  * RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
- * 
+ *
  * KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
  * </pre>
  *

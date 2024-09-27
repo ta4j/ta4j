@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,6 +24,9 @@
 package org.ta4j.core.num;
 
 import static org.ta4j.core.num.NaN.NaN;
+
+import java.math.BigDecimal;
+import java.util.function.Function;
 
 /**
  * Representation of {@link Double}. High performance, lower precision.
@@ -72,7 +75,7 @@ public class DoubleNum implements Num {
 
     /**
      * Returns a {@code DoubleNum} version of the given {@code DecimalNum}.
-     * 
+     *
      * <p>
      * <b>Warning:</b> The {@code Num} returned may have inaccuracies.
      *
@@ -134,13 +137,18 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
+    }
+
+    @Override
     public Double getDelegate() {
         return delegate;
     }
 
     @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
+    public BigDecimal bigDecimalValue() {
+        return Double.isNaN(delegate) || Double.isInfinite(delegate) ? null : BigDecimal.valueOf(delegate);
     }
 
     @Override

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -41,7 +41,7 @@ public class BinaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code (left + right)}.
-     * 
+     *
      * @param left
      * @param right
      * @return {@code left + right}, rounded as necessary
@@ -53,7 +53,7 @@ public class BinaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code (left - right)}.
-     * 
+     *
      * @param left
      * @param right
      * @return {@code left - right}, rounded as necessary
@@ -65,7 +65,7 @@ public class BinaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code (left * right)}.
-     * 
+     *
      * @param left
      * @param right
      * @return {@code left * right}, rounded as necessary
@@ -77,7 +77,7 @@ public class BinaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code (left / right)}.
-     * 
+     *
      * @param left
      * @param right
      * @return {@code left / right}, rounded as necessary
@@ -90,7 +90,7 @@ public class BinaryOperation implements Indicator<Num> {
     /**
      * Returns the minimum of {@code left} and {@code right} as an
      * {@code Indicator}.
-     * 
+     *
      * @param left
      * @param right
      * @return the {@code Indicator} whose value is the smaller of {@code left} and
@@ -104,7 +104,7 @@ public class BinaryOperation implements Indicator<Num> {
     /**
      * Returns the maximum of {@code left} and {@code right} as an
      * {@code Indicator}.
-     * 
+     *
      * @param left
      * @param right
      * @return the {@code Indicator} whose value is the greater of {@code left} and

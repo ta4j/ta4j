@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,12 +30,12 @@ import org.ta4j.core.num.Num;
 
 /**
  * ADX indicator.
- * 
+ *
  * <p>
  * Part of the Directional Movement System.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
+ *      "https://www.investopedia.com/articles/trading/07/adx-trend-indicator.asp">https://www.investopedia.com/articles/trading/07/adx-trend-indicator.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 
@@ -45,7 +45,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series      the bar series
      * @param diBarCount  the bar count for {@link DXIndicator}
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
@@ -59,7 +59,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series   the bar series
      * @param barCount the bar count for {@link DXIndicator} and
      *                 {@link #averageDXIndicator}

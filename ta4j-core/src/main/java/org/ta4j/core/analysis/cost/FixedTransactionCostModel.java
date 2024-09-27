@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -40,7 +40,7 @@ public class FixedTransactionCostModel implements CostModel {
      * Constructor for a fixed fee trading cost model.
      *
      * <pre>
-     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1) 
+     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1)
      * Cost of closed {@link Position position}: (fixedFeePerTrade * 2)
      * </pre>
      *

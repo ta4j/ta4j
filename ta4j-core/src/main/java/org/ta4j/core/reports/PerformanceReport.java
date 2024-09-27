@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -44,7 +44,7 @@ public class PerformanceReport {
 
     /**
      * Constructor.
-     * 
+     *
      * @param totalProfitLoss           the total PnL
      * @param totalProfitLossPercentage the total PnL in percent
      * @param totalProfit               the total profit

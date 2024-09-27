@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -74,7 +74,7 @@ public class TestUtils {
      * Verifies that the actual {@code Num} value is equal to the given {@code int}
      * representation.
      *
-     * 
+     *
      * @param expected the given {@code int} representation to compare the actual
      *                 value to
      * @param actual   the actual {@code Num} value
@@ -118,7 +118,7 @@ public class TestUtils {
 
     /**
      * Verifies that two indicators have the same size and values to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -134,7 +134,7 @@ public class TestUtils {
     /**
      * Verifies that two indicators have either different size or different values
      * to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -192,7 +192,7 @@ public class TestUtils {
 
     /**
      * Verifies that two indicators have the same size and values
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -225,7 +225,7 @@ public class TestUtils {
     /**
      * Verifies that two indicators have either different size or different values
      * to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      * @param delta    num offset to which the indicators must be different

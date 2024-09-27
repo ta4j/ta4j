@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -140,7 +140,7 @@ public interface Bar extends Serializable {
     /**
      * Updates the close price at the end of the bar period. The open, high and low
      * prices are also updated as needed.
-     * 
+     *
      * @param price       the actual price per asset
      * @param numFunction the numbers precision
      */
@@ -151,7 +151,7 @@ public interface Bar extends Serializable {
     /**
      * Updates the close price at the end of the bar period. The open, high and low
      * prices are also updated as needed.
-     * 
+     *
      * @param price       the actual price per asset
      * @param numFunction the numbers precision
      */
@@ -162,7 +162,7 @@ public interface Bar extends Serializable {
     /**
      * Updates the close price at the end of the bar period. The open, high and low
      * prices are also updated as needed.
-     * 
+     *
      * @param price the actual price per asset
      */
     void addPrice(Num price);

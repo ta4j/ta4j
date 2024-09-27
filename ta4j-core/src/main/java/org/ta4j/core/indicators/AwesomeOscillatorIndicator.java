@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -53,7 +53,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCountSma1} = 5
      * <li>{@code barCountSma2} = 34
@@ -67,7 +67,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code indicator} = {@link MedianPriceIndicator}
      * <li>{@code barCountSma1} = 5

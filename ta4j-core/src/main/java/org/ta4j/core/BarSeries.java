@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2024 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,9 +33,9 @@ import org.ta4j.core.num.NumFactory;
 /**
  * A {@code BarSeries} is a sequence of {@link Bar bars} separated by a
  * predefined period (e.g. 15 minutes, 1 day, etc.).
- * 
+ *
  * Notably, it can be:
- * 
+ *
  * <ul>
  * <li>the base of {@link Indicator indicator} calculations
  * <li>constrained between beginning and ending indices (e.g. for some
@@ -62,7 +62,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Gets the bar from {@link #getBarData()} with index {@code i}.
-     * 
+     *
      * <p>
      * The given {@code i} can return the same bar within the first range of indices
      * due to {@link #setMaximumBarCount(int)}, for example: If you fill a BarSeries
@@ -70,7 +70,7 @@ public interface BarSeries extends Serializable {
      * 20 bars will be removed from the BarSeries. The indices going further from 0
      * to 29 remain but return the same bar from 0 to 20. The remaining 9 bars are
      * returned from index 21.
-     * 
+     *
      * @param i the index
      * @return the bar at the i-th position
      */
@@ -110,7 +110,7 @@ public interface BarSeries extends Serializable {
      * <li>a shortened bar list if a {@code maximumBarCount} has been set.
      * <li>an extended bar list if it is a constrained bar series.
      * </ul>
-     * 
+     *
      * <p>
      * <b>Warning:</b> This method should be used carefully!
      *
@@ -156,7 +156,7 @@ public interface BarSeries extends Serializable {
      * the maximum bar count, then the FIRST bar in the series is automatically
      * removed, ensuring that the maximum bar count is not exceeded. The indices of
      * the bar series do not change.
-     * 
+     *
      * @param maximumBarCount the maximum bar count
      */
     void setMaximumBarCount(int maximumBarCount);
