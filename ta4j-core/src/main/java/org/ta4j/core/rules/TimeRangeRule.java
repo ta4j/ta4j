@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 
 /**
  * Satisfied when the "local time" value of the {@link DateTimeIndicator} is
- * wihin the specified set of {@link TimeRange}.
+ * within the specified set of {@link TimeRange}.
  */
 public class TimeRangeRule extends AbstractRule {
 

@@ -45,7 +45,7 @@ public class ChainRule extends AbstractRule {
      * @param initialRule the first rule that has to be satisfied before
      *                    {@link ChainLink} are evaluated
      * @param chainLinks  {@link ChainLink} that has to be satisfied after the
-     *                    inital rule within their thresholds
+     *                    initial rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;
