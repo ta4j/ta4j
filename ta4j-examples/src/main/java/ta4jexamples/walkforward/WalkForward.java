@@ -132,7 +132,7 @@ public class WalkForward {
 
     /**
      * Splits the bar series into sub-series lasting sliceDuration.<br>
-     * The current bar series is splitted every splitDuration.<br>
+     * The current bar series is split every splitDuration.<br>
      * The last sub-series may last less than sliceDuration.
      *
      * @param series        the bar series to split
