@@ -77,8 +77,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
     - For example:
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
-- **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
-- **BarSeries#getBeginIndex()** methode returns correct begin index for bar series with max bar count
+- **BarSeriesManager** and **BacktestExecutor** moved to package **`backtest`**
+- **BarSeries#getBeginIndex()** method returns correct begin index for bar series with max bar count
 
 ### Fixed
 - **Fixed** **SuperTrendIndicator** fixed calculation when close price is the same as the previous Super Trend indicator value
@@ -91,7 +91,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferencePercentageIndicator** fixed re-calculate instance variable on every iteration
 - **ThreeWhiteSoldiersIndicator** fixed eliminated instance variable holding possible wrong value
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
-- **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
+- **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be always the correct (last) value
 - sets `ClosePriceDifferenceIndicator#getUnstableBars` = `1`
 - sets `ClosePriceRatioIndicator#getUnstableBars` = `1`
 - sets `ConvergenceDivergenceIndicator#getUnstableBars` = `barCount`
@@ -515,7 +515,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 
 ### VERY Important note!!!!
 
-with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). You have to reorganize all your refernces to the new packages!
+with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). You have to reorganize all your references to the new packages!
 In eclipse you can do this easily by selecting your sources and run "Organize imports"
 _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 
