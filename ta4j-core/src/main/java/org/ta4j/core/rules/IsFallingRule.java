@@ -39,7 +39,7 @@ public class IsFallingRule extends AbstractRule {
     /** The barCount */
     private final int barCount;
 
-    /** The minimum required strenght of the falling */
+    /** The minimum required strength of the falling */
     private final double minStrength;
 
     /**

@@ -48,7 +48,7 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> periodLow;
 
     /**
-     * Contructor.
+     * Constructor.
      *
      * @param series   the bar series
      * @param barCount the time frame
