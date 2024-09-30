@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * Typical price indicator.
  *
  * <p>
- * Returns the typcial price of a bar using the following formula:
+ * Returns the typical price of a bar using the following formula:
  *
  * <pre>
  * TypicalPrice = (highPrice + lowPrice + closePrice) / 3

@@ -47,13 +47,13 @@ import org.ta4j.core.num.Num;
  * full year is reached - NaN values for incomplete timeframes, e.g. timeframe
  * is a year and your timeseries contains data for 11,3 years, than no values
  * are calculated for the remaining 0,3 years - the method 'getTotalReturn'
- * calculates the total return over all returns of the coresponding timeframes
+ * calculates the total return over all returns of the corresponding timeframes
  *
  * <p>
  * Further readings:
  *
  * <ul>
- * <li>Good sumary on 'Rate of Return':
+ * <li>Good summary on 'Rate of Return':
  * https://en.wikipedia.org/wiki/Rate_of_return Annual return
  * <li>CAGR: http://www.investopedia.com/terms/a/annual-return.asp
  * <li>Annualized Total Return:
