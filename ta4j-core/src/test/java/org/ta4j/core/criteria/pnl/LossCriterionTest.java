@@ -27,8 +27,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
@@ -37,18 +35,18 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class LossCriterionTest extends AbstractCriterionTest {
 
-    public LossCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new LossCriterion((boolean) params[0]), numFunction);
+    public LossCriterionTest(NumFactory numFactory) {
+        super(params -> new LossCriterion((boolean) params[0]), numFactory);
     }
 
     @Test
     public void calculateComparingIncludingVsExcludingCosts() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         LinearTransactionCostModel transactionCost = new LinearTransactionCostModel(0.01);
         ZeroCostModel holdingCost = new ZeroCostModel();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, transactionCost, holdingCost);
@@ -79,7 +77,9 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithProfitPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
@@ -89,7 +89,7 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
@@ -99,7 +99,7 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateProfitWithShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(95, 100, 70, 80, 85, 100).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
@@ -116,6 +116,6 @@ public class LossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(true), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(true), 0);
     }
 }

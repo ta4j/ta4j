@@ -41,7 +41,6 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Properties;
-import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -50,8 +49,8 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     public static final int HIGH_PRECISION = 128;
 
-    public NumTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public NumTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
@@ -59,10 +58,10 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num anyNaNNum = NaN;
         Num anyDecimalNum = DecimalNum.valueOf(3);
         Num anyDoubleNum = DoubleNum.valueOf(3);
-        assertNumEquals(NaN, anyNaNNum.zero());
-        assertNumEquals(0, numOf(3).zero());
-        assertNumEquals(0, anyDecimalNum.zero());
-        assertNumEquals(0, anyDoubleNum.zero());
+        assertNumEquals(NaN, anyNaNNum.getNumFactory().zero());
+        assertNumEquals(0, numOf(3).getNumFactory().zero());
+        assertNumEquals(0, anyDecimalNum.getNumFactory().zero());
+        assertNumEquals(0, anyDoubleNum.getNumFactory().zero());
     }
 
     @Test
@@ -70,10 +69,10 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num anyNaNNum = NaN;
         Num anyDecimalNum = DecimalNum.valueOf(3);
         Num anyDoubleNum = DoubleNum.valueOf(3);
-        assertNumEquals(NaN, anyNaNNum.one());
-        assertNumEquals(1, numOf(3).one());
-        assertNumEquals(1, anyDecimalNum.one());
-        assertNumEquals(1, anyDoubleNum.one());
+        assertNumEquals(NaN, anyNaNNum.getNumFactory().one());
+        assertNumEquals(1, numOf(3).getNumFactory().one());
+        assertNumEquals(1, anyDecimalNum.getNumFactory().one());
+        assertNumEquals(1, anyDoubleNum.getNumFactory().one());
     }
 
     @Test
@@ -81,10 +80,10 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num anyNaNNum = NaN;
         Num anyDecimalNum = DecimalNum.valueOf(3);
         Num anyDoubleNum = DoubleNum.valueOf(3);
-        assertNumEquals(NaN, anyNaNNum.hundred());
-        assertNumEquals(100, numOf(3).hundred());
-        assertNumEquals(100, anyDecimalNum.hundred());
-        assertNumEquals(100, anyDoubleNum.hundred());
+        assertNumEquals(NaN, anyNaNNum.getNumFactory().hundred());
+        assertNumEquals(100, numOf(3).getNumFactory().hundred());
+        assertNumEquals(100, anyDecimalNum.getNumFactory().hundred());
+        assertNumEquals(100, anyDoubleNum.getNumFactory().hundred());
     }
 
     @Test(expected = AssertionError.class)
@@ -116,6 +115,10 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         }
     }
 
+    private Num numOf(String string, int precision) {
+        return DecimalNumFactory.getInstance(precision).numOf(string);
+    }
+
     @Test
     public void testDecimalNumOffset() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
@@ -127,19 +130,17 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num highPrecisionNum = DecimalNum.valueOf(highPrecisionString, 128);
         // use HIGH_PRECISION PrecisionNums for delta because they are so small
         assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
-                highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
+                highPrecisionNum.getNumFactory().numOf("0.0000000000000001")));
         if (num.getClass().equals(DoubleNum.class)) {
             assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
-                    highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
+                    highPrecisionNum.getNumFactory().numOf("0.0000000000000001")));
             assertFalse(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
-                    highPrecisionNum.numOf("0.00000000000000001", HIGH_PRECISION)));
+                    highPrecisionNum.getNumFactory().numOf("0.00000000000000001")));
         }
         if (num.getClass().equals(DecimalNum.class)) {
             // since precisions are the same, will match to any precision
-            assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
-                    highPrecisionNum.numOf(
-                            "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
-                            HIGH_PRECISION)));
+            assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.getNumFactory()
+                    .numOf("0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000001")));
         }
     }
 
@@ -249,9 +250,9 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         assertNumEquals(hundredMillion.dividedBy(hundred), million);
         assertNumEquals(0, hundredMillion.remainder(hundred));
 
-        Num five = ten.numOf(5); // generate new value with NumFunction
-        Num zeroDotTwo = ten.numOf(0.2); // generate new value with NumFunction
-        Num fiveHundred54 = ten.numOf(554); // generate new value with NumFunction
+        Num five = ten.getNumFactory().numOf(5); // generate new value with NumFunction
+        Num zeroDotTwo = ten.getNumFactory().numOf(0.2); // generate new value with NumFunction
+        Num fiveHundred54 = ten.getNumFactory().numOf(554); // generate new value with NumFunction
         assertNumEquals(0, hundredMillion.remainder(five));
 
         assertNumEquals(0.00032, zeroDotTwo.pow(5));
@@ -260,20 +261,20 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         assertNumEquals(554, fiveHundred54.max(five));
         assertNumEquals(5, fiveHundred54.min(five));
         assertTrue(fiveHundred54.isGreaterThan(five));
-        assertFalse(five.isGreaterThan(five.function().apply(5)));
+        assertFalse(five.isGreaterThan(five.getNumFactory().numOf(5)));
         assertFalse(five.isGreaterThanOrEqual(fiveHundred54));
-        assertFalse(five.isGreaterThanOrEqual(five.function().apply(6)));
-        assertTrue(five.isGreaterThanOrEqual(five.function().apply(5)));
+        assertFalse(five.isGreaterThanOrEqual(five.getNumFactory().numOf(6)));
+        assertTrue(five.isGreaterThanOrEqual(five.getNumFactory().numOf(5)));
 
-        assertTrue(five.equals(five.function().apply(5)));
-        assertTrue(five.equals(five.function().apply(5.0)));
-        assertTrue(five.equals(five.function().apply((float) 5)));
-        assertTrue(five.equals(five.function().apply((short) 5)));
+        assertTrue(five.equals(five.getNumFactory().numOf(5)));
+        assertTrue(five.equals(five.getNumFactory().numOf(5.0)));
+        assertTrue(five.equals(five.getNumFactory().numOf((float) 5)));
+        assertTrue(five.equals(five.getNumFactory().numOf((short) 5)));
 
-        assertFalse(five.equals(five.function().apply(4.9)));
-        assertFalse(five.equals(five.function().apply(6)));
-        assertFalse(five.equals(five.function().apply((float) 15)));
-        assertFalse(five.equals(five.function().apply((short) 45)));
+        assertFalse(five.equals(five.getNumFactory().numOf(4.9)));
+        assertFalse(five.equals(five.getNumFactory().numOf(6)));
+        assertFalse(five.equals(five.getNumFactory().numOf((float) 15)));
+        assertFalse(five.equals(five.getNumFactory().numOf((short) 45)));
     }
 
     @Test
@@ -310,23 +311,11 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public void sqrtLudicrousPrecision() {
         BigDecimal numBD = BigDecimal.valueOf(Double.MAX_VALUE)
                 .multiply(BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE));
-        Num sqrt = numOf(numBD).sqrt(100000);
         if (numOf(0).getClass().equals(DoubleNum.class)) {
+            Num sqrt = DoubleNumFactory.getInstance().numOf(numBD).sqrt(100000);
             assertEquals("Infinity", sqrt.toString());
-            /*
-             * BigDecimalNum has been replaced by PrecisionNum
-             *
-             * } else if (numOf(0).getClass().equals(BigDecimalNum.class)) {
-             * assertNumEquals("1.7976931348623157000000000000000E+308", sqrt);
-             * assertNumNotEquals("1.7976931348623157000000000000001E+308", sqrt);
-             * assertNumEquals(Double.MAX_VALUE, sqrt);
-             * assertNumEquals(numOf(Double.MAX_VALUE), sqrt); BigDecimal sqrtBD = new
-             * BigDecimal(sqrt.toString()); assertNumEquals(numOf(numBD),
-             * numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999,
-             * RoundingMode.HALF_UP)))); assertNumEquals(numOf(numBD),
-             * sqrt.multipliedBy(sqrt));
-             */
         } else if (numOf(0).getClass().equals(DecimalNum.class)) {
+            Num sqrt = DecimalNumFactory.getInstance(100000).numOf(numBD).sqrt(100000);
             Properties props = new Properties();
             try (InputStream is = getClass().getResourceAsStream("numTest.properties")) {
                 props.load(is);
@@ -353,7 +342,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     @Test
     public void testSerialization() throws Exception {
-        Num numVal = numFunction.apply(1.3);
+        Num numVal = numFactory.numOf(1.3);
         serializeDeserialize(numVal);
     }
 

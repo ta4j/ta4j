@@ -23,29 +23,29 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
-import java.util.function.Function;
+import org.ta4j.core.num.NumFactory;
 
 public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private Indicator<Num> closePrice;
 
-    public KalmanFilterIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public KalmanFilterIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries series = new MockBarSeries(numFunction, 10, 15, 20, 22, 30, 50);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 22, 30, 50).build();
         closePrice = new ClosePriceIndicator(series);
     }
 
@@ -75,7 +75,9 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithNoiseAndOutliers() {
-        BarSeries noiseSeries = new MockBarSeries(numFunction, 10.0, 11.0, 100.0, 13.0, 14.0, 15.0);
+        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0)
+                .build();
         Indicator<Num> noiseClosePrice = new ClosePriceIndicator(noiseSeries);
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
@@ -90,7 +92,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithSingleBar() {
-        BarSeries singleBarSeries = new MockBarSeries(numFunction, 10.0);
+        BarSeries singleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10.0).build();
         Indicator<Num> singleBarClosePrice = new ClosePriceIndicator(singleBarSeries);
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(singleBarClosePrice, 1e-3, 1e-5);
@@ -100,7 +102,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithZeroBarData() {
-        BarSeries emptySeries = new MockBarSeries(numFunction, List.of());
+        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(List.of()).build();
         Indicator<Num> emptySeriesClosePrice = new ClosePriceIndicator(emptySeries);
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(emptySeriesClosePrice, 1e-3, 1e-5);

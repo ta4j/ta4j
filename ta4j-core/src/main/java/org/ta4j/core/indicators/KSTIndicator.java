@@ -49,10 +49,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
     private final SMAIndicator RCMA2;
     private final SMAIndicator RCMA3;
     private final SMAIndicator RCMA4;
-    private final Num RCMA1_Multiplier = one();
-    private final Num RCMA2_Multiplier = numOf(2);
-    private final Num RCMA3_Multiplier = numOf(3);
-    private final Num RCMA4_Multiplier = numOf(4);
+    private final Num RCMA1_Multiplier = getBarSeries().numFactory().one();
+    private final Num RCMA2_Multiplier = getBarSeries().numFactory().numOf(2);
+    private final Num RCMA3_Multiplier = getBarSeries().numFactory().numOf(3);
+    private final Num RCMA4_Multiplier = getBarSeries().numFactory().numOf(4);
 
     /**
      * Constructor with:

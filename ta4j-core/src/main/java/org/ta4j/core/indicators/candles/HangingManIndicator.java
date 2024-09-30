@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.indicators.trend.UpTrendIndicator;
 
 /**
@@ -87,8 +86,10 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
         final var bottomWickHeight = bottomBodyBoundary.minus(lowPrice);
         final var upperWickHeight = highPrice.minus(upperBodyBoundary);
 
-        return bottomWickHeight.dividedBy(bodyHeight).isGreaterThan(numOf(this.bodyToBottomWickRatio))
-                && upperWickHeight.dividedBy(bodyHeight).isLessThanOrEqual(numOf(this.bodyToUpperWickRatio))
+        return bottomWickHeight.dividedBy(bodyHeight)
+                .isGreaterThan(getBarSeries().numFactory().numOf(this.bodyToBottomWickRatio))
+                && upperWickHeight.dividedBy(bodyHeight)
+                        .isLessThanOrEqual(getBarSeries().numFactory().numOf(this.bodyToUpperWickRatio))
                 && this.trendIndicator.getValue(index);
     }
 

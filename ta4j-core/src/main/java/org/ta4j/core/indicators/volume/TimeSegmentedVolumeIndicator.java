@@ -68,7 +68,7 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        Num tsv = zero();
+        Num tsv = getBarSeries().numFactory().zero();
 
         // Calculate the TSV for the given period
         int startIndex = Math.max(0, index - barCount + 1);

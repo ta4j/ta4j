@@ -25,14 +25,13 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -42,18 +41,19 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     private ClosePriceIndicator closePrice;
 
-    public ROCIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public ROCIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, closePriceValues));
+        closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closePriceValues).build());
     }
 
     @Test
     public void getValueWhenBarCountIs12() {
-        ROCIndicator roc = new ROCIndicator(closePrice, 12);
+        var roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame
         assertNumEquals(0, roc.getValue(0));

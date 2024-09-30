@@ -59,14 +59,15 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
             final Double multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
-        this.multiplier = numOf(multiplier);
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0)
-            return zero();
+        if (index == 0) {
+            return getBarSeries().numFactory().zero();
+        }
 
         Bar bar = getBarSeries().getBar(index - 1);
         Num previousValue = this.getValue(index - 1);

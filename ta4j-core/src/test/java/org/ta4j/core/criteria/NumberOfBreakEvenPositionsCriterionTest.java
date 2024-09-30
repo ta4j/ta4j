@@ -27,33 +27,35 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfBreakEvenPositionsCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new NumberOfBreakEvenPositionsCriterion(), numFunction);
+    public NumberOfBreakEvenPositionsCriterionTest(NumFactory numFactory) {
+        super(params -> new NumberOfBreakEvenPositionsCriterion(), numFactory);
     }
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
 
         assertNumEquals(0, getCriterion().calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithTwoLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series),
                 Trade.buyAt(1, series), Trade.sellAt(5, series));
 
@@ -62,7 +64,9 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
 
     @Test
     public void calculateWithOneLongPosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(3, series));
 
         assertNumEquals(1, getCriterion().calculate(series, position));
@@ -70,7 +74,9 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
 
     @Test
     public void calculateWithTwoShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(3, series),
                 Trade.sellAt(1, series), Trade.buyAt(5, series));
 
@@ -86,6 +92,6 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(), 0);
     }
 }

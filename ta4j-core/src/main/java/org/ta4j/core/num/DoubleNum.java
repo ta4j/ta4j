@@ -38,9 +38,13 @@ public class DoubleNum implements Num {
 
     private static final long serialVersionUID = 1L;
 
+    public static final DoubleNum MINUS_ONE = DoubleNum.valueOf(-1);
     public static final DoubleNum ZERO = DoubleNum.valueOf(0);
-    private static final DoubleNum ONE = DoubleNum.valueOf(1);
-    private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
+    public static final DoubleNum ONE = DoubleNum.valueOf(1);
+    public static final DoubleNum TWO = DoubleNum.valueOf(2);
+    public static final DoubleNum THREE = DoubleNum.valueOf(3);
+    public static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
+    public static final DoubleNum THOUSAND = DoubleNum.valueOf(1000);
 
     private final static double EPS = 0.00001; // precision
     private final double delegate;
@@ -62,7 +66,7 @@ public class DoubleNum implements Num {
     /**
      * Returns a {@code Num} version of the given {@code Number}.
      *
-     * @param val the number
+     * @param i the number
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(Number i) {
@@ -90,7 +94,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(int val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -100,7 +104,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(long val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -110,7 +114,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num}
      */
     public static DoubleNum valueOf(short val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     /**
@@ -124,27 +128,12 @@ public class DoubleNum implements Num {
      *         value of {@code val}.
      */
     public static DoubleNum valueOf(float val) {
-        return new DoubleNum((double) val);
+        return new DoubleNum(val);
     }
 
     @Override
-    public Num zero() {
-        return ZERO;
-    }
-
-    @Override
-    public Num one() {
-        return ONE;
-    }
-
-    @Override
-    public Num hundred() {
-        return HUNDRED;
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return DoubleNum::valueOf;
+    public NumFactory getNumFactory() {
+        return DoubleNumFactory.getInstance();
     }
 
     @Override

@@ -5,6 +5,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 - Updated project Java JDK from 11 > 21
 - Updated Github workflows to use JDK 21
+- Extracted NumFactory as source of numbers with defined precision
 
 ### Fixed
 

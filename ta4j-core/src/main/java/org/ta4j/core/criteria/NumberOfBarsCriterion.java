@@ -41,9 +41,9 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             final int exitIndex = position.getExit().getIndex();
             final int entryIndex = position.getEntry().getIndex();
-            return series.numOf(exitIndex - entryIndex + 1);
+            return series.numFactory().numOf(exitIndex - entryIndex + 1);
         }
-        return series.zero();
+        return series.numFactory().zero();
     }
 
     @Override
@@ -52,7 +52,7 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(t -> calculate(series, t))
-                .reduce(series.zero(), Num::plus);
+                .reduce(series.numFactory().zero(), Num::plus);
     }
 
     /** The lower the criterion value, the better. */

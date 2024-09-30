@@ -48,7 +48,7 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.zero(), Num::plus);
+                .reduce(series.numFactory().zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */

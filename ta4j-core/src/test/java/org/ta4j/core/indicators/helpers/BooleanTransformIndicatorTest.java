@@ -23,17 +23,16 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
@@ -52,14 +51,15 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     private BooleanTransformIndicator<Num> isNegative;
     private BooleanTransformIndicator<Num> isNegativeOrZero;
 
-    public BooleanTransformIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BooleanTransformIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        final Num four = numFunction.apply(4);
-        final ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(new BaseBarSeries(), four);
+        final Num four = this.numFactory.numOf(4);
+        final ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(new MockBarSeriesBuilder().build(),
+                four);
 
         equals = BooleanTransformIndicator.equals(constantIndicator, four);
         notEquals = BooleanTransformIndicator.notEquals(constantIndicator, four);

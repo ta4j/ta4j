@@ -48,7 +48,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.two = numOf(2);
+        this.two = getBarSeries().numFactory().two();
         this.barCount = barCount;
         this.ema = new EMAIndicator(indicator, barCount);
         this.emaEma = new EMAIndicator(ema, barCount);

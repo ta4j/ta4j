@@ -56,7 +56,7 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
         this.level = level;
-        this.two = pivotPointIndicator.numOf(2);
+        this.two = pivotPointIndicator.getBarSeries().numFactory().numOf(2);
     }
 
     @Override

@@ -62,7 +62,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
         super(middle.getBarSeries());
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
-        this.ratio = numOf(ratio);
+        this.ratio = getBarSeries().numFactory().numOf(ratio);
     }
 
     @Override

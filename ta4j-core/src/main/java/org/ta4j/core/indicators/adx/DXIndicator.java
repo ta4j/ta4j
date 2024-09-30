@@ -58,10 +58,10 @@ public class DXIndicator extends CachedIndicator<Num> {
         Num pdiValue = plusDIIndicator.getValue(index);
         Num mdiValue = minusDIIndicator.getValue(index);
         final var sum = pdiValue.plus(mdiValue);
-        if (sum.equals(zero())) {
-            return zero();
+        if (sum.equals(getBarSeries().numFactory().zero())) {
+            return getBarSeries().numFactory().zero();
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(sum).multipliedBy(hundred());
+        return pdiValue.minus(mdiValue).abs().dividedBy(sum).multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override

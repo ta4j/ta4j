@@ -54,7 +54,7 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
     public Boolean getValue(final int index) {
         // calculate trend excluding this bar
         final var previousIndex = index - 1;
-        return this.directionStrengthIndicator.getValue(index).isGreaterThan(numOf(25))
+        return this.directionStrengthIndicator.getValue(index).isGreaterThan(getBarSeries().numFactory().numOf(25))
                 && this.minusDIIndicator.getValue(previousIndex)
                         .isLessThan(this.plusDIIndicator.getValue(previousIndex));
     }

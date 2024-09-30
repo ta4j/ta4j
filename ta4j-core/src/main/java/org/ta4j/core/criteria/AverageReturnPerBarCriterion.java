@@ -51,14 +51,15 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         // If a simple division was used (grossreturn/bars), compounding would not be
         // considered, leading to inaccuracies in the calculation.
         // Therefore we need to use "pow" to accurately capture the compounding effect.
-        return bars.isZero() ? series.one() : grossReturn.calculate(series, position).pow(series.one().dividedBy(bars));
+        return bars.isZero() ? series.numFactory().one()
+                : grossReturn.calculate(series, position).pow(series.numFactory().one().dividedBy(bars));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num bars = numberOfBars.calculate(series, tradingRecord);
-        return bars.isZero() ? series.one()
-                : grossReturn.calculate(series, tradingRecord).pow(series.one().dividedBy(bars));
+        return bars.isZero() ? series.numFactory().one()
+                : grossReturn.calculate(series, tradingRecord).pow(series.numFactory().one().dividedBy(bars));
     }
 
     /** The higher the criterion value, the better. */

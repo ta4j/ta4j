@@ -52,11 +52,12 @@ public class GainIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         Num actualValue = indicator.getValue(index);
         Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue) : zero();
+        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue)
+                : getBarSeries().numFactory().zero();
     }
 
     /** @return {@code 1} */

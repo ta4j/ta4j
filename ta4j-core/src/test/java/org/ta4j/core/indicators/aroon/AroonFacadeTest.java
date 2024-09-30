@@ -27,48 +27,189 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BaseBarSeries data;
 
-    public AroonFacadeTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public AroonFacadeTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void init() {
-        data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Aroon data").build();
-        data.addBar(ZonedDateTime.now().plusDays(1), 168.28, 169.87, 167.15, 169.64, 0);
-        data.addBar(ZonedDateTime.now().plusDays(2), 168.84, 169.36, 168.2, 168.71, 0);
-        data.addBar(ZonedDateTime.now().plusDays(3), 168.88, 169.29, 166.41, 167.74, 0);
-        data.addBar(ZonedDateTime.now().plusDays(4), 168, 168.38, 166.18, 166.32, 0);
-        data.addBar(ZonedDateTime.now().plusDays(5), 166.89, 167.7, 166.33, 167.24, 0);
-        data.addBar(ZonedDateTime.now().plusDays(6), 165.25, 168.43, 165, 168.05, 0);
-        data.addBar(ZonedDateTime.now().plusDays(7), 168.17, 170.18, 167.63, 169.92, 0);
-        data.addBar(ZonedDateTime.now().plusDays(8), 170.42, 172.15, 170.06, 171.97, 0);
-        data.addBar(ZonedDateTime.now().plusDays(9), 172.41, 172.92, 171.31, 172.02, 0);
-        data.addBar(ZonedDateTime.now().plusDays(10), 171.2, 172.39, 169.55, 170.72, 0);
-        data.addBar(ZonedDateTime.now().plusDays(11), 170.91, 172.48, 169.57, 172.09, 0);
-        data.addBar(ZonedDateTime.now().plusDays(12), 171.8, 173.31, 170.27, 173.21, 0);
-        data.addBar(ZonedDateTime.now().plusDays(13), 173.09, 173.49, 170.8, 170.95, 0);
-        data.addBar(ZonedDateTime.now().plusDays(14), 172.41, 173.89, 172.2, 173.51, 0);
-        data.addBar(ZonedDateTime.now().plusDays(15), 173.87, 174.17, 175, 172.96, 0);
-        data.addBar(ZonedDateTime.now().plusDays(16), 173, 173.17, 172.06, 173.05, 0);
-        data.addBar(ZonedDateTime.now().plusDays(17), 172.26, 172.28, 170.5, 170.96, 0);
-        data.addBar(ZonedDateTime.now().plusDays(18), 170.88, 172.34, 170.26, 171.64, 0);
-        data.addBar(ZonedDateTime.now().plusDays(19), 171.85, 172.07, 169.34, 170.01, 0);
-        data.addBar(ZonedDateTime.now().plusDays(20), 170.75, 172.56, 170.36, 172.52, 0); // FB, daily, 9.19.'17
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(1))
+                .openPrice(168.28)
+                .closePrice(169.87)
+                .highPrice(167.15)
+                .lowPrice(169.64)
+                .volume(0)
+                .add();
+
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(2))
+                .openPrice(168.84)
+                .closePrice(169.36)
+                .highPrice(168.20)
+                .lowPrice(168.71)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(3))
+                .openPrice(168.88)
+                .closePrice(169.29)
+                .highPrice(166.41)
+                .lowPrice(167.74)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(4))
+                .openPrice(168.00)
+                .closePrice(168.38)
+                .highPrice(166.18)
+                .lowPrice(166.32)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(5))
+                .openPrice(166.89)
+                .closePrice(167.70)
+                .highPrice(166.33)
+                .lowPrice(167.24)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(6))
+                .openPrice(165.25)
+                .closePrice(168.43)
+                .highPrice(165)
+                .lowPrice(168.05)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(7))
+                .openPrice(168.17)
+                .closePrice(170.18)
+                .highPrice(167.63)
+                .lowPrice(169.92)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(8))
+                .openPrice(170.42)
+                .closePrice(172.15)
+                .highPrice(170.06)
+                .lowPrice(171.97)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(9))
+                .openPrice(172.41)
+                .closePrice(172.92)
+                .highPrice(171.31)
+                .lowPrice(172.02)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(10))
+                .openPrice(171.2)
+                .closePrice(172.39)
+                .highPrice(169.55)
+                .lowPrice(170.72)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(11))
+                .openPrice(170.91)
+                .closePrice(172.48)
+                .highPrice(169.57)
+                .lowPrice(172.09)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(12))
+                .openPrice(171.8)
+                .closePrice(173.31)
+                .highPrice(170.27)
+                .lowPrice(173.21)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(13))
+                .openPrice(173.09)
+                .closePrice(173.49)
+                .highPrice(170.8)
+                .lowPrice(170.95)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(14))
+                .openPrice(172.41)
+                .closePrice(173.89)
+                .highPrice(172.2)
+                .lowPrice(173.51)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(15))
+                .openPrice(173.87)
+                .closePrice(174.17)
+                .highPrice(175)
+                .lowPrice(96)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(16))
+                .openPrice(173)
+                .closePrice(173.17)
+                .highPrice(172.06)
+                .lowPrice(173.05)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(17))
+                .openPrice(172.26)
+                .closePrice(172.28)
+                .highPrice(170.5)
+                .lowPrice(170.96)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(18))
+                .openPrice(170.88)
+                .closePrice(172.34)
+                .highPrice(170.26)
+                .lowPrice(171.64)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(19))
+                .openPrice(171.85)
+                .closePrice(172.07)
+                .highPrice(169.34)
+                .lowPrice(170.01)
+                .volume(0)
+                .add();
+        data.barBuilder()
+                .endTime(ZonedDateTime.now().plusDays(20))
+                .openPrice(170.75)
+                .closePrice(172.56)
+                .highPrice(170.36)
+                .lowPrice(172.52)
+                .volume(0)
+                .add(); // FB, daily, 9.19.'17
 
     }
 

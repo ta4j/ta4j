@@ -43,7 +43,6 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final HighestValueIndicator highestHighPriceIndicator;
     private final Indicator<Num> highPriceIndicator;
-    private final Num hundred;
     private final Num barCountNum;
 
     /**
@@ -57,8 +56,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         super(highPriceIndicator);
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
-        this.hundred = hundred();
-        this.barCountNum = numOf(barCount);
+        this.barCountNum = getBarSeries().numFactory().numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
     }
@@ -89,7 +87,8 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(hundred);
+        final var numFactory = getBarSeries().numFactory();
+        return numFactory.numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(numFactory.hundred());
     }
 
     @Override

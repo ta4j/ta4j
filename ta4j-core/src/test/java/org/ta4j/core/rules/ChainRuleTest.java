@@ -28,11 +28,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.rules.helper.ChainLink;
 
 public class ChainRuleTest {
@@ -41,11 +38,11 @@ public class ChainRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 6, 5, 8, 5, 1, 10, 2, 30);
-        UnderIndicatorRule underIndicatorRule = new UnderIndicatorRule(indicator, series.numOf(5));
-        OverIndicatorRule overIndicatorRule = new OverIndicatorRule(indicator, 7);
-        IsEqualRule isEqualRule = new IsEqualRule(indicator, 5);
+        var series = new MockBarSeriesBuilder().build();
+        var indicator = new FixedDecimalIndicator(series, 6, 5, 8, 5, 1, 10, 2, 30);
+        var underIndicatorRule = new UnderIndicatorRule(indicator, series.numFactory().numOf(5));
+        var overIndicatorRule = new OverIndicatorRule(indicator, 7);
+        var isEqualRule = new IsEqualRule(indicator, 5);
         chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3),
                 new ChainLink(isEqualRule, 2));
     }

@@ -28,8 +28,6 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
@@ -37,19 +35,21 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
-    public VersusEnterAndHoldCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
+    public VersusEnterAndHoldCriterionTest(NumFactory numFactory) {
+        super(params -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFactory);
     }
 
     @Test
     public void calculateOnlyWithGainPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
@@ -58,7 +58,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
@@ -68,7 +68,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnlyOnePosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
@@ -77,7 +77,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
         AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
         assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
@@ -85,7 +85,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithAverageProfit() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN),
                 Trade.buyAt(2, NaN, NaN), Trade.sellAt(5, NaN, NaN));
 
@@ -97,7 +97,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNumberOfBars() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 

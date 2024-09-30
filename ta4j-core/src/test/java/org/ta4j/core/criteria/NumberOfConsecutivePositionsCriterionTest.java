@@ -27,8 +27,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
@@ -36,18 +34,20 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class NumberOfConsecutivePositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfConsecutivePositionsCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new NumberOfConsecutivePositionsCriterion((PositionFilter) params[0]), numFunction);
+    public NumberOfConsecutivePositionsCriterionTest(NumFactory numFactory) {
+        super(params -> new NumberOfConsecutivePositionsCriterion((PositionFilter) params[0]), numFactory);
     }
 
     @Test
     public void calculateWithNoPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
 
         assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(series, new BaseTradingRecord()));
         assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(series, new BaseTradingRecord()));
@@ -55,12 +55,16 @@ public class NumberOfConsecutivePositionsCriterionTest extends AbstractCriterion
 
     @Test
     public void calculateWithTwoLongPositions() {
-        MockBarSeries seriesLoss = new MockBarSeries(numFunction, 110, 105, 100, 90, 80, 140);
+        var seriesLoss = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(110, 105, 100, 90, 80, 140)
+                .build();
         TradingRecord tradingRecordLoss = new BaseTradingRecord(Trade.buyAt(0, seriesLoss), Trade.sellAt(2, seriesLoss),
                 Trade.buyAt(3, seriesLoss), Trade.sellAt(4, seriesLoss));
         assertNumEquals(2, getCriterion(PositionFilter.LOSS).calculate(seriesLoss, tradingRecordLoss));
 
-        MockBarSeries seriesProfit = new MockBarSeries(numFunction, 100, 105, 110, 120, 130, 140);
+        var seriesProfit = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 120, 130, 140)
+                .build();
         TradingRecord tradingRecordProfit = new BaseTradingRecord(Trade.buyAt(1, seriesProfit),
                 Trade.sellAt(3, seriesProfit), Trade.buyAt(3, seriesProfit), Trade.sellAt(4, seriesProfit));
         assertNumEquals(2, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, tradingRecordProfit));
@@ -68,23 +72,31 @@ public class NumberOfConsecutivePositionsCriterionTest extends AbstractCriterion
 
     @Test
     public void calculateWithOneLongPosition() {
-        MockBarSeries seriesLoss = new MockBarSeries(numFunction, 110, 105, 100, 90, 95, 105);
+        var seriesLoss = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(110, 105, 100, 90, 95, 105)
+                .build();
         Position positionLoss = new Position(Trade.buyAt(1, seriesLoss), Trade.sellAt(3, seriesLoss));
         assertNumEquals(1, getCriterion(PositionFilter.LOSS).calculate(seriesLoss, positionLoss));
 
-        MockBarSeries seriesProfit = new MockBarSeries(numFunction, 100, 105, 110, 120, 95, 105);
+        var seriesProfit = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 120, 95, 105)
+                .build();
         Position positionProfit = new Position(Trade.buyAt(1, seriesProfit), Trade.sellAt(3, seriesProfit));
         assertNumEquals(1, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, positionProfit));
     }
 
     @Test
     public void calculateWithTwoShortPositions() {
-        MockBarSeries seriesLoss = new MockBarSeries(numFunction, 100, 90, 110, 120, 95, 105);
+        var seriesLoss = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 90, 110, 120, 95, 105)
+                .build();
         TradingRecord tradingRecordLoss = new BaseTradingRecord(Trade.sellAt(0, seriesLoss), Trade.buyAt(1, seriesLoss),
                 Trade.sellAt(3, seriesLoss), Trade.buyAt(5, seriesLoss));
         assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(seriesLoss, tradingRecordLoss));
 
-        MockBarSeries seriesProfit = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        var seriesProfit = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
         TradingRecord tradingRecordProfit = new BaseTradingRecord(Trade.sellAt(0, seriesProfit),
                 Trade.buyAt(1, seriesProfit), Trade.sellAt(3, seriesProfit), Trade.buyAt(5, seriesProfit));
         assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, tradingRecordProfit));
@@ -103,9 +115,9 @@ public class NumberOfConsecutivePositionsCriterionTest extends AbstractCriterion
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory,
                 getCriterion(PositionFilter.LOSS), 0);
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory,
                 getCriterion(PositionFilter.PROFIT), 0);
     }
 }

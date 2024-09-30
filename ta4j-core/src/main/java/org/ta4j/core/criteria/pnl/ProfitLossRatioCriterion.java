@@ -44,12 +44,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, position);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num averageLoss = averageLossCriterion.calculate(series, position);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
-            return series.one();
+            return series.numFactory().one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
     }
@@ -59,12 +59,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
-            return series.one();
+            return series.numFactory().one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
     }

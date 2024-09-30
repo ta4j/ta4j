@@ -360,7 +360,7 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
-            Num one = entryPrice.numOf(1);
+            Num one = entryPrice.getNumFactory().one();
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
     }
@@ -420,7 +420,7 @@ public class Position implements Serializable {
      * @return the Num of 0
      */
     private Num zero() {
-        return entry.getNetPrice().zero();
+        return entry.getNetPrice().getNumFactory().zero();
     }
 
     @Override

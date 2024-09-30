@@ -26,29 +26,28 @@ package org.ta4j.core.indicators.bollinger;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
-import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public BollingerBandFacadeTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BollingerBandFacadeTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void testCreation() {
-        final BarSeries data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        final var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
+                .build();
         final int barCount = 3;
 
         final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
@@ -65,26 +64,27 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testNumericFacadesSameAsDefaultIndicators() {
-        final BarSeries data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
-        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
+        final var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
+                .build();
+        final var closePriceIndicator = new ClosePriceIndicator(data);
         final int barCount = 3;
-        final Indicator<Num> sma = new SMAIndicator(closePriceIndicator, 3);
+        final var sma = new SMAIndicator(closePriceIndicator, 3);
 
-        final BollingerBandsMiddleIndicator middleBB = new BollingerBandsMiddleIndicator(sma);
-        final StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePriceIndicator,
-                barCount);
-        final BollingerBandsLowerIndicator lowerBB = new BollingerBandsLowerIndicator(middleBB, standardDeviation);
-        final BollingerBandsUpperIndicator upperBB = new BollingerBandsUpperIndicator(middleBB, standardDeviation);
-        final PercentBIndicator pcb = new PercentBIndicator(new ClosePriceIndicator(data), 5, 2);
-        final BollingerBandWidthIndicator widthBB = new BollingerBandWidthIndicator(upperBB, middleBB, lowerBB);
+        final var middleBB = new BollingerBandsMiddleIndicator(sma);
+        final var standardDeviation = new StandardDeviationIndicator(closePriceIndicator, barCount);
+        final var lowerBB = new BollingerBandsLowerIndicator(middleBB, standardDeviation);
+        final var upperBB = new BollingerBandsUpperIndicator(middleBB, standardDeviation);
+        final var pcb = new PercentBIndicator(new ClosePriceIndicator(data), 5, 2);
+        final var widthBB = new BollingerBandWidthIndicator(upperBB, middleBB, lowerBB);
 
-        final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
-        final NumericIndicator middleBBNumeric = bollingerBandFacade.middle();
-        final NumericIndicator lowerBBNumeric = bollingerBandFacade.lower();
-        final NumericIndicator upperBBNumeric = bollingerBandFacade.upper();
-        final NumericIndicator widthBBNumeric = bollingerBandFacade.bandwidth();
+        final var bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
+        final var middleBBNumeric = bollingerBandFacade.middle();
+        final var lowerBBNumeric = bollingerBandFacade.lower();
+        final var upperBBNumeric = bollingerBandFacade.upper();
+        final var widthBBNumeric = bollingerBandFacade.bandwidth();
 
-        final NumericIndicator pcbNumeric = new BollingerBandFacade(data, 5, 2).percentB();
+        final var pcbNumeric = new BollingerBandFacade(data, 5, 2).percentB();
 
         for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
             assertNumEquals(pcb.getValue(i), pcbNumeric.getValue(i));

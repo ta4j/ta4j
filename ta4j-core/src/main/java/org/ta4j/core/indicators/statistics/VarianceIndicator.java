@@ -54,13 +54,14 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num variance = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num variance = numFactory.zero();
         Num average = sma.getValue(index);
         for (int i = startIndex; i <= index; i++) {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numOf(numberOfObservations));
+        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
         return variance;
     }
 

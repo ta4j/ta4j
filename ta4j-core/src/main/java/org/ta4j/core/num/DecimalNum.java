@@ -32,7 +32,6 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,12 +50,8 @@ public final class DecimalNum implements Num {
 
     private static final long serialVersionUID = 1L;
 
-    private static final int DEFAULT_PRECISION = 32;
+    static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
-
-    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
-    private static final DecimalNum ONE = DecimalNum.valueOf(1);
-    private static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
 
     private final MathContext mathContext;
     private final BigDecimal delegate;
@@ -284,31 +279,6 @@ public final class DecimalNum implements Num {
         return new DecimalNum(val, precision);
     }
 
-    @Override
-    public Num zero() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? ZERO : function().apply(0);
-    }
-
-    @Override
-    public Num one() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? ONE : function().apply(1);
-    }
-
-    @Override
-    public Num hundred() {
-        return mathContext.getPrecision() == DEFAULT_PRECISION ? HUNDRED : function().apply(100);
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return (number -> DecimalNum.valueOf(number.toString(), mathContext.getPrecision()));
-    }
-
-    @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
-    }
-
     /**
      * Returns the underlying {@link BigDecimal} delegate.
      *
@@ -317,6 +287,16 @@ public final class DecimalNum implements Num {
     @Override
     public BigDecimal getDelegate() {
         return delegate;
+    }
+
+    @Override
+    public NumFactory getNumFactory() {
+        return DecimalNumFactory.getInstance(mathContext.getPrecision());
+    }
+
+    @Override
+    public String getName() {
+        return this.getClass().getSimpleName();
     }
 
     /**

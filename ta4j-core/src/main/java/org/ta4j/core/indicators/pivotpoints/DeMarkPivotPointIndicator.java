@@ -81,8 +81,8 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
     public DeMarkPivotPointIndicator(BarSeries series, TimeLevel timeLevelId) {
         super(series);
         this.timeLevel = timeLevelId;
-        this.two = numOf(2);
-        this.four = numOf(4);
+        this.two = getBarSeries().numFactory().two();
+        this.four = getBarSeries().numFactory().numOf(4);
     }
 
     @Override

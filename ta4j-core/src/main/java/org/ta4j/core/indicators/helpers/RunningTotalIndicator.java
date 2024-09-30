@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
 public class RunningTotalIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
-    private Num previousSum = zero();
+    private Num previousSum;
 
     // serial access detection
     private int previousIndex = -1;
@@ -45,6 +45,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
+        this.previousSum = indicator.getBarSeries().numFactory().zero();
     }
 
     @Override
@@ -65,7 +66,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     }
 
     private Num slowPath(final int index) {
-        Num sum = zero();
+        Num sum = getBarSeries().numFactory().zero();
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }

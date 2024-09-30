@@ -25,24 +25,22 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.function.Function;
-
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public WMAIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public WMAIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void calculate() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
@@ -56,7 +54,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void wmaWithBarCountGreaterThanSeriesSize() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
@@ -72,8 +70,10 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void wmaUsingBarCount9UsingClosePrice() {
         // Example from
         // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        BarSeries data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98,
-                87.10, 83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10, 83.11, 83.60, 83.66,
+                        82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87)
+                .build();
 
         WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
         assertNumEquals(84.4958, wma.getValue(8));

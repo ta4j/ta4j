@@ -24,14 +24,11 @@
 package org.ta4j.core;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.function.Function;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * A {@code BarSeries} is a sequence of {@link Bar bars} separated by a
@@ -49,56 +46,19 @@ import org.ta4j.core.num.Num;
 public interface BarSeries extends Serializable {
 
     /**
+     * @return factory that generates numbers usable in this BarSeries
+     */
+    NumFactory numFactory();
+
+    /**
+     * @return builder that generates compatible bars
+     */
+    BaseBarConvertibleBuilder barBuilder();
+
+    /**
      * @return the name of the series
      */
     String getName();
-
-    /**
-     * @return any instance of Num to determine its Num type and function.
-     */
-    Num num();
-
-    /**
-     * Returns the underlying function to transform a Number into the Num
-     * implementation used by this bar series
-     *
-     * @return a function Number -> Num
-     */
-    default Function<Number, Num> function() {
-        return num().function();
-    }
-
-    /**
-     * @return the Num of 0
-     */
-    default Num zero() {
-        return num().zero();
-    }
-
-    /**
-     * @return the Num of 1
-     */
-    default Num one() {
-        return num().one();
-    }
-
-    /**
-     * @return the Num of 100
-     */
-    default Num hundred() {
-        return num().hundred();
-    }
-
-    /**
-     * Transforms a {@link Number} into the {@link Num implementation} used by this
-     * bar series
-     *
-     * @param number a {@link Number} implementing object.
-     * @return the corresponding value as a Num implementing object
-     */
-    default Num numOf(Number number) {
-        return num().function().apply(number);
-    }
 
     /**
      * Gets the bar from {@link #getBarData()} with index {@code i}.
@@ -216,8 +176,6 @@ public interface BarSeries extends Serializable {
      * Exceeding bars are removed.
      *
      * @param bar the bar to be added
-     * @apiNote to add bar data directly you can use
-     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
      * @see BarSeries#setMaximumBarCount(int)
      */
     default void addBar(Bar bar) {
@@ -237,120 +195,9 @@ public interface BarSeries extends Serializable {
      * @param replace true to replace the latest bar. Some exchanges continuously
      *                provide new bar data in the respective period, e.g. 1 second
      *                in 1 minute duration.
-     * @apiNote to add bar data directly you can use
-     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
      * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar, boolean replace);
-
-    /**
-     * Adds the {@code bar} at the end of the series.
-     *
-     * <p>
-     * The {@code beginIndex} is set to {@code 0} if not already initialized.<br>
-     * The {@code endIndex} is set to {@code 0} if not already initialized, or
-     * incremented if it matches the end of the series.<br>
-     * Exceeding bars are removed.
-     *
-     * @param timePeriod the {@link Duration} of this bar
-     * @param endTime    the {@link ZonedDateTime end time} of this bar
-     * @apiNote to add bar data directly you can use
-     *          {@link #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)}
-     * @see BarSeries#setMaximumBarCount(int)
-     */
-    void addBar(Duration timePeriod, ZonedDateTime endTime);
-
-    default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice) {
-        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), zero(), zero());
-    }
-
-    default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-            Number volume) {
-        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(volume));
-    }
-
-    default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-            Number volume, Number amount) {
-        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(volume),
-                numOf(amount));
-    }
-
-    default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
-            Number closePrice, Number volume) {
-        this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), zero());
-    }
-
-    default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
-            Number closePrice, Number volume, Number amount) {
-        this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), numOf(amount));
-    }
-
-    default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice) {
-        this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), zero(), zero());
-    }
-
-    default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
-            String volume) {
-        this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                zero());
-    }
-
-    default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
-            String volume, String amount) {
-        this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                numOf(new BigDecimal(amount)));
-    }
-
-    default void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero());
-    }
-
-    /**
-     * Adds a new {@code Bar} to the bar series.
-     *
-     * @param endTime    end time of the bar
-     * @param openPrice  the open price
-     * @param highPrice  the high/max price
-     * @param lowPrice   the low/min price
-     * @param closePrice the last/close price
-     * @param volume     the volume (default zero)
-     * @param amount     the amount (default zero)
-     */
-    void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
-            Num amount);
-
-    /**
-     * Adds a new {@code Bar} to the bar series.
-     *
-     * @param endTime    end time of the bar
-     * @param openPrice  the open price
-     * @param highPrice  the high/max price
-     * @param lowPrice   the low/min price
-     * @param closePrice the last/close price
-     * @param volume     the volume (default zero)
-     */
-    void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
-            Num volume);
-
-    /**
-     * Adds a new {@code Bar} to the bar series.
-     *
-     * @param timePeriod the time period of the bar
-     * @param endTime    end time of the bar
-     * @param openPrice  the open price
-     * @param highPrice  the high/max price
-     * @param lowPrice   the low/min price
-     * @param closePrice the last/close price
-     * @param volume     the volume (default zero)
-     * @param amount     the amount (default zero)
-     */
-    void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
-            Num volume, Num amount);
 
     /**
      * Adds a trade and updates the close price of the last bar.
@@ -360,18 +207,7 @@ public interface BarSeries extends Serializable {
      * @see Bar#addTrade(Num, Num)
      */
     default void addTrade(Number tradeVolume, Number tradePrice) {
-        addTrade(numOf(tradeVolume), numOf(tradePrice));
-    }
-
-    /**
-     * Adds a trade and updates the close price of the last bar.
-     *
-     * @param tradeVolume the traded volume
-     * @param tradePrice  the price
-     * @see Bar#addTrade(Num, Num)
-     */
-    default void addTrade(String tradeVolume, String tradePrice) {
-        addTrade(numOf(new BigDecimal(tradeVolume)), numOf(new BigDecimal(tradePrice)));
+        addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
     }
 
     /**
@@ -399,19 +235,8 @@ public interface BarSeries extends Serializable {
      * @param price the price for the bar
      * @see Bar#addPrice(Num)
      */
-    default void addPrice(String price) {
-        addPrice(new BigDecimal(price));
-    }
-
-    /**
-     * Updates the close price of the last bar. The open, high and low prices are
-     * also updated as needed.
-     *
-     * @param price the price for the bar
-     * @see Bar#addPrice(Num)
-     */
     default void addPrice(Number price) {
-        addPrice(numOf(price));
+        addPrice(numFactory().numOf(price));
     }
 
     /**
