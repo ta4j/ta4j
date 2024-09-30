@@ -74,12 +74,12 @@ public class NaN implements Num {
 
     @Override
     public int intValue() {
-        throw new UnsupportedOperationException("No NaN represantation for int");
+        throw new UnsupportedOperationException("No NaN representation for int");
     }
 
     @Override
     public long longValue() {
-        throw new UnsupportedOperationException("No NaN represantation for long");
+        throw new UnsupportedOperationException("No NaN representation for long");
     }
 
     @Override
