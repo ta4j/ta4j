@@ -46,7 +46,7 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarBuilder().timePeriod(duration)
+        final BaseBar bar = new BaseBarBuilder(numFactory).timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))
