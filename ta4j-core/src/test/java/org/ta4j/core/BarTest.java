@@ -47,16 +47,16 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private Instant endTime;
 
-    public BarTest(NumFactory numFactory) {
+    public BarTest(final NumFactory numFactory) {
         super(null, numFactory);
     }
 
     @Before
     public void setUp() {
-        beginTime = Instant.parse("2014-06-25T00:00:00Z");
-        endTime = Instant.parse("2014-06-25T01:00:00Z");
-        bar = new BaseBarConvertibleBuilder(numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(endTime)
+        this.beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        this.endTime = Instant.parse("2014-06-25T01:00:00Z");
+        this.bar = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
                 .volume(0)
                 .amount(0)
                 .build();
@@ -65,27 +65,27 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void addTrades() {
 
-        bar.addTrade(numOf(3.0), numOf(200.0));
-        bar.addTrade(numOf(4.0), numOf(201.0));
-        bar.addTrade(numOf(2.0), numOf(198.0));
+        this.bar.addTrade(numOf(3.0), numOf(200.0));
+        this.bar.addTrade(numOf(4.0), numOf(201.0));
+        this.bar.addTrade(numOf(2.0), numOf(198.0));
 
-        assertEquals(3, bar.getTrades());
-        assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), bar.getAmount());
-        assertEquals(numOf(200), bar.getOpenPrice());
-        assertEquals(numOf(198), bar.getClosePrice());
-        assertEquals(numOf(198), bar.getLowPrice());
-        assertEquals(numOf(201), bar.getHighPrice());
-        assertEquals(numOf(9), bar.getVolume());
+        assertEquals(3, this.bar.getTrades());
+        assertEquals(numOf(3 * 200 + 4 * 201 + 2 * 198), this.bar.getAmount());
+        assertEquals(numOf(200), this.bar.getOpenPrice());
+        assertEquals(numOf(198), this.bar.getClosePrice());
+        assertEquals(numOf(198), this.bar.getLowPrice());
+        assertEquals(numOf(201), this.bar.getHighPrice());
+        assertEquals(numOf(9), this.bar.getVolume());
     }
 
     @Test
     public void getTimePeriod() {
-        assertEquals(beginTime, bar.getEndTime().minus(bar.getTimePeriod()));
+        assertEquals(this.beginTime, this.bar.getEndTime().minus(this.bar.getTimePeriod()));
     }
 
     @Test
     public void getBeginTime() {
-        assertEquals(beginTime, bar.getBeginTime());
+        assertEquals(this.beginTime, this.bar.getBeginTime());
     }
 
     @Test
@@ -100,15 +100,15 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void inPeriod() {
-        assertFalse(bar.inPeriod(null));
+        assertFalse(this.bar.inPeriod(null));
 
         ZonedDateTime zonedBeginTime = beginTime.atZone(ZoneOffset.UTC);
         assertFalse(bar.inPeriod(zonedBeginTime.withDayOfMonth(24).toInstant()));
         assertFalse(bar.inPeriod(zonedBeginTime.withDayOfMonth(26).toInstant()));
         assertTrue(bar.inPeriod(zonedBeginTime.withMinute(30).toInstant()));
 
-        assertTrue(bar.inPeriod(beginTime));
-        assertFalse(bar.inPeriod(endTime));
+        assertTrue(this.bar.inPeriod(this.beginTime));
+        assertFalse(this.bar.inPeriod(this.endTime));
     }
 
     @Test
@@ -120,17 +120,25 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void equals() {
-        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
-        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .build();
+        final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .build();
 
         assertEquals(bar1, bar2);
-        assertFalse(bar1 == bar2);
+        assertNotSame(bar1, bar2);
     }
 
     @Test
     public void hashCode2() {
-        Bar bar1 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
-        Bar bar2 = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .build();
+        final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
     }

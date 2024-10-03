@@ -23,10 +23,59 @@
  */
 package org.ta4j.core;
 
-class BaseBarBuilderFactory implements BarBuilderFactory {
+import java.time.Duration;
+import java.time.ZonedDateTime;
 
-    @Override
-    public BaseBarBuilder createBarBuilder(BarSeries series) {
-        return new BaseBarBuilder(series.numFactory()).bindTo(series);
-    }
+import org.ta4j.core.num.Num;
+
+public interface BarBuilder {
+    BarBuilder timePeriod(Duration timePeriod);
+
+    BarBuilder endTime(ZonedDateTime endTime);
+
+    BarBuilder openPrice(Num openPrice);
+
+    BarBuilder openPrice(Number openPrice);
+
+    BarBuilder openPrice(String openPrice);
+
+    BarBuilder highPrice(Number highPrice);
+
+    BarBuilder highPrice(String highPrice);
+
+    BarBuilder highPrice(Num highPrice);
+
+    BarBuilder lowPrice(Num lowPrice);
+
+    BarBuilder lowPrice(Number lowPrice);
+
+    BarBuilder lowPrice(String lowPrice);
+
+    BarBuilder closePrice(Num closePrice);
+
+    BarBuilder closePrice(Number closePrice);
+
+    BarBuilder closePrice(String closePrice);
+
+    BarBuilder volume(Num volume);
+
+    BarBuilder volume(Number volume);
+
+    BarBuilder volume(String volume);
+
+    BarBuilder amount(Num amount);
+
+    BarBuilder amount(Number amount);
+
+    BarBuilder amount(String amount);
+
+    BarBuilder trades(long trades);
+
+    BarBuilder trades(String trades);
+
+    BarBuilder bindTo(BarSeries baseBarSeries);
+
+    Bar build();
+
+    void add();
 }

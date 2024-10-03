@@ -23,10 +23,21 @@
  */
 package org.ta4j.core;
 
-class BaseBarBuilderFactory implements BarBuilderFactory {
+public class TickBarBuilderFactory implements BarBuilderFactory {
+
+    private final int countOfTicks;
+    private BarBuilder barBuilder;
+
+    public TickBarBuilderFactory(final int countOfTicks) {
+        this.countOfTicks = countOfTicks;
+    }
 
     @Override
-    public BaseBarBuilder createBarBuilder(BarSeries series) {
-        return new BaseBarBuilder(series.numFactory()).bindTo(series);
+    public BarBuilder createBarBuilder(final BarSeries series) {
+        if (this.barBuilder == null) {
+            this.barBuilder = new TickBarBuilder(series.numFactory(), this.countOfTicks).bindTo(series);
+        }
+
+        return this.barBuilder;
     }
 }
