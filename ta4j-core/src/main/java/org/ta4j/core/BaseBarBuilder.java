@@ -27,6 +27,9 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -132,6 +135,28 @@ public class BaseBarBuilder {
 
     public BaseBarBuilder bindTo(final BarSeries baseBarSeries) {
         this.baseBarSeries = Objects.requireNonNull(baseBarSeries);
+        return this;
+    }
+
+    public BaseBarBuilder toHeikinAshiBar() {
+    	Objects.requireNonNull(this.baseBarSeries, "Bound series cannot be null");
+    	var endIndex = baseBarSeries.getEndIndex();
+    	Num prevClose = baseBarSeries.getEndIndex() >= 0 ? baseBarSeries.getBar(endIndex).getClosePrice() : NaN.valueOf(0);
+    	Num prevOpen = baseBarSeries.getEndIndex() >= 0 ? baseBarSeries.getBar(endIndex).getOpenPrice() : NaN.valueOf(0);
+    	
+    	Num closeDivisor = this.closePrice instanceof DoubleNum ? DoubleNum.valueOf(4) : DecimalNum.valueOf(4);
+    	Num openDivisor = this.closePrice instanceof DoubleNum ? DoubleNum.valueOf(2) : DecimalNum.valueOf(2);
+
+    	var haClose = this.closePrice.plus(this.highPrice).plus(this.lowPrice).plus(this.openPrice).dividedBy(closeDivisor);
+        var haOpen = prevClose instanceof NaN ? this.closePrice.plus(this.openPrice).dividedBy(openDivisor) : prevClose.plus(prevOpen).dividedBy(openDivisor);
+        var haHigh = this.highPrice.max(haOpen).max(haClose);
+        var haLow = this.lowPrice.min(haOpen).min(haClose);
+
+        this.openPrice = haOpen;
+        this.closePrice = haClose;
+        this.highPrice = haHigh;
+        this.lowPrice = haLow;
+
         return this;
     }
 
