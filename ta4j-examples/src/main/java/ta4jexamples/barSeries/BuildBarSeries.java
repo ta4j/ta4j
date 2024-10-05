@@ -54,6 +54,7 @@ public class BuildBarSeries {
         BarSeries d = buildManually();
         BarSeries e = buildManuallyDoubleNum();
         BarSeries f = buildManuallyAndAddBarManually();
+        BarSeries g = buildHeikinAshiBarAndAddManually();
     }
 
     private static BarSeries buildAndAddData() {
@@ -175,6 +176,52 @@ public class BuildBarSeries {
                 .lowPrice(107.90)
                 .closePrice(115.42)
                 .volume(4242.0)
+                .build();
+        // ...
+
+        series.addBar(b1);
+        series.addBar(b2);
+        series.addBar(b3);
+
+        return series;
+    }
+    
+    private static BarSeries buildHeikinAshiBarAndAddManually() {
+        var series = new BaseBarSeriesBuilder().withName("heikinAshiSeries")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+
+        // create bars, converts them to HeikinAshi bar and add them to the series.
+        ZonedDateTime endTime = ZonedDateTime.now();
+        Bar b1 = series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime)
+                .openPrice(105.42)
+                .highPrice(112.99)
+                .lowPrice(104.01)
+                .closePrice(111.42)
+                .volume(1337.0)
+                .toHeikinAshiBar()
+                .build();
+        Bar b2 = series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime.plusDays(1))
+                .openPrice(111.43)
+                .highPrice(112.83)
+                .lowPrice(107.77)
+                .closePrice(107.99)
+                .volume(1234.0)
+                .toHeikinAshiBar()
+                .build();
+        Bar b3 = series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime.plusDays(2))
+                .openPrice(107.90)
+                .highPrice(117.50)
+                .lowPrice(107.90)
+                .closePrice(115.42)
+                .volume(4242.0)
+                .toHeikinAshiBar()
                 .build();
         // ...
 
