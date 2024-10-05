@@ -27,6 +27,8 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -132,6 +134,29 @@ public class BaseBarBuilder {
 
     public BaseBarBuilder bindTo(final BarSeries baseBarSeries) {
         this.baseBarSeries = Objects.requireNonNull(baseBarSeries);
+        return this;
+    }
+
+    /*
+     * This method converts the given OHLC bar to HeikinAshi bar.
+     * BaseBarSeries must be bound, as it requires previousClose and previousOpen
+     * to calculate the haOpen.
+     * */
+    public BaseBarBuilder toHeikinAshiBar() {
+    	Objects.requireNonNull(this.baseBarSeries, "Bound series cannot be null");
+    	
+    	var endIndex = baseBarSeries.getEndIndex();
+    	Num prevClose = endIndex >= 0 ? baseBarSeries.getBar(endIndex).getClosePrice() : this.closePrice;
+    	Num prevOpen = endIndex >= 0 ? baseBarSeries.getBar(endIndex).getOpenPrice() : this.openPrice;
+    	
+    	Num closeDivisor = this.closePrice instanceof DoubleNum ? DoubleNum.valueOf(4) : DecimalNum.valueOf(4);
+    	Num openDivisor = this.closePrice instanceof DoubleNum ? DoubleNum.valueOf(2) : DecimalNum.valueOf(2);
+
+    	this.closePrice = this.closePrice.plus(this.highPrice).plus(this.lowPrice).plus(this.openPrice).dividedBy(closeDivisor);
+    	this.openPrice = prevClose.plus(prevOpen).dividedBy(openDivisor);
+    	this.highPrice = this.highPrice.max(this.openPrice).max(this.closePrice);
+    	this.lowPrice = this.lowPrice.min(this.openPrice).min(this.closePrice);
+
         return this;
     }
 

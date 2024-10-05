@@ -68,4 +68,57 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numOf(40), bar.getVolume());
         assertEquals(numOf(4020), bar.getAmount());
     }
+
+    @Test
+    public void testBuildBarHeikinAshi() {
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        
+        new BaseBarBuilder().timePeriod(Duration.ofHours(1))
+		        .endTime(ZonedDateTime.of(2024, 10, 04, 0, 0, 0, 0, ZoneId.systemDefault()))
+		        .openPrice(numOf(720.00))
+		        .highPrice(numOf(908.70))
+		        .lowPrice(numOf(711.15))
+		        .closePrice(numOf(804.45))
+		        .trades(4)
+		        .volume(numOf(40))
+		        .amount(numOf(4020))
+		        .bindTo(series)
+		        .toHeikinAshiBar()
+	        	.add();
+        
+        new BaseBarBuilder().timePeriod(Duration.ofHours(1))
+                .endTime(ZonedDateTime.of(2024, 10, 04, 1, 0, 0, 0, ZoneId.systemDefault()))
+                .openPrice(numOf(807.50))
+                .highPrice(numOf(863.00))
+                .lowPrice(numOf(696.50))
+                .closePrice(numOf(774.20))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .bindTo(series)
+                .toHeikinAshiBar()
+                .add();
+        
+        new BaseBarBuilder().timePeriod(Duration.ofHours(1))
+                .endTime(ZonedDateTime.of(2024, 10, 04, 2, 0, 0, 0, ZoneId.systemDefault()))
+                .openPrice(numOf(777.45))
+                .highPrice(numOf(879.00))
+                .lowPrice(numOf(770.00))
+                .closePrice(numOf(826.70))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .bindTo(series)
+                .toHeikinAshiBar()
+                .add();
+
+        var bar = series.getLastBar();
+        assertEquals("779.73", String.format("%.2f", bar.getOpenPrice().doubleValue()));
+        assertEquals("879.00", String.format("%.2f", bar.getHighPrice().doubleValue()));
+        assertEquals("770.00", String.format("%.2f", bar.getLowPrice().doubleValue()));
+        assertEquals("813.29", String.format("%.2f", bar.getClosePrice().doubleValue()));
+        assertEquals(4, bar.getTrades());
+        assertEquals(numOf(40), bar.getVolume());
+        assertEquals(numOf(4020), bar.getAmount());
+    }
 }
