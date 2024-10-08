@@ -6,9 +6,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Updated project Java JDK from 11 > 21
 - Updated Github workflows to use JDK 21
 - Extracted NumFactory as source of numbers with defined precision
+- Replaced `ZonedDateTime` with `Instant`
 
 ### Fixed
-
+- Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
+- Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
+- Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
@@ -18,7 +21,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Added
-
+- added `Bar.getZonedBeginTime`: the bar's begin time usable as ZonedDateTime
+- added `Bar.getZonedEndTime`: the bar's end time usable as ZonedDateTime
+- added `Bar.getSystemBeginTime`: the bar's begin time converted to system time zone
+- added `Bar.getSystemEndTime`: the bar's end time converted to system time zone
+- added `BarSeries.getSeriesPeriodDescriptionInDefaultTimeZone`: with times printed in system's default time zone
 
 ## 0.17 (released September 9, 2024)
 

@@ -26,9 +26,7 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
+import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -42,8 +40,9 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testBuildBar() {
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
         final Duration duration = Duration.between(beginTime, endTime);
 
         final BaseBar bar = new BaseBarBuilder().timePeriod(duration)

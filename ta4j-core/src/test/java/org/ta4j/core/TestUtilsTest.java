@@ -30,9 +30,7 @@ import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
+import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -73,12 +71,13 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     private BarSeries randomSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-        ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        var time = Instant.parse("1970-01-01T01:01:01Z");
         double random;
         for (int i = 0; i < 1000; i++) {
             random = Math.random();
-            time = time.plusDays(i);
+            time = time.plus(Duration.ofDays(i));
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(time)

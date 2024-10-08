@@ -24,7 +24,7 @@
 package ta4jexamples.num;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Random;
 
 import org.ta4j.core.BarSeries;
@@ -65,9 +65,10 @@ public class CompareNumTypes {
                 .withNumFactory(DecimalNumFactory.getInstance(256))
                 .build();
 
+        var now = Instant.now();
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
-            ZonedDateTime date = ZonedDateTime.now().minusSeconds(NUMBARS - i);
+            Instant date = now.minusSeconds(NUMBARS - i);
             seriesD.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(date)

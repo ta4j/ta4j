@@ -26,10 +26,9 @@ package org.ta4j.core.aggregator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.Test;
@@ -51,10 +50,8 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void testAggregateWithNewName() {
-        final List<Bar> bars = new LinkedList<>();
-
         final BarSeries barSeries = new MockBarSeriesBuilder().withName("name").build();
-        final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
+        final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
         var bar0 = barSeries.barBuilder()
                 .endTime(time)
@@ -67,7 +64,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar1 = barSeries.barBuilder()
-                .endTime(time.plusDays(1))
+                .endTime(time.plus(Duration.ofDays(1)))
                 .openPrice(2d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -77,7 +74,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar2 = barSeries.barBuilder()
-                .endTime(time.plusDays(2))
+                .endTime(time.plus(Duration.ofDays(2)))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)
@@ -101,7 +98,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
     @Test
     public void testAggregateWithTheSameName() {
         final BarSeries barSeries = new MockBarSeriesBuilder().withName("name").build();
-        final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
+        final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
         var bar0 = barSeries.barBuilder()
                 .endTime(time)
@@ -114,7 +111,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar1 = barSeries.barBuilder()
-                .endTime(time.plusDays(1))
+                .endTime(time.plus(Duration.ofDays(1)))
                 .openPrice(2d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -124,7 +121,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar2 = barSeries.barBuilder()
-                .endTime(time.plusDays(2))
+                .endTime(time.plus(Duration.ofDays(2)))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)

@@ -25,10 +25,12 @@ package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
-import java.time.ZoneId;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 import org.junit.Before;
@@ -41,9 +43,9 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private Bar bar;
 
-    private ZonedDateTime beginTime;
+    private Instant beginTime;
 
-    private ZonedDateTime endTime;
+    private Instant endTime;
 
     public BarTest(NumFactory numFactory) {
         super(null, numFactory);
@@ -51,8 +53,8 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Before
     public void setUp() {
-        beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+        beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        endTime = Instant.parse("2014-06-25T01:00:00Z");
         bar = new BaseBarConvertibleBuilder(numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(endTime)
                 .volume(0)
@@ -87,15 +89,33 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void getDateName() {
+        assertNotNull(bar.getDateName());
+    }
+
+    @Test
+    public void getSimpleDateName() {
+        assertNotNull(bar.getSimpleDateName());
+    }
+
+    @Test
     public void inPeriod() {
         assertFalse(bar.inPeriod(null));
 
-        assertFalse(bar.inPeriod(beginTime.withDayOfMonth(24)));
-        assertFalse(bar.inPeriod(beginTime.withDayOfMonth(26)));
-        assertTrue(bar.inPeriod(beginTime.withMinute(30)));
+        ZonedDateTime zonedBeginTime = beginTime.atZone(ZoneOffset.UTC);
+        assertFalse(bar.inPeriod(zonedBeginTime.withDayOfMonth(24).toInstant()));
+        assertFalse(bar.inPeriod(zonedBeginTime.withDayOfMonth(26).toInstant()));
+        assertTrue(bar.inPeriod(zonedBeginTime.withMinute(30).toInstant()));
 
         assertTrue(bar.inPeriod(beginTime));
         assertFalse(bar.inPeriod(endTime));
+    }
+
+    @Test
+    public void doesNotThrowNullPointerException() {
+        var bar = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        // TODO use Junit5: org.junit.jupiter.api.Assertions.assertDoesNotThrow instead:
+        assertNotNull(bar.toString());
     }
 
     @Test

@@ -70,7 +70,7 @@ public class CashFlowToChart {
         org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
-            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochMilli())),
                     indicator.getValue(i).doubleValue());
         }
         return chartBarSeries;

@@ -27,6 +27,8 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Instant;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -56,6 +58,11 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
                 .build();
     }
 
+    public Instant getNextEndTime() {
+        var lastBar = data.getLastBar();
+        return lastBar == null ? null : lastBar.getEndTime().plus(lastBar.getTimePeriod());
+    }
+
     @Test
     public void usingBarCount3UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
@@ -78,7 +85,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void usingBarCount3UsingClosePriceMovingSerie() {
         data.setMaximumBarCount(13);
-        data.barBuilder().closePrice(5.).add();
+        data.barBuilder().closePrice(5.).endTime(getNextEndTime()).add();
 
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 

@@ -24,7 +24,7 @@
 package ta4jexamples.walkforward;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +34,8 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
@@ -70,12 +70,12 @@ public class WalkForward {
         beginIndexes.add(beginIndex);
 
         // Building the first interval before next split
-        ZonedDateTime beginInterval = series.getFirstBar().getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(splitDuration);
+        Instant beginInterval = series.getFirstBar().getEndTime();
+        Instant endInterval = beginInterval.plus(splitDuration);
 
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each bar...
-            ZonedDateTime barTime = series.getBar(i).getEndTime();
+            Instant barTime = series.getBar(i).getEndTime();
             if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
                 // Bar out of the interval
                 if (!endInterval.isAfter(barTime)) {
@@ -109,15 +109,15 @@ public class WalkForward {
     public static BarSeries subseries(BarSeries series, int beginIndex, Duration duration) {
 
         // Calculating the sub-series interval
-        ZonedDateTime beginInterval = series.getBar(beginIndex).getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(duration);
+        Instant beginInterval = series.getBar(beginIndex).getEndTime();
+        Instant endInterval = beginInterval.plus(duration);
 
         // Checking bars belonging to the sub-series (starting at the provided index)
         int subseriesNbBars = 0;
         int endIndex = series.getEndIndex();
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each bar...
-            ZonedDateTime barTime = series.getBar(i).getEndTime();
+            Instant barTime = series.getBar(i).getEndTime();
             if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
                 // Bar out of the interval
                 break;

@@ -29,7 +29,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -138,7 +138,7 @@ public class LinearTransactionCostModelTest {
         BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test")
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        ZonedDateTime now = ZonedDateTime.now();
+        Instant now = Instant.now();
         Num one = series.numFactory().one();
         Num two = series.numFactory().numOf(2);
         Num three = series.numFactory().numOf(3);

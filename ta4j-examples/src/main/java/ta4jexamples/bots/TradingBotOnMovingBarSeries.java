@@ -24,7 +24,7 @@
 package ta4jexamples.bots;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -41,6 +41,7 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -122,7 +123,7 @@ public class TradingBotOnMovingBarSeries {
         return new BaseBarConvertibleBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now())
+                .endTime(Instant.now())
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)

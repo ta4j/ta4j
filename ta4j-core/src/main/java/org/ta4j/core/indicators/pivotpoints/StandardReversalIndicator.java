@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  * Pivot Reversal Indicator.
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
+ *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+ *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
  */
 public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
 

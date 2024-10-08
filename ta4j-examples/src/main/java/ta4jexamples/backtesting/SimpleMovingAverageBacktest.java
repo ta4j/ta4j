@@ -24,7 +24,8 @@
 package ta4jexamples.backtesting;
 
 import java.time.Duration;
-import java.time.ZoneId;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
@@ -82,7 +83,7 @@ public class SimpleMovingAverageBacktest {
         return series;
     }
 
-    private static BaseBar createBar(BaseBarConvertibleBuilder barBuilder, ZonedDateTime endTime, Number openPrice,
+    private static BaseBar createBar(BaseBarConvertibleBuilder barBuilder, Instant endTime, Number openPrice,
             Number highPrice, Number lowPrice, Number closePrice, Number volume) {
         return barBuilder.timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
@@ -94,8 +95,8 @@ public class SimpleMovingAverageBacktest {
                 .build();
     }
 
-    private static ZonedDateTime createDay(int day) {
-        return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
+    private static Instant createDay(int day) {
+        return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneOffset.UTC).toInstant();
     }
 
     private static Strategy create3DaySmaStrategy(BarSeries series) {

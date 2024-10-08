@@ -26,8 +26,7 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.List;
 
 import org.junit.Before;
@@ -61,19 +60,17 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Before
     public void setUp() {
-
-        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf)).closePrice(1d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf)).closePrice(2d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf)).closePrice(3d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2013-12-01T00:00:00-05:00", dtf)).closePrice(4d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2014-02-01T00:00:00-05:00", dtf)).closePrice(5d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2015-01-01T00:00:00-05:00", dtf)).closePrice(6d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf)).closePrice(7d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf)).closePrice(8d).add();
-        seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf)).closePrice(7d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2013-08-01T05:00:00Z")).closePrice(2d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2013-10-01T05:00:00Z")).closePrice(3d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2013-12-01T05:00:00Z")).closePrice(4d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2014-02-01T05:00:00Z")).closePrice(5d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2015-01-01T05:00:00Z")).closePrice(6d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2015-08-01T05:00:00Z")).closePrice(7d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2015-10-01T05:00:00Z")).closePrice(8d).add();
+        seriesForRun.barBuilder().endTime(Instant.parse("2015-12-01T05:00:00Z")).closePrice(7d).add();
 
         manager = new BarSeriesManager(seriesForRun, new TradeOnCurrentCloseModel());
 

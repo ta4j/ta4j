@@ -24,8 +24,7 @@
 package ta4jexamples.strategies;
 
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.stream.Stream;
 
 import org.ta4j.core.BarSeries;
@@ -46,7 +45,8 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 public class UnstableIndicatorStrategy {
 
     public static final Duration MINUTE = Duration.ofMinutes(1);
-    public static final ZonedDateTime TIME = ZonedDateTime.of(2020, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
+
+    public static final Instant TIME = Instant.parse("2020-01-01T00:00:00Z");
 
     public static Strategy buildStrategy(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
