@@ -25,9 +25,6 @@ package org.ta4j.core.indicators.pivotpoints;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
-import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -102,20 +99,20 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        var barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        for (int i : barsOfPreviousPeriod) {
-            Bar iBar = getBarSeries().getBar(i);
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var high = bar.getHighPrice();
+        var low = bar.getLowPrice();
+        for (var i : barsOfPreviousPeriod) {
+            var iBar = getBarSeries().getBar(i);
             high = iBar.getHighPrice().max(high);
             low = iBar.getLowPrice().min(low);
         }
 
-        Num pivotPointValue = pivotPointIndicator.getValue(index);
-        Num fibValue = fibonacciFactor.multipliedBy(high.minus(low));
+        var pivotPointValue = pivotPointIndicator.getValue(index);
+        var fibValue = fibonacciFactor.multipliedBy(high.minus(low));
 
         return fibReversalTyp == FibReversalTyp.RESISTANCE ? pivotPointValue.plus(fibValue)
                 : pivotPointValue.minus(fibValue);

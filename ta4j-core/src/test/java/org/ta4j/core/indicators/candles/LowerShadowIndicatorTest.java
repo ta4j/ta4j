@@ -54,7 +54,7 @@ public class LowerShadowIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void getValue() {
-        LowerShadowIndicator lowerShadow = new LowerShadowIndicator(series);
+        var lowerShadow = new LowerShadowIndicator(series);
         assertNumEquals(0, lowerShadow.getValue(0));
         assertNumEquals(0, lowerShadow.getValue(1));
         assertNumEquals(1, lowerShadow.getValue(2));

@@ -58,7 +58,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Test
     public void getValue() {
-        CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
+        var clv = new CloseLocationValueIndicator(series);
         assertNumEquals(0.6, clv.getValue(0));
         assertNumEquals(0.5, clv.getValue(1));
         assertNumEquals(0, clv.getValue(2));
@@ -68,7 +68,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Test
     public void returnZeroIfHighEqualsLow() {
-        CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
+        var clv = new CloseLocationValueIndicator(series);
         assertNumEquals(NaN.NaN, clv.getValue(5));
         assertNumEquals(1, clv.getValue(6));
         assertNumEquals(0, clv.getValue(7));

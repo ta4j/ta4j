@@ -72,7 +72,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void stackOverflowError() {
         var bigSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < 10000; i++) {
+        for (var i = 0; i < 10000; i++) {
             bigSeries.barBuilder().closePrice(i).add();
         }
         var closePrice = new ClosePriceIndicator(bigSeries);

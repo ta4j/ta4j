@@ -51,7 +51,7 @@ public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void indicatorShouldRetrieveBarTrade() {
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             assertEquals((long) tradeIndicator.getValue(i), barSeries.getBar(i).getTrades());
         }
     }

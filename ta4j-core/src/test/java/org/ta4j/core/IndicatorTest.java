@@ -28,9 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,34 +57,31 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void toDouble() {
-        List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFactory::numOf)
-                .collect(Collectors.toList());
+        var expectedValues = Arrays.stream(typicalPrices).mapToObj(numFactory::numOf).collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
-        int barCount = 10, index = 20;
+        var barCount = 10;
+        var index = 20;
         Double[] doubles = Indicator.toDouble(closePriceMockIndicator, index, barCount);
         assertTrue(doubles.length == barCount);
 
-        for (int i = 0; i < barCount; i++) {
+        for (var i = 0; i < barCount; i++) {
             assertTrue(typicalPrices[i + 11] == doubles[i]);
         }
     }
 
     @Test
     public void shouldProvideStream() {
-        List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFactory::numOf)
-                .collect(Collectors.toList());
+        var expectedValues = Arrays.stream(typicalPrices).mapToObj(numFactory::numOf).collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
-        Stream<Num> stream = closePriceMockIndicator.stream();
-        List<Num> collectedValues = stream.collect(Collectors.toList());
+        var stream = closePriceMockIndicator.stream();
+        var collectedValues = stream.collect(Collectors.toList());
 
         Assert.assertNotNull(stream);
         Assert.assertNotNull(collectedValues);
         assertEquals(30, collectedValues.size());
-        for (int i = 0; i < data.getBarCount(); i++) {
+        for (var i = 0; i < data.getBarCount(); i++) {
             assertNumEquals(typicalPrices[i], collectedValues.get(i));
         }
     }

@@ -31,7 +31,6 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -56,7 +55,7 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void isSatisfiedWorksForBuy() {
         final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
-        final Num tradedAmount = numOf(1);
+        final var tradedAmount = numOf(1);
 
         // 30% stop-gain
         var rule = new StopGainRule(closePrice, numOf(30));
@@ -81,8 +80,8 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForSell() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
-        final Num tradedAmount = numOf(1);
+        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        final var tradedAmount = numOf(1);
 
         // 30% stop-gain
         var rule = new StopGainRule(closePrice, numOf(10));

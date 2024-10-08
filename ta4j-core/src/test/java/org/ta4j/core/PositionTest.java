@@ -40,7 +40,6 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.Num;
 
 public class PositionTest {
 
@@ -160,9 +159,9 @@ public class PositionTest {
 
     @Test
     public void testEqualsForEntryOrders() {
-        Position trLeft = newPosition;
-        Position trRightEquals = new Position();
-        Position trRightNotEquals = new Position();
+        var trLeft = newPosition;
+        var trRightEquals = new Position();
+        var trRightNotEquals = new Position();
 
         assertEquals(TradeType.BUY, trRightNotEquals.operate(2).getType());
         assertNotEquals(trLeft, trRightNotEquals);
@@ -176,9 +175,9 @@ public class PositionTest {
 
     @Test
     public void testEqualsForExitOrders() {
-        Position trLeft = newPosition;
-        Position trRightEquals = new Position();
-        Position trRightNotEquals = new Position();
+        var trLeft = newPosition;
+        var trRightEquals = new Position();
+        var trRightNotEquals = new Position();
 
         assertEquals(TradeType.BUY, trLeft.operate(1).getType());
         assertEquals(TradeType.BUY, trRightEquals.operate(1).getType());
@@ -196,48 +195,48 @@ public class PositionTest {
 
     @Test
     public void testGetProfitForLongPositions() {
-        Position position = new Position(TradeType.BUY);
+        var position = new Position(TradeType.BUY);
 
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getProfit();
+        final var profit = position.getProfit();
 
         assertEquals(DoubleNum.valueOf(4.0), profit);
     }
 
     @Test
     public void testGetProfitForShortPositions() {
-        Position position = new Position(TradeType.SELL);
+        var position = new Position(TradeType.SELL);
 
         position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getProfit();
+        final var profit = position.getProfit();
 
         assertEquals(DoubleNum.valueOf(4.0), profit);
     }
 
     @Test
     public void testGetGrossReturnForLongPositions() {
-        Position position = new Position(TradeType.BUY);
+        var position = new Position(TradeType.BUY);
 
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getGrossReturn();
+        final var profit = position.getGrossReturn();
 
         assertEquals(DoubleNum.valueOf(1.2), profit);
     }
 
     @Test
     public void testGetGrossReturnForShortPositions() {
-        Position position = new Position(TradeType.SELL);
+        var position = new Position(TradeType.SELL);
 
         position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         position.operate(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
 
-        final Num profit = position.getGrossReturn();
+        final var profit = position.getGrossReturn();
 
         assertEquals(DoubleNum.valueOf(1.2), profit);
     }
@@ -247,7 +246,7 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
-        Position position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
+        var position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -256,7 +255,7 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95)
                 .build();
-        Position position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
+        var position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -277,12 +276,12 @@ public class PositionTest {
 
     @Test
     public void getProfitLongNoFinalBarTest() {
-        Position closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
-        Position openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
+        var closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
+        var openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
         openPosition.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num profitOfClosedPosition = closedPosition.getProfit();
-        Num proftOfOpenPosition = openPosition.getProfit();
+        var profitOfClosedPosition = closedPosition.getProfit();
+        var proftOfOpenPosition = openPosition.getProfit();
 
         assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedPosition);
         assertNumEquals(DoubleNum.valueOf(0), proftOfOpenPosition);
@@ -290,12 +289,12 @@ public class PositionTest {
 
     @Test
     public void getProfitLongWithFinalBarTest() {
-        Position closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
-        Position openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
+        var closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
+        var openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
         openPosition.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
-        Num profitOfClosedPosition = closedPosition.getProfit(10, DoubleNum.valueOf(12));
-        Num profitOfOpenPosition = openPosition.getProfit(10, DoubleNum.valueOf(12));
+        var profitOfClosedPosition = closedPosition.getProfit(10, DoubleNum.valueOf(12));
+        var profitOfOpenPosition = openPosition.getProfit(10, DoubleNum.valueOf(12));
 
         assertNumEquals(DoubleNum.valueOf(9.98), profitOfOpenPosition);
         assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedPosition);
@@ -303,18 +302,18 @@ public class PositionTest {
 
     @Test
     public void getProfitShortNoFinalBarTest() {
-        Trade sell = Trade.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        Trade buyBack = Trade.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        var sell = Trade.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        var buyBack = Trade.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
-        Position closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
-        Position openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
+        var closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
+        var openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
         openPosition.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num profitOfClosedPosition = closedPosition.getProfit();
-        Num proftOfOpenPosition = openPosition.getProfit();
+        var profitOfClosedPosition = closedPosition.getProfit();
+        var proftOfOpenPosition = openPosition.getProfit();
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-        Num expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        var expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        var expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPosition);
         assertNumEquals(DoubleNum.valueOf(0), proftOfOpenPosition);
@@ -322,20 +321,20 @@ public class PositionTest {
 
     @Test
     public void getProfitShortWithFinalBarTest() {
-        Trade sell = Trade.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        Trade buyBack = Trade.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        var sell = Trade.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        var buyBack = Trade.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
-        Position closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
-        Position openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
+        var closedPosition = new Position(sell, buyBack, transactionModel, holdingModel);
+        var openPosition = new Position(TradeType.SELL, transactionModel, holdingModel);
         openPosition.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
-        Num profitOfClosedPositionFinalAfter = closedPosition.getProfit(20, DoubleNum.valueOf(3));
-        Num profitOfOpenPositionFinalAfter = openPosition.getProfit(20, DoubleNum.valueOf(3));
-        Num profitOfClosedPositionFinalBefore = closedPosition.getProfit(5, DoubleNum.valueOf(3));
-        Num profitOfOpenPositionFinalBefore = openPosition.getProfit(5, DoubleNum.valueOf(3));
+        var profitOfClosedPositionFinalAfter = closedPosition.getProfit(20, DoubleNum.valueOf(3));
+        var profitOfOpenPositionFinalAfter = openPosition.getProfit(20, DoubleNum.valueOf(3));
+        var profitOfClosedPositionFinalBefore = closedPosition.getProfit(5, DoubleNum.valueOf(3));
+        var profitOfOpenPositionFinalBefore = openPosition.getProfit(5, DoubleNum.valueOf(3));
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-        Num expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        var expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        var expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenPositionFinalAfter);
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);

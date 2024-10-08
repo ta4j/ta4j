@@ -59,7 +59,7 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void test() {
-        ROCVIndicator roc = new ROCVIndicator(series, 3);
+        var roc = new ROCVIndicator(series, 3);
 
         assertNumEquals(0, roc.getValue(0));
         assertNumEquals(200, roc.getValue(1));

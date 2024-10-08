@@ -58,13 +58,13 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void firstValueShouldBeEqualsToFirstDataValue() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(64.75, indicator.getValue(0));
     }
 
     @Test
     public void usingBarCount10UsingClosePrice() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 10);
         assertNumEquals(63.6948, indicator.getValue(9));
         assertNumEquals(63.2648, indicator.getValue(10));
         assertNumEquals(62.9457, indicator.getValue(11));
@@ -73,10 +73,10 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void stackOverflowError() throws Exception {
         var bigSeries = new MockBarSeriesBuilder().build();
-        for (int i = 0; i < 10000; i++) {
+        for (var i = 0; i < 10000; i++) {
             bigSeries.barBuilder().closePrice(i).add();
         }
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
+        var indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
         assertNumEquals(9994.5, indicator.getValue(9999));
@@ -84,8 +84,8 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void externalData() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
-        Indicator<Num> closePrice = new ClosePriceIndicator(xlsSeries);
+        var xlsSeries = xls.getSeries();
+        var closePrice = new ClosePriceIndicator(xlsSeries);
         Indicator<Num> indicator;
 
         indicator = getIndicator(closePrice, 1);

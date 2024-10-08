@@ -83,7 +83,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
+        final var startIndex = Math.max(0, index - barCount + 1);
         if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
             return NaN;
@@ -114,24 +114,24 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         final var numFactory = getBarSeries().numFactory();
-        Num zero = numFactory.zero();
+        var zero = numFactory.zero();
         // First pass: compute xBar and yBar
-        Num sumX = zero;
-        Num sumY = zero;
+        var sumX = zero;
+        var sumY = zero;
         for (int i = startIndex; i <= endIndex; i++) {
             sumX = sumX.plus(numFactory.numOf(i));
             sumY = sumY.plus(indicator.getValue(i));
         }
-        Num nbObservations = numFactory.numOf(endIndex - startIndex + 1);
-        Num xBar = sumX.dividedBy(nbObservations);
-        Num yBar = sumY.dividedBy(nbObservations);
+        var nbObservations = numFactory.numOf(endIndex - startIndex + 1);
+        var xBar = sumX.dividedBy(nbObservations);
+        var yBar = sumY.dividedBy(nbObservations);
 
         // Second pass: compute slope and intercept
-        Num xxBar = zero;
-        Num xyBar = zero;
+        var xxBar = zero;
+        var xyBar = zero;
         for (int i = startIndex; i <= endIndex; i++) {
-            Num dX = numFactory.numOf(i).minus(xBar);
-            Num dY = indicator.getValue(i).minus(yBar);
+            var dX = numFactory.numOf(i).minus(xBar);
+            var dY = indicator.getValue(i).minus(yBar);
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));
         }

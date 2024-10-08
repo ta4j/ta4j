@@ -98,7 +98,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .amount(0)
                 .trades(0)
                 .add();
-        Indicator<Num> indicator = getIndicator(series, 3);
+        var indicator = getIndicator(series, 3);
 
         assertEquals(7d, indicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(6d / 3 + (1 - 1d / 3) * indicator.getValue(0).doubleValue(), indicator.getValue(1).doubleValue(),
@@ -113,7 +113,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testXls() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
+        var xlsSeries = xls.getSeries();
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);

@@ -141,29 +141,29 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        boolean enter = Strategy.super.shouldEnter(index, tradingRecord);
+        var enter = Strategy.super.shouldEnter(index, tradingRecord);
         traceShouldEnter(index, enter);
         return enter;
     }
 
     @Override
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
-        boolean exit = Strategy.super.shouldExit(index, tradingRecord);
+        var exit = Strategy.super.shouldExit(index, tradingRecord);
         traceShouldExit(index, exit);
         return exit;
     }
 
     @Override
     public Strategy and(Strategy strategy) {
-        String andName = "and(" + name + "," + strategy.getName() + ")";
-        int unstable = Math.max(unstableBars, strategy.getUnstableBars());
+        var andName = "and(" + name + "," + strategy.getName() + ")";
+        var unstable = Math.max(unstableBars, strategy.getUnstableBars());
         return and(andName, strategy, unstable);
     }
 
     @Override
     public Strategy or(Strategy strategy) {
-        String orName = "or(" + name + "," + strategy.getName() + ")";
-        int unstable = Math.max(unstableBars, strategy.getUnstableBars());
+        var orName = "or(" + name + "," + strategy.getName() + ")";
+        var unstable = Math.max(unstableBars, strategy.getUnstableBars());
         return or(orName, strategy, unstable);
     }
 

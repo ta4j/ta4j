@@ -75,7 +75,7 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         var senkouSpanA = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen, 5);
         var senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9, 5);
         final int chikouSpanTimeDelay = 5;
-        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, chikouSpanTimeDelay);
+        var chikouSpan = new IchimokuChikouSpanIndicator(data, chikouSpanTimeDelay);
 
         assertNumEquals(45.155, tenkanSen.getValue(3));
         assertNumEquals(45.18, tenkanSen.getValue(4));

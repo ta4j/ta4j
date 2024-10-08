@@ -248,7 +248,7 @@ public class Trade implements Serializable {
         this.pricePerAsset = pricePerAsset;
         this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
 
-        Num costPerAsset = cost.dividedBy(amount);
+        var costPerAsset = cost.dividedBy(amount);
         // add transaction costs to the pricePerAsset at the trade
         if (type.equals(TradeType.BUY)) {
             this.netPrice = this.pricePerAsset.plus(costPerAsset);

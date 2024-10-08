@@ -13,6 +13,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
 - Updated **logback-classic** 1.4.12 > 1.5.6 to resolve [CVE-2023-6481](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
+- Cleaned code by using new java syntax like `var`, `record`, `text blocks`
+- Faster test execution by using new `String.lines()`
 
 ### Removed/Deprecated
 

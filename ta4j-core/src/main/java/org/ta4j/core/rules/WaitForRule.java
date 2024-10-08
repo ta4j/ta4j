@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 
@@ -57,12 +56,12 @@ public class WaitForRule extends AbstractRule {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
+        var satisfied = false;
         // No trading history, no need to wait
         if (tradingRecord != null) {
-            Trade lastTrade = tradingRecord.getLastTrade(tradeType);
+            var lastTrade = tradingRecord.getLastTrade(tradeType);
             if (lastTrade != null) {
-                int currentNumberOfBars = index - lastTrade.getIndex();
+                var currentNumberOfBars = index - lastTrade.getIndex();
                 satisfied = currentNumberOfBars >= numberOfBars;
             }
         }

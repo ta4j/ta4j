@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -47,12 +46,12 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final Bar bar = getBarSeries().getBar(index);
-        final Num low = bar.getLowPrice();
-        final Num high = bar.getHighPrice();
-        final Num close = bar.getClosePrice();
+        final var bar = getBarSeries().getBar(index);
+        final var low = bar.getLowPrice();
+        final var high = bar.getHighPrice();
+        final var close = bar.getClosePrice();
 
-        final Num diffHighLow = high.minus(low);
+        final var diffHighLow = high.minus(low);
 
         return diffHighLow.isNaN() ? getBarSeries().numFactory().zero()
                 : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);

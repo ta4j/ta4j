@@ -24,7 +24,6 @@
 package org.ta4j.core.criteria;
 
 import java.util.Collections;
-import java.util.List;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -61,13 +60,13 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+        var returns = new Returns(series, position, Returns.ReturnType.LOG);
         return calculateES(returns, confidence);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        var returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
         return calculateES(returns, confidence);
     }
 
@@ -80,20 +79,20 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
      */
     private static Num calculateES(Returns returns, double confidence) {
         // select non-NaN returns
-        List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-        Num zero = returns.getBarSeries().numFactory().zero();
+        var returnRates = returns.getValues().subList(1, returns.getSize() + 1);
+        var zero = returns.getBarSeries().numFactory().zero();
         if (returnRates.isEmpty()) {
             return zero;
         }
-        Num expectedShortfall = zero;
+        var expectedShortfall = zero;
         // F(x_var) >= alpha (=1-confidence)
-        int nInBody = (int) (returns.getSize() * confidence);
-        int nInTail = returns.getSize() - nInBody;
+        var nInBody = (int) (returns.getSize() * confidence);
+        var nInTail = returns.getSize() - nInBody;
 
         // calculate average tail loss
         Collections.sort(returnRates);
-        List<Num> tailEvents = returnRates.subList(0, nInTail);
-        Num sum = zero;
+        var tailEvents = returnRates.subList(0, nInTail);
+        var sum = zero;
         for (int i = 0; i < nInTail; i++) {
             sum = sum.plus(tailEvents.get(i));
         }

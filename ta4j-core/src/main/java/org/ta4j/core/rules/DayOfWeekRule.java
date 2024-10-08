@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import java.time.DayOfWeek;
-import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -55,7 +54,7 @@ public class DayOfWeekRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        ZonedDateTime dateTime = timeIndicator.getValue(index);
+        var dateTime = timeIndicator.getValue(index);
         final boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
         traceIsSatisfied(index, satisfied);
         return satisfied;

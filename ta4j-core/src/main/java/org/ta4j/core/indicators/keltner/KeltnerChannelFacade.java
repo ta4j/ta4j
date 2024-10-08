@@ -53,8 +53,8 @@ public class KeltnerChannelFacade {
      *                 channel
      */
     public KeltnerChannelFacade(BarSeries series, int emaCount, int atrCount, Number k) {
-        NumericIndicator price = NumericIndicator.of(new ClosePriceIndicator(series));
-        NumericIndicator atr = NumericIndicator.of(new ATRIndicator(series, atrCount));
+        var price = NumericIndicator.of(new ClosePriceIndicator(series));
+        var atr = NumericIndicator.of(new ATRIndicator(series, atrCount));
         this.middle = price.ema(emaCount);
         this.upper = middle.plus(atr.multipliedBy(k));
         this.lower = middle.minus(atr.multipliedBy(k));

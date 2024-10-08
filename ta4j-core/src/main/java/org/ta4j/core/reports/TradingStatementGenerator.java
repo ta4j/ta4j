@@ -58,10 +58,8 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
 
     @Override
     public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
-                series);
-        final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord,
-                series);
+        final var performanceReport = performanceReportGenerator.generate(strategy, tradingRecord, series);
+        final var positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord, series);
         return new TradingStatement(strategy, positionStatsReport, performanceReport);
     }
 }

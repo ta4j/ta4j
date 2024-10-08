@@ -25,9 +25,6 @@ package org.ta4j.core.indicators.pivotpoints;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.List;
-
-import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -65,7 +62,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num x = pivotPointIndicator.getValue(index).multipliedBy(getBarSeries().numFactory().numOf(4));
+        var x = pivotPointIndicator.getValue(index).multipliedBy(getBarSeries().numFactory().numOf(4));
         Num result;
 
         if (level == DeMarkPivotLevel.SUPPORT) {
@@ -83,13 +80,13 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateResistance(Num x, int index) {
-        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        var barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty()) {
             return NaN;
         }
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num low = bar.getLowPrice();
-        for (int i : barsOfPreviousPeriod) {
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var low = bar.getLowPrice();
+        for (var i : barsOfPreviousPeriod) {
             low = getBarSeries().getBar(i).getLowPrice().min(low);
         }
 
@@ -97,13 +94,13 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateSupport(Num x, int index) {
-        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        var barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty()) {
             return NaN;
         }
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num high = bar.getHighPrice();
-        for (int i : barsOfPreviousPeriod) {
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var high = bar.getHighPrice();
+        for (var i : barsOfPreviousPeriod) {
             high = getBarSeries().getBar(i).getHighPrice().max(high);
         }
 

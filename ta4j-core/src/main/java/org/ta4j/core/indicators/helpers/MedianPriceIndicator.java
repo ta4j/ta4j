@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -51,7 +50,7 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final Bar bar = getBarSeries().getBar(index);
+        final var bar = getBarSeries().getBar(index);
         return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(getBarSeries().numFactory().two());
     }
 

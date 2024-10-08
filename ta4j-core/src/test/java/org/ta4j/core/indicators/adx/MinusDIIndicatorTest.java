@@ -47,7 +47,7 @@ public class MinusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void xlsTest() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
+        var xlsSeries = xls.getSeries();
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);

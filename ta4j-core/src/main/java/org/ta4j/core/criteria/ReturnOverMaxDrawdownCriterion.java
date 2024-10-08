@@ -46,22 +46,22 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        final var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, position);
+            final var totalProfit = grossReturnCriterion.calculate(series, position);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        final var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
+            final var totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }

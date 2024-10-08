@@ -56,7 +56,7 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
-        MinusDMIndicator down = new MinusDMIndicator(series);
+        var down = new MinusDMIndicator(series);
         assertNumEquals(0, down.getValue(1));
     }
 
@@ -67,7 +67,7 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
-        MinusDMIndicator down = new MinusDMIndicator(series);
+        var down = new MinusDMIndicator(series);
         assertNumEquals(0, down.getValue(1));
     }
 
@@ -78,7 +78,7 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
-        MinusDMIndicator down = new MinusDMIndicator(series);
+        var down = new MinusDMIndicator(series);
         assertNumEquals(16, down.getValue(1));
     }
 }

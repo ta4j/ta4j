@@ -32,7 +32,7 @@ public class FixedRuleTest {
 
     @Test
     public void isSatisfied() {
-        FixedRule fixedRule = new FixedRule();
+        var fixedRule = new FixedRule();
         assertFalse(fixedRule.isSatisfied(0));
         assertFalse(fixedRule.isSatisfied(1));
         assertFalse(fixedRule.isSatisfied(2));

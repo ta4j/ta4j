@@ -72,12 +72,12 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num criterionValue = criterion.calculate(series, position);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        var criterionValue = criterion.calculate(series, position);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
 
-        Num variance = series.numFactory().zero();
-        Num average = criterionValue.dividedBy(numberOfPositions);
-        Num pow = criterion.calculate(series, position).minus(average).pow(2);
+        var variance = series.numFactory().zero();
+        var average = criterionValue.dividedBy(numberOfPositions);
+        var pow = criterion.calculate(series, position).minus(average).pow(2);
         variance = variance.plus(pow);
         variance = variance.dividedBy(numberOfPositions);
         return variance;
@@ -88,14 +88,14 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }
-        Num criterionValue = criterion.calculate(series, tradingRecord);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        var criterionValue = criterion.calculate(series, tradingRecord);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
 
-        Num variance = series.numFactory().zero();
-        Num average = criterionValue.dividedBy(numberOfPositions);
+        var variance = series.numFactory().zero();
+        var average = criterionValue.dividedBy(numberOfPositions);
 
         for (Position position : tradingRecord.getPositions()) {
-            Num pow = criterion.calculate(series, position).minus(average).pow(2);
+            var pow = criterion.calculate(series, position).minus(average).pow(2);
             variance = variance.plus(pow);
         }
         variance = variance.dividedBy(numberOfPositions);

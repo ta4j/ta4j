@@ -96,8 +96,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        int beginIndex = position.getEntry().getIndex();
-        int endIndex = series.getEndIndex();
+        var beginIndex = position.getEntry().getIndex();
+        var endIndex = series.getEndIndex();
         return criterion.calculate(series, createEnterAndHoldTrade(series, beginIndex, endIndex));
     }
 
@@ -106,8 +106,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return series.numFactory().one();
         }
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
+        var beginIndex = tradingRecord.getStartIndex(series);
+        var endIndex = tradingRecord.getEndIndex(series);
         return criterion.calculate(series, createEnterAndHoldTradingRecord(series, beginIndex, endIndex));
     }
 
@@ -117,14 +117,14 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
-        Position position = new Position(tradeType);
+        var position = new Position(tradeType);
         position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
         position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
         return position;
     }
 
     private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
+        var fakeRecord = new BaseTradingRecord(tradeType);
         fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
         fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
         return fakeRecord;

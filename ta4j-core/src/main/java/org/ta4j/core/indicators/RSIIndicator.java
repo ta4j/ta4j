@@ -54,13 +54,13 @@ public class RSIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // compute relative strength
-        Num averageGain = averageGainIndicator.getValue(index);
-        Num averageLoss = averageLossIndicator.getValue(index);
+        var averageGain = averageGainIndicator.getValue(index);
+        var averageLoss = averageLossIndicator.getValue(index);
         final var numFactory = getBarSeries().numFactory();
         if (averageLoss.isZero()) {
             return averageGain.isZero() ? numFactory.zero() : numFactory.hundred();
         }
-        Num relativeStrength = averageGain.dividedBy(averageLoss);
+        var relativeStrength = averageGain.dividedBy(averageLoss);
         // compute relative strength index
         return numFactory.hundred().minus(numFactory.hundred().dividedBy(numFactory.one().plus(relativeStrength)));
     }

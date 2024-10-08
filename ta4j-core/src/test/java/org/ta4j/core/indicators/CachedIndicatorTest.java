@@ -38,7 +38,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -65,21 +64,21 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void ifCacheWorks() {
         var sma = new SMAIndicator(new ClosePriceIndicator(series), 3);
-        Num firstTime = sma.getValue(4);
-        Num secondTime = sma.getValue(4);
+        var firstTime = sma.getValue(4);
+        var secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
     }
 
     @Test // should be not null
     public void getValueWithNullBarSeries() {
 
-        ConstantIndicator<Num> constant = new ConstantIndicator<>(
-                new BaseBarSeriesBuilder().withNumFactory(numFactory).build(), numFactory.numOf(10));
+        var constant = new ConstantIndicator<>(new BaseBarSeriesBuilder().withNumFactory(numFactory).build(),
+                numFactory.numOf(10));
         assertEquals(numFactory.numOf(10), constant.getValue(0));
         assertEquals(numFactory.numOf(10), constant.getValue(100));
         assertNotNull(constant.getBarSeries());
 
-        SMAIndicator sma = new SMAIndicator(constant, 10);
+        var sma = new SMAIndicator(constant, 10);
         assertEquals(numFactory.numOf(10), sma.getValue(0));
         assertEquals(numFactory.numOf(10), sma.getValue(100));
         assertNotNull(sma.getBarSeries());
@@ -89,7 +88,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void getValueWithCacheLengthIncrease() {
         double[] data = new double[200];
         Arrays.fill(data, 10);
-        SMAIndicator sma = new SMAIndicator(
+        var sma = new SMAIndicator(
                 new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build()),
                 100);
         assertNumEquals(10, sma.getValue(105));
@@ -99,8 +98,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void getValueWithOldResultsRemoval() {
         double[] data = new double[20];
         Arrays.fill(data, 1);
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 10);
+        var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        var sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 10);
         assertNumEquals(1, sma.getValue(5));
         assertNumEquals(1, sma.getValue(10));
         barSeries.setMaximumBarCount(12);
@@ -109,15 +108,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void strategyExecutionOnCachedIndicatorAndLimitedBarSeries() {
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(0, 1, 2, 3, 4, 5, 6, 7)
-                .build();
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 1, 2, 3, 4, 5, 6, 7).build();
+        var sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
         barSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
-        Strategy strategy = new BaseStrategy(new OverIndicatorRule(sma, numFactory.numOf(3)),
+        var strategy = new BaseStrategy(new OverIndicatorRule(sma, numFactory.numOf(3)),
                 new UnderIndicatorRule(sma, numFactory.numOf(3)));
         // Theoretical shouldEnter results: false, false, false, false, true, true,
         // true, true
@@ -152,11 +149,11 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void getValueOnResultsCalculatedFromRemovedBarsShouldReturnFirstRemainingResult() {
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1).build();
+        var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1).build();
         barSeries.setMaximumBarCount(3);
         assertEquals(2, barSeries.getRemovedBarsCount());
 
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        var sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
         for (int i = 0; i < 5; i++) {
             assertNumEquals(1, sma.getValue(i));
         }
@@ -170,7 +167,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         series.setMaximumBarCount(5);
         assertEquals(5, series.getBarCount());
 
-        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
+        var zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
         try {
             assertNumEquals(4996, zlema.getValue(8));
         } catch (Throwable t) {
@@ -180,7 +177,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void leaveLastBarUncached() {
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
         assertNumEquals(4998.0, smaIndicator.getValue(barSeries.getEndIndex()));
         barSeries.getLastBar().addTrade(numOf(10), numOf(5));

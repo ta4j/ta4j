@@ -40,11 +40,11 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
+        var numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
         if (numberOfLosingPositions.isZero()) {
             return series.numFactory().zero();
         }
-        Num grossLoss = grossLossCriterion.calculate(series, position);
+        var grossLoss = grossLossCriterion.calculate(series, position);
         if (grossLoss.isZero()) {
             return series.numFactory().zero();
         }
@@ -53,11 +53,11 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
+        var numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfLosingPositions.isZero()) {
             return series.numFactory().zero();
         }
-        Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
+        var grossLoss = grossLossCriterion.calculate(series, tradingRecord);
         if (grossLoss.isZero()) {
             return series.numFactory().zero();
         }

@@ -69,7 +69,7 @@ public class UnaryOperation implements Indicator<Num> {
 
     @Override
     public Num getValue(int index) {
-        Num n = operand.getValue(index);
+        var n = operand.getValue(index);
         return operator.apply(n);
     }
 

@@ -58,7 +58,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void usingBarCount3UsingClosePrice() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         assertNumEquals(1, indicator.getValue(0));
         assertNumEquals(1.5, indicator.getValue(1));
@@ -80,7 +80,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         data.setMaximumBarCount(13);
         data.barBuilder().closePrice(5.).add();
 
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((3d + 4d + 3d) / 3, indicator.getValue(data.getBeginIndex() + 3));
@@ -92,15 +92,15 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void whenBarCountIs1ResultShouldBeIndicatorValue() {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        for (int i = 0; i < data.getBarCount(); i++) {
+        var indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        for (var i = 0; i < data.getBarCount(); i++) {
             assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));
         }
     }
 
     @Test
     public void externalData() throws Exception {
-        Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
+        var xlsClose = new ClosePriceIndicator(xls.getSeries());
         Indicator<Num> actualIndicator;
 
         actualIndicator = getIndicator(xlsClose, 1);

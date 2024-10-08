@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
@@ -57,14 +56,14 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
             return getBarSeries().numFactory().thousand();
         }
 
-        Bar currentBar = getBarSeries().getBar(index);
-        Bar previousBar = getBarSeries().getBar(index - 1);
-        Num previousValue = getValue(index - 1);
+        var currentBar = getBarSeries().getBar(index);
+        var previousBar = getBarSeries().getBar(index - 1);
+        var previousValue = getValue(index - 1);
 
         if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
-            Num currentPrice = currentBar.getClosePrice();
-            Num previousPrice = previousBar.getClosePrice();
-            Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+            var currentPrice = currentBar.getClosePrice();
+            var previousPrice = previousBar.getClosePrice();
+            var priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
             return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
         }
         return previousValue;

@@ -60,12 +60,12 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        int startIndex = Math.max(0, index - barCount + 1);
-        Num sumOfMoneyFlowVolume = getBarSeries().numFactory().zero();
-        for (int i = startIndex; i <= index; i++) {
+        var startIndex = Math.max(0, index - barCount + 1);
+        var sumOfMoneyFlowVolume = getBarSeries().numFactory().zero();
+        for (var i = startIndex; i <= index; i++) {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
         }
-        Num sumOfVolume = volumeIndicator.getValue(index);
+        var sumOfVolume = volumeIndicator.getValue(index);
 
         return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
     }

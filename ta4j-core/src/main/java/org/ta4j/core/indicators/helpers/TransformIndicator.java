@@ -72,7 +72,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.plus(coefficient).
      */
     public static TransformIndicator plus(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.plus(numCoefficient));
     }
 
@@ -80,7 +80,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.minus(coefficient).
      */
     public static TransformIndicator minus(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.minus(numCoefficient));
     }
 
@@ -88,7 +88,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.dividedBy(coefficient).
      */
     public static TransformIndicator divide(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.dividedBy(numCoefficient));
     }
 
@@ -96,7 +96,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.multipliedBy(coefficient).
      */
     public static TransformIndicator multiply(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.multipliedBy(numCoefficient));
     }
 
@@ -104,7 +104,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.max(coefficient).
      */
     public static TransformIndicator max(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.max(numCoefficient));
     }
 
@@ -112,7 +112,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.min(coefficient).
      */
     public static TransformIndicator min(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.min(numCoefficient));
     }
 
@@ -127,7 +127,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.pow(coefficient).
      */
     public static TransformIndicator pow(Indicator<Num> indicator, Number coefficient) {
-        Num numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
+        var numCoefficient = indicator.getBarSeries().numFactory().numOf(coefficient);
         return new TransformIndicator(indicator, val -> val.pow(numCoefficient));
     }
 

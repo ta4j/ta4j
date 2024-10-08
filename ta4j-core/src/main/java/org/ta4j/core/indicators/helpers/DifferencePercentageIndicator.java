@@ -76,19 +76,19 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
+        var beginIndex = getBarSeries().getBeginIndex();
         if (beginIndex > index) {
             return NaN.NaN;
         }
 
-        Num value = indicator.getValue(index);
+        var value = indicator.getValue(index);
         if (value.isNaN() || value.isZero()) {
             return NaN.NaN;
         }
 
         // calculate all the previous values to get the correct
         // last notification value for this index
-        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+        for (var i = getBarSeries().getBeginIndex(); i < index; i++) {
             setLastNotification(i);
         }
 
@@ -96,12 +96,12 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num changeFraction = value.dividedBy(lastNotification);
+        var changeFraction = value.dividedBy(lastNotification);
         return fractionToPercentage(changeFraction);
     }
 
     public void setLastNotification(int index) {
-        Num value = indicator.getValue((index));
+        var value = indicator.getValue((index));
         if (value.isNaN() || value.isZero()) {
             return;
         }
@@ -109,8 +109,8 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             lastNotification = value;
         }
 
-        Num changeFraction = value.dividedBy(lastNotification);
-        Num changePercentage = fractionToPercentage(changeFraction);
+        var changeFraction = value.dividedBy(lastNotification);
+        var changePercentage = fractionToPercentage(changeFraction);
 
         if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
             lastNotification = value;

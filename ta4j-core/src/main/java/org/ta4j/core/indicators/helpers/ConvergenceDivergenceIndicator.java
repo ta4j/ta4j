@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
@@ -259,8 +258,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if strict positive convergent
      */
     private Boolean calculatePositiveConvergenceStrict(int index) {
-        Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        var refIsRising = new IsRisingRule(ref, barCount);
+        var otherIsRising = new IsRisingRule(ref, barCount);
 
         return (refIsRising.and(otherIsRising)).isSatisfied(index);
     }
@@ -270,8 +269,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if strict negative convergent
      */
     private Boolean calculateNegativeConvergenceStrict(int index) {
-        Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        var refIsFalling = new IsFallingRule(ref, barCount);
+        var otherIsFalling = new IsFallingRule(ref, barCount);
 
         return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
     }
@@ -281,8 +280,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if positive divergent
      */
     private Boolean calculatePositiveDivergenceStrict(int index) {
-        Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        var refIsRising = new IsRisingRule(ref, barCount);
+        var otherIsFalling = new IsFallingRule(ref, barCount);
 
         return (refIsRising.and(otherIsFalling)).isSatisfied(index);
     }
@@ -292,8 +291,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative divergent
      */
     private Boolean calculateNegativeDivergenceStrict(int index) {
-        Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        var refIsFalling = new IsFallingRule(ref, barCount);
+        var otherIsRising = new IsRisingRule(ref, barCount);
 
         return (refIsFalling.and(otherIsRising)).isSatisfied(index);
     }
@@ -303,11 +302,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if positive convergent
      */
     private Boolean calculatePositiveConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
+        var cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
-        Num slope = calculateSlopeRel(index);
-        boolean isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
+        var slope = calculateSlopeRel(index);
+        var isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
 
         return isConvergent && isPositive;
     }
@@ -317,12 +316,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative convergent
      */
     private Boolean calculateNegativeConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
+        var cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
-        Num slope = calculateSlopeRel(index);
-        boolean isNegative = slope
-                .isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().minusOne()));
+        var slope = calculateSlopeRel(index);
+        var isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().minusOne()));
 
         return isConvergent && isNegative;
     }
@@ -333,13 +331,13 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergence(int index) {
 
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index)
+        var cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var isDivergent = cc.getValue(index)
                 .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().minusOne()));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
-            Num slope = calculateSlopeRel(index);
+            var slope = calculateSlopeRel(index);
             return slope.isGreaterThanOrEqual(minSlope.abs());
         }
 
@@ -352,13 +350,13 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergence(int index) {
 
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index)
+        var cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var isDivergent = cc.getValue(index)
                 .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().numOf(-1)));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
-            Num slope = calculateSlopeRel(index);
+            var slope = calculateSlopeRel(index);
             return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().numOf(-1)));
         }
 
@@ -370,8 +368,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return the relative slope
      */
     private Num calculateSlopeRel(int index) {
-        SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
-        int firstIndex = Math.max(0, index - barCount + 1);
+        var slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
+        var firstIndex = Math.max(0, index - barCount + 1);
         return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex))).dividedBy(slrRef.getValue(index));
     }
 

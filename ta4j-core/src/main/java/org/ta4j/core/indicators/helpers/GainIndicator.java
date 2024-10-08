@@ -54,8 +54,8 @@ public class GainIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return getBarSeries().numFactory().zero();
         }
-        Num actualValue = indicator.getValue(index);
-        Num previousValue = indicator.getValue(index - 1);
+        var actualValue = indicator.getValue(index);
+        var previousValue = indicator.getValue(index - 1);
         return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue)
                 : getBarSeries().numFactory().zero();
     }

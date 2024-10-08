@@ -95,7 +95,7 @@ public class AverageTrueRangeStopLossRuleTest {
     public void testShortPositionStopLoss() {
         var initialEndDateTime = ZonedDateTime.now();
 
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             series.barBuilder()
                     .endTime(initialEndDateTime.plusDays(i))
                     .openPrice(100)
@@ -137,7 +137,7 @@ public class AverageTrueRangeStopLossRuleTest {
     public void testNoStopLoss() {
         var initialEndDateTime = ZonedDateTime.now();
 
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             series.barBuilder()
                     .endTime(initialEndDateTime.plusDays(i))
                     .openPrice(100)
@@ -169,7 +169,7 @@ public class AverageTrueRangeStopLossRuleTest {
     public void testCustomReferencePrice() {
         var initialEndDateTime = ZonedDateTime.now();
 
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             series.barBuilder()
                     .endTime(initialEndDateTime.plusDays(i))
                     .openPrice(100)
@@ -201,7 +201,7 @@ public class AverageTrueRangeStopLossRuleTest {
     public void testNoTradingRecord() {
         var initialEndDateTime = ZonedDateTime.now();
 
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             series.barBuilder()
                     .endTime(initialEndDateTime.plusDays(i))
                     .openPrice(100)
@@ -220,7 +220,7 @@ public class AverageTrueRangeStopLossRuleTest {
     public void testClosedPosition() {
         var initialEndDateTime = ZonedDateTime.now();
 
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             series.barBuilder()
                     .endTime(initialEndDateTime.plusDays(i))
                     .openPrice(100)

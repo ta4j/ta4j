@@ -27,7 +27,6 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.List;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -61,7 +60,7 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        var barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty()) {
             return NaN;
         }
@@ -89,11 +88,11 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateR3(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num low = bar.getLowPrice();
-        Num high = bar.getHighPrice();
-        for (int i : barsOfPreviousPeriod) {
-            Bar iBar = getBarSeries().getBar(i);
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var low = bar.getLowPrice();
+        var high = bar.getHighPrice();
+        for (var i : barsOfPreviousPeriod) {
+            var iBar = getBarSeries().getBar(i);
             low = iBar.getLowPrice().min(low);
             high = iBar.getHighPrice().max(high);
         }
@@ -101,11 +100,11 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateR2(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num low = bar.getLowPrice();
-        Num high = bar.getHighPrice();
-        for (int i : barsOfPreviousPeriod) {
-            Bar iBar = getBarSeries().getBar(i);
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var low = bar.getLowPrice();
+        var high = bar.getHighPrice();
+        for (var i : barsOfPreviousPeriod) {
+            var iBar = getBarSeries().getBar(i);
             low = iBar.getLowPrice().min(low);
             high = iBar.getHighPrice().max(high);
         }
@@ -113,27 +112,27 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateR1(List<Integer> barsOfPreviousPeriod, int index) {
-        Num low = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getLowPrice();
-        for (int i : barsOfPreviousPeriod) {
+        var low = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getLowPrice();
+        for (var i : barsOfPreviousPeriod) {
             low = (getBarSeries().getBar(i).getLowPrice()).min(low);
         }
         return two.multipliedBy(pivotPointIndicator.getValue(index)).minus(low);
     }
 
     private Num calculateS1(List<Integer> barsOfPreviousPeriod, int index) {
-        Num high = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getHighPrice();
-        for (int i : barsOfPreviousPeriod) {
+        var high = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getHighPrice();
+        for (var i : barsOfPreviousPeriod) {
             high = (getBarSeries().getBar(i).getHighPrice()).max(high);
         }
         return two.multipliedBy(pivotPointIndicator.getValue(index)).minus(high);
     }
 
     private Num calculateS2(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        for (int i : barsOfPreviousPeriod) {
-            Bar iBar = getBarSeries().getBar(i);
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var high = bar.getHighPrice();
+        var low = bar.getLowPrice();
+        for (var i : barsOfPreviousPeriod) {
+            var iBar = getBarSeries().getBar(i);
             high = iBar.getHighPrice().max(high);
             low = iBar.getLowPrice().min(low);
         }
@@ -141,11 +140,11 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateS3(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        for (int i : barsOfPreviousPeriod) {
-            Bar iBar = getBarSeries().getBar(i);
+        var bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        var high = bar.getHighPrice();
+        var low = bar.getLowPrice();
+        for (var i : barsOfPreviousPeriod) {
+            var iBar = getBarSeries().getBar(i);
             high = iBar.getHighPrice().max(high);
             low = iBar.getLowPrice().min(low);
         }

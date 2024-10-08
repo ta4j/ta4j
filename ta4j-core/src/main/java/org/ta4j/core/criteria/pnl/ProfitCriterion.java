@@ -60,7 +60,7 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num profit = excludeCosts ? position.getGrossProfit() : position.getProfit();
+            var profit = excludeCosts ? position.getGrossProfit() : position.getProfit();
             return profit.isPositive() ? profit : series.numFactory().zero();
         }
         return series.numFactory().zero();

@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Recent Swing Low Indicator.
@@ -103,7 +103,7 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
     }
 
     private boolean isSwingLow(int index) {
-        Num currentPrice = this.indicator.getValue(index);
+        var currentPrice = this.indicator.getValue(index);
 
         // Check bars before
         if (!checkPrecedingBars(index, currentPrice)) {
@@ -115,11 +115,11 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
     }
 
     private boolean checkPrecedingBars(int index, Num currentPrice) {
-        int higherBarsCount = 0;
-        int equalBarsCount = 0;
+        var higherBarsCount = 0;
+        var equalBarsCount = 0;
 
-        for (int i = index - 1; i >= index - precedingHigherBars - allowedEqualBars && i >= 0; i--) {
-            Num comparisonPrice = this.indicator.getValue(i);
+        for (var i = index - 1; i >= index - precedingHigherBars - allowedEqualBars && i >= 0; i--) {
+            var comparisonPrice = this.indicator.getValue(i);
 
             if (currentPrice.isEqual(comparisonPrice)) {
                 equalBarsCount++;
@@ -140,12 +140,12 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
     }
 
     private boolean checkFollowingBars(int index, Num currentPrice) {
-        int higherBarsCount = 0;
-        int equalBarsCount = 0;
+        var higherBarsCount = 0;
+        var equalBarsCount = 0;
 
-        for (int i = index + 1; i < index + followingHigherBars + allowedEqualBars + 1
+        for (var i = index + 1; i < index + followingHigherBars + allowedEqualBars + 1
                 && i < getBarSeries().getBarCount(); i++) {
-            Num comparisonPrice = this.indicator.getValue(i);
+            var comparisonPrice = this.indicator.getValue(i);
 
             if (currentPrice.isEqual(comparisonPrice)) {
                 equalBarsCount++;
@@ -171,7 +171,7 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
+        for (var i = index; i >= getBarSeries().getBeginIndex(); i--) {
             if (isSwingLow(i)) {
                 return this.indicator.getValue(i);
             }

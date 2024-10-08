@@ -135,8 +135,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateInternal(int index) {
-        Num sar = NaN;
-        boolean is_up_trend;
+        var sar = NaN;
+        var is_up_trend = false;
 
         if (index == seriesStartIndex) {
             lastExtreme.put(index, getBarSeries().getBar(index).getClosePrice());
@@ -160,14 +160,14 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             return sar;
         }
 
-        Num priorSar = getValue(index - 1);
+        var priorSar = getValue(index - 1);
 
         is_up_trend = isUpTrendMap.get(index - 1);
 
-        Num currentExtremePoint = lastExtreme.get(index - 1);
-        Num cur_high = highPriceIndicator.getValue(index);
-        Num cur_low = lowPriceIndicator.getValue(index);
-        Num cur_af = lastAf.get(index - 1);
+        var currentExtremePoint = lastExtreme.get(index - 1);
+        var cur_high = highPriceIndicator.getValue(index);
+        var cur_low = lowPriceIndicator.getValue(index);
+        var cur_af = lastAf.get(index - 1);
         sar = priorSar.plus(cur_af.multipliedBy((currentExtremePoint.minus(priorSar))));
 
         if (is_up_trend) { // if up trend
@@ -206,12 +206,12 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         if (is_up_trend) {
-            Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1);
+            var lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1);
             if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars)) {
                 sar = lowestPriceOfTwoPreviousBars;
             }
         } else {
-            Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1);
+            var highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1);
             if (sar.isLessThan(highestPriceOfTwoPreviousBars)) {
                 sar = highestPriceOfTwoPreviousBars;
             }
@@ -239,7 +239,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * Increments the acceleration factor.
      */
     private Num incrementAcceleration(int index) {
-        Num cur_af = lastAf.get(index - 1);
+        var cur_af = lastAf.get(index - 1);
         cur_af = cur_af.plus(accelerationIncrement);
         if (cur_af.isGreaterThan(maxAcceleration)) {
             cur_af = maxAcceleration;

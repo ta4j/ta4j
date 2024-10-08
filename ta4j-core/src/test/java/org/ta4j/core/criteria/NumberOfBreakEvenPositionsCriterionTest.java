@@ -28,11 +28,9 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -56,7 +54,7 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series),
                 Trade.buyAt(1, series), Trade.sellAt(5, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
@@ -67,7 +65,7 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105)
                 .build();
-        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(3, series));
+        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(3, series));
 
         assertNumEquals(1, getCriterion().calculate(series, position));
     }
@@ -77,7 +75,7 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(3, series),
+        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(3, series),
                 Trade.sellAt(1, series), Trade.buyAt(5, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
@@ -85,7 +83,7 @@ public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTe
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3), numOf(6)));
         assertFalse(criterion.betterThan(numOf(7), numOf(4)));
     }

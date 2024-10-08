@@ -56,7 +56,6 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(2));
         assertNumEquals(1, cashFlow.getValue(3));
         assertNumEquals(1, cashFlow.getValue(4));
-
     }
 
     @Test
@@ -206,7 +205,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d, 2d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(1, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
 
-        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));

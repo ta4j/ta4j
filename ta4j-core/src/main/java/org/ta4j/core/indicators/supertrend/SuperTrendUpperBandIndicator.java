@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.supertrend;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
@@ -65,14 +64,14 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
 
     @Override
     protected Num calculate(int index) {
-        Num currentBasic = medianPriceIndicator.getValue(index)
+        var currentBasic = medianPriceIndicator.getValue(index)
                 .plus(multiplier.multipliedBy(atrIndicator.getValue(index)));
         if (index == 0) {
             return currentBasic;
         }
 
-        Bar bar = getBarSeries().getBar(index - 1);
-        Num previousValue = this.getValue(index - 1);
+        var bar = getBarSeries().getBar(index - 1);
+        var previousValue = this.getValue(index - 1);
 
         return currentBasic.isLessThan(previousValue) || bar.getClosePrice().isGreaterThan(previousValue) ? currentBasic
                 : previousValue;

@@ -46,50 +46,50 @@ public class FixedTransactionCostModelTest {
 
     @Test
     public void calculatePerPositionWhenPositionIsOpen() {
-        double positionTrades = 1;
-        double feePerTrade = RANDOM.nextDouble();
-        FixedTransactionCostModel model = new FixedTransactionCostModel(feePerTrade);
+        var positionTrades = 1.0;
+        var feePerTrade = RANDOM.nextDouble();
+        var model = new FixedTransactionCostModel(feePerTrade);
 
-        Position position = new Position(TradeType.BUY, model, null);
+        var position = new Position(TradeType.BUY, model, null);
         position.operate(0, PRICE, AMOUNT);
-        Num cost = model.calculate(position);
+        var cost = model.calculate(position);
 
         assertNumEquals(cost, DoubleNum.valueOf(feePerTrade * positionTrades));
     }
 
     @Test
     public void calculatePerPositionWhenPositionIsClosed() {
-        double positionTrades = 2;
-        double feePerTrade = RANDOM.nextDouble();
-        FixedTransactionCostModel model = new FixedTransactionCostModel(feePerTrade);
+        var positionTrades = 2.0;
+        var feePerTrade = RANDOM.nextDouble();
+        var model = new FixedTransactionCostModel(feePerTrade);
 
-        int holdingPeriod = 2;
-        Trade entry = Trade.buyAt(0, PRICE, AMOUNT, model);
-        Trade exit = Trade.sellAt(holdingPeriod, PRICE, AMOUNT, model);
+        var holdingPeriod = 2;
+        var entry = Trade.buyAt(0, PRICE, AMOUNT, model);
+        var exit = Trade.sellAt(holdingPeriod, PRICE, AMOUNT, model);
 
-        Position position = new Position(entry, exit, model, model);
-        Num cost = model.calculate(position, RANDOM.nextInt());
+        var position = new Position(entry, exit, model, model);
+        var cost = model.calculate(position, RANDOM.nextInt());
 
         assertNumEquals(cost, DoubleNum.valueOf(feePerTrade * positionTrades));
     }
 
     @Test
     public void calculatePerPrice() {
-        double feePerTrade = RANDOM.nextDouble();
-        FixedTransactionCostModel model = new FixedTransactionCostModel(feePerTrade);
-        Num cost = model.calculate(PRICE, AMOUNT);
+        var feePerTrade = RANDOM.nextDouble();
+        var model = new FixedTransactionCostModel(feePerTrade);
+        var cost = model.calculate(PRICE, AMOUNT);
 
         assertNumEquals(cost, DoubleNum.valueOf(feePerTrade));
     }
 
     @Test
     public void testEquality() {
-        double randomFee = RANDOM.nextDouble();
-        FixedTransactionCostModel model = new FixedTransactionCostModel(randomFee);
-        CostModel modelSame = new FixedTransactionCostModel(randomFee);
-        CostModel modelOther = new LinearTransactionCostModel(randomFee);
-        boolean equality = model.equals(modelSame);
-        boolean inequality = model.equals(modelOther);
+        var randomFee = RANDOM.nextDouble();
+        var model = new FixedTransactionCostModel(randomFee);
+        var modelSame = new FixedTransactionCostModel(randomFee);
+        var modelOther = new LinearTransactionCostModel(randomFee);
+        var equality = model.equals(modelSame);
+        var inequality = model.equals(modelOther);
 
         assertTrue(equality);
         assertFalse(inequality);

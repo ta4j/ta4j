@@ -74,7 +74,7 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
         return standardDeviationCriterion.calculate(series, position).dividedBy(numberOfPositions.sqrt());
     }
 
@@ -83,7 +83,7 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(numberOfPositions.sqrt());
     }
 

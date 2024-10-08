@@ -42,11 +42,11 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testBuildBar() {
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        final Duration duration = Duration.between(beginTime, endTime);
+        final var beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
+        final var endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+        final var duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarBuilder().timePeriod(duration)
+        final var bar = new BaseBarBuilder().timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))

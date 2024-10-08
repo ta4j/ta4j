@@ -62,7 +62,7 @@ public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
     @Override
     protected ZonedDateTime calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
+        var bar = getBarSeries().getBar(index);
         return this.action.apply(bar);
     }
 

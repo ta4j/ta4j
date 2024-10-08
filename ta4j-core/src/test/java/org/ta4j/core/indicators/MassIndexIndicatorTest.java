@@ -64,7 +64,6 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(43.07).closePrice(43.55).highPrice(43.65).lowPrice(43.06).add();
         data.barBuilder().openPrice(43.56).closePrice(43.95).highPrice(43.99).lowPrice(43.53).add();
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).add();
-
     }
 
     @Test
