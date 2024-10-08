@@ -31,7 +31,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -63,10 +62,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void replaceBarIfChangedTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final var bars = new ArrayList<Bar>();
         this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBarBuilder(numFactory).endTime(time)
+        final var bar0 = new MockBarBuilder(numFactory).endTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -76,7 +75,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(7)
                 .build();
 
-        final Bar bar1 = new MockBarBuilder(numFactory).endTime(time.plusDays(1))
+        final var bar1 = new MockBarBuilder(numFactory).endTime(time.plusDays(1))
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -86,7 +85,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar2 = new MockBarBuilder(numFactory).endTime(time.plusDays(2))
+        final var bar2 = new MockBarBuilder(numFactory).endTime(time.plusDays(2))
                 .openPrice(2d)
                 .closePrice(2d)
                 .highPrice(2d)
@@ -96,7 +95,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(2)
                 .build();
 
-        final Bar bar3 = new MockBarBuilder(numFactory).endTime(time.plusDays(3))
+        final var bar3 = new MockBarBuilder(numFactory).endTime(time.plusDays(3))
                 .openPrice(3d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -106,7 +105,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(3)
                 .build();
 
-        final Bar bar4 = new MockBarBuilder(numFactory).endTime(time.plusDays(4))
+        final var bar4 = new MockBarBuilder(numFactory).endTime(time.plusDays(4))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(5d)
@@ -116,7 +115,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(4)
                 .build();
 
-        final Bar bar5 = new MockBarBuilder(numFactory).endTime(time.plusDays(5))
+        final var bar5 = new MockBarBuilder(numFactory).endTime(time.plusDays(5))
                 .openPrice(4d)
                 .closePrice(5d)
                 .highPrice(5d)
@@ -126,7 +125,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(5)
                 .build();
 
-        final Bar bar6 = new MockBarBuilder(numFactory).endTime(time.plusDays(6))
+        final var bar6 = new MockBarBuilder(numFactory).endTime(time.plusDays(6))
                 .openPrice(6d)
                 .closePrice(6d)
                 .highPrice(6d)
@@ -159,7 +158,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(33)
                 .build();
 
-        final Bar newBar5 = this.series.barBuilder()
+        final var newBar5 = this.series.barBuilder()
                 .endTime(bar5.getEndTime())
                 .openPrice(1d)
                 .closePrice(1d)
@@ -171,9 +170,9 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build();
 
         // newBar3 must be replaced with bar3
-        final Bar replacedBar3 = BarSeriesUtils.replaceBarIfChanged(this.series, newBar3);
+        final var replacedBar3 = BarSeriesUtils.replaceBarIfChanged(this.series, newBar3);
         // newBar5 must be replaced with bar5
-        final Bar replacedBar5 = BarSeriesUtils.replaceBarIfChanged(this.series, newBar5);
+        final var replacedBar5 = BarSeriesUtils.replaceBarIfChanged(this.series, newBar5);
 
         // the replaced bar must be the same as the previous bar
         assertEquals(bar3, replacedBar3);
@@ -197,10 +196,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void findMissingBarsTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final var bars = new ArrayList<Bar>();
         this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBarBuilder(this.numFactory).endTime(this.time)
+        final var bar0 = new MockBarBuilder(this.numFactory).endTime(this.time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -210,7 +209,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(7)
                 .build();
 
-        final Bar bar1 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(1))
+        final var bar1 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(1))
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -220,7 +219,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar4 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(4))
+        final var bar4 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(4))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)
@@ -230,7 +229,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(4)
                 .build();
 
-        final Bar bar5 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(5))
+        final var bar5 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(5))
                 .openPrice(5d)
                 .closePrice(5d)
                 .highPrice(5d)
@@ -240,7 +239,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(5)
                 .build();
 
-        final Bar bar7 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(7))
+        final var bar7 = new MockBarBuilder(this.numFactory).endTime(this.time.plusDays(7))
                 .openPrice(0d)
                 .closePrice(0d)
                 .highPrice(0d)
@@ -250,7 +249,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .build();
 
-        final Bar bar8 = new MockBarBuilder(this.numFactory).timePeriod(Duration.ofDays(1))
+        final var bar8 = new MockBarBuilder(this.numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(this.time.plusDays(8))
                 .openPrice(NaN.NaN)
                 .highPrice(NaN.NaN)
@@ -270,7 +269,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.forEach(series::addBar);
 
         // return the beginTime of each missing bar
-        final List<ZonedDateTime> missingBars = BarSeriesUtils.findMissingBars(this.series, false);
+        final var missingBars = BarSeriesUtils.findMissingBars(this.series, false);
 
         // there must be 3 missing bars (bar2, bar3, bar6)
         assertEquals(missingBars.get(0), this.time.plusDays(2));
@@ -282,7 +281,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void convertBarSeriesTest() {
-        final BarSeries decimalBarSeries = new MockBarSeriesBuilder().withMaxBarCount(100)
+        final var decimalBarSeries = new MockBarSeriesBuilder().withMaxBarCount(100)
                 .withNumFactory(DecimalNumFactory.getInstance())
                 .withName("useDecimalNum")
                 .build();
@@ -316,11 +315,11 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .add();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
-        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries,
+        final var decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries,
                 DoubleNumFactory.getInstance());
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
-        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
+        final var doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
                 DecimalNumFactory.getInstance());
 
         assertEquals(DecimalNum.class, decimalBarSeries.getFirstBar().getClosePrice().getClass());
@@ -331,10 +330,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void findOverlappingBarsTest() {
 
-        final List<Bar> bars = new ArrayList<>();
+        final var bars = new ArrayList<Bar>();
         this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBarBuilder(numFactory).endTime(time)
+        final var bar0 = new MockBarBuilder(numFactory).endTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -344,7 +343,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(7)
                 .build();
 
-        final Bar bar1 = new MockBarBuilder(numFactory).endTime(time)
+        final var bar1 = new MockBarBuilder(numFactory).endTime(time)
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -354,7 +353,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar8 = new MockBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+        final var bar8 = new MockBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(time.plusDays(8))
                 .openPrice(NaN.NaN)
                 .closePrice(NaN.NaN)
@@ -372,7 +371,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .withName("Series Name")
                 .withBars(bars)
                 .build();
-        final List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(this.series);
+        final var overlappingBars = BarSeriesUtils.findOverlappingBars(this.series);
 
         // there must be 1 overlapping bars (bar1)
         assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
@@ -382,10 +381,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void addBars() {
         final var barSeries = new MockBarSeriesBuilder().withName("1day").build();
 
-        final List<Bar> bars = new ArrayList<>();
+        final var bars = new ArrayList<Bar>();
         this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = barSeries.barBuilder()
+        final var bar0 = barSeries.barBuilder()
                 .endTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
@@ -396,7 +395,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(7)
                 .build();
 
-        final Bar bar1 = barSeries.barBuilder()
+        final var bar1 = barSeries.barBuilder()
                 .endTime(time.plusDays(1))
                 .openPrice(1d)
                 .closePrice(1d)
@@ -407,7 +406,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar2 = barSeries.barBuilder()
+        final var bar2 = barSeries.barBuilder()
                 .endTime(time.plusDays(2))
                 .openPrice(1d)
                 .closePrice(1d)
@@ -428,7 +427,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
         assertEquals(bar2.getEndTime(), barSeries.getLastBar().getEndTime());
 
-        final Bar bar3 = barSeries.barBuilder()
+        final var bar3 = barSeries.barBuilder()
                 .endTime(time.plusDays(3))
                 .openPrice(1d)
                 .closePrice(1d)
@@ -450,7 +449,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void sortBars() {
         this.time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
-        final Bar bar0 = new MockBarBuilder(numFactory).endTime(time)
+        final var bar0 = new MockBarBuilder(numFactory).endTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -460,7 +459,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(7)
                 .build();
 
-        final Bar bar1 = new MockBarBuilder(numFactory).endTime(time.plusDays(1))
+        final var bar1 = new MockBarBuilder(numFactory).endTime(time.plusDays(1))
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -470,7 +469,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar2 = new MockBarBuilder(numFactory).endTime(time.plusDays(2))
+        final var bar2 = new MockBarBuilder(numFactory).endTime(time.plusDays(2))
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -480,7 +479,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final Bar bar3 = new MockBarBuilder(numFactory).endTime(time.plusDays(3))
+        final var bar3 = new MockBarBuilder(numFactory).endTime(time.plusDays(3))
                 .openPrice(1d)
                 .closePrice(1d)
                 .highPrice(1d)
@@ -490,7 +489,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(1)
                 .build();
 
-        final List<Bar> sortedBars = new ArrayList<>();
+        final var sortedBars = new ArrayList<Bar>();
         sortedBars.add(bar0);
         sortedBars.add(bar1);
         sortedBars.add(bar2);
@@ -502,7 +501,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
         assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
 
-        final List<Bar> unsortedBars = new ArrayList<>();
+        final var unsortedBars = new ArrayList<Bar>();
         unsortedBars.add(bar3);
         unsortedBars.add(bar2);
         unsortedBars.add(bar1);
@@ -514,7 +513,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
         assertEquals(bar3.getEndTime(), unsortedBars.get(3).getEndTime());
 
-        final List<Bar> unsortedBars2 = new ArrayList<>();
+        final var unsortedBars2 = new ArrayList<Bar>();
         unsortedBars2.add(bar2);
         unsortedBars2.add(bar1);
         unsortedBars2.add(bar3);

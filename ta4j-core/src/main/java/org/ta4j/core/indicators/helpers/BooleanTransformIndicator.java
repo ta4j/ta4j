@@ -23,11 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.function.Predicate;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Predicate;
 
 /**
  * Transforms any indicator to a boolean indicator.

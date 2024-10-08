@@ -33,8 +33,6 @@ import java.util.List;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.aggregator.BarAggregator;
-import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.num.Num;
@@ -65,8 +63,8 @@ public final class BarSeriesUtils {
      * @return the aggregated barSeries
      */
     public static BarSeries aggregateBars(BarSeries barSeries, Duration timePeriod, String aggregatedSeriesName) {
-        final BarAggregator durationAggregator = new DurationBarAggregator(timePeriod, true);
-        final BarSeriesAggregator seriesAggregator = new BaseBarSeriesAggregator(durationAggregator);
+        final var durationAggregator = new DurationBarAggregator(timePeriod, true);
+        final var seriesAggregator = new BaseBarSeriesAggregator(durationAggregator);
         return seriesAggregator.aggregate(barSeries, aggregatedSeriesName);
     }
 
@@ -85,12 +83,12 @@ public final class BarSeriesUtils {
      *         replacement.
      */
     public static Bar replaceBarIfChanged(BarSeries barSeries, Bar newBar) {
-        List<Bar> bars = barSeries.getBarData();
+        var bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return null;
-        for (int i = 0; i < bars.size(); i++) {
-            Bar bar = bars.get(i);
-            boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
+        for (var i = 0; i < bars.size(); i++) {
+            var bar = bars.get(i);
+            var isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
                     && bar.getEndTime().isEqual(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
             if (isSameBar && !bar.equals(newBar))
@@ -113,16 +111,16 @@ public final class BarSeriesUtils {
      * @return the list of possibly missing bars
      */
     public static List<ZonedDateTime> findMissingBars(BarSeries barSeries, boolean findOnlyNaNBars) {
-        List<Bar> bars = barSeries.getBarData();
+        var bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return new ArrayList<>();
-        Duration duration = bars.iterator().next().getTimePeriod();
-        List<ZonedDateTime> missingBars = new ArrayList<>();
-        for (int i = 0; i < bars.size(); i++) {
-            Bar bar = bars.get(i);
+        var duration = bars.iterator().next().getTimePeriod();
+        var missingBars = new ArrayList<ZonedDateTime>();
+        for (var i = 0; i < bars.size(); i++) {
+            var bar = bars.get(i);
             if (!findOnlyNaNBars) {
-                Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
-                Duration incDuration = Duration.ZERO;
+                var nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+                var incDuration = Duration.ZERO;
                 if (nextBar != null) {
                     // market closing times are also treated as missing bars
                     while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
@@ -131,7 +129,7 @@ public final class BarSeriesUtils {
                     }
                 }
             }
-            boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
+            var noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
             if (noFullData) {
                 missingBars.add(bar.getEndTime());
             }
@@ -151,14 +149,14 @@ public final class BarSeriesUtils {
      * @return new cloned BarSeries with bars converted by the Num function of num
      */
     public static BarSeries convertBarSeries(BarSeries barSeries, NumFactory numFactory) {
-        List<Bar> bars = barSeries.getBarData();
+        var bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return barSeries;
         var convertedBarSeries = new BaseBarSeriesBuilder().withName(barSeries.getName())
                 .withNumFactory(numFactory)
                 .build();
-        for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
-            Bar bar = bars.get(i);
+        for (var i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
+            var bar = bars.get(i);
             convertedBarSeries.barBuilder()
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
@@ -186,14 +184,14 @@ public final class BarSeriesUtils {
      * @return overlapping bars
      */
     public static List<Bar> findOverlappingBars(BarSeries barSeries) {
-        List<Bar> bars = barSeries.getBarData();
+        var bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return new ArrayList<>();
-        Duration period = bars.iterator().next().getTimePeriod();
-        List<Bar> overlappingBars = new ArrayList<>();
-        for (int i = 0; i < bars.size(); i++) {
-            Bar bar = bars.get(i);
-            Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+        var period = bars.iterator().next().getTimePeriod();
+        var overlappingBars = new ArrayList<Bar>();
+        for (var i = 0; i < bars.size(); i++) {
+            var bar = bars.get(i);
+            var nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
             if (nextBar != null) {
                 if (bar.getEndTime().isAfter(nextBar.getBeginTime())
                         || bar.getBeginTime().plus(period).isBefore(nextBar.getBeginTime())) {
@@ -213,7 +211,7 @@ public final class BarSeriesUtils {
     public static void addBars(BarSeries barSeries, List<Bar> newBars) {
         if (newBars != null && !newBars.isEmpty()) {
             sortBars(newBars);
-            for (Bar bar : newBars) {
+            for (var bar : newBars) {
                 if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
                     barSeries.addBar(bar);
                 }

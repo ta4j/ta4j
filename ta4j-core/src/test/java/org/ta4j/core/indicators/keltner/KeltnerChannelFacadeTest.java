@@ -32,7 +32,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -97,11 +96,11 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
         final var ku = new KeltnerChannelUpperIndicator(km, 2, 14);
 
         final var facade = new KeltnerChannelFacade(data, 14, 14, 2);
-        final NumericIndicator middleNumeric = facade.middle();
-        final NumericIndicator upperNumeric = facade.upper();
-        final NumericIndicator lowerNumeric = facade.lower();
+        final var middleNumeric = facade.middle();
+        final var upperNumeric = facade.upper();
+        final var lowerNumeric = facade.lower();
 
-        for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
+        for (var i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
             assertNumEquals(kl.getValue(i), lowerNumeric.getValue(i));
             assertNumEquals(ku.getValue(i), upperNumeric.getValue(i));
             assertNumEquals(km.getValue(i), middleNumeric.getValue(i));

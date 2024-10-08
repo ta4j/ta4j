@@ -42,19 +42,24 @@ public class SeriesBuilderTest {
 
     @Test
     public void testBuilder() {
-        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
-        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
-                                                                                 // BigDecimal as delegate
-        BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
+
+        // build a new empty unnamed bar series
+        var defaultSeries = seriesBuilder.build();
+
+        // build a new empty bar series using BigDecimal as delegate
+        var defaultSeriesName = seriesBuilder.withName("default").build();
+
+        var doubleSeries = seriesBuilder.withMaxBarCount(100)
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .withName("useDoubleNum")
                 .build();
-        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
+
+        var precisionSeries = seriesBuilder.withMaxBarCount(100)
                 .withNumFactory(DecimalNumFactory.getInstance())
                 .withName("usePrecisionNum")
                 .build();
 
-        for (int i = 1000; i >= 0; i--) {
+        for (var i = 1000; i >= 0; i--) {
             defaultSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(ZonedDateTime.now().minusSeconds(i))
@@ -102,13 +107,13 @@ public class SeriesBuilderTest {
 
     @Test
     public void testNumFunctions() {
-        BarSeries series = seriesBuilder.withNumFactory(DoubleNumFactory.getInstance()).build();
+        var series = seriesBuilder.withNumFactory(DoubleNumFactory.getInstance()).build();
         assertNumEquals(series.numFactory().numOf(12), DoubleNum.valueOf(12));
     }
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumFactory(DecimalNumFactory.getInstance()).build();
+        var series = seriesBuilder.withNumFactory(DecimalNumFactory.getInstance()).build();
         assertNumEquals(series.numFactory().numOf(12), DecimalNum.valueOf(12));
     }
 }

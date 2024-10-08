@@ -28,7 +28,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -47,7 +46,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void growingBarSeriesTest() {
-        ZonedDateTime now = ZonedDateTime.now();
+        var now = ZonedDateTime.now();
         var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         mockBarSeries.barBuilder()
                 .endTime(now)
@@ -106,7 +105,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startUpAndDownTrendTest() {
-        ZonedDateTime now = ZonedDateTime.now();
+        var now = ZonedDateTime.now();
         var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         // values of removable bars are much higher to be sure that they will not affect
@@ -365,9 +364,9 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         series.barBuilder().openPrice(4316.01).closePrice(4280.68).highPrice(4453.91).lowPrice(4247.48).add();
         series.barBuilder().openPrice(4280.71).closePrice(4337.44).highPrice(4367.00).lowPrice(4212.41).add();
 
-        final ParabolicSarIndicator parabolicSarIndicator = new ParabolicSarIndicator(series);
+        final var parabolicSarIndicator = new ParabolicSarIndicator(series);
 
-        final List<Num> values = IntStream.range(0, series.getBarCount())
+        final var values = IntStream.range(0, series.getBarCount())
                 .mapToObj(parabolicSarIndicator::getValue)
                 .collect(Collectors.toList());
 

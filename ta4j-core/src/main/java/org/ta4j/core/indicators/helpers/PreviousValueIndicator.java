@@ -65,7 +65,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        int previousIndex = index - n;
+        var previousIndex = index - n;
         return previousIndex < 0 ? NaN.NaN : indicator.getValue(previousIndex);
     }
 
@@ -77,7 +77,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        final String nInfo = n == 1 ? "" : "(" + n + ")";
+        final var nInfo = n == 1 ? "" : "(" + n + ")";
         return getClass().getSimpleName() + nInfo + "[" + this.indicator + "]";
     }
 }

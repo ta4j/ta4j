@@ -48,9 +48,9 @@ public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeri
     @Test
     public void testBuildBigDecimal() {
 
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        final Duration duration = Duration.between(beginTime, endTime);
+        final var beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
+        final var endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+        final var duration = Duration.between(beginTime, endTime);
 
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
         final var bar = series.barBuilder()

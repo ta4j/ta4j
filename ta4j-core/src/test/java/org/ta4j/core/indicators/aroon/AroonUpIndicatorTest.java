@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
 
 public class AroonUpIndicatorTest {
 
@@ -61,10 +60,8 @@ public class AroonUpIndicatorTest {
         data.barBuilder().openPrice(172.26).highPrice(172.28).lowPrice(170.50).closePrice(170.96).volume(0).add();
         data.barBuilder().openPrice(170.88).highPrice(172.34).lowPrice(170.26).closePrice(171.64).volume(0).add();
         data.barBuilder().openPrice(171.85).highPrice(172.07).lowPrice(169.34).closePrice(170.01).volume(0).add();
-        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add(); // FB,
-                                                                                                                   // daily,
-                                                                                                                   // 9.19.'17
-
+        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add();
+        // FB, daily, 9.19.'17
     }
 
     @Test
@@ -85,13 +82,12 @@ public class AroonUpIndicatorTest {
         assertNumEquals(100, arronUp.getValue(7));
         assertNumEquals(100, arronUp.getValue(6));
         assertNumEquals(0, arronUp.getValue(5));
-
     }
 
     @Test
     public void onlyNaNValues() {
         var series = new MockBarSeriesBuilder().withName("NaN test").build();
-        for (long i = 0; i <= 1000; i++) {
+        for (var i = 0; i <= 1000; i++) {
             series.barBuilder()
                     .endTime(ZonedDateTime.now().plusDays(i))
                     .openPrice(NaN)
@@ -103,7 +99,7 @@ public class AroonUpIndicatorTest {
         }
 
         var aroonUpIndicator = new AroonUpIndicator(series, 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+        for (var i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
         }
     }
@@ -111,8 +107,8 @@ public class AroonUpIndicatorTest {
     @Test
     public void naNValuesInInterval() {
         var series = new MockBarSeriesBuilder().withName("NaN test").build();
-        for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
-            Num highPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
+        for (var i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
+            var highPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
             series.barBuilder()
                     .endTime(ZonedDateTime.now().plusDays(i))
                     .openPrice(NaN)
@@ -124,7 +120,7 @@ public class AroonUpIndicatorTest {
         }
 
         var aroonUpIndicator = new AroonUpIndicator(series, 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+        for (var i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             if (i % 2 != 0) {
                 assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
             } else {

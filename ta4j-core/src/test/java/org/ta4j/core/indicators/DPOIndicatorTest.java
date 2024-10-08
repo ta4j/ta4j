@@ -65,7 +65,7 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         int timeShift = 9 / 2 + 1;
 
         // compare results to alternative calculation for each index
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+        for (var i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertEquals(dpo.getValue(i),
                     i - timeShift < 0 ? NaN.NaN : cp.getValue(i).minus(sma.getValue(i - timeShift)));
         }
@@ -78,7 +78,7 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test(expected = IndexOutOfBoundsException.class)
     public void dpoIOOBE() {
-        DPOIndicator dpo = new DPOIndicator(series, 9);
+        var dpo = new DPOIndicator(series, 9);
         dpo.getValue(100);
     }
 }

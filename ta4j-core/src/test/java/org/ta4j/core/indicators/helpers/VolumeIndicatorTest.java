@@ -43,7 +43,7 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void indicatorShouldRetrieveBarVolume() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         var volumeIndicator = new VolumeIndicator(series);
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             assertEquals(volumeIndicator.getValue(i), series.getBar(i).getVolume());
         }
     }

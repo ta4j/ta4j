@@ -93,9 +93,9 @@ public class AverageTrueRangeStopLossRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Num entryPrice = tradingRecord.getCurrentPosition().getEntry().getNetPrice();
-            Num currentPrice = this.referencePrice.getValue(index);
-            Num threshold = this.stopLossThreshold.getValue(index);
+            var entryPrice = tradingRecord.getCurrentPosition().getEntry().getNetPrice();
+            var currentPrice = this.referencePrice.getValue(index);
+            var threshold = this.stopLossThreshold.getValue(index);
 
             if (tradingRecord.getCurrentPosition().getEntry().isBuy()) {
                 return currentPrice.isLessThan(entryPrice.minus(threshold));

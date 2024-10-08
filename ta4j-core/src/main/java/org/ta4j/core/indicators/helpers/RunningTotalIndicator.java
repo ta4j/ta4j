@@ -66,7 +66,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     }
 
     private Num slowPath(final int index) {
-        Num sum = getBarSeries().numFactory().zero();
+        var sum = getBarSeries().numFactory().zero();
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }

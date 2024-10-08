@@ -66,12 +66,12 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         if (index <= 0) {
             return typicalPrice.getValue(index);
         }
-        int startIndex = Math.max(0, index - barCount + 1);
+        var startIndex = Math.max(0, index - barCount + 1);
         final var zero = getBarSeries().numFactory().zero();
-        Num cumulativeTPV = zero;
-        Num cumulativeVolume = zero;
-        for (int i = startIndex; i <= index; i++) {
-            Num currentVolume = volume.getValue(i);
+        var cumulativeTPV = zero;
+        var cumulativeVolume = zero;
+        for (var i = startIndex; i <= index; i++) {
+            var currentVolume = volume.getValue(i);
             cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
             cumulativeVolume = cumulativeVolume.plus(currentVolume);
         }

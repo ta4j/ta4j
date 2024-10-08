@@ -49,9 +49,9 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void calculate() {
-        Indicator<Num> runningTotal = getIndicator(new ClosePriceIndicator(data), 3);
-        double[] expected = new double[] { 1.0, 3.0, 6.0, 9.0, 12.0 };
-        for (int i = 0; i < expected.length; i++) {
+        var runningTotal = getIndicator(new ClosePriceIndicator(data), 3);
+        var expected = new double[] { 1.0, 3.0, 6.0, 9.0, 12.0 };
+        for (var i = 0; i < expected.length; i++) {
             assertNumEquals(expected[i], runningTotal.getValue(i));
         }
     }

@@ -54,9 +54,9 @@ public class ClosePriceDifferenceIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void indicatorShouldRetrieveBarDifference() {
         assertNumEquals(0, closePriceDifference.getValue(0));
-        for (int i = 1; i < 10; i++) {
-            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
-            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
+        for (var i = 1; i < 10; i++) {
+            var previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
+            var currentBarClosePrice = barSeries.getBar(i).getClosePrice();
             assertEquals(closePriceDifference.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
         }
     }

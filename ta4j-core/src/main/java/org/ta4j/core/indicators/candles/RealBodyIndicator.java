@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -52,8 +51,8 @@ public class RealBodyIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Bar t = getBarSeries().getBar(index);
-        return t.getClosePrice().minus(t.getOpenPrice());
+        var bar = getBarSeries().getBar(index);
+        return bar.getClosePrice().minus(bar.getOpenPrice());
     }
 
     @Override

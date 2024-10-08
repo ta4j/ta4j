@@ -49,10 +49,10 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
         if (index == 0) {
             return getBarSeries().numFactory().zero();
         }
-        final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
-        final Num currentClose = getBarSeries().getBar(index).getClosePrice();
+        final var prevClose = getBarSeries().getBar(index - 1).getClosePrice();
+        final var currentClose = getBarSeries().getBar(index).getClosePrice();
 
-        final Num obvPrev = getValue(index - 1);
+        final var obvPrev = getValue(index - 1);
         if (prevClose.isGreaterThan(currentClose)) {
             return obvPrev.minus(getBarSeries().getBar(index).getVolume());
         } else if (prevClose.isLessThan(currentClose)) {

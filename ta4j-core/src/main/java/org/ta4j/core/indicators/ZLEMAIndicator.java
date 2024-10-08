@@ -66,7 +66,7 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
             // If the barCount is bigger than the indicator's value count
             return indicator.getValue(0);
         }
-        Num zlemaPrev = getValue(index - 1);
+        var zlemaPrev = getValue(index - 1);
         return k.multipliedBy(two.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
                 .plus(getBarSeries().numFactory().one().minus(k).multipliedBy(zlemaPrev));
     }

@@ -63,7 +63,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);
-        SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
+        var sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
                 new ROCIndicator(indicator, shortRoCBarCount));
         this.wma = new WMAIndicator(sum, wmaBarCount);
     }

@@ -49,17 +49,17 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num profitLossRatio = profitLossRatioCriterion.calculate(series, position);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        var profitLossRatio = profitLossRatioCriterion.calculate(series, position);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
         return calculate(series, profitLossRatio, numberOfWinningPositions, numberOfPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num profitLossRatio = profitLossRatioCriterion.calculate(series, tradingRecord);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
+        var profitLossRatio = profitLossRatioCriterion.calculate(series, tradingRecord);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         return calculate(series, profitLossRatio, numberOfWinningPositions, numberOfPositions);
     }
 
@@ -75,8 +75,8 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
         // Expectancy = ((1 + AW/AL) * ProbabilityToWinOnePosition) - 1
-        Num one = series.numFactory().one();
-        Num probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(numberOfAllPositions);
+        var one = series.numFactory().one();
+        var probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(numberOfAllPositions);
         return (one.plus(profitLossRatio)).multipliedBy(probabiltyToWinOnePosition).minus(one);
     }
 

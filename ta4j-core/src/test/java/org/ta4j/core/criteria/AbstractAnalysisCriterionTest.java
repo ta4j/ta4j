@@ -66,7 +66,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void bestShouldBeAlwaysOperateOnProfit() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(6.0, 9.0, 6.0, 6.0).build();
         var manager = new BarSeriesManager(series);
-        Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
+        var bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
     }
 
@@ -74,7 +74,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void bestShouldBeBuyAndHoldOnLoss() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(6.0, 3.0, 6.0, 6.0).build();
         var manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
+        var bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }
 

@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
@@ -73,13 +72,13 @@ public class TrailingStopLossRule extends AbstractRule {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
+        var satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
+            var currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
+                var currentPrice = priceIndicator.getValue(index);
+                var positionIndex = currentPosition.getEntry().getIndex();
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuySatisfied(currentPrice, index, positionIndex);
@@ -93,22 +92,20 @@ public class TrailingStopLossRule extends AbstractRule {
     }
 
     private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
+        var highest = new HighestValueIndicator(priceIndicator, getValueIndicatorBarCount(index, positionIndex));
+        var highestCloseNum = highest.getValue(index);
         final var hundred = highestCloseNum.getNumFactory().hundred();
-        Num lossRatioThreshold = hundred.minus(lossPercentage).dividedBy(hundred);
-        Num currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
+        var lossRatioThreshold = hundred.minus(lossPercentage).dividedBy(hundred);
+        var currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
 
     private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
+        var lowest = new LowestValueIndicator(priceIndicator, getValueIndicatorBarCount(index, positionIndex));
+        var lowestCloseNum = lowest.getValue(index);
         final var hundred = lowestCloseNum.getNumFactory().hundred();
-        Num lossRatioThreshold = hundred.plus(lossPercentage).dividedBy(hundred);
-        Num currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
+        var lossRatioThreshold = hundred.plus(lossPercentage).dividedBy(hundred);
+        var currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 

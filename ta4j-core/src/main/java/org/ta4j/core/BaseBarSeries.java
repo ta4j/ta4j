@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -142,8 +141,8 @@ public class BaseBarSeries implements BarSeries {
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
         if (!this.bars.isEmpty()) {
-            final int start = startIndex - getRemovedBarsCount();
-            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
+            final var start = startIndex - getRemovedBarsCount();
+            final var end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
             return new BaseBarSeriesBuilder().withName(getName())
                     .withBars(cut(this.bars, start, end))
                     .withNumFactory(this.numFactory)
@@ -170,7 +169,7 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public Bar getBar(final int i) {
-        int innerIndex = i - this.removedBarsCount;
+        var innerIndex = i - this.removedBarsCount;
         if (innerIndex < 0) {
             if (i < 0) {
                 // Cannot return the i-th bar if i < 0
@@ -196,7 +195,7 @@ public class BaseBarSeries implements BarSeries {
         if (this.seriesEndIndex < 0) {
             return 0;
         }
-        final int startIndex = Math.max(this.removedBarsCount, this.seriesBeginIndex);
+        final var startIndex = Math.max(this.removedBarsCount, this.seriesBeginIndex);
         return this.seriesEndIndex - startIndex + 1;
     }
 
@@ -254,8 +253,8 @@ public class BaseBarSeries implements BarSeries {
                 this.bars.set(this.bars.size() - 1, bar);
                 return;
             }
-            final int lastBarIndex = this.bars.size() - 1;
-            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
+            final var lastBarIndex = this.bars.size() - 1;
+            final var seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
@@ -291,7 +290,7 @@ public class BaseBarSeries implements BarSeries {
      * Removes the first N bars that exceed the {@link #maximumBarCount}.
      */
     protected void removeExceedingBars() {
-        final int barCount = this.bars.size();
+        final var barCount = this.bars.size();
         if (barCount > this.maximumBarCount) {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;

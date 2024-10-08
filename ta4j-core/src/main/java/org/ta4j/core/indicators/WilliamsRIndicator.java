@@ -78,11 +78,11 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
+        var highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
+        var lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
 
-        Num highestHighPrice = highestHigh.getValue(index);
-        Num lowestLowPrice = lowestMin.getValue(index);
+        var highestHighPrice = highestHigh.getValue(index);
+        var lowestLowPrice = lowestMin.getValue(index);
 
         return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
                 .dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);

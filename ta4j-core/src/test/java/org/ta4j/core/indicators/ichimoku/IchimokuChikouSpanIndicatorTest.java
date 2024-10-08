@@ -50,7 +50,7 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
 
     @Test
     public void testCalculateWithDefaultParam() {
-        final BarSeries barSeries = barSeries(27);
+        final var barSeries = barSeries(27);
 
         final var indicator = new IchimokuChikouSpanIndicator(barSeries);
 
@@ -85,7 +85,7 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
 
     @Test
     public void testCalculateWithSpecifiedValue() {
-        final BarSeries barSeries = barSeries(11);
+        final var barSeries = barSeries(11);
 
         final var indicator = new IchimokuChikouSpanIndicator(barSeries, 3);
 

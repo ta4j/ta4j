@@ -57,7 +57,7 @@ public class JustOnceRuleTest {
 
     @Test
     public void isSatisfiedWithInnerSatisfiedRule() {
-        JustOnceRule rule = new JustOnceRule(new BooleanRule(true));
+        var rule = new JustOnceRule(new BooleanRule(true));
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(2));
         assertFalse(rule.isSatisfied(1));
@@ -66,7 +66,7 @@ public class JustOnceRuleTest {
 
     @Test
     public void isSatisfiedWithInnerNonSatisfiedRule() {
-        JustOnceRule rule = new JustOnceRule(new BooleanRule(false));
+        var rule = new JustOnceRule(new BooleanRule(false));
         assertFalse(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(2));
         assertFalse(rule.isSatisfied(1));
@@ -75,7 +75,7 @@ public class JustOnceRuleTest {
 
     @Test
     public void isSatisfiedWithInnerRule() {
-        JustOnceRule rule = new JustOnceRule(new FixedRule(1, 3, 5));
+        var rule = new JustOnceRule(new FixedRule(1, 3, 5));
         assertFalse(rule.isSatisfied(0));
         assertTrue(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));

@@ -32,16 +32,16 @@ public class DoubleNumTest {
 
     @Test
     public void testEqualsDoubleNumWithDecimalNum() {
-        final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
-        final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
+        final var decimalNum = DecimalNum.valueOf(3.0);
+        final var doubleNum = DoubleNum.valueOf(3.0);
 
         assertFalse(doubleNum.equals(decimalNum));
     }
 
     @Test
     public void testZeroEquals() {
-        final Num num1 = DoubleNum.valueOf(-0.0);
-        final Num num2 = DoubleNum.valueOf(0.0);
+        final var num1 = DoubleNum.valueOf(-0.0);
+        final var num2 = DoubleNum.valueOf(0.0);
 
         assertTrue(num1.isEqual(num2));
     }

@@ -68,7 +68,7 @@ public class HammerIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean
 
     private List<Bar> generateDowntrend() {
         final var bars = new ArrayList<Bar>(26);
-        for (int i = 26; i > 0; --i) {
+        for (var i = 26; i > 0; --i) {
             bars.add(new MockBarBuilder(numFactory).openPrice(i).closePrice(i).highPrice(i).lowPrice(i).build());
         }
 
@@ -77,7 +77,7 @@ public class HammerIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean
 
     private List<Bar> generateUptrend() {
         final var bars = new ArrayList<Bar>(26);
-        for (int i = 0; i < 26; ++i) {
+        for (var i = 0; i < 26; ++i) {
             bars.add(new MockBarBuilder(numFactory).openPrice(i).closePrice(i).highPrice(i).lowPrice(i).build());
         }
 

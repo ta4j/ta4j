@@ -33,7 +33,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -52,9 +51,9 @@ public class ValueAtRiskCriterionTest {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 105d, 106d, 107d, 108d, 115d)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
-        AnalysisCriterion varCriterion = getCriterion();
+        var varCriterion = getCriterion();
         assertNumEquals(numFactory.zero(), varCriterion.calculate(series, tradingRecord));
     }
 
@@ -63,38 +62,38 @@ public class ValueAtRiskCriterionTest {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 104d, 90d, 100d, 95d, 105d)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        AnalysisCriterion varCriterion = getCriterion();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        var varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(Math.log(90d / 104)), varCriterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateOnlyWithLossPositions() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 95d, 100d, 80d, 85d, 70d).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
-        AnalysisCriterion varCriterion = getCriterion();
+        var varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(Math.log(80d / 100)), varCriterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNoBarsShouldReturn0() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 95d, 100d, 80d, 85d, 70d).build();
-        AnalysisCriterion varCriterion = getCriterion();
+        var varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(0), varCriterion.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithBuyAndHold() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 99d).build();
-        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
-        AnalysisCriterion varCriterion = getCriterion();
+        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        var varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(Math.log(99d / 100)), varCriterion.calculate(series, position));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(-0.2)));
         assertFalse(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(0.0)));
     }

@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModelTest {
 
@@ -46,9 +45,9 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateZeroTest() {
         // Price - Amount calculation Test
-        Num price = DoubleNum.valueOf(100);
-        Num amount = DoubleNum.valueOf(2);
-        Num cost = borrowingModel.calculate(price, amount);
+        var price = DoubleNum.valueOf(100);
+        var amount = DoubleNum.valueOf(2);
+        var cost = borrowingModel.calculate(price, amount);
 
         assertNumEquals(DoubleNum.valueOf(0), cost);
     }
@@ -56,14 +55,14 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateBuyPosition() {
         // Holding a bought asset should not incur borrowing costs
-        int holdingPeriod = 2;
-        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        var holdingPeriod = 2;
+        var entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        var exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Position position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
+        var position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromPosition = position.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(position, holdingPeriod);
+        var costsFromPosition = position.getHoldingCost();
+        var costsFromModel = borrowingModel.calculate(position, holdingPeriod);
 
         assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(0));
@@ -72,14 +71,14 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateSellPosition() {
         // Short selling incurs borrowing costs
-        int holdingPeriod = 2;
-        Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        var holdingPeriod = 2;
+        var entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        var exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Position position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
+        var position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromPosition = position.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(position, holdingPeriod);
+        var costsFromPosition = position.getHoldingCost();
+        var costsFromModel = borrowingModel.calculate(position, holdingPeriod);
 
         assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2));
@@ -89,12 +88,12 @@ public class LinearBorrowingCostModelTest {
     public void calculateOpenSellPosition() {
         // Short selling incurs borrowing costs. Since position is still open, accounted
         // for until current index
-        int currentIndex = 4;
-        Position position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
+        var currentIndex = 4;
+        var position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
         position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromPosition = position.getHoldingCost(currentIndex);
-        Num costsFromModel = borrowingModel.calculate(position, currentIndex);
+        var costsFromPosition = position.getHoldingCost(currentIndex);
+        var costsFromModel = borrowingModel.calculate(position, currentIndex);
 
         assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(4));

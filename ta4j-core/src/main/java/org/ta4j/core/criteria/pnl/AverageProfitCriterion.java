@@ -40,11 +40,11 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
         if (numberOfWinningPositions.isZero()) {
             return series.numFactory().zero();
         }
-        Num grossProfit = grossProfitCriterion.calculate(series, position);
+        var grossProfit = grossProfitCriterion.calculate(series, position);
         if (grossProfit.isZero()) {
             return series.numFactory().zero();
         }
@@ -53,11 +53,11 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfWinningPositions.isZero()) {
             return series.numFactory().zero();
         }
-        Num grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
+        var grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
         if (grossProfit.isZero()) {
             return series.numFactory().zero();
         }

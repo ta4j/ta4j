@@ -146,8 +146,7 @@ public class Position implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Position) {
-            Position p = (Position) obj;
+        if (obj instanceof Position p) {
             return (entry == null ? p.getEntry() == null : entry.equals(p.getEntry()))
                     && (exit == null ? p.getExit() == null : exit.equals(p.getExit()));
         }
@@ -254,8 +253,8 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
-        Num grossProfit = getGrossProfit(finalPrice);
-        Num tradingCost = getPositionCost(finalIndex);
+        var grossProfit = getGrossProfit(finalPrice);
+        var tradingCost = getPositionCost(finalIndex);
         return grossProfit.minus(tradingCost);
     }
 
@@ -335,8 +334,8 @@ public class Position implements Serializable {
      * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(BarSeries barSeries) {
-        Num entryPrice = getEntry().getPricePerAsset(barSeries);
-        Num exitPrice = getExit().getPricePerAsset(barSeries);
+        var entryPrice = getEntry().getPricePerAsset(barSeries);
+        var exitPrice = getExit().getPricePerAsset(barSeries);
         return getGrossReturn(entryPrice, exitPrice);
     }
 
@@ -360,9 +359,20 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
-            Num one = entryPrice.getNumFactory().one();
+            var one = entryPrice.getNumFactory().one();
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
+    }
+
+    /**
+     * Calculates the total cost of the closed position.
+     *
+     * @return the cost of the position
+     */
+    public Num getPositionCost() {
+        var transactionCost = transactionCostModel.calculate(this);
+        var borrowingCost = getHoldingCost();
+        return transactionCost.plus(borrowingCost);
     }
 
     /**
@@ -373,19 +383,8 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getPositionCost(int finalIndex) {
-        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
-        Num borrowingCost = getHoldingCost(finalIndex);
-        return transactionCost.plus(borrowingCost);
-    }
-
-    /**
-     * Calculates the total cost of the closed position.
-     *
-     * @return the cost of the position
-     */
-    public Num getPositionCost() {
-        Num transactionCost = transactionCostModel.calculate(this);
-        Num borrowingCost = getHoldingCost();
+        var transactionCost = transactionCostModel.calculate(this, finalIndex);
+        var borrowingCost = getHoldingCost(finalIndex);
         return transactionCost.plus(borrowingCost);
     }
 

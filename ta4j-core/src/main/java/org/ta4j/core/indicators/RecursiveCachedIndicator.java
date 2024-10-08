@@ -69,18 +69,18 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     public T getValue(int index) {
-        final BarSeries series = getBarSeries();
+        final var series = getBarSeries();
         if (series == null || index > series.getEndIndex()) {
             return super.getValue(index);
         }
 
         // We're not at the end of the series yet.
-        final int startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
+        final var startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
 
         if (index - startIndex > RECURSION_THRESHOLD) {
             // Too many uncalculated values; the risk for a StackOverflowError becomes high.
             // Calculating the previous values iteratively.
-            for (int prevIndex = startIndex; prevIndex < index; prevIndex++) {
+            for (var prevIndex = startIndex; prevIndex < index; prevIndex++) {
                 super.getValue(prevIndex);
             }
         }

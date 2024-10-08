@@ -26,10 +26,12 @@ package org.ta4j.core.num;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
-import java.util.function.Function;
 
 /**
  * Representation of {@link Double}. High performance, lower precision.
+ *
+ * <p>
+ * It uses a precision of up to five decimal places.
  *
  * @apiNote the delegate should never become a NaN value. No self NaN checks are
  *          provided.
@@ -171,7 +173,7 @@ public class DoubleNum implements Num {
         if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
-        DoubleNum divisorD = (DoubleNum) divisor;
+        var divisorD = (DoubleNum) divisor;
         return new DoubleNum(delegate / divisorD.delegate);
     }
 
@@ -307,7 +309,7 @@ public class DoubleNum implements Num {
             return false;
         }
 
-        DoubleNum doubleNumObj = (DoubleNum) obj;
+        var doubleNumObj = (DoubleNum) obj;
         return Math.abs(delegate - doubleNumObj.delegate) < EPS;
     }
 
@@ -316,7 +318,7 @@ public class DoubleNum implements Num {
         if (this == NaN || o == NaN) {
             return 0;
         }
-        DoubleNum doubleNumO = (DoubleNum) o;
+        var doubleNumO = (DoubleNum) o;
         return Double.compare(delegate, doubleNumO.delegate);
     }
 }

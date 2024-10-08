@@ -60,19 +60,19 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
     protected Num calculate(int index) {
 
         final var numFactory = getBarSeries().numFactory();
-        Num n = numFactory.numOf(barCount);
+        var n = numFactory.numOf(barCount);
 
-        Num zero = numFactory.zero();
-        Num Sx = zero;
-        Num Sy = zero;
-        Num Sxx = zero;
-        Num Syy = zero;
-        Num Sxy = zero;
+        var zero = numFactory.zero();
+        var Sx = zero;
+        var Sy = zero;
+        var Sxx = zero;
+        var Syy = zero;
+        var Sxy = zero;
 
-        for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
+        for (var i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
 
-            Num x = indicator1.getValue(i);
-            Num y = indicator2.getValue(i);
+            var x = indicator1.getValue(i);
+            var y = indicator2.getValue(i);
 
             Sx = Sx.plus(x);
             Sy = Sy.plus(y);
@@ -82,7 +82,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         // (n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy)
-        Num toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
+        var toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
                 .multipliedBy(n.multipliedBy(Syy).minus(Sy.multipliedBy(Sy)));
 
         if (toSqrt.isGreaterThan(numFactory.zero())) {

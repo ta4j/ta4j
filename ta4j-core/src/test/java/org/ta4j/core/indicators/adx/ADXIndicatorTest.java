@@ -47,7 +47,7 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void externalData() throws Exception {
-        BarSeries series = xls.getSeries();
+        var series = xls.getSeries();
         Indicator<Num> actualIndicator;
 
         actualIndicator = getIndicator(series, 1, 1);

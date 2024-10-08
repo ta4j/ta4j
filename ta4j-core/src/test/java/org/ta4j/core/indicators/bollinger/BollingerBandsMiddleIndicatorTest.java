@@ -55,7 +55,7 @@ public class BollingerBandsMiddleIndicatorTest extends AbstractIndicatorTest<Ind
         var sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         var bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
-        for (int i = 0; i < data.getBarCount(); i++) {
+        for (var i = 0; i < data.getBarCount(); i++) {
             assertEquals(sma.getValue(i), bbmSMA.getValue(i));
         }
     }

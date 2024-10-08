@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -48,18 +47,18 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
-        Num high = bar.getHighPrice();
-        Num low = bar.getLowPrice();
-        Num hl = high.minus(low);
+        var bar = getBarSeries().getBar(index);
+        var high = bar.getHighPrice();
+        var low = bar.getLowPrice();
+        var hl = high.minus(low);
 
         if (index == 0) {
             return hl.abs();
         }
 
-        Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
-        Num hc = high.minus(previousClose);
-        Num cl = previousClose.minus(low);
+        var previousClose = getBarSeries().getBar(index - 1).getClosePrice();
+        var hc = high.minus(previousClose);
+        var cl = previousClose.minus(low);
         return hl.abs().max(hc.abs()).max(cl.abs());
 
     }

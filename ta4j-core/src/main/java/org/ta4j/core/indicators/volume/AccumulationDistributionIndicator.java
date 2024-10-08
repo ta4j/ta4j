@@ -52,10 +52,10 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
         }
 
         // Calculating the money flow multiplier
-        Num moneyFlowMultiplier = clvIndicator.getValue(index);
+        var moneyFlowMultiplier = clvIndicator.getValue(index);
 
         // Calculating the money flow volume
-        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
+        var moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));
     }

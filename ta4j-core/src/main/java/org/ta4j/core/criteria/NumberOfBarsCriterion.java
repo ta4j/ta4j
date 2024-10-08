@@ -39,8 +39,8 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            final int exitIndex = position.getExit().getIndex();
-            final int entryIndex = position.getEntry().getIndex();
+            final var exitIndex = position.getExit().getIndex();
+            final var entryIndex = position.getEntry().getIndex();
             return series.numFactory().numOf(exitIndex - entryIndex + 1);
         }
         return series.numFactory().zero();

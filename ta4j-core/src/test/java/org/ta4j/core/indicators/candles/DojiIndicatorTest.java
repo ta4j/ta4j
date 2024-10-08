@@ -67,7 +67,7 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
 
     @Test
     public void getValue() {
-        DojiIndicator doji = new DojiIndicator(series, 3, 0.1);
+        var doji = new DojiIndicator(series, 3, 0.1);
         assertTrue(doji.getValue(0));
         assertFalse(doji.getValue(1));
         assertFalse(doji.getValue(2));

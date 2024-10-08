@@ -27,7 +27,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -54,8 +53,8 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        var constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
         transPlus = TransformIndicator.plus(constantIndicator, 10);
         transMinus = TransformIndicator.minus(constantIndicator, 10);

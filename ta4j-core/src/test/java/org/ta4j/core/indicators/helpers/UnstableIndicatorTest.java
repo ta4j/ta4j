@@ -53,14 +53,14 @@ public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void indicatorReturnsNanBeforeUnstableBars() {
-        for (int i = 0; i < unstableBars; i++) {
+        for (var i = 0; i < unstableBars; i++) {
             assertEquals(unstableIndicator.getValue(i), NaN.NaN);
         }
     }
 
     @Test
     public void indicatorNotReturnsNanAfterUnstableBars() {
-        for (int i = unstableBars; i < 10; i++) {
+        for (var i = unstableBars; i < 10; i++) {
             assertNotEquals(unstableIndicator.getValue(i), NaN.NaN);
         }
     }

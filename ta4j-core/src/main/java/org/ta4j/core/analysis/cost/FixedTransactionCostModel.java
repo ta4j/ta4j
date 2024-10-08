@@ -59,7 +59,7 @@ public class FixedTransactionCostModel implements CostModel {
     @Override
     public Num calculate(Position position, int currentIndex) {
         final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
-        Num multiplier = numFactory.one();
+        var multiplier = numFactory.one();
         if (position.isClosed()) {
             multiplier = numFactory.numOf(2);
         }
@@ -87,7 +87,7 @@ public class FixedTransactionCostModel implements CostModel {
 
     @Override
     public boolean equals(CostModel otherModel) {
-        boolean equality = false;
+        var equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
             equality = ((FixedTransactionCostModel) otherModel).feePerTrade == this.feePerTrade;
         }

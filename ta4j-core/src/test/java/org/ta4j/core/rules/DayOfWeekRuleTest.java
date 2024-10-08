@@ -45,7 +45,7 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
 
     @Test
     public void isSatisfied() {
-        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        final var dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-16T12:00:00-00:00", dtf)).add(); // Index=0, Mon
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T12:00:00-00:00", dtf)).add(); // 1, Tue
@@ -55,7 +55,7 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-21T12:00:00-00:00", dtf)).add(); // 5, Sat
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-22T12:00:00-00:00", dtf)).add(); // 6, Sun
         var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
-        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+        var rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY);
 
         assertTrue(rule.isSatisfied(0, null));

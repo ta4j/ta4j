@@ -204,18 +204,18 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
 
-        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
-        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        var runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
+        var runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
 
         if (log.isTraceEnabled()) {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
                     strategy, tradeType);
         }
 
-        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
+        var tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
                 holdingCostModel);
 
-        for (int i = runBeginIndex; i <= runEndIndex; i++) {
+        for (var i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
@@ -226,8 +226,8 @@ public class BarSeriesManager {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+            var seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
+            for (var i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {

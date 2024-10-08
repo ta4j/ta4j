@@ -78,9 +78,9 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the highest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
+        var endIndex = Math.max(0, index - barCount);
+        var nbBars = 0;
+        for (var i = index; i > endIndex; i--) {
             if (highPriceIndicator.getValue(i).isEqual(highestHighPriceIndicator.getValue(index))) {
                 break;
             }

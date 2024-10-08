@@ -29,7 +29,6 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -52,7 +51,7 @@ public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
         var constantIndicator = new ConstantIndicator<>(series, numOf(4));
         var constantIndicatorTwo = new ConstantIndicator<>(series, numOf(2));
 
@@ -79,12 +78,12 @@ public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
 
         Function<Number, Num> numFunction = DecimalNum::valueOf;
 
-        BarSeries series = new BaseBarSeriesBuilder().build();
+        var series = new BaseBarSeriesBuilder().build();
         var mockIndicator = new FixedIndicator<>(series, numFunction.apply(-2.0), numFunction.apply(0.00),
                 numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87), numFunction.apply(6.00),
                 numFunction.apply(10.0));
         var constantIndicator = new ConstantIndicator<>(series, numFunction.apply(6));
-        CombineIndicator differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
+        var differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
 
         assertNumEquals("8", differenceIndicator.getValue(0));
         assertNumEquals("6", differenceIndicator.getValue(1));

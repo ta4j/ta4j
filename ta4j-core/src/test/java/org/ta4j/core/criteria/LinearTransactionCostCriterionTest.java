@@ -28,11 +28,9 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExternalCriterionTest;
 import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -49,8 +47,8 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void externalData() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
-        TradingRecord xlsTradingRecord = xls.getTradingRecord();
+        var xlsSeries = xls.getSeries();
+        var xlsTradingRecord = xls.getTradingRecord();
         Num value;
 
         value = getCriterion(1000d, 0.005, 0.2).calculate(xlsSeries, xlsTradingRecord);
@@ -67,7 +65,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 150, 200, 100, 50, 100)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord();
+        var tradingRecord = new BaseTradingRecord();
         Num criterion;
 
         tradingRecord.operate(0);
@@ -90,7 +88,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord();
+        var tradingRecord = new BaseTradingRecord();
         Num criterion;
 
         tradingRecord.operate(0);
@@ -111,7 +109,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
     @Test
     public void fixedCostWithOnePosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        Position position = new Position();
+        var position = new Position();
         Num criterion;
 
         criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, position);

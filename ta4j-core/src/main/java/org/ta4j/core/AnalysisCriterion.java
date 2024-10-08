@@ -81,12 +81,12 @@ public interface AnalysisCriterion {
      */
     default Strategy chooseBest(BarSeriesManager manager, TradeType tradeType, List<Strategy> strategies) {
 
-        Strategy bestStrategy = strategies.get(0);
-        Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
+        var bestStrategy = strategies.get(0);
+        var bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
 
-        for (int i = 1; i < strategies.size(); i++) {
-            Strategy currentStrategy = strategies.get(i);
-            Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy, tradeType));
+        for (var i = 1; i < strategies.size(); i++) {
+            var currentStrategy = strategies.get(i);
+            var currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy, tradeType));
 
             if (betterThan(currentCriterionValue, bestCriterionValue)) {
                 bestStrategy = currentStrategy;

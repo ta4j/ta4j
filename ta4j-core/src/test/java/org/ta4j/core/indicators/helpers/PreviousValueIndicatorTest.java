@@ -53,12 +53,12 @@ public class PreviousValueIndicatorTest {
     public void setUp() {
         var r = new Random();
         this.series = new MockBarSeriesBuilder().withName("test").build();
-        for (int i = 0; i < 1000; i++) {
-            double open = r.nextDouble();
-            double close = r.nextDouble();
-            double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
-            double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
-            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
+        for (var i = 0; i < 1000; i++) {
+            var open = r.nextDouble();
+            var close = r.nextDouble();
+            var max = Math.max(close + r.nextDouble(), open + r.nextDouble());
+            var min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
+            var dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
             series.barBuilder()
                     .endTime(dateTime)
                     .openPrice(open)
@@ -73,7 +73,7 @@ public class PreviousValueIndicatorTest {
         this.lowPriceIndicator = new LowPriceIndicator(this.series);
         this.highPriceIndicator = new HighPriceIndicator(this.series);
         this.volumeIndicator = new VolumeIndicator(this.series);
-        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(this.series);
+        var closePriceIndicator = new ClosePriceIndicator(this.series);
         this.emaIndicator = new EMAIndicator(closePriceIndicator, 20);
     }
 
@@ -84,28 +84,28 @@ public class PreviousValueIndicatorTest {
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
 
-        for (int i = 1; i < this.series.getBarCount(); i++) {
+        for (var i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i - 1));
         }
 
         // test 2 with lowPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
-        for (int i = 1; i < this.series.getBarCount(); i++) {
+        for (var i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i - 1));
         }
 
         // test 3 with highPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), NaN.NaN);
-        for (int i = 1; i < this.series.getBarCount(); i++) {
+        for (var i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i - 1));
         }
     }
 
     @Test
     public void shouldBeNthPreviousValueFromIndicator() {
-        for (int i = 1; i < this.series.getBarCount(); i++) {
+        for (var i = 1; i < this.series.getBarCount(); i++) {
             testWithN(i);
         }
     }
@@ -114,19 +114,19 @@ public class PreviousValueIndicatorTest {
 
         // test 1 with volume-indicator
         prevValueIndicator = new PreviousValueIndicator(volumeIndicator, n);
-        for (int i = 1; i < n; i++) {
+        for (var i = 1; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), i - n < 0 ? NaN.NaN : volumeIndicator.getValue(0));
         }
-        for (int i = n; i < this.series.getBarCount(); i++) {
+        for (var i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i - n));
         }
 
         // test 2 with ema-indicator
         prevValueIndicator = new PreviousValueIndicator(emaIndicator, n);
-        for (int i = 1; i < n; i++) {
+        for (var i = 1; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), i - n < 0 ? NaN.NaN : emaIndicator.getValue(0));
         }
-        for (int i = n; i < this.series.getBarCount(); i++) {
+        for (var i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i - n));
         }
     }
@@ -135,7 +135,7 @@ public class PreviousValueIndicatorTest {
     public void testToStringMethodWithN1() {
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
 
-        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+        final var prevValueIndicatorAsString = prevValueIndicator.toString();
 
         assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator["));
         assertTrue(prevValueIndicatorAsString.endsWith("]"));
@@ -145,7 +145,7 @@ public class PreviousValueIndicatorTest {
     public void testToStringMethodWithNGreaterThen1() {
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 2);
 
-        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+        final var prevValueIndicatorAsString = prevValueIndicator.toString();
 
         assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator(2)["));
         assertTrue(prevValueIndicatorAsString.endsWith("]"));

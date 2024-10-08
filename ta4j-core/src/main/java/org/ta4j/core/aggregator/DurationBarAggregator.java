@@ -76,34 +76,34 @@ public class DurationBarAggregator implements BarAggregator {
      */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
-        final List<Bar> aggregated = new ArrayList<>();
+        final var aggregated = new ArrayList<Bar>();
         if (bars.isEmpty()) {
             return aggregated;
         }
-        final Bar firstBar = bars.get(0);
+        final var firstBar = bars.get(0);
         // get the actual time period
-        final Duration actualDur = firstBar.getTimePeriod();
+        final var actualDur = firstBar.getTimePeriod();
         // check if new timePeriod is a multiplication of actual time period
-        final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
+        final var isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
             throw new IllegalArgumentException(
                     "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
+        final var zero = firstBar.getOpenPrice().getNumFactory().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();
-            final Num open = bar.getOpenPrice();
-            Num high = bar.getHighPrice();
-            Num low = bar.getLowPrice();
+            final var open = bar.getOpenPrice();
+            var high = bar.getHighPrice();
+            var low = bar.getLowPrice();
 
             Num close = null;
-            Num volume = zero;
-            Num amount = zero;
+            var volume = zero;
+            var amount = zero;
             long trades = 0;
-            Duration sumDur = Duration.ZERO;
+            var sumDur = Duration.ZERO;
 
             while (isInDuration(sumDur)) {
                 if (i < bars.size()) {
@@ -135,7 +135,7 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
+                final var aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
                         .endTime(beginTime.plus(timePeriod))
                         .openPrice(open)
                         .highPrice(high)

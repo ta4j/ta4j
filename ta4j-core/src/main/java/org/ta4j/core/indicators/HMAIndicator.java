@@ -49,10 +49,10 @@ public class HMAIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.barCount = barCount;
 
-        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
-        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
+        var halfWma = new WMAIndicator(indicator, barCount / 2);
+        var origWma = new WMAIndicator(indicator, barCount);
 
-        Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
+        var indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
         this.sqrtWma = new WMAIndicator(indicatorForSqrtWma,
                 getBarSeries().numFactory().numOf(barCount).sqrt().intValue());
     }

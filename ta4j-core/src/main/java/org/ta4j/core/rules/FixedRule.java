@@ -47,8 +47,8 @@ public class FixedRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        for (int idx : indexes) {
+        var satisfied = false;
+        for (var idx : indexes) {
             if (idx == index) {
                 satisfied = true;
                 break;

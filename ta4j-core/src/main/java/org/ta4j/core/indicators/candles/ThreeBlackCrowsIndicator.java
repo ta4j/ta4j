@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -67,7 +66,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
             // We need 4 candles: 1 white, 3 black
             return false;
         }
-        int whiteCandleIndex = index - 3;
+        var whiteCandleIndex = index - 3;
         return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2, whiteCandleIndex)
                 && isBlackCrow(index - 1, whiteCandleIndex) && isBlackCrow(index, whiteCandleIndex);
     }
@@ -82,9 +81,9 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the bar/candle has a very short lower shadow, false otherwise
      */
     private boolean hasVeryShortLowerShadow(int index, int whiteCandleIndex) {
-        Num currentLowerShadow = lowerShadowInd.getValue(index);
+        var currentLowerShadow = lowerShadowInd.getValue(index);
         // We use the white candle index to remove to bias of the previous crows
-        Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
+        var averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
         return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
     }
@@ -94,12 +93,12 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is declining, false otherwise
      */
     private boolean isDeclining(int index) {
-        Bar prevBar = getBarSeries().getBar(index - 1);
-        Bar currBar = getBarSeries().getBar(index);
-        final Num prevOpenPrice = prevBar.getOpenPrice();
-        final Num prevClosePrice = prevBar.getClosePrice();
-        final Num currOpenPrice = currBar.getOpenPrice();
-        final Num currClosePrice = currBar.getClosePrice();
+        var prevBar = getBarSeries().getBar(index - 1);
+        var currBar = getBarSeries().getBar(index);
+        final var prevOpenPrice = prevBar.getOpenPrice();
+        final var prevClosePrice = prevBar.getClosePrice();
+        final var currOpenPrice = currBar.getOpenPrice();
+        final var currClosePrice = currBar.getClosePrice();
 
         // Opens within the body of the previous candle
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
@@ -112,8 +111,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is a black crow, false otherwise
      */
     private boolean isBlackCrow(int index, int whiteCandleIndex) {
-        Bar prevBar = getBarSeries().getBar(index - 1);
-        Bar currBar = getBarSeries().getBar(index);
+        var prevBar = getBarSeries().getBar(index - 1);
+        var currBar = getBarSeries().getBar(index);
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case

@@ -77,7 +77,7 @@ public interface Indicator<T> {
      * @return array of Doubles within {@code index} and {@code barCount}
      */
     static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
-        int startIndex = Math.max(0, index - barCount + 1);
+        var startIndex = Math.max(0, index - barCount + 1);
         return IntStream.range(startIndex, startIndex + barCount)
                 .mapToObj(ref::getValue)
                 .map(Num::doubleValue)

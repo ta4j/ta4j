@@ -62,7 +62,7 @@ public class NumIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Bar bar = getBarSeries().getBar(index);
+        var bar = getBarSeries().getBar(index);
         return this.action.apply(bar);
     }
 

@@ -24,7 +24,6 @@
 package org.ta4j.core.criteria;
 
 import java.util.Collections;
-import java.util.List;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -57,13 +56,13 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         if (position == null || !position.isClosed()) {
             return series.numFactory().zero();
         }
-        Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+        var returns = new Returns(series, position, Returns.ReturnType.LOG);
         return calculateVaR(returns, confidence);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        var returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
         return calculateVaR(returns, confidence);
     }
 
@@ -75,18 +74,18 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
      * @return the relative Value at Risk
      */
     private static Num calculateVaR(Returns returns, double confidence) {
-        Num zero = returns.getBarSeries().numFactory().zero();
+        var zero = returns.getBarSeries().numFactory().zero();
         // select non-NaN returns
-        List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
+        var returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         if (returnRates.isEmpty()) {
             return zero;
         }
 
-        Num valueAtRisk = zero;
+        var valueAtRisk = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
-            int nInBody = (int) (returns.getSize() * confidence);
-            int nInTail = returns.getSize() - nInBody;
+            var nInBody = (int) (returns.getSize() * confidence);
+            var nInTail = returns.getSize() - nInBody;
 
             // The series is not empty, nInTail > 0
             Collections.sort(returnRates);

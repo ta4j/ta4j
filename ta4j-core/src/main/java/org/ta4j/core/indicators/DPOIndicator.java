@@ -71,10 +71,9 @@ public class DPOIndicator extends CachedIndicator<Num> {
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
-        int timeFrame = barCount / 2 + 1;
-        final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
-        final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
-                timeFrame);
+        var timeFrame = barCount / 2 + 1;
+        final var simpleMovingAverage = new SMAIndicator(price, barCount);
+        final var previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage, timeFrame);
         this.indicatorMinusPreviousSMAIndicator = CombineIndicator.minus(price, previousSimpleMovingAverage);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }

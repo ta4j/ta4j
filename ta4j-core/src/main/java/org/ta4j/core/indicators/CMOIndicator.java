@@ -60,9 +60,9 @@ public class CMOIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final var numFactory = getBarSeries().numFactory();
-        Num sumOfGains = numFactory.zero();
-        Num sumOfLosses = numFactory.zero();
-        for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
+        var sumOfGains = numFactory.zero();
+        var sumOfLosses = numFactory.zero();
+        for (var i = Math.max(1, index - barCount + 1); i <= index; i++) {
             sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }

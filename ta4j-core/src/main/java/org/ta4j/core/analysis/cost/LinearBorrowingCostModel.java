@@ -71,9 +71,9 @@ public class LinearBorrowingCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
-        Trade entryTrade = position.getEntry();
-        Trade exitTrade = position.getExit();
-        Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
+        var entryTrade = position.getEntry();
+        var exitTrade = position.getExit();
+        var borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
 
         // Borrowing costs only apply to short positions.
         if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {
@@ -101,7 +101,7 @@ public class LinearBorrowingCostModel implements CostModel {
 
     @Override
     public boolean equals(CostModel otherModel) {
-        boolean equality = false;
+        var equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
             equality = ((LinearBorrowingCostModel) otherModel).feePerPeriod == this.feePerPeriod;
         }

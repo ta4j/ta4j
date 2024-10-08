@@ -37,7 +37,6 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.Num;
 
 public class TradeTest {
 
@@ -74,10 +73,10 @@ public class TradeTest {
     public void initializeWithCostsTest() {
         var transactionCostModel = new LinearTransactionCostModel(0.05);
         var trade = new Trade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
-        Num expectedCost = DoubleNum.valueOf(100);
-        Num expectedValue = DoubleNum.valueOf(2000);
-        Num expectedRawPrice = DoubleNum.valueOf(100);
-        Num expectedNetPrice = DoubleNum.valueOf(105);
+        var expectedCost = DoubleNum.valueOf(100);
+        var expectedValue = DoubleNum.valueOf(2000);
+        var expectedRawPrice = DoubleNum.valueOf(100);
+        var expectedNetPrice = DoubleNum.valueOf(105);
 
         assertNumEquals(expectedCost, trade.getCost());
         assertNumEquals(expectedValue, trade.getValue());
@@ -91,7 +90,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        Trade trade = new Trade(1, TradeType.BUY, NaN);
+        var trade = new Trade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 }

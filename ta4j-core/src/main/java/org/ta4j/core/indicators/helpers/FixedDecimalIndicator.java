@@ -44,7 +44,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      */
     public FixedDecimalIndicator(BarSeries series, double... values) {
         super(series);
-        for (double value : values) {
+        for (var value : values) {
             addValue(getBarSeries().numFactory().numOf(value));
         }
     }
@@ -57,7 +57,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      */
     public FixedDecimalIndicator(BarSeries series, String... values) {
         super(series);
-        for (String value : values) {
+        for (var value : values) {
             addValue(getBarSeries().numFactory().numOf(new BigDecimal(value)));
         }
     }

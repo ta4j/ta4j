@@ -108,7 +108,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        for (int i = Math.max(index, this.filter.getStateDimension()); i <= index; i++) {
+        for (var i = Math.max(index, this.filter.getStateDimension()); i <= index; i++) {
             this.filter.predict();
             this.filter.correct(new double[] { this.indicator.getValue(i).doubleValue() });
         }

@@ -55,9 +55,9 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
             return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
         }
-        int end = Math.max(0, index - barCount + 1);
-        Num highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
+        var end = Math.max(0, index - barCount + 1);
+        var highest = indicator.getValue(index);
+        for (var i = index - 1; i >= end; i--) {
             if (highest.isLessThan(indicator.getValue(i))) {
                 highest = indicator.getValue(i);
             }

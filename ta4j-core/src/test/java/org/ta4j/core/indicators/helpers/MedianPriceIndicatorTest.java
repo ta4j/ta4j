@@ -64,7 +64,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void indicatorShouldRetrieveBarClosePrice() {
         Num result;
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             result = barSeries.getBar(i)
                     .getHighPrice()
                     .plus(barSeries.getBar(i).getLowPrice())

@@ -28,17 +28,14 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -62,7 +59,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Before
     public void setUp() {
 
-        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        final var dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         seriesForRun.barBuilder().endTime(ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf)).closePrice(1d).add();
@@ -87,7 +84,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 .withData(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d)
                 .build();
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        List<Position> allPositions = manager.run(strategy).getPositions();
+        var allPositions = manager.run(strategy).getPositions();
         assertEquals(2, allPositions.size());
     }
 
@@ -97,17 +94,16 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 .withData(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d)
                 .build();
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        List<Position> allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
+        var allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
 
         assertEquals(2, allPositions.size());
         assertEquals(HUNDRED, allPositions.get(0).getEntry().getAmount());
         assertEquals(HUNDRED, allPositions.get(1).getEntry().getAmount());
-
     }
 
     @Test
     public void runOnSeries() {
-        List<Position> positions = manager.run(strategy).getPositions();
+        var positions = manager.run(strategy).getPositions();
         assertEquals(2, positions.size());
 
         assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
@@ -119,8 +115,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void runWithOpenEntryBuyLeft() {
-        Strategy aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
-        List<Position> positions = manager.run(aStrategy, 0, 3).getPositions();
+        var aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
+        var positions = manager.run(aStrategy, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
         assertEquals(Trade.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
@@ -129,8 +125,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void runWithOpenEntrySellLeft() {
-        Strategy aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
-        List<Position> positions = manager.run(aStrategy, TradeType.SELL, 0, 3).getPositions();
+        var aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
+        var positions = manager.run(aStrategy, TradeType.SELL, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
         assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
@@ -141,8 +137,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void runBetweenIndexes() {
 
         // only 1 entry happened within [0-3]
-        TradingRecord tradingRecord = manager.run(strategy, 0, 3);
-        List<Position> positions = tradingRecord.getPositions();
+        var tradingRecord = manager.run(strategy, 0, 3);
+        var positions = tradingRecord.getPositions();
         assertEquals(0, tradingRecord.getPositions().size());
         assertEquals(2, tradingRecord.getCurrentPosition().getEntry().getIndex());
 
@@ -183,11 +179,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
-        Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
+        var aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
         // only 1 entry happened within [0-1]
-        TradingRecord tradingRecord = manager.run(aStrategy, 0, 1);
-        List<Position> positions = tradingRecord.getPositions();
+        var tradingRecord = manager.run(aStrategy, 0, 1);
+        var positions = tradingRecord.getPositions();
         assertEquals(0, positions.size());
         assertEquals(0, tradingRecord.getCurrentPosition().getEntry().getIndex());
 

@@ -47,13 +47,13 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        CashFlow cashFlow = new CashFlow(series, position);
+        var cashFlow = new CashFlow(series, position);
         return calculateMaximumDrawdown(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        var cashFlow = new CashFlow(series, tradingRecord);
         return calculateMaximumDrawdown(series, tradingRecord, cashFlow);
     }
 
@@ -82,22 +82,22 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
 
-        Num zero = series.numFactory().zero();
-        Num maxPeak = zero;
-        Num maximumDrawdown = zero;
+        var zero = series.numFactory().zero();
+        var maxPeak = zero;
+        var maximumDrawdown = zero;
 
-        int beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
+        var beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
+        var endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
 
         if (!series.isEmpty()) {
             for (int i = beginIndex; i <= endIndex; i++) {
 
-                Num value = cashFlow.getValue(i);
+                var value = cashFlow.getValue(i);
                 if (value.isGreaterThan(maxPeak)) {
                     maxPeak = value;
                 }
 
-                Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+                var drawdown = maxPeak.minus(value).dividedBy(maxPeak);
                 if (drawdown.isGreaterThan(maximumDrawdown)) {
                     maximumDrawdown = drawdown;
                 }

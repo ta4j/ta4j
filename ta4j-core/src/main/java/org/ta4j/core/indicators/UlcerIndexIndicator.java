@@ -54,17 +54,17 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
+        final var startIndex = Math.max(0, index - barCount + 1);
+        final var numberOfObservations = index - startIndex + 1;
         final var numFactory = getBarSeries().numFactory();
-        Num squaredAverage = numFactory.zero();
-        Num highestValue = indicator.getValue(startIndex);
-        for (int i = startIndex; i <= index; i++) {
-            Num currentValue = indicator.getValue(i);
+        var squaredAverage = numFactory.zero();
+        var highestValue = indicator.getValue(startIndex);
+        for (var i = startIndex; i <= index; i++) {
+            var currentValue = indicator.getValue(i);
             if (currentValue.isGreaterThan(highestValue)) {
                 highestValue = currentValue;
             }
-            Num percentageDrawdown = currentValue.minus(highestValue)
+            var percentageDrawdown = currentValue.minus(highestValue)
                     .dividedBy(highestValue)
                     .multipliedBy(numFactory.hundred());
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));

@@ -251,7 +251,7 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void keltnerChannelMiddleIndicatorTest() {
-        KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
+        var km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
 
         assertNumEquals(11764.23, km.getValue(13));
         assertNumEquals(11793.0687, km.getValue(14));

@@ -111,7 +111,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         subSeries = defaultSeries.getSubSeries(2, 5);
         emptySeries = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
+        var strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstableBars(2); // Strategy would need a real test class
 
     }
@@ -214,7 +214,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void getBarWithRemovedIndexOnMovingSeriesShouldReturnFirstRemainingBarTest() {
-        Bar bar = defaultSeries.getBar(4);
+        var bar = defaultSeries.getBar(4);
         defaultSeries.setMaximumBarCount(2);
 
         assertSame(bar, defaultSeries.getBar(0));
@@ -244,14 +244,14 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void getBarOnMovingSeriesTest() {
-        Bar bar = defaultSeries.getBar(4);
+        var bar = defaultSeries.getBar(4);
         defaultSeries.setMaximumBarCount(2);
         assertEquals(bar, defaultSeries.getBar(4));
     }
 
     @Test
     public void subSeriesCreationTest() {
-        BarSeries subSeries = defaultSeries.getSubSeries(2, 5);
+        var subSeries = defaultSeries.getSubSeries(2, 5);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(defaultSeries.getName(), subSeries.getName());
         assertEquals(0, subSeries.getBeginIndex());
@@ -323,12 +323,12 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         defaultSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        Bar bar1 = defaultSeries.barBuilder()
+        var bar1 = defaultSeries.barBuilder()
                 .endTime(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()))
                 .closePrice(1d)
                 .build();
 
-        Bar bar2 = defaultSeries.barBuilder()
+        var bar2 = defaultSeries.barBuilder()
                 .endTime(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()))
                 .closePrice(2d)
                 .build();
@@ -355,11 +355,11 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         var mnPrice = new LowPriceIndicator(defaultSeries);
         var prevValue = new PreviousValueIndicator(cp, 1);
 
-        Num adding1 = numOf(100);
-        Num prevClose = defaultSeries.getBar(defaultSeries.getEndIndex() - 1).getClosePrice();
-        Num currentMax = mxPrice.getValue(defaultSeries.getEndIndex());
-        Num currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
-        Num currentClose = cp.getValue(defaultSeries.getEndIndex());
+        var adding1 = numOf(100);
+        var prevClose = defaultSeries.getBar(defaultSeries.getEndIndex() - 1).getClosePrice();
+        var currentMax = mxPrice.getValue(defaultSeries.getEndIndex());
+        var currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
+        var currentClose = cp.getValue(defaultSeries.getEndIndex());
 
         assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
         defaultSeries.addPrice(adding1);
@@ -370,7 +370,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(adding1, mnPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new min
         assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
 
-        Num adding2 = numOf(0);
+        var adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
         assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close
         assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
@@ -416,11 +416,11 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
-        final BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withName("Series with maxBar count")
                 .withMaxBarCount(20)
                 .build();
-        final int timespan = 5;
+        final var timespan = 5;
 
         IntStream.range(0, 100).forEach(i -> {
             series.barBuilder()
@@ -432,13 +432,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                     .closePrice(5)
                     .volume(i)
                     .add();
-            int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
-            int endIndex = i + 1;
-            final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+            var startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
+            var endIndex = i + 1;
+            final var subSeries = series.getSubSeries(startIndex, endIndex);
             assertEquals(subSeries.getBarCount(), endIndex - startIndex);
 
-            final Bar subSeriesLastBar = subSeries.getLastBar();
-            final Bar seriesLastBar = series.getLastBar();
+            final var subSeriesLastBar = subSeries.getLastBar();
+            final var seriesLastBar = series.getLastBar();
             assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
         });
     }

@@ -23,11 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -45,10 +42,9 @@ import org.ta4j.core.num.Num;
  *      </a>
  */
 public class DistanceFromMAIndicator extends CachedIndicator<Num> {
-    private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(
-            Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
-                    WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
-                    LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
+    private static final Set<Class<?>> supportedMovingAverages = Set.of(EMAIndicator.class, DoubleEMAIndicator.class,
+            TripleEMAIndicator.class, SMAIndicator.class, WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class,
+            KAMAIndicator.class, LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class);
     private final Indicator<Num> movingAverage;
 
     /**
@@ -68,9 +64,9 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Bar currentBar = getBarSeries().getBar(index);
-        Num closePrice = currentBar.getClosePrice();
-        Num maValue = movingAverage.getValue(index);
+        var currentBar = getBarSeries().getBar(index);
+        var closePrice = currentBar.getClosePrice();
+        var maValue = movingAverage.getValue(index);
         return (closePrice.minus(maValue)).dividedBy(maValue);
     }
 

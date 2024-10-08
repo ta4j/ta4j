@@ -133,10 +133,10 @@ public interface BarSeries extends Serializable {
      *         12:15 21/01/2014")
      */
     default String getSeriesPeriodDescription() {
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         if (!getBarData().isEmpty()) {
-            Bar firstBar = getFirstBar();
-            Bar lastBar = getLastBar();
+            var firstBar = getFirstBar();
+            var lastBar = getLastBar();
             sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
                     .append(" - ")
                     .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));

@@ -28,7 +28,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -51,7 +50,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithDefaultParameters() {
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
+        var kalmanIndicator = new KalmanFilterIndicator(closePrice);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
         Assert.assertEquals(14.99500, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
@@ -63,7 +62,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithCustomParameters() {
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice, 1e-4, 1e-6);
+        var kalmanIndicator = new KalmanFilterIndicator(closePrice, 1e-4, 1e-6);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
         Assert.assertEquals(14.99999, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
@@ -75,12 +74,12 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithNoiseAndOutliers() {
-        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0)
                 .build();
-        Indicator<Num> noiseClosePrice = new ClosePriceIndicator(noiseSeries);
+        var noiseClosePrice = new ClosePriceIndicator(noiseSeries);
 
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
+        var kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
         Assert.assertEquals(10.99999, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
@@ -92,27 +91,27 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithSingleBar() {
-        BarSeries singleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10.0).build();
-        Indicator<Num> singleBarClosePrice = new ClosePriceIndicator(singleBarSeries);
+        var singleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10.0).build();
+        var singleBarClosePrice = new ClosePriceIndicator(singleBarSeries);
 
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(singleBarClosePrice, 1e-3, 1e-5);
+        var kalmanIndicator = new KalmanFilterIndicator(singleBarClosePrice, 1e-3, 1e-5);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
     }
 
     @Test
     public void testKalmanFilterIndicatorWithZeroBarData() {
-        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(List.of()).build();
-        Indicator<Num> emptySeriesClosePrice = new ClosePriceIndicator(emptySeries);
+        var emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(List.of()).build();
+        var emptySeriesClosePrice = new ClosePriceIndicator(emptySeries);
 
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(emptySeriesClosePrice, 1e-3, 1e-5);
+        var kalmanIndicator = new KalmanFilterIndicator(emptySeriesClosePrice, 1e-3, 1e-5);
 
         Assert.assertEquals(NaN.NaN, kalmanIndicator.getValue(0));
     }
 
     @Test
     public void testUnstableBars() {
-        KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
+        var kalmanIndicator = new KalmanFilterIndicator(closePrice);
         Assert.assertEquals(0, kalmanIndicator.getUnstableBars());
     }
 }

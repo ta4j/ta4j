@@ -108,13 +108,13 @@ public class InSlopeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        CombineIndicator diff = CombineIndicator.minus(ref, prev);
-        Num val = diff.getValue(index);
-        boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
-        boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
-        boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
+        var diff = CombineIndicator.minus(ref, prev);
+        var val = diff.getValue(index);
+        var minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
+        var maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
+        var isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
-        final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
+        final var satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

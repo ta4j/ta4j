@@ -64,13 +64,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForBuy() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        var closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 110, 120, 130, 117.00, 130, 116.99)
                 .build());
 
         // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        var rule = new TrailingStopLossRule(closePrice, numOf(10));
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
@@ -91,13 +91,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForBuyForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        var closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99)
                 .build());
 
         // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
+        var rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -120,13 +120,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForSell() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var tradingRecord = new BaseTradingRecord(TradeType.SELL);
+        var closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 80, 70, 77.00, 120, 132.01)
                 .build());
 
         // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        var rule = new TrailingStopLossRule(closePrice, numOf(10));
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
@@ -148,13 +148,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForSellForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var tradingRecord = new BaseTradingRecord(TradeType.SELL);
+        var closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01)
                 .build());
 
         // 10% trailing-stop-loss and 2 bars back
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
+        var rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));

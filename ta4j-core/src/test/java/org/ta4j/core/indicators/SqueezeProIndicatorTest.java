@@ -48,14 +48,14 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void testMobiusSqueezeProIndicatorWithDefaultParameters() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        for (int i = 0; i < 50; i++) {
+        for (var i = 0; i < 50; i++) {
             series.barBuilder().openPrice(i).closePrice(i).highPrice(i).lowPrice(i).add();
         }
 
         var indicator = new SqueezeProIndicator(series, 20);
 
         // The indicator should be false for the first 20 bars (unstable period)
-        for (int i = 0; i < 20; i++) {
+        for (var i = 0; i < 20; i++) {
             assertFalse(indicator.getValue(i));
         }
 
@@ -71,14 +71,14 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void testMobiusSqueezeProIndicatorWithCustomParameters() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        for (int i = 0; i < 50; i++) {
+        for (var i = 0; i < 50; i++) {
             series.barBuilder().openPrice(i).highPrice(i + 10).lowPrice(i - 10).closePrice(i).add();
         }
 
         var indicator = new SqueezeProIndicator(series, 10, 2.5, 1.2, 1.7, 2.2);
 
         // The indicator should be false for the first 10 bars (unstable period)
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             assertFalse(indicator.getValue(i));
         }
 
@@ -94,13 +94,13 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void testSqueezeCondition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        for (int i = 0; i < 100; i++) {
+        for (var i = 0; i < 100; i++) {
             series.barBuilder().openPrice(i).highPrice(110).lowPrice(90).closePrice(100).add();
         }
 
-        int barCount = 20;
-        double bollingerBandK = 2.0;
-        double keltnerShiftFactor = 1.5;
+        var barCount = 20;
+        var bollingerBandK = 2.0;
+        var keltnerShiftFactor = 1.5;
 
         var bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
         var keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
@@ -110,11 +110,11 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         var keltnerChannelLower = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
                 keltnerShiftFactor);
 
-        SqueezeProIndicator indicator = new SqueezeProIndicator(series, barCount);
+        var indicator = new SqueezeProIndicator(series, barCount);
 
         // Find an index where the squeeze condition is true
-        int squeezeIndex = -1;
-        for (int i = barCount; i < series.getBarCount(); i++) {
+        var squeezeIndex = -1;
+        for (var i = barCount; i < series.getBarCount(); i++) {
             if (bollingerBand.lower().getValue(i).isGreaterThan(keltnerChannelLower.getValue(i))
                     && bollingerBand.upper().getValue(i).isLessThan(keltnerChannelUpper.getValue(i))) {
                 squeezeIndex = i;
@@ -133,16 +133,16 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void testChangingSqueezeConditions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        for (int i = 0; i < 100; i++) {
+        for (var i = 0; i < 100; i++) {
             series.barBuilder().openPrice(i).highPrice(i + 1).lowPrice(i - 1).closePrice(i * 2).add();
         }
 
         var indicator = new SqueezeProIndicator(series, 20);
 
-        for (int i = 20; i < 38; i++) {
+        for (var i = 20; i < 38; i++) {
             assertFalse("No squeeze should be detected at index " + i, indicator.getValue(i));
         }
-        for (int i = 38; i < 100; i++) {
+        for (var i = 38; i < 100; i++) {
             assertTrue("Squeeze should be detected at index " + i, indicator.getValue(i));
         }
     }
@@ -151,15 +151,15 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void testConsistencyWithUnderlyingIndicators() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        for (int i = 0; i < 100; i++) {
+        for (var i = 0; i < 100; i++) {
             series.barBuilder().openPrice(i).highPrice(i + 10).lowPrice(i - 10).closePrice(i).build();
         }
 
-        int barCount = 20;
-        double bollingerBandK = 2.0;
-        double keltnerShiftFactorHigh = 1.0;
-        double keltnerShiftFactorMid = 1.5;
-        double keltnerShiftFactorLow = 2.0;
+        var barCount = 20;
+        var bollingerBandK = 2.0;
+        var keltnerShiftFactorHigh = 1.0;
+        var keltnerShiftFactorMid = 1.5;
+        var keltnerShiftFactorLow = 2.0;
 
         var indicator = new SqueezeProIndicator(series, barCount, bollingerBandK, keltnerShiftFactorHigh,
                 keltnerShiftFactorMid, keltnerShiftFactorLow);
@@ -181,10 +181,8 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         var keltnerChannelLowerLow = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
                 keltnerShiftFactorLow);
 
-        for (int i = barCount; i < series.getBarCount(); i++) {
-            boolean expectedSqueeze = (bollingerBand.lower()
-                    .getValue(i)
-                    .isGreaterThan(keltnerChannelLowerLow.getValue(i))
+        for (var i = barCount; i < series.getBarCount(); i++) {
+            var expectedSqueeze = (bollingerBand.lower().getValue(i).isGreaterThan(keltnerChannelLowerLow.getValue(i))
                     && bollingerBand.upper().getValue(i).isLessThan(keltnerChannelUpperLow.getValue(i)))
                     || (bollingerBand.lower().getValue(i).isGreaterThan(keltnerChannelLowerMid.getValue(i))
                             && bollingerBand.upper().getValue(i).isLessThan(keltnerChannelUpperMid.getValue(i)))

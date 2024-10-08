@@ -31,23 +31,18 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.LinkedList;
-import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
-import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
 public class LinearTransactionCostModelTest {
@@ -62,9 +57,9 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateSingleTradeCost() {
         // Price - Amount calculation Test
-        Num price = DoubleNum.valueOf(100);
-        Num amount = DoubleNum.valueOf(2);
-        Num cost = transactionModel.calculate(price, amount);
+        var price = DoubleNum.valueOf(100);
+        var amount = DoubleNum.valueOf(2);
+        var cost = transactionModel.calculate(price, amount);
 
         assertNumEquals(DoubleNum.valueOf(2), cost);
     }
@@ -72,15 +67,15 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateBuyPosition() {
         // Calculate the transaction costs of a closed long position
-        int holdingPeriod = 2;
-        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        var holdingPeriod = 2;
+        var entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        var exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
+        var position = new Position(entry, exit, transactionModel, new ZeroCostModel());
 
-        Num costFromBuy = entry.getCost();
-        Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(position, holdingPeriod);
+        var costFromBuy = entry.getCost();
+        var costFromSell = exit.getCost();
+        var costsFromModel = transactionModel.calculate(position, holdingPeriod);
 
         assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
@@ -90,15 +85,15 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateSellPosition() {
         // Calculate the transaction costs of a closed short position
-        int holdingPeriod = 2;
-        Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        var holdingPeriod = 2;
+        var entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        var exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
+        var position = new Position(entry, exit, transactionModel, new ZeroCostModel());
 
-        Num costFromBuy = entry.getCost();
-        Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(position, holdingPeriod);
+        var costFromBuy = entry.getCost();
+        var costFromSell = exit.getCost();
+        var costsFromModel = transactionModel.calculate(position, holdingPeriod);
 
         assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
@@ -108,11 +103,11 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateOpenSellPosition() {
         // Calculate the transaction costs of an open position
-        int currentIndex = 4;
-        Position position = new Position(Trade.TradeType.BUY, transactionModel, new ZeroCostModel());
+        var currentIndex = 4;
+        var position = new Position(Trade.TradeType.BUY, transactionModel, new ZeroCostModel());
         position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromModel = transactionModel.calculate(position, currentIndex);
+        var costsFromModel = transactionModel.calculate(position, currentIndex);
 
         assertNumEquals(costsFromModel, DoubleNum.valueOf(1));
     }
@@ -124,9 +119,9 @@ public class LinearTransactionCostModelTest {
         CostModel modelSameFee = new LinearTransactionCostModel(0.1);
         CostModel modelOther = new ZeroCostModel();
 
-        boolean equality = model.equals(modelSameFee);
-        boolean inequality1 = model.equals(modelSameClass);
-        boolean inequality2 = model.equals(modelOther);
+        var equality = model.equals(modelSameFee);
+        var inequality1 = model.equals(modelSameClass);
+        var inequality2 = model.equals(modelOther);
 
         assertTrue(equality);
         assertFalse(inequality1);
@@ -135,14 +130,14 @@ public class LinearTransactionCostModelTest {
 
     @Test
     public void testBacktesting() {
-        BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test")
+        var series = new BaseBarSeriesBuilder().withName("CostModel test")
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        ZonedDateTime now = ZonedDateTime.now();
-        Num one = series.numFactory().one();
-        Num two = series.numFactory().numOf(2);
-        Num three = series.numFactory().numOf(3);
-        Num four = series.numFactory().numOf(4);
+        var now = ZonedDateTime.now();
+        var one = series.numFactory().one();
+        var two = series.numFactory().numOf(2);
+        var three = series.numFactory().numOf(3);
+        var four = series.numFactory().numOf(4);
         series.barBuilder().endTime(now).openPrice(one).closePrice(one).highPrice(one).lowPrice(one).add();
         series.barBuilder()
                 .endTime(now.plusSeconds(1))
@@ -166,27 +161,27 @@ public class LinearTransactionCostModelTest {
                 .lowPrice(four)
                 .add();
 
-        Rule entryRule = new FixedRule(0, 2);
-        Rule exitRule = new FixedRule(1, 3);
-        List<Strategy> strategies = new LinkedList<>();
+        var entryRule = new FixedRule(0, 2);
+        var exitRule = new FixedRule(1, 3);
+        var strategies = new LinkedList<Strategy>();
         strategies.add(new BaseStrategy("Cost model test strategy", entryRule, exitRule));
 
-        Num orderFee = series.numFactory().numOf(new BigDecimal("0.0026"));
-        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()),
+        var orderFee = series.numFactory().numOf(new BigDecimal("0.0026"));
+        var executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()),
                 new ZeroCostModel(), new TradeOnCurrentCloseModel());
 
-        Num amount = series.numFactory().numOf(25);
-        TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
+        var amount = series.numFactory().numOf(25);
+        var strategyResult = executor.execute(strategies, amount).get(0);
 
-        Num firstPositionBuy = one.plus(one.multipliedBy(orderFee));
-        Num firstPositionSell = two.minus(two.multipliedBy(orderFee));
-        Num firstPositionProfit = firstPositionSell.minus(firstPositionBuy).multipliedBy(amount);
+        var firstPositionBuy = one.plus(one.multipliedBy(orderFee));
+        var firstPositionSell = two.minus(two.multipliedBy(orderFee));
+        var firstPositionProfit = firstPositionSell.minus(firstPositionBuy).multipliedBy(amount);
 
-        Num secondPositionBuy = three.plus(three.multipliedBy(orderFee));
-        Num secondPositionSell = four.minus(four.multipliedBy(orderFee));
-        Num secondPositionProfit = secondPositionSell.minus(secondPositionBuy).multipliedBy(amount);
+        var secondPositionBuy = three.plus(three.multipliedBy(orderFee));
+        var secondPositionSell = four.minus(four.multipliedBy(orderFee));
+        var secondPositionProfit = secondPositionSell.minus(secondPositionBuy).multipliedBy(amount);
 
-        Num overallProfit = firstPositionProfit.plus(secondPositionProfit);
+        var overallProfit = firstPositionProfit.plus(secondPositionProfit);
 
         assertEquals(overallProfit, strategyResult.getPerformanceReport().getTotalProfit());
     }

@@ -81,11 +81,11 @@ public class ChopIndicator extends CachedIndicator<Num> {
 
     @Override
     public Num calculate(int index) {
-        Num summ = atrIndicator.getValue(index);
+        var sum = atrIndicator.getValue(index);
         for (int i = 1; i < timeFrame; ++i) {
-            summ = summ.plus(atrIndicator.getValue(index - i));
+            sum = sum.plus(atrIndicator.getValue(index - i));
         }
-        Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
+        var a = sum.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
         return scaleUpTo.multipliedBy(getBarSeries().numFactory().numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
     }

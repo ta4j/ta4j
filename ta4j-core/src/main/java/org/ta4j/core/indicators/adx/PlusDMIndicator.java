@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -51,11 +50,11 @@ public class PlusDMIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return numFactory.zero();
         }
-        final Bar prevBar = getBarSeries().getBar(index - 1);
-        final Bar currentBar = getBarSeries().getBar(index);
+        final var prevBar = getBarSeries().getBar(index - 1);
+        final var currentBar = getBarSeries().getBar(index);
 
-        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
-        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
+        final var upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
+        final var downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
         if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
             return upMove;
         } else {

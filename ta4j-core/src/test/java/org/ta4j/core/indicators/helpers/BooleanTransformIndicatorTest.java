@@ -57,9 +57,8 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Before
     public void setUp() {
-        final Num four = this.numFactory.numOf(4);
-        final ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(new MockBarSeriesBuilder().build(),
-                four);
+        final var four = this.numFactory.numOf(4);
+        final var constantIndicator = new ConstantIndicator<>(new MockBarSeriesBuilder().build(), four);
 
         equals = BooleanTransformIndicator.equals(constantIndicator, four);
         notEquals = BooleanTransformIndicator.notEquals(constantIndicator, four);

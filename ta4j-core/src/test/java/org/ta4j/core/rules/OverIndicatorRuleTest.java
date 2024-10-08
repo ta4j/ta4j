@@ -28,11 +28,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
 
 public class OverIndicatorRuleTest {
 
@@ -40,8 +37,8 @@ public class OverIndicatorRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
+        var series = new BaseBarSeriesBuilder().build();
+        var indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
         rule = new OverIndicatorRule(indicator, series.numFactory().numOf(5));
     }
 

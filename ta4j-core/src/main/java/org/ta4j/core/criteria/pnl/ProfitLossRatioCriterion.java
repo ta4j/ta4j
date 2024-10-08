@@ -41,12 +41,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num averageProfit = averageProfitCriterion.calculate(series, position);
+        var averageProfit = averageProfitCriterion.calculate(series, position);
         if (averageProfit.isZero()) {
             // only losing positions means a ratio of 0
             return series.numFactory().zero();
         }
-        Num averageLoss = averageLossCriterion.calculate(series, position);
+        var averageLoss = averageLossCriterion.calculate(series, position);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
             return series.numFactory().one();
@@ -56,12 +56,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
+        var averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
         if (averageProfit.isZero()) {
             // only losing positions means a ratio of 0
             return series.numFactory().zero();
         }
-        Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
+        var averageLoss = averageLossCriterion.calculate(series, tradingRecord);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
             return series.numFactory().one();

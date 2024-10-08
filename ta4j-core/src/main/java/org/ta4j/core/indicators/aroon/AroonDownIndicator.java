@@ -78,9 +78,9 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
+        var endIndex = Math.max(0, index - barCount);
+        var nbBars = 0;
+        for (var i = index; i > endIndex; i--) {
             if (lowPriceIndicator.getValue(i).isEqual(lowestLowPriceIndicator.getValue(index))) {
                 break;
             }

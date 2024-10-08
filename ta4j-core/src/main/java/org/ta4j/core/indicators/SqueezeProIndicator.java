@@ -79,12 +79,12 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
             double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
         super(series);
 
-        BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
+        var bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
         this.bollingerBandUpperLine = bollingerBand.upper();
         this.bollingerBandLowerLine = bollingerBand.lower();
 
-        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
+        var keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
+        var averageTrueRange = new ATRIndicator(series, barCount);
 
         this.keltnerChannelUpperBandLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
                 keltnerShiftFactorLow);
@@ -114,8 +114,8 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        Num bbLower = bollingerBandLowerLine.getValue(index);
-        Num bbUpper = bollingerBandUpperLine.getValue(index);
+        var bbLower = bollingerBandLowerLine.getValue(index);
+        var bbUpper = bollingerBandUpperLine.getValue(index);
 
         return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
                 || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)

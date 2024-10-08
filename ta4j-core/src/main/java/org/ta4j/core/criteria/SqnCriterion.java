@@ -83,14 +83,14 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num stdDevPnl = standardDeviationCriterion.calculate(series, position);
+        var stdDevPnl = standardDeviationCriterion.calculate(series, position);
         if (stdDevPnl.isZero()) {
             return series.numFactory().zero();
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-        Num pnl = criterion.calculate(series, position);
-        Num avgPnl = pnl.dividedBy(numberOfPositions);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        var pnl = criterion.calculate(series, position);
+        var avgPnl = pnl.dividedBy(numberOfPositions);
         return avgPnl.dividedBy(stdDevPnl).multipliedBy(numberOfPositions.sqrt());
     }
 
@@ -99,14 +99,14 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }
-        Num stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);
+        var stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);
         if (stdDevPnl.isZero()) {
             return series.numFactory().zero();
         }
 
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        Num pnl = criterion.calculate(series, tradingRecord);
-        Num avgPnl = pnl.dividedBy(numberOfPositions);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        var pnl = criterion.calculate(series, tradingRecord);
+        var avgPnl = pnl.dividedBy(numberOfPositions);
         if (nPositions != null && numberOfPositions.isGreaterThan(series.numFactory().hundred())) {
             numberOfPositions = series.numFactory().numOf(nPositions);
         }

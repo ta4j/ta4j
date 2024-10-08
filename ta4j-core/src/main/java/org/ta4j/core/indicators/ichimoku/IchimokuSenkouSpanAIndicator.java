@@ -87,7 +87,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // at index=7 we need index=3 when offset=5
-        int spanIndex = index - offset + 1;
+        var spanIndex = index - offset + 1;
         if (spanIndex >= getBarSeries().getBeginIndex()) {
             return conversionLine.getValue(spanIndex)
                     .plus(baseLine.getValue(spanIndex))

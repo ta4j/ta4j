@@ -76,7 +76,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num currentPrice = price.getValue(index);
+        var currentPrice = price.getValue(index);
         if (index < barCountEffectiveRatio) {
             return currentPrice;
         }
@@ -86,22 +86,22 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          * sum of the absolute value of the last ten price changes (Close - Prior
          * Close).
          */
-        int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
-        Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
-        Num volatility = getBarSeries().numFactory().zero();
-        for (int i = startChangeIndex; i < index; i++) {
+        var startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
+        var change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
+        var volatility = getBarSeries().numFactory().zero();
+        for (var i = startChangeIndex; i < index; i++) {
             volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
         }
-        Num er = change.dividedBy(volatility);
+        var er = change.dividedBy(volatility);
         /*
          * Smoothing Constant (SC) SC = [ER x (fastest SC - slowest SC) + slowest SC]2
          * SC = [ER x (2/(2+1) - 2/(30+1)) + 2/(30+1)]2
          */
-        Num sc = er.multipliedBy(fastest.minus(slowest)).plus(slowest).pow(2);
+        var sc = er.multipliedBy(fastest.minus(slowest)).plus(slowest).pow(2);
         /*
          * KAMA Current KAMA = Prior KAMA + SC x (Price - Prior KAMA)
          */
-        Num priorKAMA = getValue(index - 1);
+        var priorKAMA = getValue(index - 1);
         return priorKAMA.plus(sc.multipliedBy(currentPrice.minus(priorKAMA)));
     }
 

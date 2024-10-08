@@ -60,14 +60,14 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
 
     private void firstAddition() {
         data.barBuilder().closePrice(5.).add();
-        Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
+        var indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((3d + 4d) / 2, indicator2.getValue(data.getBeginIndex() + 1));
         assertNumEquals((4d + 7d) / 2, indicator2.getValue(data.getBeginIndex() + 2));
         assertNumEquals((7d + 5d) / 2, indicator2.getValue(data.getBeginIndex() + 3));
 
-        Indicator<Num> indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((3d + 4d + 7d) / 3, indicator3.getValue(data.getBeginIndex() + 2));
@@ -76,14 +76,14 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
 
     private void secondAddition() {
         data.barBuilder().closePrice(10.).add();
-        Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
+        var indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((4d + 7d) / 2, indicator2.getValue(data.getBeginIndex() + 1));
         assertNumEquals((7d + 5d) / 2, indicator2.getValue(data.getBeginIndex() + 2));
         assertNumEquals((5d + 10d) / 2, indicator2.getValue(data.getBeginIndex() + 3));
 
-        Indicator<Num> indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((4d + 7d + 5d) / 3, indicator3.getValue(data.getBeginIndex() + 2));
@@ -92,14 +92,14 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
 
     private void thirdAddition() {
         data.barBuilder().closePrice(20.).add();
-        Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
+        var indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((7d + 5d) / 2, indicator2.getValue(data.getBeginIndex() + 1));
         assertNumEquals((5d + 10d) / 2, indicator2.getValue(data.getBeginIndex() + 2));
         assertNumEquals((10d + 20d) / 2, indicator2.getValue(data.getBeginIndex() + 3));
 
-        Indicator<Num> indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((7d + 5d + 10d) / 3, indicator3.getValue(data.getBeginIndex() + 2));
@@ -108,14 +108,14 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
 
     private void fourthAddition() {
         data.barBuilder().closePrice(30.).add();
-        Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
+        var indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((5d + 10d) / 2, indicator2.getValue(data.getBeginIndex() + 1));
         assertNumEquals((10d + 20d) / 2, indicator2.getValue(data.getBeginIndex() + 2));
         assertNumEquals((20d + 30d) / 2, indicator2.getValue(data.getBeginIndex() + 3));
 
-        Indicator<Num> indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((5d + 10d + 20d) / 3, indicator3.getValue(data.getBeginIndex() + 2));
@@ -123,14 +123,14 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
     }
 
     private void randomAccessAfterFourAdditions() {
-        Indicator<Num> indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
+        var indicator2 = getIndicator(new ClosePriceIndicator(data), 2);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((10d + 20d) / 2, indicator2.getValue(data.getBeginIndex() + 2));
         assertNumEquals((5d + 10d) / 2, indicator2.getValue(data.getBeginIndex() + 1));
         assertNumEquals((20d + 30d) / 2, indicator2.getValue(data.getBeginIndex() + 3));
 
-        Indicator<Num> indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
+        var indicator3 = getIndicator(new ClosePriceIndicator(data), 3);
 
         // unstable bars skipped, unpredictable results
         assertNumEquals((10d + 20d + 30d) / 3, indicator3.getValue(data.getBeginIndex() + 3));
@@ -142,8 +142,8 @@ public class SMAIndicatorMovingSeriesTest extends AbstractIndicatorTest<Indicato
         data.barBuilder().closePrice(5.).add();
         data.barBuilder().closePrice(5.).add();
 
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        for (int i = 0; i < data.getBarCount(); i++) {
+        var indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        for (var i = 0; i < data.getBarCount(); i++) {
             assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));
         }
     }

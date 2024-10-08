@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.supertrend;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
@@ -69,9 +68,9 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
             return getBarSeries().numFactory().zero();
         }
 
-        Bar bar = getBarSeries().getBar(index - 1);
-        Num previousValue = this.getValue(index - 1);
-        Num currentBasic = medianPriceIndicator.getValue(index)
+        var bar = getBarSeries().getBar(index - 1);
+        var previousValue = this.getValue(index - 1);
+        var currentBasic = medianPriceIndicator.getValue(index)
                 .minus(multiplier.multipliedBy(atrIndicator.getValue(index)));
 
         return currentBasic.isGreaterThan(previousValue) || bar.getClosePrice().isLessThan(previousValue) ? currentBasic

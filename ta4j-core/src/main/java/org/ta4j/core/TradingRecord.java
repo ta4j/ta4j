@@ -151,7 +151,7 @@ public interface TradingRecord extends Serializable {
      * @return the last closed position recorded
      */
     default Position getLastPosition() {
-        List<Position> positions = getPositions();
+        var positions = getPositions();
         if (!positions.isEmpty()) {
             return positions.get(positions.size() - 1);
         }

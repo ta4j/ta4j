@@ -248,7 +248,7 @@ public class Trade implements Serializable {
         this.pricePerAsset = pricePerAsset;
         this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
 
-        Num costPerAsset = cost.dividedBy(amount);
+        var costPerAsset = cost.dividedBy(amount);
         // add transaction costs to the pricePerAsset at the trade
         if (type.equals(TradeType.BUY)) {
             this.netPrice = this.pricePerAsset.plus(costPerAsset);
@@ -302,27 +302,6 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @param index                the index the trade is executed
-     * @param price                the trade price per asset
-     * @param amount               the trade amount
-     * @param transactionCostModel the cost model for trade execution
-     * @return a BUY trade
-     */
-    public static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, TradeType.BUY, price, amount, transactionCostModel);
-    }
-
-    /**
-     * @param index  the index the trade is executed
-     * @param price  the trade price per asset
-     * @param amount the trade amount
-     * @return a BUY trade
-     */
-    public static Trade buyAt(int index, Num price, Num amount) {
-        return new Trade(index, TradeType.BUY, price, amount);
-    }
-
-    /**
      * @param index  the index the trade is executed
      * @param series the bar series
      * @param amount the trade amount
@@ -345,21 +324,12 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
-     * @param series the bar series
-     * @return a SELL trade
-     */
-    public static Trade sellAt(int index, BarSeries series) {
-        return new Trade(index, series, TradeType.SELL);
-    }
-
-    /**
-     * @param index  the index the trade is executed
      * @param price  the trade price per asset
      * @param amount the trade amount
-     * @return a SELL trade
+     * @return a BUY trade
      */
-    public static Trade sellAt(int index, Num price, Num amount) {
-        return new Trade(index, TradeType.SELL, price, amount);
+    public static Trade buyAt(int index, Num price, Num amount) {
+        return new Trade(index, TradeType.BUY, price, amount);
     }
 
     /**
@@ -367,10 +337,19 @@ public class Trade implements Serializable {
      * @param price                the trade price per asset
      * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
+     * @return a BUY trade
+     */
+    public static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, TradeType.BUY, price, amount, transactionCostModel);
+    }
+
+    /**
+     * @param index  the index the trade is executed
+     * @param series the bar series
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, TradeType.SELL, price, amount, transactionCostModel);
+    public static Trade sellAt(int index, BarSeries series) {
+        return new Trade(index, series, TradeType.SELL);
     }
 
     /**
@@ -392,6 +371,27 @@ public class Trade implements Serializable {
      */
     public static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new Trade(index, series, TradeType.SELL, amount, transactionCostModel);
+    }
+
+    /**
+     * @param index  the index the trade is executed
+     * @param price  the trade price per asset
+     * @param amount the trade amount
+     * @return a SELL trade
+     */
+    public static Trade sellAt(int index, Num price, Num amount) {
+        return new Trade(index, TradeType.SELL, price, amount);
+    }
+
+    /**
+     * @param index                the index the trade is executed
+     * @param price                the trade price per asset
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
+     * @return a SELL trade
+     */
+    public static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**

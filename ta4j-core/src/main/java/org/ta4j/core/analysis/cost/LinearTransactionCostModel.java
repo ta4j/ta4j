@@ -60,7 +60,7 @@ public class LinearTransactionCostModel implements CostModel {
     @Override
     public Num calculate(Position position) {
         Num totalPositionCost = null;
-        Trade entryTrade = position.getEntry();
+        var entryTrade = position.getEntry();
         if (entryTrade != null) {
             // transaction costs of the entry trade
             totalPositionCost = entryTrade.getCost();
@@ -78,7 +78,7 @@ public class LinearTransactionCostModel implements CostModel {
 
     @Override
     public boolean equals(CostModel otherModel) {
-        boolean equality = false;
+        var equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
             equality = ((LinearTransactionCostModel) otherModel).feePerPosition == this.feePerPosition;
         }

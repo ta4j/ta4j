@@ -61,9 +61,9 @@ public class VolumeIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // TODO use partial sums
-        int startIndex = Math.max(0, index - barCount + 1);
-        Num sumOfVolume = getBarSeries().numFactory().zero();
-        for (int i = startIndex; i <= index; i++) {
+        var startIndex = Math.max(0, index - barCount + 1);
+        var sumOfVolume = getBarSeries().numFactory().zero();
+        for (var i = startIndex; i <= index; i++) {
             sumOfVolume = sumOfVolume.plus(getBarSeries().getBar(i).getVolume());
         }
         return sumOfVolume;

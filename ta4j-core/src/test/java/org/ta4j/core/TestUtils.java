@@ -125,7 +125,7 @@ public class TestUtils {
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
-        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
+        for (var i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             assertEquals(String.format("Failed at index %s: %s", i, actual.toString()),
                     expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
@@ -141,7 +141,7 @@ public class TestUtils {
     public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
         if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount())
             return;
-        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
+        for (var i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             if (Math.abs(expected.getValue(i).doubleValue() - actual.getValue(i).doubleValue()) > GENERAL_OFFSET)
                 return;
         }
@@ -199,19 +199,19 @@ public class TestUtils {
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
-        for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
+        for (var i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
             // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
-            Num result = exp.minus(act).abs();
+            var exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            var act = DecimalNum.valueOf(actual.getValue(i).toString());
+            var result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 log.debug("{} expected does not match", exp);
                 log.debug("{} actual", act);
                 log.debug("{} offset", delta);
-                String expString = exp.toString();
-                String actString = act.toString();
-                int minLen = Math.min(expString.length(), actString.length());
+                var expString = exp.toString();
+                var actString = act.toString();
+                var minLen = Math.min(expString.length(), actString.length());
                 if (expString.length() > minLen)
                     expString = expString.substring(0, minLen) + "..";
                 if (actString.length() > minLen)
@@ -234,10 +234,10 @@ public class TestUtils {
         if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
             return;
         }
-        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
-            Num result = exp.minus(act).abs();
+        for (var i = 0; i < expected.getBarSeries().getBarCount(); i++) {
+            var exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            var act = DecimalNum.valueOf(actual.getValue(i).toString());
+            var result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 return;
             }

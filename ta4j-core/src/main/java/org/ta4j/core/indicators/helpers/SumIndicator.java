@@ -52,8 +52,8 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = getBarSeries().numFactory().zero();
-        for (Indicator<Num> summand : summands) {
+        var sum = getBarSeries().numFactory().zero();
+        for (var summand : summands) {
             sum = sum.plus(summand.getValue(index));
         }
         return sum;

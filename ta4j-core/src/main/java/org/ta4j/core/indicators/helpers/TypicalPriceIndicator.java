@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -51,10 +50,10 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final Bar bar = getBarSeries().getBar(index);
-        final Num highPrice = bar.getHighPrice();
-        final Num lowPrice = bar.getLowPrice();
-        final Num closePrice = bar.getClosePrice();
+        final var bar = getBarSeries().getBar(index);
+        final var highPrice = bar.getHighPrice();
+        final var lowPrice = bar.getLowPrice();
+        final var closePrice = bar.getClosePrice();
         return highPrice.plus(lowPrice).plus(closePrice).dividedBy(getBarSeries().numFactory().three());
     }
 

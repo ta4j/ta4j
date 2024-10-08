@@ -171,7 +171,7 @@ public class BaseTradingRecord implements TradingRecord {
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
         this(trades[0].getType(), transactionCostModel, holdingCostModel);
-        for (Trade o : trades) {
+        for (var o : trades) {
             boolean newTradeWillBeAnEntry = currentPosition.isNew();
             if (newTradeWillBeAnEntry && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
@@ -181,7 +181,7 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            var newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
     }
@@ -207,8 +207,8 @@ public class BaseTradingRecord implements TradingRecord {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
-        boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        Trade newTrade = currentPosition.operate(index, price, amount);
+        var newTradeWillBeAnEntry = currentPosition.isNew();
+        var newTrade = currentPosition.operate(index, price, amount);
         recordTrade(newTrade, newTradeWillBeAnEntry);
     }
 
@@ -330,10 +330,10 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
+        var sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
                 .append(System.lineSeparator());
-        for (Trade trade : trades) {
+        for (var trade : trades) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();

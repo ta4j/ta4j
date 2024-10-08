@@ -47,7 +47,7 @@ public class PlusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testAgainstExternalData() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
+        var xlsSeries = xls.getSeries();
         Indicator<Num> actualIndicator;
 
         actualIndicator = getIndicator(xlsSeries, 1);

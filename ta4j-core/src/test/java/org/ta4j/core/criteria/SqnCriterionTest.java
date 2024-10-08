@@ -28,10 +28,8 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -49,17 +47,17 @@ public class SqnCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion sqnCriterion = getCriterion();
+        var sqnCriterion = getCriterion();
         assertNumEquals(4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithLosingLongPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion sqnCriterion = getCriterion();
+        var sqnCriterion = getCriterion();
         assertNumEquals(-1.9798989873223332, sqnCriterion.calculate(series, tradingRecord));
     }
 
@@ -69,7 +67,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion sqnCriterion = getCriterion();
+        var sqnCriterion = getCriterion();
         assertNumEquals(0.7353910524340095, sqnCriterion.calculate(series, tradingRecord));
     }
 
@@ -79,7 +77,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
-        AnalysisCriterion sqnCriterion = getCriterion();
+        var sqnCriterion = getCriterion();
         assertNumEquals(4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
@@ -88,16 +86,16 @@ public class SqnCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 110, 100, 105, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
-        AnalysisCriterion sqnCriterion = getCriterion();
+        var sqnCriterion = getCriterion();
         assertNumEquals(-4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(50), numOf(45)));
         assertFalse(criterion.betterThan(numOf(45), numOf(50)));
     }

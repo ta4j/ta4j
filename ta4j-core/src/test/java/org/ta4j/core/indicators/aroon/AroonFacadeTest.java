@@ -33,7 +33,6 @@ import org.junit.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -209,28 +208,28 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .highPrice(170.36)
                 .lowPrice(172.52)
                 .volume(0)
-                .add(); // FB, daily, 9.19.'17
-
+                .add();
+        // FB, daily, 9.19.'17
     }
 
     @Test
     public void testCreation() {
-        final AroonFacade facade = new AroonFacade(data, 5);
+        final var facade = new AroonFacade(data, 5);
         assertEquals(data, facade.down().getBarSeries());
     }
 
     @Test
     public void testNumericFacadesSameAsDefaultIndicators() {
-        final AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(data, 5);
-        final AroonUpIndicator aroonUpIndicator = new AroonUpIndicator(data, 5);
-        final AroonOscillatorIndicator aroonOscillatorIndicator = new AroonOscillatorIndicator(data, 5);
+        final var aroonDownIndicator = new AroonDownIndicator(data, 5);
+        final var aroonUpIndicator = new AroonUpIndicator(data, 5);
+        final var aroonOscillatorIndicator = new AroonOscillatorIndicator(data, 5);
 
-        final AroonFacade facade = new AroonFacade(data, 5);
-        final NumericIndicator aroonUpNumeric = facade.up();
-        final NumericIndicator aroonDownNumeric = facade.down();
-        final NumericIndicator oscillatorNumeric = facade.oscillator();
+        final var facade = new AroonFacade(data, 5);
+        final var aroonUpNumeric = facade.up();
+        final var aroonDownNumeric = facade.down();
+        final var oscillatorNumeric = facade.oscillator();
 
-        for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
+        for (var i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
             assertNumEquals(aroonDownIndicator.getValue(i), aroonDownNumeric.getValue(i));
             assertNumEquals(aroonUpIndicator.getValue(i), aroonUpNumeric.getValue(i));
             assertNumEquals(aroonOscillatorIndicator.getValue(i), oscillatorNumeric.getValue(i));

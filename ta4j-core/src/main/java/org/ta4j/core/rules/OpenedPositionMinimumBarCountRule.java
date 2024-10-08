@@ -61,8 +61,8 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (tradingRecord.getCurrentPosition().isOpened()) {
-            final int entryIndex = tradingRecord.getLastEntry().getIndex();
-            final int currentBarCount = index - entryIndex;
+            final var entryIndex = tradingRecord.getLastEntry().getIndex();
+            final var currentBarCount = index - entryIndex;
             return currentBarCount >= barCount;
         }
         return false;

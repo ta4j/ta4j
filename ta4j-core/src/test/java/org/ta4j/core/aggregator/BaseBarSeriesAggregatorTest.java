@@ -29,7 +29,6 @@ import static org.junit.Assert.assertSame;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.Test;
@@ -51,10 +50,9 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void testAggregateWithNewName() {
-        final List<Bar> bars = new LinkedList<>();
 
-        final BarSeries barSeries = new MockBarSeriesBuilder().withName("name").build();
-        final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
+        final var barSeries = new MockBarSeriesBuilder().withName("name").build();
+        final var time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
 
         var bar0 = barSeries.barBuilder()
                 .endTime(time)
@@ -90,7 +88,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         barSeries.addBar(bar1);
         barSeries.addBar(bar2);
 
-        final BarSeries aggregated = baseBarSeriesAggregator.aggregate(barSeries, "newName");
+        final var aggregated = baseBarSeriesAggregator.aggregate(barSeries, "newName");
 
         assertEquals("newName", aggregated.getName());
         assertEquals(2, aggregated.getBarCount());
@@ -100,8 +98,8 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void testAggregateWithTheSameName() {
-        final BarSeries barSeries = new MockBarSeriesBuilder().withName("name").build();
-        final ZonedDateTime time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
+        final var barSeries = new MockBarSeriesBuilder().withName("name").build();
+        final var time = ZonedDateTime.of(2019, 6, 12, 4, 1, 0, 0, ZoneId.systemDefault());
 
         var bar0 = barSeries.barBuilder()
                 .endTime(time)
@@ -137,7 +135,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         barSeries.addBar(bar1);
         barSeries.addBar(bar2);
 
-        final BarSeries aggregated = baseBarSeriesAggregator.aggregate(barSeries);
+        final var aggregated = baseBarSeriesAggregator.aggregate(barSeries);
 
         assertEquals("name", aggregated.getName());
         assertEquals(2, aggregated.getBarCount());
@@ -152,7 +150,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
     private static class BarAggregatorForTest implements BarAggregator {
         @Override
         public List<Bar> aggregate(List<Bar> bars) {
-            final List<Bar> aggregated = new ArrayList<>();
+            final var aggregated = new ArrayList<Bar>();
             if (bars.isEmpty()) {
                 return aggregated;
             }

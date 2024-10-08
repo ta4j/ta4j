@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.volume;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class ChaikinMoneyFlowIndicatorTest {
@@ -34,7 +33,7 @@ public class ChaikinMoneyFlowIndicatorTest {
     @Test
     public void getValue() {
 
-        BarSeries series = new MockBarSeriesBuilder().build();
+        var series = new MockBarSeriesBuilder().build();
         series.barBuilder().highPrice(62.34).lowPrice(61.37).closePrice(62.15).volume(7849.025).add();
         series.barBuilder().highPrice(62.05).lowPrice(60.69).closePrice(60.81).volume(11692.075).add();
         series.barBuilder().highPrice(62.27).lowPrice(60.10).closePrice(60.45).volume(10575.307).add();

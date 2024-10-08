@@ -62,13 +62,13 @@ public class IIIIndicator extends CachedIndicator<Num> {
         if (index == getBarSeries().getBeginIndex()) {
             return getBarSeries().numFactory().zero();
         }
-        final Num doubledClosePrice = getBarSeries().numFactory()
+        final var doubledClosePrice = getBarSeries().numFactory()
                 .two()
                 .multipliedBy(closePriceIndicator.getValue(index));
-        final Num high = highPriceIndicator.getValue(index);
-        final Num low = lowPriceIndicator.getValue(index);
-        final Num highMinusLow = high.minus(low);
-        final Num highPlusLow = high.plus(low);
+        final var high = highPriceIndicator.getValue(index);
+        final var low = lowPriceIndicator.getValue(index);
+        final var highMinusLow = high.minus(low);
+        final var highPlusLow = high.plus(low);
 
         return doubledClosePrice.minus(highPlusLow)
                 .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));

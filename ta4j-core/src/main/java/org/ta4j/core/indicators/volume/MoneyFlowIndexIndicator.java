@@ -72,17 +72,17 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         }
 
         final var numFactory = getBarSeries().numFactory();
-        Num sumOfPositiveMoneyFlowVolume = numFactory.zero();
-        Num sumOfNegativeMoneyFlowVolume = numFactory.zero();
+        var sumOfPositiveMoneyFlowVolume = numFactory.zero();
+        var sumOfNegativeMoneyFlowVolume = numFactory.zero();
 
         // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
         for (int i = startIndex; i <= index; i++) {
-            Num currentTypicalPriceValue = typicalPrice.getValue(i);
-            Num previousTypicalPriceValue = previousTypicalPrice.getValue(i);
-            Num currentVolume = volume.getValue(i);
+            var currentTypicalPriceValue = typicalPrice.getValue(i);
+            var previousTypicalPriceValue = previousTypicalPrice.getValue(i);
+            var currentVolume = volume.getValue(i);
 
-            Num rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
+            var rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
 
             // If the typical price is increasing, we add to the positive flow
             if (currentTypicalPriceValue.isGreaterThan(previousTypicalPriceValue)) {
@@ -95,7 +95,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         }
 
         // Calculate money flow ratio and index
-        Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(numFactory.one())
+        var moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(numFactory.one())
                 .dividedBy(sumOfNegativeMoneyFlowVolume.max(numFactory.one()));
 
         // Calculate MFI. max function is used to prevent division by zero.

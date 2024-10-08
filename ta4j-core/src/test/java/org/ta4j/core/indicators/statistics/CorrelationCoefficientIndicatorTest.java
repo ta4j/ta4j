@@ -30,7 +30,6 @@ import java.time.ZonedDateTime;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -49,7 +48,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         int i = 20;
         // close, volume
         data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(6).volume(100).add();

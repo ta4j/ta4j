@@ -80,11 +80,11 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num totalCosts = series.numFactory().zero();
-        Num tradedAmount = series.numFactory().numOf(initialAmount);
+        var totalCosts = series.numFactory().zero();
+        var tradedAmount = series.numFactory().numOf(initialAmount);
 
         for (Position position : tradingRecord.getPositions()) {
-            Num tradeCost = getTradeCost(series, position, tradedAmount);
+            var tradeCost = getTradeCost(series, position, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
             // - Remove the cost of the *first* trade
@@ -96,7 +96,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         }
 
         // Special case: if the current position is open
-        Position currentPosition = tradingRecord.getCurrentPosition();
+        var currentPosition = tradingRecord.getCurrentPosition();
         if (currentPosition.isOpened()) {
             totalCosts = totalCosts.plus(getTradeCost(currentPosition.getEntry(), tradedAmount));
         }
@@ -117,7 +117,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
         final var numFactory = tradedAmount.getNumFactory();
-        Num tradeCost = numFactory.zero();
+        var tradeCost = numFactory.zero();
         if (trade != null) {
             return numFactory.numOf(a).multipliedBy(tradedAmount).plus(numFactory.numOf(b));
         }
@@ -131,14 +131,14 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all trades in the position
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
-        Num totalTradeCost = series.numFactory().zero();
+        var totalTradeCost = series.numFactory().zero();
         if (position != null && position.getEntry() != null) {
             totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
             if (position.getExit() != null) {
                 // To calculate the new traded amount:
                 // - Remove the cost of the first trade
                 // - Multiply by the profit ratio
-                Num newTradedAmount = initialAmount.minus(totalTradeCost)
+                var newTradedAmount = initialAmount.minus(totalTradeCost)
                         .multipliedBy(grossReturn.calculate(series, position));
                 totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
             }

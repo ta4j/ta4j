@@ -82,7 +82,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num minRsiValue = minRsi.getValue(index);
+        var minRsiValue = minRsi.getValue(index);
         return rsi.getValue(index).minus(minRsiValue).dividedBy(maxRsi.getValue(index).minus(minRsiValue));
     }
 

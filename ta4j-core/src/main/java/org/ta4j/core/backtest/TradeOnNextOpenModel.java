@@ -40,7 +40,7 @@ public class TradeOnNextOpenModel implements TradeExecutionModel {
 
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        int indexOfExecutedBar = index + 1;
+        var indexOfExecutedBar = index + 1;
         if (indexOfExecutedBar <= barSeries.getEndIndex()) {
             tradingRecord.operate(indexOfExecutedBar, barSeries.getBar(indexOfExecutedBar).getOpenPrice(), amount);
         }

@@ -59,27 +59,27 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void firstValueShouldBeZero() throws Exception {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 14);
         assertEquals(numFactory.zero(), indicator.getValue(0));
     }
 
     @Test
     public void hundredIfNoLoss() throws Exception {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 1);
         assertEquals(numFactory.hundred(), indicator.getValue(14));
         assertEquals(numFactory.hundred(), indicator.getValue(15));
     }
 
     @Test
     public void zeroIfNoGain() throws Exception {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 1);
         assertEquals(numFactory.zero(), indicator.getValue(1));
         assertEquals(numFactory.zero(), indicator.getValue(2));
     }
 
     @Test
     public void usingBarCount14UsingClosePrice() throws Exception {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
+        var indicator = getIndicator(new ClosePriceIndicator(data), 14);
         assertEquals(68.4746, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(64.7836, indicator.getValue(16).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(72.0776, indicator.getValue(17).doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -95,7 +95,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void xlsTest() throws Exception {
-        Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
+        var xlsClose = new ClosePriceIndicator(xls.getSeries());
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsClose, 1);
@@ -119,7 +119,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // from
         // http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Relative%20Strength%20Index%20(RSI).htm
         // which uses a different calculation of RSI than ta4j
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(46.1250, 47.1250, 46.4375, 46.9375, 44.9375, 44.2500, 44.6250, 45.7500, 47.8125, 47.5625,
                         47.0000, 44.5625, 46.3125, 47.6875, 46.6875, 45.6875, 43.0625, 43.5625, 44.8750, 43.6875)
                 .build();
@@ -152,13 +152,13 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // TATestsUtils.GENERAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
-        double dividend = avgGain.getValue(14)
+        var dividend = avgGain.getValue(14)
                 .multipliedBy(series.numFactory().numOf(13))
                 .plus(gain.getValue(15))
                 .dividedBy(series.numFactory().numOf(14))
                 .doubleValue();
         // MMA of average loss
-        double divisor = avgLoss.getValue(14)
+        var divisor = avgLoss.getValue(14)
                 .multipliedBy(series.numFactory().numOf(13))
                 .plus(loss.getValue(15))
                 .dividedBy(series.numFactory().numOf(14))

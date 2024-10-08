@@ -86,7 +86,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
         assertNumEquals(20, reg.getValue(1));
         assertNumEquals(30, reg.getValue(2));
 
-        SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
+        var origReg = buildSimpleRegression(10, 20, 30, 40);
         assertNumEquals(40, reg.getValue(3));
         assertNumEquals(origReg.predict(3), reg.getValue(3));
 
@@ -104,7 +104,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build());
         var reg = new SimpleLinearRegressionIndicator(indicator, 5);
 
-        SimpleRegression origReg = buildSimpleRegression(values);
+        var origReg = buildSimpleRegression(values);
         assertNumEquals(origReg.predict(4), reg.getValue(4));
     }
 
@@ -113,8 +113,8 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
      * @return a simple linear regression based on provided values
      */
     private static SimpleRegression buildSimpleRegression(double... values) {
-        SimpleRegression simpleReg = new SimpleRegression();
-        for (int i = 0; i < values.length; i++) {
+        var simpleReg = new SimpleRegression();
+        for (var i = 0; i < values.length; i++) {
             simpleReg.addData(i, values[i]);
         }
         return simpleReg;
