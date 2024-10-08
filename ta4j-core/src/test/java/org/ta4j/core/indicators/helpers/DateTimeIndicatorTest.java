@@ -30,7 +30,6 @@ import java.time.format.DateTimeFormatter;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -47,10 +46,10 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void test() {
-        ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().endTime(expectedZonedDateTime).add();
-        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
         assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
     }
 }

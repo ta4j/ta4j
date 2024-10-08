@@ -53,10 +53,10 @@ public class WMAIndicator extends CachedIndicator<Num> {
         }
 
         final var numFactory = getBarSeries().numFactory();
-        Num value = numFactory.zero();
-        int loopLength = (index - barCount < 0) ? index + 1 : barCount;
-        int actualIndex = index;
-        for (int i = loopLength; i > 0; i--) {
+        var value = numFactory.zero();
+        var loopLength = (index - barCount < 0) ? index + 1 : barCount;
+        var actualIndex = index;
+        for (var i = loopLength; i > 0; i--) {
             value = value.plus(numFactory.numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }

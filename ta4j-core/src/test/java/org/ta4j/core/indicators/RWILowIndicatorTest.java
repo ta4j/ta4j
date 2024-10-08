@@ -49,8 +49,8 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void randomWalkIndexHigh() throws Exception {
-        BarSeries series = xls.getSeries();
-        RWILowIndicator rwih = (RWILowIndicator) getIndicator(series, 20);
+        var series = xls.getSeries();
+        var rwih = (RWILowIndicator) getIndicator(series, 20);
         assertIndicatorEquals(getIndicator(series, 20), rwih);
     }
 }

@@ -50,8 +50,8 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void DistanceFromMovingAverageTest() {
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        DistanceFromMAIndicator distanceFromMAIndicator = new DistanceFromMAIndicator(data, sma);
+        var sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+        var distanceFromMAIndicator = new DistanceFromMAIndicator(data, sma);
         assertNumEquals(0.3333, distanceFromMAIndicator.getValue(2));
         assertNumEquals(0.01886792452830182, distanceFromMAIndicator.getValue(5));
         assertNumEquals(-0.1, distanceFromMAIndicator.getValue(6));
@@ -59,7 +59,7 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test(expected = IllegalArgumentException.class)
     public void DistanceFromIllegalMovingAverage() {
-        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
+        var closePriceIndicator = new ClosePriceIndicator(data);
         new DistanceFromMAIndicator(data, closePriceIndicator);
     }
 }

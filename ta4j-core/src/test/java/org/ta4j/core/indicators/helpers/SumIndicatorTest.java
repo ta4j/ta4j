@@ -27,7 +27,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class SumIndicatorTest {
@@ -36,7 +35,7 @@ public class SumIndicatorTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new MockBarSeriesBuilder().build();
+        var series = new MockBarSeriesBuilder().build();
         var constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(6));
         var mockIndicator = new FixedIndicator<>(series, series.numFactory().numOf(-2.0),
                 series.numFactory().numOf(0.00), series.numFactory().numOf(1.00), series.numFactory().numOf(2.53),

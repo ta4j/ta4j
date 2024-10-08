@@ -93,12 +93,12 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      */
     public Num getTotalReturn() {
 
-        Num totalProduct = one;
-        int completeTimeFrames = (getBarSeries().getBarCount() / barCount);
+        var totalProduct = one;
+        var completeTimeFrames = (getBarSeries().getBarCount() / barCount);
 
-        for (int i = 1; i <= completeTimeFrames; i++) {
-            int index = i * barCount;
-            Num currentReturn = getValue(index);
+        for (var i = 1; i <= completeTimeFrames; i++) {
+            var index = i * barCount;
+            var currentReturn = getValue(index);
 
             // Skip NaN at the end of a series
             if (currentReturn != NaN) {
@@ -113,27 +113,27 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
 
-        Num currentValue = indicator.getValue(index);
+        var currentValue = indicator.getValue(index);
 
-        int helpPartialTimeframe = index % barCount;
+        var helpPartialTimeframe = index % barCount;
         // TODO: implement Num.floor()
         final var numFactory = getBarSeries().numFactory();
-        Num helpFullTimeframes = numFactory.numOf(Math.floor(numFactory.numOf(indicator.getBarSeries().getBarCount())
+        var helpFullTimeframes = numFactory.numOf(Math.floor(numFactory.numOf(indicator.getBarSeries().getBarCount())
                 .dividedBy(numFactory.numOf(barCount))
                 .doubleValue()));
-        Num helpIndexTimeframes = numFactory.numOf(index).dividedBy(numFactory.numOf(barCount));
+        var helpIndexTimeframes = numFactory.numOf(index).dividedBy(numFactory.numOf(barCount));
 
-        Num helpPartialTimeframeHeld = numFactory.numOf(helpPartialTimeframe).dividedBy(numFactory.numOf(barCount));
-        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
+        var helpPartialTimeframeHeld = numFactory.numOf(helpPartialTimeframe).dividedBy(numFactory.numOf(barCount));
+        var partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
         // a.) if index number is below timeframe
         // e.g. timeframe = 365, index = 5 => no calculation
         // b.) if at the end of a series incomplete timeframes would remain
-        Num timeframedReturn = NaN;
+        var timeframedReturn = NaN;
         if ((index >= barCount) /* (a) */ && (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /* (b) */) {
-            Num movingValue = indicator.getValue(index - barCount);
-            Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+            var movingValue = indicator.getValue(index - barCount);
+            var movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
             timeframedReturn = one.plus(movingSimpleReturn).pow(one.dividedBy(partialTimeframeHeld)).minus(one);
         }

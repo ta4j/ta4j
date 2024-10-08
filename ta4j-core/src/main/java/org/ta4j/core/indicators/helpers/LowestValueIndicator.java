@@ -58,8 +58,8 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
 
         // TODO optimize algorithm, compare previous minimum with current value without
         // looping
-        int end = Math.max(0, index - barCount + 1);
-        Num lowest = indicator.getValue(index);
+        var end = Math.max(0, index - barCount + 1);
+        var lowest = indicator.getValue(index);
         for (int i = index - 1; i >= end; i--) {
             if (lowest.isGreaterThan(indicator.getValue(i))) {
                 lowest = indicator.getValue(i);

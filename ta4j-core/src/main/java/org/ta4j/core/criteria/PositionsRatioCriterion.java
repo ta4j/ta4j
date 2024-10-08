@@ -81,7 +81,7 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        var numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         return numberOfPositions.dividedBy(series.numFactory().numOf(tradingRecord.getPositionCount()));
     }
 

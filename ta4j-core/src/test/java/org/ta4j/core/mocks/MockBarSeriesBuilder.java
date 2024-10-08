@@ -70,9 +70,10 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
-        for (int i = 0; i < data.size(); i++) {
+        var now = ZonedDateTime.now();
+        for (var i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusMinutes((data.size() + 1 - i)))
+                    .endTime(now.minusMinutes((data.size() + 1 - i)))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
@@ -85,9 +86,10 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void arbitraryBars(final BarSeries series) {
+        var now = ZonedDateTime.now();
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusMinutes((long) (5001 - i)))
+                    .endTime(now.minusMinutes((long) (5001 - i)))
                     .openPrice(i)
                     .closePrice(i + 1)
                     .highPrice(i + 2)

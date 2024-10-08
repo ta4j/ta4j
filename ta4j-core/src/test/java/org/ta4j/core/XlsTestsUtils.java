@@ -24,7 +24,6 @@
 package org.ta4j.core;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,15 +31,12 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.zip.DataFormatException;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.CellValue;
 import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.ta4j.core.mocks.MockIndicator;
@@ -63,12 +59,12 @@ public class XlsTestsUtils {
      *                     close throws IOException
      */
     private static Sheet getSheet(Class<?> clazz, String fileName) throws IOException {
-        InputStream inputStream = clazz.getResourceAsStream(fileName);
+        var inputStream = clazz.getResourceAsStream(fileName);
         if (inputStream == null) {
             throw new IOException("Null InputStream for file " + fileName);
         }
-        HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
-        Sheet sheet = workbook.getSheetAt(0);
+        var workbook = new HSSFWorkbook(inputStream);
+        var sheet = workbook.getSheetAt(0);
         workbook.close();
         return sheet;
     }
@@ -85,10 +81,10 @@ public class XlsTestsUtils {
      * @throws DataFormatException if the parameters section header is not found
      */
     private static void setParams(Sheet sheet, Num... params) throws DataFormatException {
-        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-        Iterator<Row> iterator = sheet.rowIterator();
+        var evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        var iterator = sheet.rowIterator();
         while (iterator.hasNext()) {
-            Row row = iterator.next();
+            var row = iterator.next();
             // skip rows with an empty first cell
             if (row.getCell(0) == null) {
                 continue;
@@ -121,7 +117,7 @@ public class XlsTestsUtils {
      */
     public static BarSeries getSeries(Class<?> clazz, String fileName, NumFactory numFactory)
             throws IOException, DataFormatException {
-        Sheet sheet = getSheet(clazz, fileName);
+        var sheet = getSheet(clazz, fileName);
         return getSeries(sheet, numFactory);
     }
 
@@ -139,13 +135,13 @@ public class XlsTestsUtils {
      *                             data contains empty cells
      */
     private static BarSeries getSeries(Sheet sheet, NumFactory numFactory) throws DataFormatException {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-        List<Row> rows = getData(sheet);
-        int minInterval = Integer.MAX_VALUE;
-        int previousNumber = Integer.MAX_VALUE;
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        var evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        var rows = getData(sheet);
+        var minInterval = Integer.MAX_VALUE;
+        var previousNumber = Integer.MAX_VALUE;
         // find the minimum interval in days
-        for (Row row : rows) {
+        for (var row : rows) {
             int currentNumber = (int) evaluator.evaluate(row.getCell(0)).getNumberValue();
             if (previousNumber != Integer.MAX_VALUE) {
                 int interval = currentNumber - previousNumber;
@@ -155,11 +151,11 @@ public class XlsTestsUtils {
             }
             previousNumber = currentNumber;
         }
-        Duration duration = Duration.ofDays(minInterval);
+        var duration = Duration.ofDays(minInterval);
         // parse the bars from the data section
-        for (Row row : rows) {
+        for (var row : rows) {
             CellValue[] cellValues = new CellValue[6];
-            for (int i = 0; i < 6; i++) {
+            for (var i = 0; i < 6; i++) {
                 // empty cells in the data section are forbidden
                 if (row.getCell(i) == null) {
                     throw new DataFormatException("empty cell in xls bar series data");
@@ -167,9 +163,8 @@ public class XlsTestsUtils {
                 cellValues[i] = evaluator.evaluate(row.getCell(i));
             }
             // add a bar to the series
-            Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
-            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
-                    ZoneId.systemDefault());
+            var endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
+            var endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()), ZoneId.systemDefault());
             series.addBar(series.barBuilder()
                     .timePeriod(duration)
                     .endTime(endDateTime)
@@ -196,7 +191,7 @@ public class XlsTestsUtils {
      */
     private static List<Num> getValues(Sheet sheet, int column, NumFactory numFactory, Object... params)
             throws DataFormatException {
-        Num[] NumParams = Arrays.stream(params)
+        var NumParams = Arrays.stream(params)
                 .map(p -> numFactory.numOf(new BigDecimal(p.toString())))
                 .toArray(Num[]::new);
         return getValues(sheet, column, numFactory, NumParams);
@@ -230,16 +225,16 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException
      */
     private static List<Num> getValues(Sheet sheet, int column, NumFactory numFactory) throws DataFormatException {
-        List<Num> values = new ArrayList<>();
-        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        var values = new ArrayList<Num>();
+        var evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         // get all of the data from the data section of the sheet
-        List<Row> rows = getData(sheet);
-        for (Row row : rows) {
+        var rows = getData(sheet);
+        for (var row : rows) {
             // skip rows where the first cell is empty
             if (row.getCell(column) == null) {
                 continue;
             }
-            String s = evaluator.evaluate(row.getCell(column)).formatAsString();
+            var s = evaluator.evaluate(row.getCell(column)).formatAsString();
             if (s.equals("#DIV/0!")) {
                 values.add(NaN.NaN);
             } else {
@@ -258,13 +253,13 @@ public class XlsTestsUtils {
      * @throws DataFormatException if the data section header is not found.
      */
     private static List<Row> getData(Sheet sheet) throws DataFormatException {
-        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-        Iterator<Row> iterator = sheet.rowIterator();
+        var evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        var iterator = sheet.rowIterator();
         boolean noHeader = true;
-        List<Row> rows = new ArrayList<Row>();
+        var rows = new ArrayList<Row>();
         // iterate through all rows of the sheet
         while (iterator.hasNext()) {
-            Row row = iterator.next();
+            var row = iterator.next();
             // skip rows with an empty first cell
             if (row.getCell(0) == null) {
                 continue;
@@ -303,7 +298,7 @@ public class XlsTestsUtils {
      */
     public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column, NumFactory numFactory,
             Object... params) throws IOException, DataFormatException {
-        Sheet sheet = getSheet(clazz, fileName);
+        var sheet = getSheet(clazz, fileName);
         return new MockIndicator(getSeries(sheet, numFactory), getValues(sheet, column, numFactory, params));
     }
 
@@ -321,8 +316,8 @@ public class XlsTestsUtils {
      */
     public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column, NumFactory numFactory,
             Object... params) throws IOException, DataFormatException {
-        Sheet sheet = getSheet(clazz, fileName);
-        List<Num> values = getValues(sheet, column, numFactory, params);
+        var sheet = getSheet(clazz, fileName);
+        var values = getValues(sheet, column, numFactory, params);
         return values.get(values.size() - 1);
     }
 
@@ -338,7 +333,7 @@ public class XlsTestsUtils {
      */
     public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column, NumFactory numFactory)
             throws IOException, DataFormatException {
-        Sheet sheet = getSheet(clazz, fileName);
+        var sheet = getSheet(clazz, fileName);
         return new MockTradingRecord(getValues(sheet, column, numFactory));
     }
 

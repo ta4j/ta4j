@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -52,15 +51,15 @@ public class UpperShadowIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Bar t = getBarSeries().getBar(index);
-        final Num openPrice = t.getOpenPrice();
-        final Num closePrice = t.getClosePrice();
+        var bar = getBarSeries().getBar(index);
+        final var openPrice = bar.getOpenPrice();
+        final var closePrice = bar.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {
             // Bullish
-            return t.getHighPrice().minus(closePrice);
+            return bar.getHighPrice().minus(closePrice);
         } else {
             // Bearish
-            return t.getHighPrice().minus(openPrice);
+            return bar.getHighPrice().minus(openPrice);
         }
     }
 

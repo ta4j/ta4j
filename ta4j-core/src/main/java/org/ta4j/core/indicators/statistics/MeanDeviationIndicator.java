@@ -56,13 +56,13 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = getBarSeries().numFactory().zero();
+        var absoluteDeviations = getBarSeries().numFactory().zero();
 
-        final Num average = sma.getValue(index);
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int nbValues = index - startIndex + 1;
+        final var average = sma.getValue(index);
+        final var startIndex = Math.max(0, index - barCount + 1);
+        final var nbValues = index - startIndex + 1;
 
-        for (int i = startIndex; i <= index; i++) {
+        for (var i = startIndex; i <= index; i++) {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }

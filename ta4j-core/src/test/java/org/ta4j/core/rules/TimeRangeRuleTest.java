@@ -46,7 +46,7 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
 
     @Test
     public void isSatisfiedForBuy() {
-        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        final var dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T00:00:00-00:00", dtf)).closePrice(100).add();
@@ -62,13 +62,11 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
         series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:35:00-00:00", dtf)).closePrice(100).add();
 
         var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
-        TimeRangeRule rule = new TimeRangeRule(
-                Arrays.asList(new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(6, 0), LocalTime.of(7, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(12, 0), LocalTime.of(15, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(17, 0), LocalTime.of(21, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(22, 0), LocalTime.of(23, 30))),
-                dateTimeIndicator);
+        var rule = new TimeRangeRule(Arrays.asList(new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0)),
+                new TimeRangeRule.TimeRange(LocalTime.of(6, 0), LocalTime.of(7, 0)),
+                new TimeRangeRule.TimeRange(LocalTime.of(12, 0), LocalTime.of(15, 0)),
+                new TimeRangeRule.TimeRange(LocalTime.of(17, 0), LocalTime.of(21, 0)),
+                new TimeRangeRule.TimeRange(LocalTime.of(22, 0), LocalTime.of(23, 30))), dateTimeIndicator);
 
         assertTrue(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, null));

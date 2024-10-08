@@ -55,8 +55,8 @@ public class DXIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num pdiValue = plusDIIndicator.getValue(index);
-        Num mdiValue = minusDIIndicator.getValue(index);
+        var pdiValue = plusDIIndicator.getValue(index);
+        var mdiValue = minusDIIndicator.getValue(index);
         final var sum = pdiValue.plus(mdiValue);
         if (sum.equals(getBarSeries().numFactory().zero())) {
             return getBarSeries().numFactory().zero();

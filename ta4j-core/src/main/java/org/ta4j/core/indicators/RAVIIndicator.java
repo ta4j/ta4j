@@ -52,8 +52,8 @@ public class RAVIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num shortMA = shortSma.getValue(index);
-        Num longMA = longSma.getValue(index);
+        var shortMA = shortSma.getValue(index);
+        var longMA = longSma.getValue(index);
         return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(getBarSeries().numFactory().hundred());
     }
 

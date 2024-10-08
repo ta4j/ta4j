@@ -115,8 +115,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
-        Num openPrice = getOpenPrice();
-        Num closePrice = getClosePrice();
+        var openPrice = getOpenPrice();
+        var closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
     }
 
@@ -124,8 +124,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-        Num openPrice = getOpenPrice();
-        Num closePrice = getClosePrice();
+        var openPrice = getOpenPrice();
+        var closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }
 

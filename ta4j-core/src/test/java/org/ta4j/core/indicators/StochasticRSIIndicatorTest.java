@@ -47,8 +47,8 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Test
     public void xlsTest() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
-        Indicator<Num> xlsClose = new ClosePriceIndicator(xlsSeries);
+        var xlsSeries = xls.getSeries();
+        var xlsClose = new ClosePriceIndicator(xlsSeries);
         Indicator<Num> actualIndicator;
 
         actualIndicator = getIndicator(xlsClose, 14);

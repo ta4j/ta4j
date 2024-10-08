@@ -127,8 +127,8 @@ public class BinaryOperation implements Indicator<Num> {
 
     @Override
     public Num getValue(int index) {
-        Num n1 = left.getValue(index);
-        Num n2 = right.getValue(index);
+        var n1 = left.getValue(index);
+        var n2 = right.getValue(index);
         return operator.apply(n1, n2);
     }
 

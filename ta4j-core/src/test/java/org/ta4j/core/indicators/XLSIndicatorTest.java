@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.function.Function;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;

@@ -27,7 +27,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -51,7 +50,7 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
         barCount = 3;
@@ -79,8 +78,7 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(5.633, bbuSMA.getValue(8));
         assertNumEquals(4.2761, bbuSMA.getValue(9));
 
-        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation,
-                numFactory.numOf(1.5));
+        var bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, numFactory.numOf(1.5));
 
         assertNumEquals(1.5, bbuSMAwithK.getK());
 

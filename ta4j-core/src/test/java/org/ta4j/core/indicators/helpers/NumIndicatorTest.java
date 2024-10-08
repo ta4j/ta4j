@@ -52,7 +52,7 @@ public class NumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void indicatorShouldRetrieveBarClosePrice() {
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
             assertEquals(closePrice.getValue(i), barSeries.getBar(i).getClosePrice());
         }
     }

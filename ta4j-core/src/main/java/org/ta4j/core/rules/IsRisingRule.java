@@ -69,16 +69,16 @@ public class IsRisingRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        int count = 0;
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
+        var count = 0;
+        for (var i = Math.max(0, index - barCount + 1); i <= index; i++) {
             if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
                 count += 1;
             }
         }
 
-        double ratio = count / (double) barCount;
+        var ratio = count / (double) barCount;
 
-        final boolean satisfied = ratio >= minStrength;
+        final var satisfied = ratio >= minStrength;
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

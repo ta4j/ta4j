@@ -60,9 +60,9 @@ public class CCIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final Num typicalPrice = typicalPriceInd.getValue(index);
-        final Num typicalPriceAvg = smaInd.getValue(index);
-        final Num meanDeviation = meanDeviationInd.getValue(index);
+        final var typicalPrice = typicalPriceInd.getValue(index);
+        final var typicalPriceAvg = smaInd.getValue(index);
+        final var meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
             return getBarSeries().numFactory().zero();
         }

@@ -24,7 +24,6 @@
 package org.ta4j.core.num;
 
 import java.math.BigDecimal;
-import java.util.function.Function;
 
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)

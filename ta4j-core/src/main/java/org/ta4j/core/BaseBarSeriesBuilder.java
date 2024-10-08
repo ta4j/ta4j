@@ -58,8 +58,8 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
     @Override
     public BaseBarSeries build() {
-        int beginIndex = -1;
-        int endIndex = -1;
+        var beginIndex = -1;
+        var endIndex = -1;
         if (!bars.isEmpty()) {
             beginIndex = 0;
             endIndex = bars.size() - 1;

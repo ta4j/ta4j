@@ -60,7 +60,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void noStackOverflowError() {
         var bigSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < 10000; i++) {
+        for (var i = 0; i < 10000; i++) {
             bigSeries.barBuilder().closePrice(i).volume(0).add();
         }
         var obv = new OnBalanceVolumeIndicator(bigSeries);

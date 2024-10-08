@@ -41,8 +41,8 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void calculate() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
-        Indicator<Num> close = new ClosePriceIndicator(series);
-        Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
+        var close = new ClosePriceIndicator(series);
+        var wmaIndicator = new WMAIndicator(close, 3);
 
         assertNumEquals(1, wmaIndicator.getValue(0));
         assertNumEquals(1.6667, wmaIndicator.getValue(1));
@@ -55,8 +55,8 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void wmaWithBarCountGreaterThanSeriesSize() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d, 6d).build();
-        Indicator<Num> close = new ClosePriceIndicator(series);
-        Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
+        var close = new ClosePriceIndicator(series);
+        var wmaIndicator = new WMAIndicator(close, 55);
 
         assertNumEquals(1, wmaIndicator.getValue(0));
         assertNumEquals(1.6667, wmaIndicator.getValue(1));
@@ -75,7 +75,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
                         82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87)
                 .build();
 
-        WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
+        var wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
         assertNumEquals(84.4958, wma.getValue(8));
         assertNumEquals(85.0158, wma.getValue(9));
         assertNumEquals(84.6807, wma.getValue(10));

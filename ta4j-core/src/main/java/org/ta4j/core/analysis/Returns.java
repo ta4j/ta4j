@@ -150,26 +150,26 @@ public class Returns implements Indicator<Num> {
      *                   considered
      */
     public void calculate(Position position, int finalIndex) {
-        boolean isLongTrade = position.getEntry().isBuy();
-        Num minusOne = barSeries.numFactory().numOf(-1);
-        int endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-        final int entryIndex = position.getEntry().getIndex();
-        int begin = entryIndex + 1;
+        var isLongTrade = position.getEntry().isBuy();
+        var minusOne = barSeries.numFactory().numOf(-1);
+        var endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        final var entryIndex = position.getEntry().getIndex();
+        var begin = entryIndex + 1;
         if (begin > values.size()) {
             values.addAll(Collections.nCopies(begin - values.size(), barSeries.numFactory().zero()));
         }
 
-        int startingIndex = Math.max(begin, 1);
-        int nPeriods = endIndex - entryIndex;
-        Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
+        var startingIndex = Math.max(begin, 1);
+        var nPeriods = endIndex - entryIndex;
+        var holdingCost = position.getHoldingCost(endIndex);
+        var avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
-        Num lastPrice = position.getEntry().getNetPrice();
+        var lastPrice = position.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
-            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
+            var intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            var assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
             if (position.getEntry().isBuy()) {
@@ -191,7 +191,7 @@ public class Returns implements Indicator<Num> {
         }
 
         Num strategyReturn;
-        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        var assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
         if (position.getEntry().isBuy()) {
             strategyReturn = assetReturn;
         } else {
@@ -206,7 +206,7 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-        int endIndex = tradingRecord.getEndIndex(getBarSeries());
+        var endIndex = tradingRecord.getEndIndex(getBarSeries());
         // For each position...
         tradingRecord.getPositions().forEach(p -> calculate(p, endIndex));
     }

@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import java.time.LocalTime;
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.ta4j.core.TradingRecord;
@@ -35,6 +34,9 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  * within the specified set of {@link TimeRange}.
  */
 public class TimeRangeRule extends AbstractRule {
+
+    public record TimeRange(LocalTime from, LocalTime to) {
+    };
 
     private final List<TimeRange> timeRanges;
     private final DateTimeIndicator timeIndicator;
@@ -53,31 +55,12 @@ public class TimeRangeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        ZonedDateTime dateTime = timeIndicator.getValue(index);
-        LocalTime localTime = dateTime.toLocalTime();
-        final boolean satisfied = timeRanges.stream()
-                .anyMatch(
-                        timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
+        var dateTime = timeIndicator.getValue(index);
+        var localTime = dateTime.toLocalTime();
+        final var satisfied = timeRanges.stream()
+                .anyMatch(timeRange -> !localTime.isBefore(timeRange.from()) && !localTime.isAfter(timeRange.to()));
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
 
-    public static class TimeRange {
-
-        private final LocalTime from;
-        private final LocalTime to;
-
-        public TimeRange(LocalTime from, LocalTime to) {
-            this.from = from;
-            this.to = to;
-        }
-
-        public LocalTime getFrom() {
-            return from;
-        }
-
-        public LocalTime getTo() {
-            return to;
-        }
-    }
 }

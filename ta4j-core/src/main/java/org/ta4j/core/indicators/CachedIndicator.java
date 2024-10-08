@@ -80,7 +80,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     @Override
     public synchronized T getValue(int index) {
-        BarSeries series = getBarSeries();
+        var series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
             // (e.g. simple computation of the value)
@@ -94,8 +94,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
         // Series is not null
 
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int maximumResultCount = series.getMaximumBarCount();
+        final var removedBarsCount = series.getRemovedBarsCount();
+        final var maximumResultCount = series.getMaximumBarCount();
 
         T result;
         if (index < removedBarsCount) {
@@ -127,7 +127,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     results.set(results.size() - 1, result);
                 } else {
                     // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+                    var resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
                     result = results.get(resultInnerIndex);
                     if (result == null) {
                         result = calculate(index);
@@ -151,7 +151,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private void increaseLengthTo(int index, int maxLength) {
         if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
+            var newResultsCount = Math.min(index - highestResultIndex, maxLength);
             if (newResultsCount == maxLength) {
                 results.clear();
                 results.addAll(Collections.nCopies(maxLength, null));
@@ -173,10 +173,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param maximumResultCount the number of results to keep
      */
     private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
+        var resultCount = results.size();
         if (resultCount > maximumResultCount) {
             // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
+            final var nbResultsToRemove = resultCount - maximumResultCount;
             if (nbResultsToRemove == 1) {
                 results.remove(0);
             } else {

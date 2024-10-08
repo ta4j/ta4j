@@ -28,10 +28,8 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -47,38 +45,38 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
-        AnalysisCriterion profit = getCriterion();
+        var profit = getCriterion();
         assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithLosingLongPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
+        var profit = getCriterion();
         assertNumEquals(-5 + -30, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithOneWinningAndOneLosingLongPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 195, 100, 80, 85, 70).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
+        var profit = getCriterion();
         assertNumEquals(95 + -30, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithWinningShortPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100, 95, 95, 100).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
-        AnalysisCriterion profit = getCriterion();
+        var profit = getCriterion();
         assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
     }
 
@@ -87,15 +85,15 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 110, 100, 105, 95, 105)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
-        AnalysisCriterion profit = getCriterion();
+        var profit = getCriterion();
         assertNumEquals(-10 - 5, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(50), numOf(45)));
         assertFalse(criterion.betterThan(numOf(45), numOf(50)));
     }

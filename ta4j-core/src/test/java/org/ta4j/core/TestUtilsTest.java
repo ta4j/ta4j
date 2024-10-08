@@ -73,10 +73,10 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     private BarSeries randomSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-        ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        var time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
-        for (int i = 0; i < 1000; i++) {
+        for (var i = 0; i < 1000; i++) {
             random = Math.random();
             time = time.plusDays(i);
             series.barBuilder()

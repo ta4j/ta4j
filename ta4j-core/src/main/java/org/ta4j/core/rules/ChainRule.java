@@ -63,13 +63,13 @@ public class ChainRule extends AbstractRule {
         }
         traceIsSatisfied(index, true);
 
-        for (ChainLink link : rulesInChain) {
-            boolean satisfiedWithinThreshold = false;
+        for (var link : rulesInChain) {
+            var satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
             lastRuleWasSatisfiedAfterBars = 0;
 
-            for (int i = 0; i <= link.getThreshold(); i++) {
-                int resultingIndex = startIndex - i;
+            for (var i = 0; i <= link.getThreshold(); i++) {
+                var resultingIndex = startIndex - i;
                 if (resultingIndex < 0) {
                     break;
                 }

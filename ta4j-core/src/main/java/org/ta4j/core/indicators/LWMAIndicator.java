@@ -53,16 +53,16 @@ public class LWMAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final var numFactory = getBarSeries().numFactory();
-        Num sum = numFactory.zero();
-        Num denominator = numFactory.zero();
-        int count = 0;
+        var sum = numFactory.zero();
+        var denominator = numFactory.zero();
+        var count = 0;
 
         if ((index + 1) < barCount) {
             return numFactory.zero();
         }
 
-        int startIndex = (index - barCount) + 1;
-        for (int i = startIndex; i <= index; i++) {
+        var startIndex = (index - barCount) + 1;
+        for (var i = startIndex; i <= index; i++) {
             count++;
             denominator = denominator.plus(numFactory.numOf(count));
             sum = sum.plus(indicator.getValue(i).multipliedBy(numFactory.numOf(count)));

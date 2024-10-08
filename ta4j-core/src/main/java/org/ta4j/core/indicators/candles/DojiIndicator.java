@@ -73,8 +73,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
             return bodyHeightInd.getValue(index).isZero();
         }
 
-        Num averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
-        Num currentBodyHeight = bodyHeightInd.getValue(index);
+        var averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
+        var currentBodyHeight = bodyHeightInd.getValue(index);
 
         return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
     }

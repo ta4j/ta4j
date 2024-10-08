@@ -93,9 +93,8 @@ public class ChainLink implements Serializable {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof ChainLink))
+        if (!(o instanceof ChainLink chainLink))
             return false;
-        ChainLink chainLink = (ChainLink) o;
         return getThreshold() == chainLink.getThreshold() && Objects.equals(getRule(), chainLink.getRule());
     }
 

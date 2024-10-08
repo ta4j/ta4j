@@ -33,10 +33,8 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
@@ -57,7 +55,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 95, 100, 90, 95, 80, 120)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series));
 
         double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
@@ -70,7 +68,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
         assertTrue(rrc.calculate(series, tradingRecord).isNaN());
     }
@@ -86,15 +84,15 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 95, 95, 100, 90, 95, 80, 120)
                 .build();
-        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        AnalysisCriterion ratioCriterion = getCriterion();
+        var ratioCriterion = getCriterion();
         assertNumEquals((95d / 100) / ((1d - 0.95d)), ratioCriterion.calculate(series, position));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3.5), numOf(2.2)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.7)));
     }
@@ -104,10 +102,10 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 95, 100, 90, 95, 80, 120)
                 .build();
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series));
 
-        final Num result = rrc.calculate(series, tradingRecord);
+        final var result = rrc.calculate(series, tradingRecord);
 
         assertNumEquals(NaN.NaN, result);
     }
@@ -117,9 +115,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 95, 100, 90, 95, 80, 120)
                 .build();
-        final Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        final var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        final Num result = rrc.calculate(series, position);
+        final var result = rrc.calculate(series, position);
 
         assertNumEquals(NaN.NaN, result);
     }

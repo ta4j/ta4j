@@ -31,8 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -66,7 +64,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void testGetTotalReturn() {
         var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
-        Num result = gri.getTotalReturn();
+        var result = gri.getTotalReturn();
         assertNumEquals(0.9564, result);
     }
 
@@ -91,14 +89,14 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
 
         // Rules
-        Rule buyingRule = new CrossedUpIndicatorRule(gri, 0);
-        Rule sellingRule = new CrossedDownIndicatorRule(gri, 0);
+        var buyingRule = new CrossedUpIndicatorRule(gri, 0);
+        var sellingRule = new CrossedDownIndicatorRule(gri, 0);
 
-        Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
+        var strategy = new BaseStrategy(buyingRule, sellingRule);
 
         // Check positions
-        int result = seriesManager.run(strategy).getPositionCount();
-        int expResult = 3;
+        var result = seriesManager.run(strategy).getPositionCount();
+        var expResult = 3;
 
         assertEquals(expResult, result);
     }

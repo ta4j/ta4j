@@ -69,8 +69,8 @@ public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     @Test
     public void mvwap() {
-        VWAPIndicator vwap = new VWAPIndicator(data, 5);
-        MVWAPIndicator mvwap = new MVWAPIndicator(vwap, 8);
+        var vwap = new VWAPIndicator(data, 5);
+        var mvwap = new MVWAPIndicator(vwap, 8);
 
         assertNumEquals(45.1271, mvwap.getValue(8));
         assertNumEquals(45.1399, mvwap.getValue(9));

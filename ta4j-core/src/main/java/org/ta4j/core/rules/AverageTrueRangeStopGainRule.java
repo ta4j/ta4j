@@ -25,7 +25,6 @@ package org.ta4j.core.rules;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -76,15 +75,15 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
+        var satisfied = false;
         // No trading history or no position opened, no gain
         if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
+            var currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
 
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num gainThreshold = stopGainThreshold.getValue(index);
+                var entryPrice = currentPosition.getEntry().getNetPrice();
+                var currentPrice = referencePrice.getValue(index);
+                var gainThreshold = stopGainThreshold.getValue(index);
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = currentPrice.isGreaterThanOrEqual(entryPrice.plus(gainThreshold));

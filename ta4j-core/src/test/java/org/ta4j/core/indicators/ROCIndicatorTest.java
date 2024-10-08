@@ -63,7 +63,7 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         // Complete time frame
         double[] results13to20 = { -3.8488, -4.8489, -4.5206, -6.3439, -7.8592, -6.2083, -4.3131, -3.2434 };
-        for (int i = 0; i < results13to20.length; i++) {
+        for (var i = 0; i < results13to20.length; i++) {
             assertNumEquals(results13to20[i], roc.getValue(i + 12));
         }
     }

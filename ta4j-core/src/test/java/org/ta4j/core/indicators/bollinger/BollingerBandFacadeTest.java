@@ -50,13 +50,12 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
                 .build();
         final int barCount = 3;
 
-        final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
+        final var bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
 
         assertEquals(data, bollingerBandFacade.bandwidth().getBarSeries());
         assertEquals(data, bollingerBandFacade.middle().getBarSeries());
 
-        final BollingerBandFacade bollingerBandFacadeOfIndicator = new BollingerBandFacade(new OpenPriceIndicator(data),
-                barCount, 2);
+        final var bollingerBandFacadeOfIndicator = new BollingerBandFacade(new OpenPriceIndicator(data), barCount, 2);
 
         assertEquals(data, bollingerBandFacadeOfIndicator.lower().getBarSeries());
         assertEquals(data, bollingerBandFacadeOfIndicator.upper().getBarSeries());
@@ -68,7 +67,7 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
         final var closePriceIndicator = new ClosePriceIndicator(data);
-        final int barCount = 3;
+        final var barCount = 3;
         final var sma = new SMAIndicator(closePriceIndicator, 3);
 
         final var middleBB = new BollingerBandsMiddleIndicator(sma);
@@ -86,7 +85,7 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
 
         final var pcbNumeric = new BollingerBandFacade(data, 5, 2).percentB();
 
-        for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
+        for (var i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
             assertNumEquals(pcb.getValue(i), pcbNumeric.getValue(i));
             assertNumEquals(lowerBB.getValue(i), lowerBBNumeric.getValue(i));
             assertNumEquals(middleBB.getValue(i), middleBBNumeric.getValue(i));

@@ -68,13 +68,13 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        Num tsv = getBarSeries().numFactory().zero();
+        var tsv = getBarSeries().numFactory().zero();
 
         // Calculate the TSV for the given period
-        int startIndex = Math.max(0, index - barCount + 1);
+        var startIndex = Math.max(0, index - barCount + 1);
         for (int i = startIndex; i <= index; i++) {
-            Num closePriceDifferenceValue = closePriceDifference.getValue(i);
-            Num currentVolume = getBarSeries().getBar(i).getVolume();
+            var closePriceDifferenceValue = closePriceDifference.getValue(i);
+            var currentVolume = getBarSeries().getBar(i).getVolume();
 
             tsv = tsv.plus(closePriceDifferenceValue.multipliedBy(currentVolume));
         }

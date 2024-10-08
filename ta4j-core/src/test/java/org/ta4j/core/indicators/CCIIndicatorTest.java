@@ -72,7 +72,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // Complete time frame
         double[] results20to30 = { 101.9185, 31.1946, 6.5578, 33.6078, 34.9686, 13.6027, -10.6789, -11.471, -29.2567,
                 -128.6, -72.7273 };
-        for (int i = 0; i < results20to30.length; i++) {
+        for (var i = 0; i < results20to30.length; i++) {
             assertNumEquals(results20to30[i], cci.getValue(i + 19));
         }
     }

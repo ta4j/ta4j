@@ -55,7 +55,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void isSatisfiedWorksForBuy() {
         final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
-        final Num tradedAmount = numOf(1);
+        final var tradedAmount = numOf(1);
 
         // 5% stop-loss
         var rule = new StopLossRule(closePrice, numOf(5));
@@ -81,7 +81,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void isSatisfiedWorksForSell() {
         final var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
-        final Num tradedAmount = numOf(1);
+        final var tradedAmount = numOf(1);
 
         // 5% stop-loss
         var rule = new StopLossRule(closePrice, numOf(5));

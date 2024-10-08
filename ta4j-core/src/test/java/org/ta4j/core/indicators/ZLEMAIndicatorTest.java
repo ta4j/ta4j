@@ -70,7 +70,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         var zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
         var sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
-        for (int i = 0; i < 9; i++) {
+        for (var i = 0; i < 9; i++) {
             assertEquals(sma.getValue(i), zlema.getValue(i));
         }
     }

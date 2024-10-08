@@ -55,11 +55,11 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
         super(series);
 
         // Calculate the real body of the bars (close - open)
-        RealBodyIndicator realBody = new RealBodyIndicator(series);
+        var realBody = new RealBodyIndicator(series);
 
         // Transform the real body into close-open and open-close differences
-        TransformIndicator closeOpenDiff = TransformIndicator.max(realBody, 0);
-        TransformIndicator openCloseDiff = TransformIndicator.abs(TransformIndicator.min(realBody, 0));
+        var closeOpenDiff = TransformIndicator.max(realBody, 0);
+        var openCloseDiff = TransformIndicator.abs(TransformIndicator.min(realBody, 0));
 
         // Calculate the SMA of the differences
         this.averageCloseOpenDiff = new SMAIndicator(closeOpenDiff, barCount);
@@ -76,8 +76,8 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
         }
 
         // Calculate the average values of the differences
-        Num avgCloseOpenValue = this.averageCloseOpenDiff.getValue(index);
-        Num avgOpenCloseValue = this.averageOpenCloseDiff.getValue(index);
+        var avgCloseOpenValue = this.averageCloseOpenDiff.getValue(index);
+        var avgOpenCloseValue = this.averageOpenCloseDiff.getValue(index);
 
         // Calculate the momentum index
         return avgCloseOpenValue.dividedBy((avgCloseOpenValue.plus(avgOpenCloseValue)))

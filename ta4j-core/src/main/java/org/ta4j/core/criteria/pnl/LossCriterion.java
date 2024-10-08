@@ -59,7 +59,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num loss = excludeCosts ? position.getGrossProfit() : position.getProfit();
+            var loss = excludeCosts ? position.getGrossProfit() : position.getProfit();
             return loss.isNegative() ? loss : series.numFactory().zero();
         }
         return series.numFactory().zero();

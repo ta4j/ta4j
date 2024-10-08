@@ -55,10 +55,10 @@ public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // Get the close price of the previous bar
-        Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
+        var previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
 
         // Get the close price of the current bar
-        Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
+        var currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
 
         // Calculate the difference between the close prices
         return currentBarClosePrice.minus(previousBarClosePrice);

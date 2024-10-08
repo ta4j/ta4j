@@ -55,9 +55,9 @@ public class ROCIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        int nIndex = Math.max(index - barCount, 0);
-        Num nPeriodsAgoValue = indicator.getValue(nIndex);
-        Num currentValue = indicator.getValue(index);
+        var nIndex = Math.max(index - barCount, 0);
+        var nPeriodsAgoValue = indicator.getValue(nIndex);
+        var currentValue = indicator.getValue(index);
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
                 .multipliedBy(getBarSeries().numFactory().hundred());

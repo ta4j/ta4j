@@ -43,7 +43,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num entryPrice = position.getEntry().getValue();
+            var entryPrice = position.getEntry().getValue();
             return position.getProfit().dividedBy(entryPrice).multipliedBy(series.numFactory().hundred());
         }
         return series.numFactory().zero();

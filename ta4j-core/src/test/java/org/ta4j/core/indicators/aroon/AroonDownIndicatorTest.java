@@ -66,10 +66,8 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(172.26).highPrice(172.28).lowPrice(170.50).closePrice(170.96).volume(0).add();
         data.barBuilder().openPrice(170.88).highPrice(172.34).lowPrice(170.26).closePrice(171.64).volume(0).add();
         data.barBuilder().openPrice(171.85).highPrice(172.07).lowPrice(169.34).closePrice(170.01).volume(0).add();
-        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add(); // FB,
-                                                                                                                   // daily,
-                                                                                                                   // 9.19.'17
-
+        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add();
+        // FB, daily,9.19.'17
     }
 
     @Test
@@ -94,29 +92,29 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void onlyNaNValues() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();
-        for (long i = 0; i <= 1000; i++) {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();
+        for (var i = 0; i <= 1000; i++) {
             series.barBuilder().openPrice(NaN).closePrice(NaN).highPrice(NaN).lowPrice(NaN).volume(NaN).add();
         }
 
-        AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+        var aroonDownIndicator = new AroonDownIndicator(series, 5);
+        for (var i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertEquals(NaN.toString(), aroonDownIndicator.getValue(i).toString());
         }
     }
 
     @Test
     public void naNValuesInIntervall() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();
-        for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            Num lowPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();
+        for (var i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
+            var lowPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
             series.barBuilder().lowPrice(lowPrice).add();
         }
         series.barBuilder().lowPrice(numOf(10d)).add();
 
         var aroonDownIndicator = new AroonDownIndicator(series, 5);
 
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+        for (var i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             if (i % 2 != 0 && i < 11) {
                 assertEquals(NaN.toString(), aroonDownIndicator.getValue(i).toString());
             } else if (i < 11)
