@@ -62,7 +62,6 @@ public class SuperTrendIndicatorTest {
         data.barBuilder().openPrice(19.28).closePrice(10.34).highPrice(20.58).lowPrice(10.11).add();
         data.barBuilder().openPrice(10.34).closePrice(9.83).highPrice(12.80).lowPrice(8.83).add();
         data.barBuilder().openPrice(11.83).closePrice(7.35).highPrice(11.41).lowPrice(5.01).add();
-
     }
 
     @Test

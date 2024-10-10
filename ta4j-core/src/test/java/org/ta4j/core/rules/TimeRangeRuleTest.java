@@ -26,10 +26,9 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.time.LocalTime;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -46,29 +45,28 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
 
     @Test
     public void isSatisfiedForBuy() {
-        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T00:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T05:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T07:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T08:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T15:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T15:05:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T16:59:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T17:05:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:00:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:30:00-00:00", dtf)).closePrice(100).add();
-        series.barBuilder().endTime(ZonedDateTime.parse("2019-09-17T23:35:00-00:00", dtf)).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T00:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T05:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T07:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T08:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T15:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T15:05:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T16:59:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T17:05:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T23:00:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T23:30:00Z")).closePrice(100).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T23:35:00Z")).closePrice(100).add();
 
         var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
-        TimeRangeRule rule = new TimeRangeRule(
-                Arrays.asList(new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(6, 0), LocalTime.of(7, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(12, 0), LocalTime.of(15, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(17, 0), LocalTime.of(21, 0)),
-                        new TimeRangeRule.TimeRange(LocalTime.of(22, 0), LocalTime.of(23, 30))),
-                dateTimeIndicator);
+        var _00_04 = new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0));
+        var _06_07 = new TimeRangeRule.TimeRange(LocalTime.of(6, 0), LocalTime.of(7, 0));
+        var _12_15 = new TimeRangeRule.TimeRange(LocalTime.of(12, 0), LocalTime.of(15, 0));
+        var _17_21 = new TimeRangeRule.TimeRange(LocalTime.of(17, 0), LocalTime.of(21, 0));
+        var _22_2330 = new TimeRangeRule.TimeRange(LocalTime.of(22, 0), LocalTime.of(23, 30));
+        var allRanges = List.of(_00_04, _06_07, _12_15, _17_21, _22_2330);
+        TimeRangeRule rule = new TimeRangeRule(allRanges, dateTimeIndicator);
 
         assertTrue(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, null));

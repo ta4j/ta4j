@@ -24,8 +24,7 @@
 package org.ta4j.core;
 
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Objects;
 
 import org.ta4j.core.num.Num;
@@ -40,11 +39,11 @@ public class BaseBar implements Bar {
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
 
-    /** The begin time of the bar period. */
-    private final ZonedDateTime beginTime;
+    /** The begin time of the bar period (in UTC). */
+    private final Instant beginTime;
 
-    /** The end time of the bar period. */
-    private final ZonedDateTime endTime;
+    /** The end time of the bar period (in UTC). */
+    private final Instant endTime;
 
     /** The open price of the bar period. */
     private Num openPrice;
@@ -71,7 +70,7 @@ public class BaseBar implements Bar {
      * Constructor.
      *
      * @param timePeriod the time period
-     * @param endTime    the end time of the bar period
+     * @param endTime    the end time of the bar period (in UTC)
      * @param openPrice  the open price of the bar period
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
@@ -80,7 +79,7 @@ public class BaseBar implements Bar {
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
-    BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+    BaseBar(Duration timePeriod, Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
             Num volume, Num amount, long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
@@ -109,12 +108,12 @@ public class BaseBar implements Bar {
      *         {@link #timePeriod})
      */
     @Override
-    public ZonedDateTime getBeginTime() {
+    public Instant getBeginTime() {
         return beginTime;
     }
 
     @Override
-    public ZonedDateTime getEndTime() {
+    public Instant getEndTime() {
         return endTime;
     }
 
@@ -176,12 +175,14 @@ public class BaseBar implements Bar {
         }
     }
 
+    /**
+     * @return {end time, close price, open price, low price, high price, volume}
+     */
     @Override
     public String toString() {
         return String.format(
-                "{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
-                endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.doubleValue(), openPrice.doubleValue(),
-                lowPrice.doubleValue(), highPrice.doubleValue(), volume.doubleValue());
+                "{end time: %1s, close price: %2s, open price: %3s, low price: %4s high price: %5s, volume: %6s}",
+                endTime, closePrice, openPrice, lowPrice, highPrice, volume);
     }
 
     /**
@@ -189,7 +190,7 @@ public class BaseBar implements Bar {
      * @param endTime    the end time of the bar
      * @throws NullPointerException if one of the arguments is null
      */
-    private static void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
+    private static void checkTimeArguments(Duration timePeriod, Instant endTime) {
         Objects.requireNonNull(timePeriod, "Time period cannot be null");
         Objects.requireNonNull(endTime, "End time cannot be null");
     }

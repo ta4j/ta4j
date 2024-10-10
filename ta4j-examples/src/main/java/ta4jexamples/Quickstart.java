@@ -25,11 +25,11 @@ package ta4jexamples;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
-import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;

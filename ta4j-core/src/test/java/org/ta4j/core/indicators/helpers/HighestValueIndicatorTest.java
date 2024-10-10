@@ -27,12 +27,11 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.time.ZonedDateTime;
-
+import java.time.Duration;
+import java.time.Instant;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -83,10 +82,11 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void onlyNaNValues() {
-        BaseBarSeries series = new MockBarSeriesBuilder().withName("NaN test").build();
+        var series = new MockBarSeriesBuilder().withName("NaN test").build();
+        var now = Instant.now();
         for (long i = 0; i <= 10000; i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().plusDays(i))
+                    .endTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(NaN)
                     .highPrice(NaN)
@@ -103,11 +103,12 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void naNValuesInIntervall() {
-        BaseBarSeries series = new MockBarSeriesBuilder().withName("NaN test").build();
+        var series = new MockBarSeriesBuilder().withName("NaN test").build();
+        var now = Instant.now();
         for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
             Num closePrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().plusDays(i))
+                    .endTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(closePrice)
                     .highPrice(NaN)

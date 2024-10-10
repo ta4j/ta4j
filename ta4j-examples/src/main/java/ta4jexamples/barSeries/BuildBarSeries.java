@@ -24,7 +24,7 @@
 package ta4jexamples.barSeries;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,15 +59,15 @@ public class BuildBarSeries {
     private static BarSeries buildAndAddData() {
         var series = new BaseBarSeriesBuilder().withName("mySeries").build();
 
-        var endTime = ZonedDateTime.now();
-        // ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
+        var endTime = Instant.now();
+        // Instant endTime, Number openPrice, Number highPrice, Number lowPrice,
         // Number closePrice, volume
         addBars(series, endTime);
 
         return series;
     }
 
-    private static void addBars(final BarSeries series, final ZonedDateTime endTime) {
+    private static void addBars(final BarSeries series, final Instant endTime) {
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
@@ -79,7 +79,7 @@ public class BuildBarSeries {
                 .build());
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(1))
+                .endTime(endTime.plus(Duration.ofDays(1)))
                 .openPrice(111.43)
                 .highPrice(112.83)
                 .lowPrice(107.77)
@@ -88,7 +88,7 @@ public class BuildBarSeries {
                 .build());
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(2))
+                .endTime(endTime.plus(Duration.ofDays(2)))
                 .openPrice(107.90)
                 .highPrice(117.50)
                 .lowPrice(107.90)
@@ -102,7 +102,7 @@ public class BuildBarSeries {
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
 
-        var endTime = ZonedDateTime.now();
+        var endTime = Instant.now();
         addBars(series, endTime);
 
         return series;
@@ -113,7 +113,7 @@ public class BuildBarSeries {
                 .withNumFactory(DecimalNumFactory.getInstance())
                 .build();
 
-        ZonedDateTime endTime = ZonedDateTime.now();
+        var endTime = Instant.now();
         addBars(series, endTime);
         // ...
 
@@ -123,7 +123,7 @@ public class BuildBarSeries {
     private static BarSeries buildManually() {
         var series = new BaseBarSeriesBuilder().withName("mySeries").build(); // uses BigDecimalNum
 
-        ZonedDateTime endTime = ZonedDateTime.now();
+        var endTime = Instant.now();
         addBars(series, endTime);
         // ...
 
@@ -134,7 +134,7 @@ public class BuildBarSeries {
         var series = new BaseBarSeriesBuilder().withName("mySeries")
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
-        ZonedDateTime endTime = ZonedDateTime.now();
+        var endTime = Instant.now();
         addBars(series, endTime);
         // ...
 
@@ -148,7 +148,7 @@ public class BuildBarSeries {
 
         // create bars and add them to the series. The bars have the same Num type
         // as the series
-        ZonedDateTime endTime = ZonedDateTime.now();
+        var endTime = Instant.now();
         Bar b1 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(endTime)
@@ -160,7 +160,7 @@ public class BuildBarSeries {
                 .build();
         Bar b2 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(1))
+                .endTime(endTime.plus(Duration.ofDays(1)))
                 .openPrice(111.43)
                 .highPrice(112.83)
                 .lowPrice(107.77)
@@ -169,7 +169,7 @@ public class BuildBarSeries {
                 .build();
         Bar b3 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plusDays(2))
+                .endTime(endTime.plus(Duration.ofDays(2)))
                 .openPrice(107.90)
                 .highPrice(117.50)
                 .lowPrice(107.90)

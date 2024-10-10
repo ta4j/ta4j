@@ -26,6 +26,9 @@ package org.ta4j.core;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Function;
@@ -44,14 +47,14 @@ public interface Bar extends Serializable {
     Duration getTimePeriod();
 
     /**
-     * @return the begin timestamp of the bar period
+     * @return the begin timestamp of the bar period (in UTC).
      */
-    ZonedDateTime getBeginTime();
+    Instant getBeginTime();
 
     /**
-     * @return the end timestamp of the bar period
+     * @return the end timestamp of the bar period (in UTC).
      */
-    ZonedDateTime getEndTime();
+    Instant getEndTime();
 
     /**
      * @return the open price of the bar period
@@ -93,22 +96,70 @@ public interface Bar extends Serializable {
      * @return true if the provided timestamp is between the begin time and the end
      *         time of the current period, false otherwise
      */
-    default boolean inPeriod(ZonedDateTime timestamp) {
+    default boolean inPeriod(Instant timestamp) {
         return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
     }
 
     /**
-     * @return a human-friendly string of the end timestamp
+     * @return the bar's begin time in UTC as {@link ZonedDateTime}
      */
-    default String getDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
+    default ZonedDateTime getZonedBeginTime() {
+        return getBeginTime().atZone(ZoneOffset.UTC);
     }
 
     /**
-     * @return a even more human-friendly string of the end timestamp
+     * @return the bar's end time in UTC as {@link ZonedDateTime}
+     */
+    default ZonedDateTime getZonedEndTime() {
+        return getEndTime().atZone(ZoneOffset.UTC);
+    }
+
+    /**
+     * Converts the begin time of the bar to a time in the system's time zone.
+     *
+     * <p>
+     * <b>Warning:</b> The use of {@link ZoneId#systemDefault()} may introduce
+     * variability based on the system's default time zone settings. This can result
+     * in inconsistencies in time calculations and comparisons, particularly due to
+     * daylight saving time (DST). It is recommended to always utilize either
+     * {@link #getBeginTime()} or {@link #getZonedBeginTime()} for accurate results.
+     *
+     * @return the bar's begin time converted to system time zone
+     */
+    default ZonedDateTime getSystemZonedBeginTime() {
+        return getBeginTime().atZone(ZoneId.systemDefault());
+    }
+
+    /**
+     * Converts the end time of the bar to a time in the system's time zone.
+     *
+     * <p>
+     * <b>Warning:</b> The use of {@link ZoneId#systemDefault()} may introduce
+     * variability based on the system's default time zone settings. This can result
+     * in inconsistencies in time calculations and comparisons, particularly due to
+     * daylight saving time (DST). It is recommended to always utilize either
+     * {@link #getEndTime()} or {@link #getZonedEndTime()} for accurate results.
+     *
+     * @return the bar's end time converted to system time zone
+     */
+    default ZonedDateTime getSystemZonedEndTime() {
+        return getEndTime().atZone(ZoneId.systemDefault());
+    }
+
+    /**
+     * @return a user-friendly representation of the end timestamp in the system's
+     *         time zone
+     */
+    default String getDateName() {
+        return getSystemZonedEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    /**
+     * @return an even more user-friendly representation of the end timestamp in the
+     *         system's time zone
      */
     default String getSimpleDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return getSystemZonedEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     /**

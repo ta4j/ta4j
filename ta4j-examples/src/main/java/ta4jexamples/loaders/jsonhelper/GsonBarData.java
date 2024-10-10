@@ -25,8 +25,6 @@ package ta4jexamples.loaders.jsonhelper;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
@@ -42,7 +40,7 @@ public class GsonBarData {
 
     public static GsonBarData from(Bar bar) {
         var result = new GsonBarData();
-        result.endTime = bar.getEndTime().toInstant().toEpochMilli();
+        result.endTime = bar.getEndTime().toEpochMilli();
         result.openPrice = bar.getOpenPrice().getDelegate();
         result.highPrice = bar.getHighPrice().getDelegate();
         result.lowPrice = bar.getLowPrice().getDelegate();
@@ -54,10 +52,9 @@ public class GsonBarData {
 
     public void addTo(BaseBarSeries barSeries) {
         var endTimeInstant = Instant.ofEpochMilli(endTime);
-        var endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
         barSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endBarTime)
+                .endTime(endTimeInstant)
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)

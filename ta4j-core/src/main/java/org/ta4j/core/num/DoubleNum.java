@@ -26,7 +26,6 @@ package org.ta4j.core.num;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
-import java.util.function.Function;
 
 /**
  * Representation of {@link Double}. High performance, lower precision.

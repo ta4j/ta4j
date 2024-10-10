@@ -26,7 +26,8 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.time.ZonedDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +45,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
         series = new MockBarSeriesBuilder().withName("Test Series").build();
 
         series.barBuilder()
-                .endTime(ZonedDateTime.now())
+                .endTime(Instant.now())
                 .openPrice(10)
                 .highPrice(12)
                 .lowPrice(8)
@@ -52,7 +53,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
                 .volume(1000)
                 .add();
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(11)
                 .highPrice(13)
                 .lowPrice(9)
@@ -60,7 +61,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
                 .volume(1000)
                 .add();
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(12)
                 .highPrice(14)
                 .lowPrice(10)
@@ -68,7 +69,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
                 .volume(1000)
                 .add();
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(13)
                 .highPrice(15)
                 .lowPrice(11)
@@ -76,7 +77,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
                 .volume(1000)
                 .add();
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(14)
                 .highPrice(16)
                 .lowPrice(12)
@@ -97,7 +98,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
 
         // Simulate a price drop to trigger stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(11)
                 .highPrice(12)
                 .lowPrice(9)
@@ -119,7 +120,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
 
         // Simulate a price increase to trigger stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(15)
                 .highPrice(16)
                 .lowPrice(14)
@@ -154,7 +155,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
 
         // Simulate a price drop to trigger stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plusDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
                 .openPrice(11)
                 .highPrice(12)
                 .lowPrice(9)

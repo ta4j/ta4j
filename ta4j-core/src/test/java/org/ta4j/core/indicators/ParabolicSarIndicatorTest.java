@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -47,7 +47,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void growingBarSeriesTest() {
-        ZonedDateTime now = ZonedDateTime.now();
+        var now = Instant.now();
         var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         mockBarSeries.barBuilder()
                 .endTime(now)
@@ -106,7 +106,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startUpAndDownTrendTest() {
-        ZonedDateTime now = ZonedDateTime.now();
+        var now = Instant.now();
         var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         // values of removable bars are much higher to be sure that they will not affect
@@ -311,30 +311,21 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void startWithDownAndUpTrendTest() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(4261.48).closePrice(4285.08).highPrice(4485.39).lowPrice(4200.74).add(); // The
-                                                                                                               // first
-                                                                                                               // daily
-                                                                                                               // candle
-                                                                                                               // of
-                                                                                                               // BTCUSDT
-                                                                                                               // in
-        // the Binance cryptocurrency exchange.
-        // 17 Aug 2017
-        series.barBuilder().openPrice(4285.08).closePrice(4108.37).highPrice(4371.52).lowPrice(3938.77).add(); // starting
-                                                                                                               // with
-                                                                                                               // down
-                                                                                                               // trend
-        series.barBuilder().openPrice(4108.37).closePrice(4139.98).highPrice(4184.69).lowPrice(3850.00).add(); // hold
-                                                                                                               // trend...
+        // The first daily candle of BTCUSDT in the Binance cryptocurrency exchange. 17
+        // Aug 2017..
+        series.barBuilder().openPrice(4261.48).closePrice(4285.08).highPrice(4485.39).lowPrice(4200.74).add();
+        // starting with down trend..
+        series.barBuilder().openPrice(4285.08).closePrice(4108.37).highPrice(4371.52).lowPrice(3938.77).add();
+        // hold trend...
+        series.barBuilder().openPrice(4108.37).closePrice(4139.98).highPrice(4184.69).lowPrice(3850.00).add();
         series.barBuilder().openPrice(4120.98).closePrice(4086.29).highPrice(4211.08).lowPrice(4032.62).add();
         series.barBuilder().openPrice(4069.13).closePrice(4016.00).highPrice(4119.62).lowPrice(3911.79).add();
         series.barBuilder().openPrice(4016.00).closePrice(4040.00).highPrice(4104.82).lowPrice(3400.00).add();
         series.barBuilder().openPrice(4040.00).closePrice(4114.01).highPrice(4265.80).lowPrice(4013.89).add();
-        series.barBuilder().openPrice(4147.00).closePrice(4316.01).highPrice(4371.68).lowPrice(4085.01).add(); // switch
-                                                                                                               // to up
-                                                                                                               // trend
-        series.barBuilder().openPrice(4316.01).closePrice(4280.68).highPrice(4453.91).lowPrice(4247.48).add(); // hold
-                                                                                                               // trend
+        // switch to up trend
+        series.barBuilder().openPrice(4147.00).closePrice(4316.01).highPrice(4371.68).lowPrice(4085.01).add();
+        // hold trend
+        series.barBuilder().openPrice(4316.01).closePrice(4280.68).highPrice(4453.91).lowPrice(4247.48).add();
         series.barBuilder().openPrice(4280.71).closePrice(4337.44).highPrice(4367.00).lowPrice(4212.41).add();
 
         var sar = new ParabolicSarIndicator(series);

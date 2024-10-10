@@ -24,7 +24,7 @@
 package org.ta4j.core.aggregator;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -94,7 +94,7 @@ public class DurationBarAggregator implements BarAggregator {
         final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
-            final ZonedDateTime beginTime = bar.getBeginTime();
+            final Instant beginTime = bar.getBeginTime();
             final Num open = bar.getOpenPrice();
             Num high = bar.getHighPrice();
             Num low = bar.getLowPrice();
@@ -152,7 +152,7 @@ public class DurationBarAggregator implements BarAggregator {
         return aggregated;
     }
 
-    private boolean beginTimesInDuration(ZonedDateTime startTime, ZonedDateTime endTime) {
+    private boolean beginTimesInDuration(Instant startTime, Instant endTime) {
         return Duration.between(startTime, endTime).compareTo(timePeriod) < 0;
     }
 

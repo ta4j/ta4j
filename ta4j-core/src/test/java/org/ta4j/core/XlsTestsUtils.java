@@ -28,8 +28,6 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -168,8 +166,8 @@ public class XlsTestsUtils {
             }
             // add a bar to the series
             Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
-            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
-                    ZoneId.systemDefault());
+            Instant endDateTime = Instant.ofEpochMilli(endDate.getTime());
+
             series.addBar(series.barBuilder()
                     .timePeriod(duration)
                     .endTime(endDateTime)

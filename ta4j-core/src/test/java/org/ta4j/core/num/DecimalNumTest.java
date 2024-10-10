@@ -31,7 +31,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -120,7 +120,7 @@ public class DecimalNumTest {
 
     private void init() {
         final Duration timePeriod = Duration.ofDays(1);
-        ZonedDateTime endTime = ZonedDateTime.now();
+        Instant endTime = Instant.now();
         final double[] deltas = { 20.8, 30.1, -15.3, 10.2, -16.7, -9.8 };
         Num superPrecisionNum = FIRST_SUPER_PRECISION_NUM;
         this.superPrecisionSeries = new BaseBarSeriesBuilder().withName("superPrecision")

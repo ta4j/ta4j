@@ -26,7 +26,8 @@ package org.ta4j.core.indicators.aroon;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.time.ZonedDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -49,8 +50,9 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
     @Before
     public void init() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();
+        Instant now = Instant.now();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(1))
+                .endTime(now.plus(Duration.ofDays(1)))
                 .openPrice(168.28)
                 .closePrice(169.87)
                 .highPrice(167.15)
@@ -59,7 +61,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .add();
 
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(2))
+                .endTime((now.plus(Duration.ofDays(2))))
                 .openPrice(168.84)
                 .closePrice(169.36)
                 .highPrice(168.20)
@@ -67,7 +69,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(3))
+                .endTime((now.plus(Duration.ofDays(3))))
                 .openPrice(168.88)
                 .closePrice(169.29)
                 .highPrice(166.41)
@@ -75,7 +77,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(4))
+                .endTime((now.plus(Duration.ofDays(4))))
                 .openPrice(168.00)
                 .closePrice(168.38)
                 .highPrice(166.18)
@@ -83,7 +85,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(5))
+                .endTime((now.plus(Duration.ofDays(5))))
                 .openPrice(166.89)
                 .closePrice(167.70)
                 .highPrice(166.33)
@@ -91,7 +93,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(6))
+                .endTime((now.plus(Duration.ofDays(6))))
                 .openPrice(165.25)
                 .closePrice(168.43)
                 .highPrice(165)
@@ -99,7 +101,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(7))
+                .endTime((now.plus(Duration.ofDays(7))))
                 .openPrice(168.17)
                 .closePrice(170.18)
                 .highPrice(167.63)
@@ -107,7 +109,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(8))
+                .endTime((now.plus(Duration.ofDays(8))))
                 .openPrice(170.42)
                 .closePrice(172.15)
                 .highPrice(170.06)
@@ -115,7 +117,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(9))
+                .endTime(now.plus(Duration.ofDays(9)))
                 .openPrice(172.41)
                 .closePrice(172.92)
                 .highPrice(171.31)
@@ -123,7 +125,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(10))
+                .endTime(now.plus(Duration.ofDays(10)))
                 .openPrice(171.2)
                 .closePrice(172.39)
                 .highPrice(169.55)
@@ -131,7 +133,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(11))
+                .endTime(now.plus(Duration.ofDays(11)))
                 .openPrice(170.91)
                 .closePrice(172.48)
                 .highPrice(169.57)
@@ -139,7 +141,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(12))
+                .endTime(now.plus(Duration.ofDays(12)))
                 .openPrice(171.8)
                 .closePrice(173.31)
                 .highPrice(170.27)
@@ -147,7 +149,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(13))
+                .endTime(now.plus(Duration.ofDays(13)))
                 .openPrice(173.09)
                 .closePrice(173.49)
                 .highPrice(170.8)
@@ -155,7 +157,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(14))
+                .endTime(now.plus(Duration.ofDays(14)))
                 .openPrice(172.41)
                 .closePrice(173.89)
                 .highPrice(172.2)
@@ -163,7 +165,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(15))
+                .endTime(now.plus(Duration.ofDays(15)))
                 .openPrice(173.87)
                 .closePrice(174.17)
                 .highPrice(175)
@@ -171,7 +173,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(16))
+                .endTime(now.plus(Duration.ofDays(16)))
                 .openPrice(173)
                 .closePrice(173.17)
                 .highPrice(172.06)
@@ -179,7 +181,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(17))
+                .endTime(now.plus(Duration.ofDays(17)))
                 .openPrice(172.26)
                 .closePrice(172.28)
                 .highPrice(170.5)
@@ -187,7 +189,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(18))
+                .endTime(now.plus(Duration.ofDays(18)))
                 .openPrice(170.88)
                 .closePrice(172.34)
                 .highPrice(170.26)
@@ -195,7 +197,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(19))
+                .endTime(now.plus(Duration.ofDays(19)))
                 .openPrice(171.85)
                 .closePrice(172.07)
                 .highPrice(169.34)
@@ -203,7 +205,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
                 .volume(0)
                 .add();
         data.barBuilder()
-                .endTime(ZonedDateTime.now().plusDays(20))
+                .endTime(now.plus(Duration.ofDays(20)))
                 .openPrice(170.75)
                 .closePrice(172.56)
                 .highPrice(170.36)

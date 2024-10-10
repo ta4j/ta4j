@@ -24,10 +24,10 @@
 package ta4jexamples.analysis;
 
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
-import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.AverageReturnPerBarCriterion;
 import org.ta4j.core.criteria.EnterAndHoldCriterion;
 import org.ta4j.core.criteria.LinearTransactionCostCriterion;

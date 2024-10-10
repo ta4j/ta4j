@@ -27,7 +27,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.num.DecimalNum;
@@ -42,9 +42,13 @@ public class SeriesBuilderTest {
 
     @Test
     public void testBuilder() {
-        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
-        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
-                                                                                 // BigDecimal as delegate
+
+        // build a new empty unnamed bar series
+        BarSeries defaultSeries = seriesBuilder.build();
+
+        // build a new empty bar series using BigDecimal as delegate
+        BarSeries defaultSeriesName = seriesBuilder.withName("default").build();
+
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
                 .withNumFactory(DoubleNumFactory.getInstance())
                 .withName("useDoubleNum")
@@ -54,10 +58,11 @@ public class SeriesBuilderTest {
                 .withName("usePrecisionNum")
                 .build();
 
+        var now = Instant.now();
         for (int i = 1000; i >= 0; i--) {
             defaultSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .endTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -66,7 +71,7 @@ public class SeriesBuilderTest {
                     .add();
             defaultSeriesName.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .endTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -75,7 +80,7 @@ public class SeriesBuilderTest {
                     .add();
             doubleSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .endTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -84,7 +89,7 @@ public class SeriesBuilderTest {
                     .add();
             precisionSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(ZonedDateTime.now().minusSeconds(i))
+                    .endTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)

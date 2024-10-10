@@ -27,8 +27,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
@@ -65,16 +63,10 @@ public class CsvTradesLoader {
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
-            ZonedDateTime beginTime = ZonedDateTime
-                    .ofInstant(Instant.ofEpochMilli(Long.parseLong(lines.get(0)[0]) * 1000), ZoneId.systemDefault());
-            ZonedDateTime endTime = ZonedDateTime.ofInstant(
-                    Instant.ofEpochMilli(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000),
-                    ZoneId.systemDefault());
+            Instant beginTime = Instant.ofEpochMilli(Long.parseLong(lines.get(0)[0]) * 1000);
+            Instant endTime = Instant.ofEpochMilli(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
             if (beginTime.isAfter(endTime)) {
-                Instant beginInstant = beginTime.toInstant();
-                Instant endInstant = endTime.toInstant();
-                beginTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault());
-                endTime = ZonedDateTime.ofInstant(beginInstant, ZoneId.systemDefault());
+                beginTime = endTime;
                 // Since the CSV file has the most recent trades at the top of the file, we'll
                 // reverse the list to feed
                 // the List<Bar> correctly.
@@ -95,11 +87,11 @@ public class CsvTradesLoader {
      * @param duration  the bar duration (in seconds)
      * @param lines     the csv data returned by CSVReader.readAll()
      */
-    private static void buildSeries(BarSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,
+    private static void buildSeries(BarSeries series, Instant beginTime, Instant endTime, int duration,
             List<String[]> lines) {
 
         Duration barDuration = Duration.ofSeconds(duration);
-        ZonedDateTime barEndTime = beginTime;
+        Instant barEndTime = beginTime;
         ListIterator<String[]> iterator = lines.listIterator();
         // line number of trade data
         do {
@@ -109,8 +101,7 @@ public class CsvTradesLoader {
             do {
                 // get a trade
                 String[] tradeLine = iterator.next();
-                ZonedDateTime tradeTimeStamp = ZonedDateTime
-                        .ofInstant(Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000), ZoneId.systemDefault());
+                Instant tradeTimeStamp = Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000);
                 // if the trade happened during the bar
                 if (bar.inPeriod(tradeTimeStamp)) {
                     // add the trade to the bar

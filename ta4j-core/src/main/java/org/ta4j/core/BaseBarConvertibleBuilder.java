@@ -24,7 +24,7 @@
 package org.ta4j.core;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -48,7 +48,7 @@ public class BaseBarConvertibleBuilder extends BaseBarBuilder {
     }
 
     @Override
-    public BaseBarConvertibleBuilder endTime(final ZonedDateTime endTime) {
+    public BaseBarConvertibleBuilder endTime(final Instant endTime) {
         super.endTime(endTime);
         return this;
     }

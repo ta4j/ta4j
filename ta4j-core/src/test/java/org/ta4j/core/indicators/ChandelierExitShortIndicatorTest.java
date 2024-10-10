@@ -59,7 +59,6 @@ public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indi
         data.barBuilder().openPrice(45.58).closePrice(45.55).highPrice(45.61).lowPrice(45.39).add();
         data.barBuilder().openPrice(45.45).closePrice(45.01).highPrice(45.55).lowPrice(44.80).add();
         data.barBuilder().openPrice(45.03).closePrice(44.23).highPrice(45.04).lowPrice(44.17).add();
-
     }
 
     @Test

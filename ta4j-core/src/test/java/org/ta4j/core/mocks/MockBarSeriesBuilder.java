@@ -23,7 +23,8 @@
  */
 package org.ta4j.core.mocks;
 
-import java.time.ZonedDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -70,9 +71,10 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
+        var now = Instant.now();
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusMinutes((data.size() + 1 - i)))
+                    .endTime(now.minus(Duration.ofMinutes((data.size() + 1 - i))))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
@@ -85,9 +87,10 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void arbitraryBars(final BarSeries series) {
+        var now = Instant.now();
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
-                    .endTime(ZonedDateTime.now().minusMinutes((long) (5001 - i)))
+                    .endTime(now.minus(Duration.ofMinutes((long) (5001 - i))))
                     .openPrice(i)
                     .closePrice(i + 1)
                     .highPrice(i + 2)

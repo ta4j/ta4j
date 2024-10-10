@@ -57,7 +57,6 @@ public class SuperTrendUpperBandIndicatorTest {
         data.barBuilder().openPrice(19.00).closePrice(18.35).highPrice(19.41).lowPrice(18.01).add();
         data.barBuilder().openPrice(19.89).closePrice(6.36).highPrice(20.22).lowPrice(6.21).add();
         data.barBuilder().openPrice(19.28).closePrice(10.34).highPrice(20.58).lowPrice(10.11).add();
-
     }
 
     @Test
