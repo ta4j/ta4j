@@ -36,32 +36,55 @@ import org.ta4j.core.num.Num;
  * format.
  *
  * <pre>
- * RoMaD = {@link ReturnCriterion gross return (with base)} / {@link MaximumDrawdownCriterion maximum drawdown}
+ * RoMaD with base = {@link ReturnCriterion gross return} / {@link MaximumDrawdownCriterion maximum drawdown}
+ * RoMaD without base = ({@link ReturnCriterion gross return} - 1) / {@link MaximumDrawdownCriterion maximum drawdown}
  * </pre>
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion grossReturnCriterion = new ReturnCriterion();
+    private final AnalysisCriterion grossReturnCriterion;
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
+
+    /**
+     * Constructor.
+     *
+     * <p>
+     * Uses the following formula:
+     *
+     * <pre>RoMaD with base = ({@link #grossReturnCriterion}) /  {@link #maxDrawdownCriterion} </pre>
+     */
+    public ReturnOverMaxDrawdownCriterion() {
+        this(true);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param addBase if true, then the base percentage of {@code 1} (equivalent to
+     *                100%) is added to the {@link #grossReturnCriterion}
+     */
+    public ReturnOverMaxDrawdownCriterion(boolean addBase) {
+        this.grossReturnCriterion = new ReturnCriterion(addBase);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        final var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, position);
+            final var totalProfit = grossReturnCriterion.calculate(series, position);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        final var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
+            final var totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
