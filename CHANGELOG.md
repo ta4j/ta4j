@@ -8,7 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Extracted NumFactory as source of numbers with defined precision
 
 ### Fixed
-
+- Consider `base` when calculating `ReturnCriterion` of a position
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
@@ -18,7 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Added
-
+- Added `base` to `ReturnOverMaxDrawdown` to include or exclude the base from the calculation
 
 ## 0.17 (released September 9, 2024)
 
