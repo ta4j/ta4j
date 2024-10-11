@@ -64,17 +64,17 @@ public class ConvergenceDivergenceIndicatorTest {
     @Before
     public void setUp() {
         BarSeries series = new MockBarSeriesBuilder().build();
-        refPosCon = new FixedDecimalIndicator(series, 1, 2, 3, 4, 5, 8, 3, 2, -2, 1);
-        otherPosCon = new FixedDecimalIndicator(series, 10, 20, 30, 40, 50, 60, 7, 5, 3, 2);
+        refPosCon = new FixedNumIndicator(series, 1, 2, 3, 4, 5, 8, 3, 2, -2, 1);
+        otherPosCon = new FixedNumIndicator(series, 10, 20, 30, 40, 50, 60, 7, 5, 3, 2);
 
-        refNegCon = new FixedDecimalIndicator(series, 150, 60, 20, 10, -20, -60, -200, -1, -200, 100);
-        otherNegCon = new FixedDecimalIndicator(series, 80, 50, 40, 20, 10, 0, -30, -50, -150, 7);
+        refNegCon = new FixedNumIndicator(series, 150, 60, 20, 10, -20, -60, -200, -1, -200, 100);
+        otherNegCon = new FixedNumIndicator(series, 80, 50, 40, 20, 10, 0, -30, -50, -150, 7);
 
-        refPosDiv = new FixedDecimalIndicator(series, 1, 4, 8, 12, 15, 20, 3, 2, -2, 1);
-        otherNegDiv = new FixedDecimalIndicator(series, 80, 50, 20, -10, 0, -100, -200, -2, 5, 7);
+        refPosDiv = new FixedNumIndicator(series, 1, 4, 8, 12, 15, 20, 3, 2, -2, 1);
+        otherNegDiv = new FixedNumIndicator(series, 80, 50, 20, -10, 0, -100, -200, -2, 5, 7);
 
-        refNegDig = new FixedDecimalIndicator(series, 100, 30, 15, 4, 2, -10, -3, -100, -2, 100);
-        otherPosDiv = new FixedDecimalIndicator(series, 20, 40, 70, 80, 90, 100, 200, 220, -50, 7);
+        refNegDig = new FixedNumIndicator(series, 100, 30, 15, 4, 2, -10, -3, -100, -2, 100);
+        otherPosDiv = new FixedNumIndicator(series, 20, 40, 70, 80, 90, 100, 200, 220, -50, 7);
 
         // for convergence and divergence
         isPosCon = new ConvergenceDivergenceIndicator(refPosCon, otherPosCon, 3,
