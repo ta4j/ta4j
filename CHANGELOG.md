@@ -7,6 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Updated Github workflows to use JDK 21
 - Extracted NumFactory as source of numbers with defined precision
 - Replaced `ZonedDateTime` with `Instant`
+- Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
