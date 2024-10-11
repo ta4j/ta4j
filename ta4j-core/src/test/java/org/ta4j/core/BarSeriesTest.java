@@ -34,8 +34,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.IntStream;
 
@@ -79,32 +78,32 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-13T00:00:00Z"))
                 .closePrice(1d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-14T00:00:00Z"))
                 .closePrice(2d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 15, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-15T00:00:00Z"))
                 .closePrice(3d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 20, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-20T00:00:00Z"))
                 .closePrice(4d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-25T00:00:00Z"))
                 .closePrice(5d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()))
+                .endTime(Instant.parse("2014-06-30T00:00:00Z"))
                 .closePrice(6d)
                 .add();
 
@@ -121,36 +120,21 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
      */
     @Test
     public void replaceBarTest() {
+        var now = Instant.now();
         var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now(ZoneId.systemDefault()))
-                .closePrice(1d)
-                .build(), true);
+        series.addBar(series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(now).closePrice(1d).build(), true);
         assertEquals(1, series.getBarCount());
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().one());
 
-        series.addBar(series.barBuilder()
-                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1))
-                .closePrice(2d)
-                .build(), false);
-        series.addBar(series.barBuilder()
-                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2))
-                .closePrice(3d)
-                .build(), false);
+        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(1))).closePrice(2d).build(), false);
+        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(2))).closePrice(3d).build(), false);
         assertEquals(3, series.getBarCount());
 
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(3));
-        series.addBar(series.barBuilder()
-                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3))
-                .closePrice(4d)
-                .build(), true);
-        series.addBar(series.barBuilder()
-                .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4))
-                .closePrice(5d)
-                .build(), true);
+        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(3))).closePrice(4d).build(), true);
+        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(4))).closePrice(5d).build(), true);
         assertEquals(3, series.getBarCount());
 
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(5));
@@ -186,22 +170,48 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void getSeriesPeriodDescriptionTest() {
+        var formatter = DateTimeFormatter.ISO_INSTANT;
+
         // Default series
-        assertTrue(defaultSeries.getSeriesPeriodDescription()
-                .endsWith(defaultSeries.getBarData()
-                        .get(defaultSeries.getEndIndex())
-                        .getEndTime()
-                        .format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(defaultSeries.getSeriesPeriodDescription()
-                .startsWith(defaultSeries.getBarData()
-                        .get(defaultSeries.getBeginIndex())
-                        .getEndTime()
-                        .format(DateTimeFormatter.ISO_DATE_TIME)));
+        var barData = defaultSeries.getBarData();
+        var defaultDescription = defaultSeries.getSeriesPeriodDescription();
+        var lastEndTimeDefault = barData.get(defaultSeries.getEndIndex()).getEndTime();
+        var firstEndTimeDefault = barData.get(defaultSeries.getBeginIndex()).getEndTime();
+        assertTrue(defaultDescription.endsWith(formatter.format(lastEndTimeDefault)));
+        assertTrue(defaultDescription.startsWith(formatter.format(firstEndTimeDefault)));
+
         // Constrained series
-        assertTrue(subSeries.getSeriesPeriodDescription()
-                .endsWith(defaultSeries.getBarData().get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subSeries.getSeriesPeriodDescription()
-                .startsWith(defaultSeries.getBarData().get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        var subSeries = defaultSeries.getSubSeries(2, 4);
+        var subDescription = subSeries.getSeriesPeriodDescription();
+        var lastEndTimeConstrained = subSeries.getLastBar().getEndTime();
+        var firstEndTimeConstrained = subSeries.getFirstBar().getEndTime();
+        assertTrue(subDescription.endsWith(formatter.format(lastEndTimeConstrained)));
+        assertTrue(subDescription.startsWith(formatter.format(firstEndTimeConstrained)));
+
+        // Empty series
+        assertEquals("", emptySeries.getSeriesPeriodDescription());
+    }
+
+    @Test
+    public void getSeriesPeriodDescriptionTestInSystemTimeZone() {
+        var formatter = DateTimeFormatter.ISO_DATE_TIME;
+
+        // Default series
+        var barData = defaultSeries.getBarData();
+        var defaultDescription = defaultSeries.getSeriesPeriodDescriptionInSystemTimeZone();
+        var lastEndTimeDefault = barData.get(defaultSeries.getEndIndex()).getSystemZonedEndTime();
+        var firstEndTimeDefault = barData.get(defaultSeries.getBeginIndex()).getSystemZonedEndTime();
+        assertTrue(defaultDescription.endsWith(formatter.format(lastEndTimeDefault)));
+        assertTrue(defaultDescription.startsWith(formatter.format(firstEndTimeDefault)));
+
+        // Constrained series
+        var subSeries = defaultSeries.getSubSeries(2, 4);
+        var subDescription = subSeries.getSeriesPeriodDescriptionInSystemTimeZone();
+        var lastEndTimeConstrained = subSeries.getLastBar().getSystemZonedEndTime();
+        var firstEndTimeConstrained = subSeries.getFirstBar().getSystemZonedEndTime();
+        assertTrue(subDescription.endsWith(formatter.format(lastEndTimeConstrained)));
+        assertTrue(subDescription.startsWith(formatter.format(firstEndTimeConstrained)));
+
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -312,10 +322,8 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test(expected = IllegalArgumentException.class)
     public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowExceptionTest() {
-        defaultSeries.addBar(defaultSeries.barBuilder()
-                .endTime(ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault()))
-                .closePrice(99d)
-                .build());
+        defaultSeries.addBar(
+                defaultSeries.barBuilder().endTime(Instant.parse("2000-01-01T00:00:00Z")).closePrice(99d).build());
     }
 
     @Test
@@ -323,15 +331,10 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         defaultSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        Bar bar1 = defaultSeries.barBuilder()
-                .endTime(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()))
-                .closePrice(1d)
-                .build();
 
-        Bar bar2 = defaultSeries.barBuilder()
-                .endTime(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()))
-                .closePrice(2d)
-                .build();
+        Bar bar1 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-13T00:00:00Z")).closePrice(1d).build();
+
+        Bar bar2 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(2d).build();
 
         assertEquals(0, defaultSeries.getBarCount());
         assertEquals(-1, defaultSeries.getBeginIndex());
@@ -400,7 +403,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void wrongBarTypeDoubleTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
         series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now())
+                .endTime(Instant.now())
                 .closePrice(DecimalNumFactory.getInstance().one())
                 .build());
     }
@@ -409,7 +412,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void wrongBarTypeBigDecimalTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now())
+                .endTime(Instant.now())
                 .closePrice(DoubleNumFactory.getInstance().one())
                 .build());
     }
@@ -420,12 +423,14 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .withName("Series with maxBar count")
                 .withMaxBarCount(20)
                 .build();
+
         final int timespan = 5;
+        var now = Instant.now();
 
         IntStream.range(0, 100).forEach(i -> {
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i))
+                    .endTime(now.plus(Duration.ofMinutes(i)))
                     .openPrice(5)
                     .highPrice(7)
                     .lowPrice(1)

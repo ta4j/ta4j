@@ -28,9 +28,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
+import java.time.Instant;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -48,8 +46,8 @@ public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeri
     @Test
     public void testBuildBigDecimal() {
 
-        final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
-        final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
         final Duration duration = Duration.between(beginTime, endTime);
 
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();

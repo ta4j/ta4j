@@ -24,7 +24,7 @@
 package org.ta4j.core.rules;
 
 import java.time.LocalTime;
-import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.ta4j.core.TradingRecord;
@@ -33,8 +33,18 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 /**
  * Satisfied when the "local time" value of the {@link DateTimeIndicator} is
  * within the specified set of {@link TimeRange}.
+ *
+ * <p>
+ * An {@link java.time.Instant UTC} itself does not have a concept of a local
+ * time, as UTC is a time standard that does not include details such as days of
+ * the week. However, this rule converts a UTC to a ZonedDateTime in the
+ * system's default time zone and then to a LocalTime to get the local time in
+ * that time zone.
  */
 public class TimeRangeRule extends AbstractRule {
+
+    public record TimeRange(LocalTime from, LocalTime to) {
+    }
 
     private final List<TimeRange> timeRanges;
     private final DateTimeIndicator timeIndicator;
@@ -53,31 +63,12 @@ public class TimeRangeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        ZonedDateTime dateTime = timeIndicator.getValue(index);
-        LocalTime localTime = dateTime.toLocalTime();
-        final boolean satisfied = timeRanges.stream()
-                .anyMatch(
-                        timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
+        var localTime = LocalTime.ofInstant(timeIndicator.getValue(index), ZoneOffset.UTC);
+        final boolean satisfied = timeRanges.stream().anyMatch(range -> {
+            return !localTime.isBefore(range.from()) && !localTime.isAfter(range.to());
+        });
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
 
-    public static class TimeRange {
-
-        private final LocalTime from;
-        private final LocalTime to;
-
-        public TimeRange(LocalTime from, LocalTime to) {
-            this.from = from;
-            this.to = to;
-        }
-
-        public LocalTime getFrom() {
-            return from;
-        }
-
-        public LocalTime getTo() {
-            return to;
-        }
-    }
 }

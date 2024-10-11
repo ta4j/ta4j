@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -255,7 +255,7 @@ public class BaseBarSeries implements BarSeries {
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
-            final ZonedDateTime seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
+            final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",

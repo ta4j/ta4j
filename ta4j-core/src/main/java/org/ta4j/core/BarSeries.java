@@ -129,17 +129,31 @@ public interface BarSeries extends Serializable {
     int getEndIndex();
 
     /**
-     * @return the description of the series period (e.g. "from 12:00 21/01/2014 to
-     *         12:15 21/01/2014")
+     * @return the description of the series period (e.g. "from 2014-01-21T12:00:00Z
+     *         to 2014-01-21T12:15:00Z"); times are in UTC.
      */
     default String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
         if (!getBarData().isEmpty()) {
-            Bar firstBar = getFirstBar();
-            Bar lastBar = getLastBar();
-            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                    .append(" - ")
-                    .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
+            var endTimeFirstBar = getFirstBar().getEndTime();
+            var endTimeLastBar = getLastBar().getEndTime();
+            DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
+            sb.append(formatter.format(endTimeFirstBar)).append(" - ").append(formatter.format(endTimeLastBar));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * @return the description of the series period (e.g. "from 12:00 21/01/2014 to
+     *         12:15 21/01/2014"); times are in system's default time zone.
+     */
+    default String getSeriesPeriodDescriptionInSystemTimeZone() {
+        StringBuilder sb = new StringBuilder();
+        if (!getBarData().isEmpty()) {
+            var endTimeFirstBar = getFirstBar().getSystemZonedEndTime();
+            var endTimeLastBar = getLastBar().getSystemZonedEndTime();
+            DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+            sb.append(formatter.format(endTimeFirstBar)).append(" - ").append(formatter.format(endTimeLastBar));
         }
         return sb.toString();
     }

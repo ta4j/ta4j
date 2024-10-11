@@ -26,7 +26,7 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -49,8 +49,9 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void testDummy() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
         series.addBar(series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(5))
+                .endTime(now.minusSeconds(5))
                 .openPrice(0)
                 .closePrice(12)
                 .highPrice(15)
@@ -59,7 +60,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .volume(0)
                 .build());
         series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(4))
+                .endTime(now.minusSeconds(4))
                 .openPrice(0)
                 .closePrice(8)
                 .highPrice(11)
@@ -69,7 +70,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(3))
+                .endTime(now.minusSeconds(3))
                 .openPrice(0)
                 .closePrice(15)
                 .highPrice(17)
@@ -79,7 +80,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(2))
+                .endTime(now.minusSeconds(2))
                 .openPrice(0)
                 .closePrice(15)
                 .highPrice(17)
@@ -89,7 +90,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(ZonedDateTime.now().minusSeconds(1))
+                .endTime(now.minusSeconds(1))
                 .openPrice(0)
                 .closePrice(0)
                 .highPrice(0)

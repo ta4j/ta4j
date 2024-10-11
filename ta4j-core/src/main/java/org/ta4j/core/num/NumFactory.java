@@ -79,7 +79,7 @@ public interface NumFactory {
     Num numOf(String number);
 
     /**
-     * Determines whether num instace has been produced by this factory
+     * Determines whether num instance has been produced by this factory
      *
      * @param num to test
      * @return true if made by this factory

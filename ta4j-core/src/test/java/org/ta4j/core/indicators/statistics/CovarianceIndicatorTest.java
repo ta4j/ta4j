@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.statistics;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -48,28 +48,30 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         int i = 20;
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(6).volume(100).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(7).volume(105).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(9).volume(130).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(12).volume(160).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(11).volume(150).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(10).volume(130).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(11).volume(95).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(13).volume(120).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(15).volume(180).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(12).volume(160).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(8).volume(150).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(4).volume(200).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(3).volume(150).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(4).volume(85).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(3).volume(70).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(5).volume(90).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(8).volume(100).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(9).volume(95).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i--)).closePrice(11).volume(110).add();
-        data.barBuilder().endTime(ZonedDateTime.now().minusSeconds(i)).closePrice(10).volume(95).add();
+        var now = Instant.now();
+        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(6).volume(100).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(7).volume(105).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(9).volume(130).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(12).volume(160).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(150).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(10).volume(130).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(95).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(13).volume(120).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(15).volume(180).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(12).volume(160).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(8).volume(150).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(4).volume(200).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(3).volume(150).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(4).volume(85).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(3).volume(70).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(5).volume(90).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(8).volume(100).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(9).volume(95).add();
+        data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(110).add();
+        data.barBuilder().endTime(now.minusSeconds(i)).closePrice(10).volume(95).add();
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
     }

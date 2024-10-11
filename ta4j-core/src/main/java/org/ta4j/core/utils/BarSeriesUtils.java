@@ -24,7 +24,7 @@
 package org.ta4j.core.utils;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -90,8 +90,8 @@ public final class BarSeriesUtils {
             return null;
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
-            boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
-                    && bar.getEndTime().isEqual(newBar.getEndTime())
+            boolean isSameBar = bar.getBeginTime().equals(newBar.getBeginTime())
+                    && bar.getEndTime().equals(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
             if (isSameBar && !bar.equals(newBar))
                 return bars.set(i, newBar);
@@ -112,12 +112,12 @@ public final class BarSeriesUtils {
      * @param findOnlyNaNBars find only bars with undefined prices
      * @return the list of possibly missing bars
      */
-    public static List<ZonedDateTime> findMissingBars(BarSeries barSeries, boolean findOnlyNaNBars) {
+    public static List<Instant> findMissingBars(BarSeries barSeries, boolean findOnlyNaNBars) {
         List<Bar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return new ArrayList<>();
         Duration duration = bars.iterator().next().getTimePeriod();
-        List<ZonedDateTime> missingBars = new ArrayList<>();
+        List<Instant> missingBars = new ArrayList<>();
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
             if (!findOnlyNaNBars) {

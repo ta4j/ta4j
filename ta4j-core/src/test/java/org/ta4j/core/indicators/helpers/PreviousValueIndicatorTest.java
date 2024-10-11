@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.helpers;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Random;
 
 import org.junit.Before;
@@ -52,13 +52,14 @@ public class PreviousValueIndicatorTest {
     @Before
     public void setUp() {
         var r = new Random();
+        var now = Instant.now();
         this.series = new MockBarSeriesBuilder().withName("test").build();
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
             double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
-            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
+            Instant dateTime = now.minusSeconds(1001 - i);
             series.barBuilder()
                     .endTime(dateTime)
                     .openPrice(open)

@@ -53,83 +53,45 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
     @Before
     public void setUp() {
         List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build()); // 0 -
-        // Normal
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build()); // 1 -
-        // Normal
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build()); // 2 -
-        // Potential
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build()); // 3 -
-        // Plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build()); // 4 -
-        // Plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build()); // 5 -
-        // Down
-        // after
-        // plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build()); // 6 -
-        // Down
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 7 -
-        // New
-        // potential
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build()); // 8 -
-        // Sharp
-        // down
-        bars.add(new MockBarBuilder(numFactory).openPrice(14).closePrice(14).highPrice(14).lowPrice(14).build()); // 9 -
-        // Higher
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 10
-        // -
-        // Normal
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build()); // 11
-        // -
-        // Down
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 12
-        // -
-        // Up
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build()); // 13
-        // -
-        // New
-        // potential
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 14
-        // -
-        // Down
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build()); // 15
-        // -
-        // Equal
-        // high
-        // to
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 16
-        // -
-        // Down
-        // movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build()); // 17
-        // -
-        // Equal
-        // high
-        // to
-        // swing
-        // high
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build()); // 18
-        // -
-        // Down
-        // movement
+
+        // 0 - Normal movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
+        // 1 - Normal movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build());
+        // 2 - Potential swing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
+        // 3 - Plateau
+        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
+        // 4 - Plateau
+        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
+        // 5 -Down after plateau
+        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build());
+        // 6 -Down movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
+        // 7 - New potential swing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
+        // 8 - Sharp down
+        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
+        // 9 - Higher swing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(14).closePrice(14).highPrice(14).lowPrice(14).build());
+        // 10 - Normal movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
+        // 11 - Down movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
+        // 12 - Up movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
+        // 13- New potentialswing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
+        // 14 - Down movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
+        // 15 - Equal high to swing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
+        // 16 - Down movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
+        // 17 - Equal high to swing high
+        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
+        // 18 - Down movement
+        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
 
         this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(bars).build();
     }
@@ -240,31 +202,31 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void testCalculate_OnMovingBarSeries_ReturnsValue() {
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build(); // movingSeries:
-        // [1]
+        // movingSeries: [1]
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(movingSeries);
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(closePrice, 1, 1, 0);
 
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build()); // movingSeries:
-        // [1, 2]
+        // movingSeries: [1, 2]
+        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build());
         assertNumEquals(NaN.NaN, swingHighIndicator.getValue(movingSeries.getEndIndex()));
 
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(3).build()); // movingSeries:
-        // [1, 2,
-        // 3]
+        // movingSeries: [1, 2, 3]
+        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(3).build());
         assertNumEquals(NaN.NaN, swingHighIndicator.getValue(movingSeries.getEndIndex()));
 
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build()); // movingSeries:
-        // [1, 2,
-        // 3, 2]
+        // movingSeries: [1, 2, 3, 2]
+        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build());
         assertNumEquals(3, swingHighIndicator.getValue(movingSeries.getEndIndex()));
     }
 
+    @SuppressWarnings("unused")
     @Test(expected = IllegalArgumentException.class)
     public void testConstructor_SurroundingBarsZero() {
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, 0);
     }
 
+    @SuppressWarnings("unused")
     @Test(expected = IllegalArgumentException.class)
     public void testConstructor_AllowedEqualBarsNegative() {
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 1, 1,
