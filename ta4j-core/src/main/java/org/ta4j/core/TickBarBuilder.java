@@ -48,10 +48,8 @@ class TickBarBuilder implements BarBuilder {
 
     public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
         this.numFactory = numFactory;
-        this.volume = numFactory.zero();
-        this.highPrice = numFactory.zero();
-        this.lowPrice = numFactory.numOf(Integer.MAX_VALUE);
         this.tickCount = tickCount;
+        reset();
     }
 
     @Override
@@ -203,11 +201,16 @@ class TickBarBuilder implements BarBuilder {
     public void add() {
         if (++this.passedTicksCount % this.tickCount == 0) {
             this.barSeries.addBar(build());
-            this.openPrice = null;
-            this.highPrice = this.numFactory.zero();
-            this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
-            this.closePrice = null;
-            this.volume = this.numFactory.zero();
+            reset();
         }
+    }
+
+
+    private void reset() {
+        this.openPrice = null;
+        this.highPrice = this.numFactory.zero();
+        this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
+        this.closePrice = null;
+        this.volume = this.numFactory.zero();
     }
 }
