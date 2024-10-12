@@ -33,8 +33,8 @@ import org.ta4j.core.num.NumFactory;
 class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
-    private final int countOfTicks;
-    private int countOfTicksPassed;
+    private final int tickCount;
+    private int passedTicksCount;
     private BarSeries barSeries;
     private Duration timePeriod;
     private Instant endTime;
@@ -46,12 +46,12 @@ class TickBarBuilder implements BarBuilder {
     private Num amount;
     private long trades;
 
-    public TickBarBuilder(final NumFactory numFactory, final int countOfTicks) {
+    public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
         this.numFactory = numFactory;
         this.volume = numFactory.zero();
         this.highPrice = numFactory.zero();
         this.lowPrice = numFactory.numOf(Integer.MAX_VALUE);
-        this.countOfTicks = countOfTicks;
+        this.tickCount = tickCount;
     }
 
     @Override
@@ -201,7 +201,7 @@ class TickBarBuilder implements BarBuilder {
 
     @Override
     public void add() {
-        if (++this.countOfTicksPassed % this.countOfTicks == 0) {
+        if (++this.passedTicksCount % this.tickCount == 0) {
             this.barSeries.addBar(build());
             this.openPrice = null;
             this.highPrice = this.numFactory.zero();
