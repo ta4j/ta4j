@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -46,6 +47,10 @@ public class BaseBarBuilder implements BarBuilder {
     private Num amount;
     private long trades;
     private BarSeries baseBarSeries;
+
+    public BaseBarBuilder() {
+        this(DoubleNumFactory.getInstance());
+    }
 
     public BaseBarBuilder(final NumFactory numFactory) {
         this.numFactory = numFactory;
