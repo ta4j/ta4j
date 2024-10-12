@@ -27,14 +27,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-class TickBarBuilder implements BarBuilder {
+public class VolumeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
-    private final int tickCount;
-    private int passedTicksCount;
+    private final Num volumeThreshold;
     private BarSeries barSeries;
     private Duration timePeriod;
     private Instant endTime;
@@ -46,9 +46,14 @@ class TickBarBuilder implements BarBuilder {
     private Num amount;
     private long trades;
 
-    public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
+    public VolumeBarBuilder(final int volumeThreshold) {
+        this(DoubleNumFactory.getInstance(), volumeThreshold);
+    }
+
+    public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold) {
         this.numFactory = numFactory;
-        this.tickCount = tickCount;
+        this.volumeThreshold = numFactory.numOf(volumeThreshold);
+        this.volume = numFactory.zero();
         reset();
     }
 
@@ -181,7 +186,7 @@ class TickBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TickBarBuilder bindTo(final BarSeries barSeries) {
+    public VolumeBarBuilder bindTo(final BarSeries barSeries) {
         this.barSeries = Objects.requireNonNull(barSeries);
         return this;
     }
@@ -199,8 +204,17 @@ class TickBarBuilder implements BarBuilder {
 
     @Override
     public void add() {
-        if (++this.passedTicksCount % this.tickCount == 0) {
+        if (this.volume.isGreaterThanOrEqual(this.volumeThreshold)) {
+            // move volume remainder to next bar
+            var volumeRemainder = this.numFactory.zero();
+            if (this.volume.isGreaterThan(this.volumeThreshold)) {
+                volumeRemainder = this.volume.minus(this.volumeThreshold);
+                this.volume = this.volumeThreshold;
+            }
+
             this.barSeries.addBar(build());
+            this.volume = volumeRemainder;
+
             reset();
         }
     }
@@ -210,6 +224,5 @@ class TickBarBuilder implements BarBuilder {
         this.highPrice = this.numFactory.zero();
         this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
         this.closePrice = null;
-        this.volume = this.numFactory.zero();
     }
 }
