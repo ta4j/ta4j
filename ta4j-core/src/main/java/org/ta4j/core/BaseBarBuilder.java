@@ -47,7 +47,6 @@ public class BaseBarBuilder implements BarBuilder {
     private long trades;
     private BarSeries baseBarSeries;
 
-    /** Constructor to build a {@code BaseBar}. */
     public BaseBarBuilder(final NumFactory numFactory) {
         this.numFactory = numFactory;
     }
@@ -185,8 +184,8 @@ public class BaseBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BaseBarBuilder bindTo(final BarSeries baseBarSeries) {
-        this.baseBarSeries = Objects.requireNonNull(baseBarSeries);
+    public BaseBarBuilder bindTo(final BarSeries barSeries) {
+        this.baseBarSeries = Objects.requireNonNull(barSeries);
         return this;
     }
 
