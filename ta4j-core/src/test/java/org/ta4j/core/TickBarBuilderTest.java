@@ -36,28 +36,29 @@ public class TickBarBuilderTest {
     @Test
     public void add() {
         final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new TickBarBuilderFactory(5)).build();
-        series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(ZonedDateTime.now()).closePrice(1).volume(1).add();
+        final var now = ZonedDateTime.now();
+        series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(now).closePrice(1).volume(1).add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(1))
+                .endTime(now.plusDays(1))
                 .closePrice(2)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(2))
+                .endTime(now.plusDays(2))
                 .closePrice(5)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(3))
+                .endTime(now.plusDays(3))
                 .closePrice(1)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(4))
+                .endTime(now.plusDays(4))
                 .closePrice(4)
                 .volume(2)
                 .add();
@@ -72,31 +73,31 @@ public class TickBarBuilderTest {
 
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(5))
+                .endTime(now.plusDays(5))
                 .closePrice(2)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(6))
+                .endTime(now.plusDays(6))
                 .closePrice(3)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(7))
+                .endTime(now.plusDays(7))
                 .closePrice(6)
                 .volume(2)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(8))
+                .endTime(now.plusDays(8))
                 .closePrice(2)
                 .volume(1)
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(ZonedDateTime.now().plusDays(9))
+                .endTime(now.plusDays(9))
                 .closePrice(5)
                 .volume(2)
                 .add();
