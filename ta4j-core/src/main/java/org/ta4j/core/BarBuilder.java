@@ -24,7 +24,7 @@
 package org.ta4j.core;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.num.Num;
 
@@ -39,7 +39,7 @@ public interface BarBuilder {
      * @param endTime the end time of the bar period
      * @return {@code this}
      */
-    BarBuilder endTime(ZonedDateTime endTime);
+    BarBuilder endTime(Instant endTime);
 
     /**
      * @param openPrice the open price of the bar period

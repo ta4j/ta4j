@@ -24,7 +24,7 @@
 package org.ta4j.core;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Objects;
 
 import org.ta4j.core.num.Num;
@@ -37,7 +37,7 @@ class TickBarBuilder implements BarBuilder {
     private int countOfTicksPassed;
     private BarSeries barSeries;
     private Duration timePeriod;
-    private ZonedDateTime endTime;
+    private Instant endTime;
     private Num volume;
     private Num openPrice;
     private Num highPrice;
@@ -61,7 +61,7 @@ class TickBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BarBuilder endTime(final ZonedDateTime endTime) {
+    public BarBuilder endTime(final Instant endTime) {
         this.endTime = endTime;
         return this;
     }
