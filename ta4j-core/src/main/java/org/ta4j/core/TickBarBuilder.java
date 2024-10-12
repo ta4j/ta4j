@@ -181,7 +181,7 @@ class TickBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BarBuilder bindTo(final BarSeries barSeries) {
+    public TickBarBuilder bindTo(final BarSeries barSeries) {
         this.barSeries = Objects.requireNonNull(barSeries);
         return this;
     }

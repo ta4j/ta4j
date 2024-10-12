@@ -26,7 +26,7 @@ package org.ta4j.core;
 public class TickBarBuilderFactory implements BarBuilderFactory {
 
     private final int tickCount;
-    private BarBuilder barBuilder;
+    private TickBarBuilder barBuilder;
 
     public TickBarBuilderFactory(final int tickCount) {
         this.tickCount = tickCount;
