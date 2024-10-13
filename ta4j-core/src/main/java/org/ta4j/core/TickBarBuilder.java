@@ -206,10 +206,11 @@ class TickBarBuilder implements BarBuilder {
     }
 
     private void reset() {
+        final var zero = this.numFactory.zero();
         this.openPrice = null;
-        this.highPrice = this.numFactory.zero();
+        this.highPrice = zero;
         this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
         this.closePrice = null;
-        this.volume = this.numFactory.zero();
+        this.volume = zero;
     }
 }
