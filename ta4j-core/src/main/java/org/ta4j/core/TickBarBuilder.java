@@ -27,122 +27,114 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-/**
- * A builder to build a new {@link BaseBar}.
- */
-public class BaseBarBuilder implements BarBuilder {
+class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
+    private final int tickCount;
+    private int passedTicksCount;
+    private BarSeries barSeries;
     private Duration timePeriod;
     private Instant endTime;
+    private Num volume;
     private Num openPrice;
     private Num highPrice;
-    private Num lowPrice;
     private Num closePrice;
-    private Num volume;
+    private Num lowPrice;
     private Num amount;
     private long trades;
-    private BarSeries baseBarSeries;
 
-    public BaseBarBuilder() {
-        this(DoubleNumFactory.getInstance());
-    }
-
-    public BaseBarBuilder(final NumFactory numFactory) {
+    public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
         this.numFactory = numFactory;
+        this.tickCount = tickCount;
+        reset();
     }
 
     @Override
-    public BaseBarBuilder timePeriod(final Duration timePeriod) {
+    public BarBuilder timePeriod(final Duration timePeriod) {
         this.timePeriod = timePeriod;
         return this;
     }
 
     @Override
-    public BaseBarBuilder endTime(Instant endTime) {
+    public BarBuilder endTime(final Instant endTime) {
         this.endTime = endTime;
         return this;
     }
 
     @Override
-    public BaseBarBuilder openPrice(final Num openPrice) {
-        this.openPrice = openPrice;
-        return this;
+    public BarBuilder openPrice(final Num openPrice) {
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder openPrice(final Number openPrice) {
-        openPrice(this.numFactory.numOf(openPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder openPrice(final String openPrice) {
-        openPrice(this.numFactory.numOf(openPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder highPrice(final Number highPrice) {
-        highPrice(this.numFactory.numOf(highPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder highPrice(final String highPrice) {
-        highPrice(this.numFactory.numOf(highPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
-    public BaseBarBuilder highPrice(final Num highPrice) {
-        this.highPrice = highPrice;
-        return this;
+    public BarBuilder highPrice(final Num highPrice) {
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
-    public BaseBarBuilder lowPrice(final Num lowPrice) {
-        this.lowPrice = lowPrice;
-        return this;
+    public BarBuilder lowPrice(final Num lowPrice) {
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder lowPrice(final Number lowPrice) {
-        lowPrice(this.numFactory.numOf(lowPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
     public BarBuilder lowPrice(final String lowPrice) {
-        lowPrice(this.numFactory.numOf(lowPrice));
-        return this;
+        throw new IllegalArgumentException("Ticks are build just from closePrices");
     }
 
     @Override
-    public BaseBarBuilder closePrice(final Num closePrice) {
-        this.closePrice = closePrice;
+    public BarBuilder closePrice(final Num tickPrice) {
+        this.closePrice = tickPrice;
+        if (this.openPrice == null) {
+            this.openPrice = tickPrice;
+        }
+
+        this.highPrice = this.highPrice.max(tickPrice);
+        this.lowPrice = this.lowPrice.min(tickPrice);
+
         return this;
     }
 
     @Override
     public BarBuilder closePrice(final Number closePrice) {
-        closePrice(this.numFactory.numOf(closePrice));
-        return this;
+        return closePrice(this.numFactory.numOf(closePrice));
     }
 
     @Override
     public BarBuilder closePrice(final String closePrice) {
-        closePrice(this.numFactory.numOf(closePrice));
-        return this;
+        return closePrice(this.numFactory.numOf(closePrice));
     }
 
     @Override
-    public BaseBarBuilder volume(final Num volume) {
-        this.volume = volume;
+    public BarBuilder volume(final Num volume) {
+        this.volume = this.volume.plus(volume);
         return this;
     }
 
@@ -159,7 +151,7 @@ public class BaseBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BaseBarBuilder amount(final Num amount) {
+    public BarBuilder amount(final Num amount) {
         this.amount = amount;
         return this;
     }
@@ -177,31 +169,48 @@ public class BaseBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BaseBarBuilder trades(final long trades) {
+    public BarBuilder trades(final long trades) {
         this.trades = trades;
         return this;
     }
 
     @Override
-    public BaseBarBuilder trades(final String trades) {
+    public BarBuilder trades(final String trades) {
         trades(Long.parseLong(trades));
         return this;
     }
 
     @Override
-    public BaseBarBuilder bindTo(final BarSeries barSeries) {
-        this.baseBarSeries = Objects.requireNonNull(barSeries);
+    public TickBarBuilder bindTo(final BarSeries barSeries) {
+        this.barSeries = Objects.requireNonNull(barSeries);
         return this;
     }
 
+    /**
+     * Builds bar from current state that is modified for each tick.
+     *
+     * @return snapshot of current state
+     */
     @Override
-    public BaseBar build() {
+    public Bar build() {
         return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
 
     @Override
     public void add() {
-        this.baseBarSeries.addBar(build());
+        if (++this.passedTicksCount % this.tickCount == 0) {
+            this.barSeries.addBar(build());
+            reset();
+        }
+    }
+
+    private void reset() {
+        final var zero = this.numFactory.zero();
+        this.openPrice = null;
+        this.highPrice = zero;
+        this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
+        this.closePrice = null;
+        this.volume = zero;
     }
 }

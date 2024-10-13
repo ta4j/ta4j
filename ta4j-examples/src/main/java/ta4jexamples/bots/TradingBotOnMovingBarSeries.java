@@ -28,7 +28,7 @@ import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarConvertibleBuilder;
+import org.ta4j.core.BaseBarBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
@@ -120,7 +120,7 @@ public class TradingBotOnMovingBarSeries {
         Num highPrice = openPrice.plus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBarConvertibleBuilder(DecimalNumFactory.getInstance()).amount(1)
+        return new BaseBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
                 .endTime(Instant.now())

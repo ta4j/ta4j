@@ -402,7 +402,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDoubleTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
-        series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1))
+        series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(Instant.now())
                 .closePrice(DecimalNumFactory.getInstance().one())
                 .build());
@@ -411,7 +411,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
-        series.addBar(new BaseBarBuilder().timePeriod(Duration.ofDays(1))
+        series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(Instant.now())
                 .closePrice(DoubleNumFactory.getInstance().one())
                 .build());

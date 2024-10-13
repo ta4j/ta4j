@@ -53,7 +53,7 @@ public interface BarSeries extends Serializable {
     /**
      * @return builder that generates compatible bars
      */
-    BaseBarConvertibleBuilder barBuilder();
+    BarBuilder barBuilder();
 
     /**
      * @return the name of the series

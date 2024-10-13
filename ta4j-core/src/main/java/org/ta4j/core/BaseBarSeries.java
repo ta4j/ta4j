@@ -159,7 +159,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public BaseBarConvertibleBuilder barBuilder() {
+    public BarBuilder barBuilder() {
         return barBuilderFactory.createBarBuilder(this);
     }
 
