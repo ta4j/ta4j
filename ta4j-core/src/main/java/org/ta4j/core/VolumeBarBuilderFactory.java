@@ -23,10 +23,21 @@
  */
 package org.ta4j.core;
 
-class BaseBarBuilderFactory implements BarBuilderFactory {
+public class VolumeBarBuilderFactory implements BarBuilderFactory {
+
+    private final int volumeThreshold;
+    private VolumeBarBuilder barBuilder;
+
+    public VolumeBarBuilderFactory(final int volumeThreshold) {
+        this.volumeThreshold = volumeThreshold;
+    }
 
     @Override
-    public BaseBarBuilder createBarBuilder(BarSeries series) {
-        return new BaseBarBuilder(series.numFactory()).bindTo(series);
+    public BarBuilder createBarBuilder(final BarSeries series) {
+        if (this.barBuilder == null) {
+            this.barBuilder = new VolumeBarBuilder(series.numFactory(), this.volumeThreshold).bindTo(series);
+        }
+
+        return this.barBuilder;
     }
 }
