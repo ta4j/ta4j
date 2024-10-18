@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
 
 public class IsLowestRuleTest {
@@ -41,7 +41,7 @@ public class IsLowestRuleTest {
     @Before
     public void setUp() {
         BarSeries series = new BaseBarSeriesBuilder().build();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
+        Indicator<Num> indicator = new FixedNumIndicator(series, 1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
         rule = new IsLowestRule(indicator, 3);
     }
 
