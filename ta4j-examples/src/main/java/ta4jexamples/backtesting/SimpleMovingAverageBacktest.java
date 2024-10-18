@@ -29,8 +29,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarConvertibleBuilder;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
@@ -71,28 +69,80 @@ public class SimpleMovingAverageBacktest {
     }
 
     private static BarSeries createBarSeries() {
-        var series = new BaseBarSeriesBuilder().build();
-        series.addBar(createBar(series.barBuilder(), createDay(1), 100.0, 100.0, 100.0, 100.0, 1060));
-        series.addBar(createBar(series.barBuilder(), createDay(2), 110.0, 110.0, 110.0, 110.0, 1070));
-        series.addBar(createBar(series.barBuilder(), createDay(3), 140.0, 140.0, 140.0, 140.0, 1080));
-        series.addBar(createBar(series.barBuilder(), createDay(4), 119.0, 119.0, 119.0, 119.0, 1090));
-        series.addBar(createBar(series.barBuilder(), createDay(5), 100.0, 100.0, 100.0, 100.0, 1100));
-        series.addBar(createBar(series.barBuilder(), createDay(6), 110.0, 110.0, 110.0, 110.0, 1110));
-        series.addBar(createBar(series.barBuilder(), createDay(7), 120.0, 120.0, 120.0, 120.0, 1120));
-        series.addBar(createBar(series.barBuilder(), createDay(8), 130.0, 130.0, 130.0, 130.0, 1130));
+        final var series = new BaseBarSeriesBuilder().build();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(1))
+                .openPrice(100.0)
+                .highPrice(100.0)
+                .lowPrice(100.0)
+                .closePrice(100.0)
+                .volume(1060)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(2))
+                .openPrice(110.0)
+                .highPrice(110.0)
+                .lowPrice(110.0)
+                .closePrice(110.0)
+                .volume(1070)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(3))
+                .openPrice(140.0)
+                .highPrice(140.0)
+                .lowPrice(140.0)
+                .closePrice(140.0)
+                .volume(1080)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(4))
+                .openPrice(119.0)
+                .highPrice(119.0)
+                .lowPrice(119.0)
+                .closePrice(119.0)
+                .volume(1090)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(5))
+                .openPrice(100.0)
+                .highPrice(100.0)
+                .lowPrice(100.0)
+                .closePrice(100.0)
+                .volume(1100)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(6))
+                .openPrice(110.0)
+                .highPrice(110.0)
+                .lowPrice(110.0)
+                .closePrice(110.0)
+                .volume(1110)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(7))
+                .openPrice(120.0)
+                .highPrice(120.0)
+                .lowPrice(120.0)
+                .closePrice(120.0)
+                .volume(1120)
+                .add();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(createDay(8))
+                .openPrice(130.0)
+                .highPrice(130.0)
+                .lowPrice(130.0)
+                .closePrice(130.0)
+                .volume(1130)
+                .add();
         return series;
-    }
-
-    private static BaseBar createBar(BaseBarConvertibleBuilder barBuilder, Instant endTime, Number openPrice,
-            Number highPrice, Number lowPrice, Number closePrice, Number volume) {
-        return barBuilder.timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
-                .openPrice(openPrice)
-                .highPrice(highPrice)
-                .lowPrice(lowPrice)
-                .closePrice(closePrice)
-                .volume(volume)
-                .build();
     }
 
     private static Instant createDay(int day) {
