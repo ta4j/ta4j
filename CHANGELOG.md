@@ -22,15 +22,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Added
-<<<<<<< Upstream, based on myta4j/master
 - added `Bar.getZonedBeginTime`: the bar's begin time usable as ZonedDateTime
 - added `Bar.getZonedEndTime`: the bar's end time usable as ZonedDateTime
 - added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
 - added `Bar.getSystemZonedEndTime`: the bar's end time converted to system time zone
 - added `BarSeries.getSeriesPeriodDescriptionInSystemTimeZone`: with times printed in system's default time zone
-=======
 - Added `base` to `ReturnOverMaxDrawdown` to include or exclude the base from the calculation
->>>>>>> d6ec3dd fix ReturnCriterion and ReturnOverMaxDrawdown with base
 
 ## 0.17 (released September 9, 2024)
 
