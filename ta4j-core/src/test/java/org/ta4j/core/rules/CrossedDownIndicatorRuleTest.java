@@ -30,7 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 
 public class CrossedDownIndicatorRuleTest {
 
@@ -43,7 +43,7 @@ public class CrossedDownIndicatorRuleTest {
 
     @Test
     public void isSatisfied() {
-        var evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
+        var evaluatedIndicator = new FixedNumIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
         var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
 
         assertFalse(rule.isSatisfied(0));
@@ -58,7 +58,7 @@ public class CrossedDownIndicatorRuleTest {
 
     @Test
     public void onlyThresholdBetweenFirstBarAndLastBar() {
-        var evaluatedIndicator = new FixedDecimalIndicator(series, 11, 10, 10, 9);
+        var evaluatedIndicator = new FixedNumIndicator(series, 11, 10, 10, 9);
         var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
 
         assertFalse(rule.isSatisfied(0));
@@ -69,7 +69,7 @@ public class CrossedDownIndicatorRuleTest {
 
     @Test
     public void repeatedlyHittingThresholdAfterCrossDown() {
-        var evaluatedIndicator = new FixedDecimalIndicator(series, 11, 10, 9, 10, 9, 10, 9);
+        var evaluatedIndicator = new FixedNumIndicator(series, 11, 10, 9, 10, 9, 10, 9);
         var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
 
         assertFalse(rule.isSatisfied(0));

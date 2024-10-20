@@ -35,12 +35,12 @@ public class FixedIndicatorTest {
     @Test
     public void getValueOnFixedDecimalIndicator() {
         BarSeries series = new BaseBarSeriesBuilder().build();
-        var fixedDecimalIndicator = new FixedDecimalIndicator(series, 13.37, 42, -17);
+        var fixedDecimalIndicator = new FixedNumIndicator(series, 13.37, 42, -17);
         assertNumEquals(13.37, fixedDecimalIndicator.getValue(0));
         assertNumEquals(42, fixedDecimalIndicator.getValue(1));
         assertNumEquals(-17, fixedDecimalIndicator.getValue(2));
 
-        fixedDecimalIndicator = new FixedDecimalIndicator(series, "3.0", "-123.456", "0.0");
+        fixedDecimalIndicator = new FixedNumIndicator(series, "3.0", "-123.456", "0.0");
         assertNumEquals("3.0", fixedDecimalIndicator.getValue(0));
         assertNumEquals("-123.456", fixedDecimalIndicator.getValue(1));
         assertNumEquals("0.0", fixedDecimalIndicator.getValue(2));

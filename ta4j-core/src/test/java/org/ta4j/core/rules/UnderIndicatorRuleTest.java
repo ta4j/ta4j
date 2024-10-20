@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class UnderIndicatorRuleTest {
@@ -38,7 +38,7 @@ public class UnderIndicatorRuleTest {
     @Before
     public void setUp() {
         var series = new MockBarSeriesBuilder().build();
-        var indicator = new FixedDecimalIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
+        var indicator = new FixedNumIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
         rule = new UnderIndicatorRule(indicator, series.numFactory().numOf(5));
     }
 
