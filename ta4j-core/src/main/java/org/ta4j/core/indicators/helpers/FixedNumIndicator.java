@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Returns constant {@link Num} values for a bar.
  */
-public class FixedDecimalIndicator extends FixedIndicator<Num> {
+public class FixedNumIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
@@ -42,7 +42,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param series the bar series
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(BarSeries series, double... values) {
+    public FixedNumIndicator(BarSeries series, double... values) {
         super(series);
         for (double value : values) {
             addValue(getBarSeries().numFactory().numOf(value));
@@ -55,7 +55,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param series the bar series
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(BarSeries series, String... values) {
+    public FixedNumIndicator(BarSeries series, String... values) {
         super(series);
         for (String value : values) {
             addValue(getBarSeries().numFactory().numOf(new BigDecimal(value)));
