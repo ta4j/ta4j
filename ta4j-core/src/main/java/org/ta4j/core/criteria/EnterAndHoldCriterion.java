@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.criteria;
 
+import java.math.BigDecimal;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -53,6 +55,7 @@ import org.ta4j.core.num.Num;
  */
 public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
+    private final BigDecimal amount;
     private final TradeType tradeType;
     private final AnalysisCriterion criterion;
 
@@ -70,6 +73,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *                                  {@code VersusEnterAndHoldCriterion}
      */
     public EnterAndHoldCriterion(AnalysisCriterion criterion) {
+        this.amount = null;
         this.tradeType = TradeType.BUY;
         this.criterion = criterion;
     }
@@ -84,6 +88,21 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *                                  {@code VersusEnterAndHoldCriterion}
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
+        this(tradeType, criterion, null);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param tradeType the {@link TradeType} used to open the position
+     * @param criterion the {@link AnalysisCriterion criterion} to calculate
+     * @param amount    the amount to be used to hold the entry position; if
+     *                  {@code null} then {@code 1} is used.
+     * @throws IllegalArgumentException if {@code criterion} is an instance of
+     *                                  {@code EnterAndHoldCriterion} or
+     *                                  {@code VersusEnterAndHoldCriterion}
+     */
+    public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
         if (criterion instanceof EnterAndHoldCriterion) {
             throw new IllegalArgumentException("Criterion cannot be an instance of EnterAndHoldCriterion.");
         }
@@ -92,12 +111,13 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         }
         this.tradeType = tradeType;
         this.criterion = criterion;
+        this.amount = amount;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        int beginIndex = position.getEntry().getIndex();
-        int endIndex = series.getEndIndex();
+        var beginIndex = position.getEntry().getIndex();
+        var endIndex = series.getEndIndex();
         return criterion.calculate(series, createEnterAndHoldTrade(series, beginIndex, endIndex));
     }
 
@@ -106,8 +126,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return series.numFactory().one();
         }
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
+        var beginIndex = tradingRecord.getStartIndex(series);
+        var endIndex = tradingRecord.getEndIndex(series);
         return criterion.calculate(series, createEnterAndHoldTradingRecord(series, beginIndex, endIndex));
     }
 
@@ -117,16 +137,18 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
-        Position position = new Position(tradeType);
-        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
-        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
+        var position = new Position(tradeType);
+        var entryAmount = amount == null ? series.numFactory().one() : series.numFactory().numOf(amount);
+        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), entryAmount);
+        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), entryAmount);
         return position;
     }
 
     private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
-        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numFactory().one());
-        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numFactory().one());
+        var fakeRecord = new BaseTradingRecord(tradeType);
+        var entryAmount = amount == null ? series.numFactory().one() : series.numFactory().numOf(amount);
+        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), entryAmount);
+        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), entryAmount);
         return fakeRecord;
     }
 
