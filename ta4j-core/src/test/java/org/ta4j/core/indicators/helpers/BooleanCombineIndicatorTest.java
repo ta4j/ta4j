@@ -50,18 +50,10 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
     @Before
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        fixedIndicator1 = new FixedIndicator<>(barSeries,
-                numFactory.numOf(1),
-                numFactory.numOf(2),
-                numFactory.numOf(3),
-                numFactory.numOf(4),
-                numFactory.numOf(5));
-        fixedIndicator2 = new FixedIndicator<>(barSeries,
-                numFactory.numOf(0),
-                numFactory.numOf(2),
-                numFactory.numOf(4),
-                numFactory.numOf(6),
-                numFactory.numOf(8));
+        fixedIndicator1 = new FixedIndicator<>(barSeries, numFactory.numOf(1), numFactory.numOf(2), numFactory.numOf(3),
+                numFactory.numOf(4), numFactory.numOf(5));
+        fixedIndicator2 = new FixedIndicator<>(barSeries, numFactory.numOf(0), numFactory.numOf(2), numFactory.numOf(4),
+                numFactory.numOf(6), numFactory.numOf(8));
     }
 
     @Test
@@ -123,7 +115,8 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveGreaterOrEqual() {
-        BooleanCombineIndicator isGreaterThanOrEqual = BooleanCombineIndicator.isGreaterThanOrEqual(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator isGreaterThanOrEqual = BooleanCombineIndicator.isGreaterThanOrEqual(fixedIndicator1,
+                fixedIndicator2);
 
         assertTrue(isGreaterThanOrEqual.getValue(0));
         assertTrue(isGreaterThanOrEqual.getValue(1));
@@ -161,7 +154,8 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveLessOrEqual() {
-        BooleanCombineIndicator isLessThanOrEqual = BooleanCombineIndicator.isLessThanOrEqual(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator isLessThanOrEqual = BooleanCombineIndicator.isLessThanOrEqual(fixedIndicator1,
+                fixedIndicator2);
 
         assertFalse(isLessThanOrEqual.getValue(0));
         assertTrue(isLessThanOrEqual.getValue(1));
