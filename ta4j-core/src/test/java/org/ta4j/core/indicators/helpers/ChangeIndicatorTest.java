@@ -46,10 +46,8 @@ public class ChangeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Before
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        FixedIndicator<Num> fixedIndicator = new FixedIndicator<>(barSeries, numFactory.numOf(1), numFactory.numOf(1),
-                numFactory.numOf(2), numFactory.numOf(3), numFactory.numOf(5), numFactory.numOf(8),
-                numFactory.numOf(13), numFactory.numOf(10), numFactory.numOf(4));
-        changeIndicator = new ChangeIndicator(fixedIndicator);
+        FixedNumIndicator indicator = new FixedNumIndicator(barSeries, 1, 1, 2, 3, 5, 8, 13, 10, 4);
+        changeIndicator = new ChangeIndicator(indicator);
     }
 
     @Test
