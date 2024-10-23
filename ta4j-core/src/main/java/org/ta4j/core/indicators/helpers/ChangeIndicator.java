@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Change indicator aka. Momentum indicator.
+ *
  * Compared to the rate of change (ROC) indicator, this indicator calculates the
- * absolute change value, whereas the ROC indicator calculates the relative change (percentage).
+ * absolute change value, whereas the ROC indicator calculates the relative
+ * change (percentage).
  */
 public class ChangeIndicator extends AbstractIndicator<Num> {
     private final Indicator<Num> indicator;
