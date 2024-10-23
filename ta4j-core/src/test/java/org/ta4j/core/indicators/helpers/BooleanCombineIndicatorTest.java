@@ -38,8 +38,8 @@ import static junit.framework.TestCase.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
-    private FixedIndicator<Num> fixedIndicator1;
-    private FixedIndicator<Num> fixedIndicator2;
+    private FixedNumIndicator indicator1;
+    private FixedNumIndicator indicator2;
 
     private BarSeries barSeries;
 
@@ -50,15 +50,13 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
     @Before
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        fixedIndicator1 = new FixedIndicator<>(barSeries, numFactory.numOf(1), numFactory.numOf(2), numFactory.numOf(3),
-                numFactory.numOf(4), numFactory.numOf(5));
-        fixedIndicator2 = new FixedIndicator<>(barSeries, numFactory.numOf(0), numFactory.numOf(2), numFactory.numOf(4),
-                numFactory.numOf(6), numFactory.numOf(8));
+        indicator1 = new FixedNumIndicator(barSeries, 1, 2, 3, 4, 5);
+        indicator2 = new FixedNumIndicator(barSeries, 0, 2, 4, 6, 8);
     }
 
     @Test
     public void indicatorShouldRetrieveEquals() {
-        BooleanCombineIndicator equals = BooleanCombineIndicator.equals(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator equals = BooleanCombineIndicator.equals(indicator1, indicator2);
 
         assertFalse(equals.getValue(0));
         assertTrue(equals.getValue(1));
@@ -77,7 +75,7 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveEqual() {
-        BooleanCombineIndicator isEqual = BooleanCombineIndicator.isEqual(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator isEqual = BooleanCombineIndicator.isEqual(indicator1, indicator2);
 
         assertFalse(isEqual.getValue(0));
         assertTrue(isEqual.getValue(1));
@@ -96,7 +94,7 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveGreater() {
-        BooleanCombineIndicator isGreaterThan = BooleanCombineIndicator.isGreaterThan(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator isGreaterThan = BooleanCombineIndicator.isGreaterThan(indicator1, indicator2);
 
         assertTrue(isGreaterThan.getValue(0));
         assertFalse(isGreaterThan.getValue(1));
@@ -115,8 +113,8 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveGreaterOrEqual() {
-        BooleanCombineIndicator isGreaterThanOrEqual = BooleanCombineIndicator.isGreaterThanOrEqual(fixedIndicator1,
-                fixedIndicator2);
+        BooleanCombineIndicator isGreaterThanOrEqual = BooleanCombineIndicator.isGreaterThanOrEqual(indicator1,
+                indicator2);
 
         assertTrue(isGreaterThanOrEqual.getValue(0));
         assertTrue(isGreaterThanOrEqual.getValue(1));
@@ -135,7 +133,7 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveLess() {
-        BooleanCombineIndicator isLessThan = BooleanCombineIndicator.isLessThan(fixedIndicator1, fixedIndicator2);
+        BooleanCombineIndicator isLessThan = BooleanCombineIndicator.isLessThan(indicator1, indicator2);
 
         assertFalse(isLessThan.getValue(0));
         assertFalse(isLessThan.getValue(1));
@@ -154,8 +152,7 @@ public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveLessOrEqual() {
-        BooleanCombineIndicator isLessThanOrEqual = BooleanCombineIndicator.isLessThanOrEqual(fixedIndicator1,
-                fixedIndicator2);
+        BooleanCombineIndicator isLessThanOrEqual = BooleanCombineIndicator.isLessThanOrEqual(indicator1, indicator2);
 
         assertFalse(isLessThanOrEqual.getValue(0));
         assertTrue(isLessThanOrEqual.getValue(1));
