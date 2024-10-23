@@ -37,7 +37,7 @@ import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class BooleanCombineIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
     private FixedIndicator<Num> fixedIndicator1;
     private FixedIndicator<Num> fixedIndicator2;
 
