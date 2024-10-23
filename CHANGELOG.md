@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
 - added `Bar.getSystemZonedEndTime`: the bar's end time converted to system time zone
 - added `BarSeries.getSeriesPeriodDescriptionInSystemTimeZone`: with times printed in system's default time zone
+- added `ChangeIndicator`
 
 ## 0.17 (released September 9, 2024)
 
