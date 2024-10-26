@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-				 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-				 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.ta4j</groupId>
 	<artifactId>ta4j-parent</artifactId>
@@ -60,12 +60,13 @@
 	<modules>
 		<module>ta4j-core</module>
 		<module>ta4j-csv</module>
+		<module>ta4j-jdbc</module>
 		<module>ta4j-examples</module>
 	</modules>
 
 	<properties>
 		<!-- Encoding -->
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
@@ -136,7 +137,7 @@
 	<profiles>
 
 		<!-- Only when performing a release (i.e. not for snapshots) -->
-		<profile>
+    <profile>
 			<id>sonatype-oss-release</id>
 			<build>
 				<plugins>
@@ -147,9 +148,9 @@
 						<extensions>true</extensions>
 						<configuration>
 							<!-- The Base URL of Nexus instance where we want to stage -->
-							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-							<!-- The server "id" element from settings to use authentication from -->
-							<serverId>sonatype-nexus-staging</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <!-- The server "id" element from settings to use authentication from -->
+              <serverId>sonatype-nexus-staging</serverId>
 						</configuration>
 					</plugin>
 
@@ -170,8 +171,8 @@
 						</executions>
 					</plugin>
 
-					<!-- Artifact signing -->
-					<plugin>
+          <!-- Artifact signing -->
+          <plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
 						<version>3.2.5</version>
@@ -195,11 +196,18 @@
 		<plugins>
 
 			<!-- Build source and target -->
-			<plugin>
+      <plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
 				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.32</version>
+						</path>
+					</annotationProcessorPaths>
 					<source>21</source>
 					<target>21</target>
 					<release>21</release>
@@ -207,8 +215,8 @@
 					<showWarnings>true</showWarnings>
 				</configuration>
 			</plugin>
-			<!-- Package sources -->
-			<plugin>
+      <!-- Package sources -->
+      <plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.3.1</version>
@@ -222,8 +230,8 @@
 				</executions>
 			</plugin>
 
-			<!-- License headers -->
-			<plugin>
+      <!-- License headers -->
+      <plugin>
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
 				<version>4.5</version>
@@ -235,8 +243,8 @@
 				</configuration>
 			</plugin>
 
-			<!-- Source formatter -->
-			<plugin>
+      <!-- Source formatter -->
+      <plugin>
 				<groupId>net.revelc.code.formatter</groupId>
 				<artifactId>formatter-maven-plugin</artifactId>
 				<version>2.24.1</version>
@@ -245,8 +253,8 @@
 					</configuration>
 			</plugin>
 
-			<!-- Releases -->
-			<plugin>
+      <!-- Releases -->
+      <plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>
 				<version>3.1.1</version>
