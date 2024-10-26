@@ -80,7 +80,7 @@ public class OverIndicatorRule extends AbstractRule {
 
   @Override
   public boolean isSatisfied() {
-    final boolean satisfied = this.first.getValue().isGreaterThan(this.second.getValue());
+    final boolean satisfied = this.first.isGreaterThan(this.second);
     traceIsSatisfied(satisfied);
     return satisfied;
   }

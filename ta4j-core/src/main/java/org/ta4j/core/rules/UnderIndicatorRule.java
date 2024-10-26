@@ -80,7 +80,7 @@ public class UnderIndicatorRule extends AbstractRule {
 
   @Override
   public boolean isSatisfied() {
-    final boolean satisfied = this.first.getValue().isLessThan(this.second.getValue());
+    final boolean satisfied = this.first.isLessThan(this.second);
     traceIsSatisfied(satisfied);
     return satisfied;
   }

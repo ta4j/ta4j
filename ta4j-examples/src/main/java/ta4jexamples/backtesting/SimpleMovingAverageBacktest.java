@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestBar;
 import org.ta4j.core.backtest.BacktestBarBuilder;
@@ -108,8 +109,8 @@ public class SimpleMovingAverageBacktest {
     final var sma = closePrice.sma(3);
     return new BacktestStrategy(
         "",
-        sma.isLessThan(closePrice),
-        sma.isGreaterThan(closePrice),
+        Rule.of(() -> sma.isLessThan(closePrice)),
+        Rule.of(() -> sma.isGreaterThan(closePrice)),
         IndicatorContext.of(sma)
     );
   }
@@ -120,8 +121,8 @@ public class SimpleMovingAverageBacktest {
     final var sma = closePrice.sma(2);
     return new BacktestStrategy(
         "",
-        sma.isLessThan(closePrice),
-        sma.isGreaterThan(closePrice),
+        Rule.of(() -> sma.isLessThan(closePrice)),
+        Rule.of(() -> sma.isGreaterThan(closePrice)),
         IndicatorContext.of(sma)
     );
   }

@@ -499,7 +499,7 @@ public abstract class NumericIndicator implements Indicator<Num> {
   /**
    * @param n the other number
    *
-   * @return the {@link CrossIndicator} of {@code this} and {@code n}
+   * @return he current comparison of {@code this} and {@code n}
    */
   public CrossIndicator crossedUnder(final Number n) {
     return crossedUnder(createConstant(n));
@@ -509,30 +509,50 @@ public abstract class NumericIndicator implements Indicator<Num> {
   /**
    * @param other the other indicator
    *
-   * @return the {@link OverIndicatorRule} of {@code this} and {@code other}
+   * @return he current comparison of {@code this} and {@code other}
    */
-  public OverIndicatorRule isGreaterThan(final NumericIndicator other) {
-    return new OverIndicatorRule(this, other);
+  public boolean isGreaterThan(final NumericIndicator other) {
+    return getValue().isGreaterThan(other.getValue());
   }
 
 
   /**
    * @param n the other number
    *
-   * @return the {@link OverIndicatorRule} of {@code this} and {@code n}
+   * @return the current comparison of {@code this} and {@code n}
    */
-  public OverIndicatorRule isGreaterThan(final Number n) {
+  public boolean isGreaterThan(final Number n) {
     return isGreaterThan(createConstant(n));
+  }
+
+
+  public OverIndicatorRule isGreaterThanRule(final NumericIndicator other) {
+    return new OverIndicatorRule(this, other);
+  }
+
+
+  public OverIndicatorRule isGreaterThanRule(final Number n) {
+    return isGreaterThanRule(createConstant(n));
   }
 
 
   /**
    * @param other the other indicator
    *
-   * @return the {@link UnderIndicatorRule} of {@code this} and {@code other}
+   * @return he current comparison of {@code this} and {@code other}
    */
-  public UnderIndicatorRule isLessThan(final NumericIndicator other) {
+  public boolean isLessThan(final NumericIndicator other) {
+    return getValue().isLessThan(other.getValue());
+  }
+
+
+  public UnderIndicatorRule isLessThanRule(final NumericIndicator other) {
     return new UnderIndicatorRule(this, other);
+  }
+
+
+  public UnderIndicatorRule isLessThanRule(final Number n) {
+    return isLessThanRule(createConstant(n));
   }
 
 
@@ -541,7 +561,7 @@ public abstract class NumericIndicator implements Indicator<Num> {
    *
    * @return the {@link UnderIndicatorRule} of {@code this} and {@code n}
    */
-  public UnderIndicatorRule isLessThan(final Number n) {
+  public boolean isLessThan(final Number n) {
     return isLessThan(createConstant(n));
   }
 

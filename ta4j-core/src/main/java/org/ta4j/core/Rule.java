@@ -23,6 +23,8 @@
  */
 package org.ta4j.core;
 
+import java.util.function.BooleanSupplier;
+
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.NotRule;
@@ -79,4 +81,8 @@ public interface Rule {
    *     otherwise
    */
   boolean isSatisfied();
+
+  static Rule of(final BooleanSupplier rule) {
+    return rule::getAsBoolean;
+  }
 }

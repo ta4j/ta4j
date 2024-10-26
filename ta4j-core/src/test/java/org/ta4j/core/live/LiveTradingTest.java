@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 
 import org.junit.Test;
+import org.ta4j.core.Rule;
 import org.ta4j.core.backtest.BacktestStrategy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.IndicatorContext;
@@ -59,8 +60,8 @@ public class LiveTradingTest extends AbstractIndicatorTest<Num> {
           final var closePrice = NumericIndicator.closePrice(series);
           final var sma = closePrice.sma(5);
           smaTest.add(sma);
-          final var entryRule = sma.isGreaterThan(5);
-          final var exitRule = sma.isLessThan(11);
+          final var entryRule = Rule.of(() -> sma.isGreaterThan(5));
+          final var exitRule = Rule.of(() -> sma.isLessThan(11));
           return new BacktestStrategy("LiveSMA", entryRule, exitRule, IndicatorContext.of(sma));
         })
         .build();
