@@ -26,9 +26,9 @@ package org.ta4j.core.indicators.adx;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.average.MMAIndicator;
+import org.ta4j.core.indicators.numeric.ATRIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.numeric.average.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**

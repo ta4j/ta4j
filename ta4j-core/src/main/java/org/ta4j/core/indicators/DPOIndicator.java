@@ -24,7 +24,7 @@
 //package org.ta4j.core.indicators;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.CombineIndicator;
 //import org.ta4j.core.indicators.helpers.PreviousValueIndicator;

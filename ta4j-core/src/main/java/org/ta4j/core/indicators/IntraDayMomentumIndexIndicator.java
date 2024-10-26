@@ -26,7 +26,7 @@
 //import static org.ta4j.core.num.NaN.NaN;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.candles.RealBodyIndicator;
 //import org.ta4j.core.indicators.helpers.TransformIndicator;
 //import org.ta4j.core.num.Num;

@@ -24,9 +24,9 @@
 //package org.ta4j.core.indicators;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
-//import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
+//import org.ta4j.core.indicators.numeric.statistics.MeanDeviationIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**

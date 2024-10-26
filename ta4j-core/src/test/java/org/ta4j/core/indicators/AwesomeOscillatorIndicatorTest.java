@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+import org.ta4j.core.indicators.numeric.oscilators.AwesomeOscillatorIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;

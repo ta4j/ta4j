@@ -31,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.numeric.oscilators.aroon.AroonUpIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 

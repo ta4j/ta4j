@@ -34,7 +34,7 @@
 //import org.ta4j.core.Strategy;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.criteria.pnl.ReturnCriterion;
-//import org.ta4j.core.indicators.average.EMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.EMAIndicator;
 //import org.ta4j.core.indicators.MACDIndicator;
 //import org.ta4j.core.indicators.RSIIndicator;
 //import org.ta4j.core.indicators.helpers.ClosePriceIndicator;

@@ -42,7 +42,7 @@
 //import org.ta4j.core.Strategy;
 //import org.ta4j.core.Trade;
 //import org.ta4j.core.backtest.BacktestExecutor;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 //import org.ta4j.core.num.DecimalNum;
 //import org.ta4j.core.num.Num;

@@ -24,9 +24,9 @@
 //package org.ta4j.core.indicators.volume;
 //
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.helpers.RunningVolumeSumIndicator;
-//import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+//import org.ta4j.core.indicators.numeric.statistics.StandardDeviationIndicator;
 //import org.ta4j.core.num.Num;
 //
 //import static org.ta4j.core.num.NaN.NaN;

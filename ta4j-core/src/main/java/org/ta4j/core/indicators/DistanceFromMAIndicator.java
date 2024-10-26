@@ -29,17 +29,17 @@
 //
 //import org.ta4j.core.Bar;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.AbstractEMAIndicator;
-//import org.ta4j.core.indicators.average.DoubleEMAIndicator;
-//import org.ta4j.core.indicators.average.EMAIndicator;
-//import org.ta4j.core.indicators.average.HMAIndicator;
-//import org.ta4j.core.indicators.average.KAMAIndicator;
-//import org.ta4j.core.indicators.average.LWMAIndicator;
-//import org.ta4j.core.indicators.average.MMAIndicator;
-//import org.ta4j.core.indicators.average.SMAIndicator;
-//import org.ta4j.core.indicators.average.TripleEMAIndicator;
-//import org.ta4j.core.indicators.average.WMAIndicator;
-//import org.ta4j.core.indicators.average.ZLEMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.AbstractEMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.DoubleEMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.EMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.HMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.KAMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.LWMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.MMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.TripleEMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.WMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.ZLEMAIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**

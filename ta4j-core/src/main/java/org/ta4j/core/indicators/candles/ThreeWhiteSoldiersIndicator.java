@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.Bar;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**

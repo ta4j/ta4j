@@ -38,8 +38,8 @@
 //import org.ta4j.core.backtest.BacktestBarSeriesBuilder;
 //import org.ta4j.core.backtest.BacktestStrategy;
 //import org.ta4j.core.Strategy;
-//import org.ta4j.core.indicators.average.SMAIndicator;
-//import org.ta4j.core.indicators.average.ZLEMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.ZLEMAIndicator;
 //import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.ConstantNumericIndicator;
 //import org.ta4j.core.mocks.MockBarSeriesBuilder;

@@ -36,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.MockStrategy;
 import org.ta4j.core.backtest.BacktestBarSeries;
+import org.ta4j.core.indicators.numeric.oscilators.aroon.AroonOscillatorIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AroonOscillatorIndicatorTest {

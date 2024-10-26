@@ -38,12 +38,12 @@
 //import org.ta4j.core.Bar;
 //import org.ta4j.core.BarSeries;
 //import org.ta4j.core.indicators.Indicator;
-//import org.ta4j.core.indicators.average.EMAIndicator;
-//import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
-//import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
-//import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
+//import org.ta4j.core.indicators.numeric.average.EMAIndicator;
+//import org.ta4j.core.indicators.numeric.channels.bollinger.BollingerBandsLowerIndicator;
+//import org.ta4j.core.indicators.numeric.channels.bollinger.BollingerBandsMiddleIndicator;
+//import org.ta4j.core.indicators.numeric.channels.bollinger.BollingerBandsUpperIndicator;
 //import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-//import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+//import org.ta4j.core.indicators.numeric.statistics.StandardDeviationIndicator;
 //import org.ta4j.core.num.Num;
 //
 //import ta4jexamples.loaders.CsvBarsLoader;

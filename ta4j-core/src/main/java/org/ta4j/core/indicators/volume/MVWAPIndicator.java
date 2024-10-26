@@ -24,7 +24,7 @@
 //package org.ta4j.core.indicators.volume;
 //
 //import org.ta4j.core.indicators.Indicator;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.num.Num;
 //
 ///**

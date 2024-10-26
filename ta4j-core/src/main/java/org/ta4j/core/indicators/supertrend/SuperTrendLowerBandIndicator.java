@@ -25,7 +25,7 @@
 //
 //import org.ta4j.core.Bar;
 //import org.ta4j.core.BarSeries;
-//import org.ta4j.core.indicators.ATRIndicator;
+//import org.ta4j.core.indicators.numeric.ATRIndicator;
 //import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 //import org.ta4j.core.num.Num;
 //

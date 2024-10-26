@@ -29,7 +29,7 @@
 //import org.ta4j.core.Strategy;
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.criteria.pnl.ReturnCriterion;
-//import org.ta4j.core.indicators.average.SMAIndicator;
+//import org.ta4j.core.indicators.numeric.average.SMAIndicator;
 //import org.ta4j.core.indicators.adx.ADXIndicator;
 //import org.ta4j.core.indicators.adx.MinusDIIndicator;
 //import org.ta4j.core.indicators.adx.PlusDIIndicator;

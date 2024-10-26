@@ -26,9 +26,10 @@ package org.ta4j.core.indicators;
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.average.SMAIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.numeric.average.SMAIndicator;
+import org.ta4j.core.indicators.numeric.oscilators.AwesomeOscillatorIndicator;
 import org.ta4j.core.num.Num;
 
 /**
