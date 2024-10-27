@@ -21,56 +21,51 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.numeric.adx;
 
 import java.time.Instant;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.numeric.ATRIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.indicators.numeric.average.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * +DI indicator.
+ * DX indicator.
  *
  * <p>
  * Part of the Directional Movement System.
- *
- * @see <a href=
- *     "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
- * @see <a href=
- *     "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class PlusDIIndicator extends NumericIndicator {
+public class DXIndicator extends NumericIndicator {
 
-  private final int barCount;
-  private final ATRIndicator atrIndicator;
-  private final MMAIndicator avgPlusDMIndicator;
-  private Num value;
-  private int barsPassed;
+  private final PlusDIIndicator plusDIIndicator;
+  private final MinusDIIndicator minusDIIndicator;
   private Instant currentTick = Instant.EPOCH;
+  private Num value;
 
 
   /**
    * Constructor.
    *
    * @param series the bar series
-   * @param barCount the bar count for {@link #atrIndicator} and
-   *     {@link #avgPlusDMIndicator}
+   * @param barCount the bar count for {@link #plusDIIndicator} and
+   *     {@link #minusDIIndicator}
    */
-  public PlusDIIndicator(final BarSeries series, final int barCount) {
+  public DXIndicator(final BarSeries series, final int barCount) {
     super(series.numFactory());
-    this.barCount = barCount;
-    this.atrIndicator = new ATRIndicator(series, barCount);
-    this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
+    this.plusDIIndicator = new PlusDIIndicator(series, barCount);
+    this.minusDIIndicator = new MinusDIIndicator(series, barCount);
   }
 
 
   protected Num calculate() {
-    return this.avgPlusDMIndicator.getValue()
-        .dividedBy(this.atrIndicator.getValue())
+    final Num pdiValue = this.plusDIIndicator.getValue();
+    final Num mdiValue = this.minusDIIndicator.getValue();
+    if (pdiValue.plus(mdiValue).equals(getNumFactory().zero())) {
+      return getNumFactory().zero();
+    }
+    return pdiValue.minus(mdiValue)
+        .abs()
+        .dividedBy(pdiValue.plus(mdiValue))
         .multipliedBy(getNumFactory().hundred());
   }
 
@@ -83,29 +78,23 @@ public class PlusDIIndicator extends NumericIndicator {
 
   @Override
   public void refresh(final Instant tick) {
-    if (tick.isAfter(this.currentTick)) {
-      ++this.barsPassed;
-      this.atrIndicator.refresh(tick);
-      this.avgPlusDMIndicator.refresh(tick);
-      this.value = calculate();
-      this.currentTick = tick;
-    } else if (tick.isBefore(tick)) {
-      this.barsPassed = 1;
-      this.atrIndicator.refresh(tick);
-      this.avgPlusDMIndicator.refresh(tick);
+    if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
+      this.plusDIIndicator.refresh(tick);
+      this.minusDIIndicator.refresh(tick);
       this.value = calculate();
       this.currentTick = tick;
     }
   }
 
 
+  @Override
   public boolean isStable() {
-    return this.barsPassed >= this.barCount && this.atrIndicator.isStable() && this.avgPlusDMIndicator.isStable();
+    return this.plusDIIndicator.isStable() && this.minusDIIndicator.isStable();
   }
 
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + " " + this.atrIndicator + " " + this.avgPlusDMIndicator;
+    return getClass().getSimpleName() + " " + this.plusDIIndicator + " " + this.minusDIIndicator;
   }
 }

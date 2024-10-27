@@ -24,4 +24,4 @@
 /**
  * Indicators for the realization of the 'Directional Movement System'
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.numeric.adx;

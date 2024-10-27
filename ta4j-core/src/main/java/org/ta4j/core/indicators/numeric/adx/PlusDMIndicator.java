@@ -21,78 +21,85 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.numeric.adx;
 
 import java.time.Instant;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.indicators.numeric.average.MMAIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * ADX indicator.
+ * +DM indicator.
  *
  * <p>
  * Part of the Directional Movement System.
- *
- * @see <a href=
- *     "https://www.investopedia.com/terms/a/adx.asp">https://www.investopedia.com/terms/a/adx.asp</a>
  */
-public class ADXIndicator extends NumericIndicator {
+public class PlusDMIndicator extends SeriesRelatedNumericIndicator {
 
-  private final int diBarCount;
-  private final int adxBarCount;
-  private final MMAIndicator averageDXIndicator;
-
-
-  /**
-   * Constructor.
-   *
-   * @param series the bar series
-   * @param diBarCount the bar count for {@link DXIndicator}
-   * @param adxBarCount the bar count for {@link #averageDXIndicator}
-   */
-  public ADXIndicator(final BarSeries series, final int diBarCount, final int adxBarCount) {
-    super(series.numFactory());
-    this.diBarCount = diBarCount;
-    this.adxBarCount = adxBarCount;
-    this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
-  }
+  private Bar previousBar;
+  private Num value;
+  private Instant currentTick = Instant.EPOCH;
+  private boolean stable;
 
 
   /**
    * Constructor.
    *
    * @param series the bar series
-   * @param barCount the bar count for {@link DXIndicator} and
-   *     {@link #averageDXIndicator}
    */
-  public ADXIndicator(final BarSeries series, final int barCount) {
-    this(series, barCount, barCount);
+  public PlusDMIndicator(final BarSeries series) {
+    super(series);
   }
 
 
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + " diBarCount: " + this.diBarCount + " adxBarCount: " + this.adxBarCount;
+  protected Num calculate() {
+    final var numFactory = getBarSeries().numFactory();
+
+    if (this.previousBar == null) {
+      this.previousBar = getBarSeries().getBar();
+      return numFactory.zero();
+    }
+
+    this.stable = true;
+    final Bar prevBar = this.previousBar;
+    final Bar currentBar = getBarSeries().getBar();
+
+    final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
+    final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
+
+    this.previousBar = currentBar;
+    if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numFactory.zero())) {
+      return upMove;
+    }
+
+    return numFactory.zero();
   }
 
 
   @Override
   public Num getValue() {
-    return this.averageDXIndicator.getValue();
+    return this.value;
   }
 
 
   @Override
   public void refresh(final Instant tick) {
-    this.averageDXIndicator.refresh(tick);
+    if (tick.isAfter(this.currentTick)) {
+      this.value = calculate();
+      this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.previousBar = null;
+      this.stable = false;
+      this.value = calculate();
+      this.currentTick = tick;
+    }
   }
 
 
   @Override
   public boolean isStable() {
-    return this.averageDXIndicator.isStable();
+    return this.stable;
   }
 }

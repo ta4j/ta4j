@@ -21,52 +21,58 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.numeric.adx;
 
 import java.time.Instant;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.SeriesRelatedNumericIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * DX indicator.
+ * -DM indicator.
  *
  * <p>
  * Part of the Directional Movement System.
  */
-public class DXIndicator extends NumericIndicator {
+public class MinusDMIndicator extends SeriesRelatedNumericIndicator {
 
-  private final PlusDIIndicator plusDIIndicator;
-  private final MinusDIIndicator minusDIIndicator;
-  private Instant currentTick = Instant.EPOCH;
+  private Bar previousBar;
   private Num value;
+  private Instant currentTick = Instant.EPOCH;
+  private boolean stable;
 
 
   /**
    * Constructor.
    *
    * @param series the bar series
-   * @param barCount the bar count for {@link #plusDIIndicator} and
-   *     {@link #minusDIIndicator}
    */
-  public DXIndicator(final BarSeries series, final int barCount) {
-    super(series.numFactory());
-    this.plusDIIndicator = new PlusDIIndicator(series, barCount);
-    this.minusDIIndicator = new MinusDIIndicator(series, barCount);
+  public MinusDMIndicator(final BarSeries series) {
+    super(series);
   }
 
 
   protected Num calculate() {
-    final Num pdiValue = this.plusDIIndicator.getValue();
-    final Num mdiValue = this.minusDIIndicator.getValue();
-    if (pdiValue.plus(mdiValue).equals(getNumFactory().zero())) {
-      return getNumFactory().zero();
+    if (this.previousBar == null) {
+      this.previousBar = getBarSeries().getBar();
+      return getBarSeries().numFactory().zero();
     }
-    return pdiValue.minus(mdiValue)
-        .abs()
-        .dividedBy(pdiValue.plus(mdiValue))
-        .multipliedBy(getNumFactory().hundred());
+
+    this.stable = true;
+    final Bar prevBar = this.previousBar;
+    final Bar currentBar = getBarSeries().getBar();
+
+    final Num upMove = currentBar.highPrice().minus(prevBar.highPrice());
+    final Num downMove = prevBar.lowPrice().minus(currentBar.lowPrice());
+
+    this.previousBar = currentBar;
+    if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(getBarSeries().numFactory().zero())) {
+      return downMove;
+    }
+
+    return getBarSeries().numFactory().zero();
   }
 
 
@@ -78,23 +84,19 @@ public class DXIndicator extends NumericIndicator {
 
   @Override
   public void refresh(final Instant tick) {
-    if (tick.isAfter(this.currentTick) || tick.isBefore(this.currentTick)) {
-      this.plusDIIndicator.refresh(tick);
-      this.minusDIIndicator.refresh(tick);
+    if (tick.isAfter(this.currentTick)) {
       this.value = calculate();
       this.currentTick = tick;
+    } else if (tick.isBefore(this.currentTick)) {
+      this.previousBar = null;
+      this.stable = false;
+      this.value = calculate();
     }
   }
 
 
   @Override
   public boolean isStable() {
-    return this.plusDIIndicator.isStable() && this.minusDIIndicator.isStable();
-  }
-
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + " " + this.plusDIIndicator + " " + this.minusDIIndicator;
+    return this.stable;
   }
 }

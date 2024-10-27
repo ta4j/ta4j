@@ -1,4 +1,4 @@
-/*
+/**
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2023 Ta4j Organization & respective
@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.numeric.adx;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
@@ -36,43 +36,43 @@ import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MinusDIIndicatorTest extends AbstractIndicatorTest<Num> {
+public class PlusDIIndicatorTest extends AbstractIndicatorTest<Num> {
 
   private final ExternalIndicatorTest xls;
 
 
-  public MinusDIIndicatorTest(final NumFactory nf) {
-    super(nf);
-    this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13, this.numFactory);
+  public PlusDIIndicatorTest(final NumFactory numFactory) {
+    super(numFactory);
+    this.xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 12, numFactory);
   }
 
 
   @Test
-  public void xlsTest1() throws Exception {
-    assertXlsValues(1, 0.0);
+  public void testAgainstExternalData1() throws Exception {
+    assertXlsValues(1, 12.5);
+
   }
 
 
   @Test
-  public void xlsTest3() throws Exception {
-    assertXlsValues(3, 21.0711);
+  public void testAgainstExternalData3() throws Exception {
+    assertXlsValues(3, 22.8407);
   }
 
 
   @Test
-  public void xlsTest13() throws Exception {
-    assertXlsValues(13, 20.9020);
+  public void testAgainstExternalData13() throws Exception {
+    assertXlsValues(13, 22.1399);
   }
 
 
   private void assertXlsValues(final int x, final double expected) throws Exception {
     final var xlsSeries = this.xls.getSeries();
-    final var indicator = new MinusDIIndicator(xlsSeries, x);
+    final var actualIndicator = new PlusDIIndicator(xlsSeries, x);
     final var expectedIndicator = this.xls.getIndicator(x);
-    xlsSeries.replaceStrategy(new MockStrategy(indicator, expectedIndicator));
+    xlsSeries.replaceStrategy(new MockStrategy(actualIndicator, expectedIndicator));
 
-    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, indicator));
-    assertEquals(expected, indicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
+    assertIndicatorEquals(expectedIndicator, new TestIndicator<>(xlsSeries, actualIndicator));
+    assertEquals(expected, actualIndicator.getValue().doubleValue(), TestUtils.GENERAL_OFFSET);
   }
-
 }

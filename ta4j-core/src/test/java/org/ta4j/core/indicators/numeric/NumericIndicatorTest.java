@@ -32,7 +32,7 @@
 //import org.ta4j.core.indicators.AbstractIndicatorTest;
 //import org.ta4j.core.indicators.numeric.average.EMAIndicator;
 //import org.ta4j.core.indicators.numeric.average.SMAIndicator;
-//import org.ta4j.core.indicators.adx.ADXIndicator;
+//import org.ta4j.core.indicators.numeric.adx.ADXIndicator;
 //import org.ta4j.core.indicators.candles.price.ClosePriceIndicator;
 //import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 //import org.ta4j.core.indicators.helpers.LowestValueIndicator;

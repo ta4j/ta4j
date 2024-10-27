@@ -30,9 +30,9 @@
 //import org.ta4j.core.TradingRecord;
 //import org.ta4j.core.criteria.pnl.ReturnCriterion;
 //import org.ta4j.core.indicators.numeric.average.SMAIndicator;
-//import org.ta4j.core.indicators.adx.ADXIndicator;
-//import org.ta4j.core.indicators.adx.MinusDIIndicator;
-//import org.ta4j.core.indicators.adx.PlusDIIndicator;
+//import org.ta4j.core.indicators.numeric.adx.ADXIndicator;
+//import org.ta4j.core.indicators.numeric.adx.MinusDIIndicator;
+//import org.ta4j.core.indicators.numeric.adx.PlusDIIndicator;
 //import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 //import org.ta4j.core.rules.CrossedDownIndicatorRule;
 //import org.ta4j.core.rules.CrossedUpIndicatorRule;
