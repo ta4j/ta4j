@@ -157,22 +157,6 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithoutAmount() {
-        var series1 = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
-
-        // 2 winning positions
-        var tradingRecord1 = new BaseTradingRecord(Trade.buyAt(0, series1), Trade.sellAt(2, series1),
-                Trade.buyAt(3, series1), Trade.sellAt(5, series1));
-
-        // buy and hold with amount of null (i.e. amount will be automatically set to 1)
-        var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), null);
-        var buyAndHoldPnlValue = buyAndHoldPnl.calculate(series1, tradingRecord1);
-        assertNumEquals(5 * 1d, buyAndHoldPnlValue);
-    }
-
-    @Test
     public void betterThan() {
 
         // buy and hold of ReturnCriterion

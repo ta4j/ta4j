@@ -138,24 +138,6 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithoutAmount() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
-
-        // 2 winning positions
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
-                Trade.buyAt(3, series), Trade.sellAt(5, series));
-
-        // vs buy and hold of pnl with amount of null (i.e. amount will be automatically
-        // set to 1)
-        var vsBuyAndHoldPnl = new VersusEnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), null);
-        var vsBuyAndHoldPnlValue = vsBuyAndHoldPnl.calculate(series, tradingRecord);
-
-        assertNumEquals(3 * 1d, vsBuyAndHoldPnlValue);
-    }
-
-    @Test
     public void betterThan() {
         var criterion = getCriterion(new ReturnCriterion());
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));

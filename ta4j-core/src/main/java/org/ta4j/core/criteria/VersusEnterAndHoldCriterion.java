@@ -45,7 +45,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
     private final EnterAndHoldCriterion enterAndHoldCriterion;
 
     /**
-     * Constructor for buy-and-hold strategy.
+     * Constructor with an entry amount of {@code 1}.
      *
      * @param criterion the criterion to be compared to
      *                  {@link EnterAndHoldCriterion}
@@ -55,7 +55,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Constructor.
+     * Constructor with an entry amount of {@code 1}.
      *
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the criterion to be compared to
@@ -63,7 +63,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
         this.criterion = criterion;
-        this.enterAndHoldCriterion = new EnterAndHoldCriterion(tradeType, criterion);
+        this.enterAndHoldCriterion = new EnterAndHoldCriterion(tradeType, criterion, BigDecimal.ONE);
     }
 
     /**
@@ -74,6 +74,7 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *                  {@link EnterAndHoldCriterion}
      * @param amount    the amount to be used to hold the entry position; if
      *                  {@code null} then {@code 1} is used.
+     * @throws NullPointerException if {@code amount} is {@code null}
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
         this.criterion = criterion;
