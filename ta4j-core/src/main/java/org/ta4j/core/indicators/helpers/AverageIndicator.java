@@ -35,11 +35,17 @@ import java.util.List;
  */
 public class AverageIndicator extends CachedIndicator<Num> {
     private final List<Indicator<Num>> indicators;
+    private final int unstableBars;
 
     public AverageIndicator(Indicator<Num>... indicators) {
-        super(indicators[0]);
+        this(Arrays.asList(indicators));
+    }
 
-        this.indicators = Arrays.asList(indicators);
+    public AverageIndicator(List<Indicator<Num>> indicators) {
+        super(indicators.getFirst());
+
+        this.indicators = indicators;
+        this.unstableBars = indicators.stream().mapToInt(Indicator::getUnstableBars).max().getAsInt();
     }
 
     @Override
@@ -55,6 +61,6 @@ public class AverageIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getUnstableBars() {
-        return indicators.stream().mapToInt(Indicator::getUnstableBars).max().getAsInt();
+        return unstableBars;
     }
 }

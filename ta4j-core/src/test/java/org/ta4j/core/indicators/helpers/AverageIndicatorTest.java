@@ -32,12 +32,19 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.NoSuchElementException;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private ConstantIndicator<Num> one;
     private ConstantIndicator<Num> two;
     private ConstantIndicator<Num> three;
+    private ConstantIndicator<Num> nan;
+    private FixedIndicator<Num> nanPartly;
 
     private BarSeries barSeries;
 
@@ -51,6 +58,8 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         one = new ConstantIndicator<>(barSeries, numFactory.numOf(1.0));
         two = new ConstantIndicator<>(barSeries, numFactory.numOf(2.0));
         three = new ConstantIndicator<>(barSeries, numFactory.numOf(3.0));
+        nan = new ConstantIndicator<>(barSeries, NaN);
+        nanPartly = new FixedIndicator<>(barSeries, numFactory.numOf(4.0), NaN, numFactory.numOf(5.0));
     }
 
     @Test
@@ -69,5 +78,38 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         for (int i = 1; i < 10; i++) {
             assertNumEquals(2, averageIndicator.getValue(i));
         }
+    }
+
+    @Test
+    public void indicatorShouldRetrieveNaN() {
+        AverageIndicator averageIndicator = new AverageIndicator(nan);
+
+        for (int i = 1; i < 10; i++) {
+            assertNumEquals(NaN, averageIndicator.getValue(i));
+        }
+    }
+
+    @Test
+    public void indicatorShouldRetrieveNaNpartly() {
+        AverageIndicator averageIndicator = new AverageIndicator(nanPartly, one);
+
+        assertNumEquals(2.5, averageIndicator.getValue(0));
+        assertNumEquals(NaN, averageIndicator.getValue(1));
+        assertNumEquals(3, averageIndicator.getValue(2));
+    }
+
+    @Test(expected = NoSuchElementException.class)
+    public void indicatorShouldFailOnNull() {
+        new AverageIndicator();
+    }
+
+    @Test(expected = NoSuchElementException.class)
+    public void indicatorShouldFailOnEmptyList() {
+        new AverageIndicator(Collections.emptyList());
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void indicatorShouldFailOnListContainsNull() {
+        new AverageIndicator(Arrays.asList(one, null));
     }
 }
