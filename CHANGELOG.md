@@ -28,6 +28,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `Bar.getSystemZonedEndTime`: the bar's end time converted to system time zone
 - added `BarSeries.getSeriesPeriodDescriptionInSystemTimeZone`: with times printed in system's default time zone
 - added `KRIIndicator`
+- Added constructor with `amount` for  `EnterAndHoldCriterion`
+- Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
 
 ## 0.17 (released September 9, 2024)
 
