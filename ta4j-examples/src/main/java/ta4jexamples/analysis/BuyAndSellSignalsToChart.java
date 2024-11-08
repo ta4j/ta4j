@@ -71,7 +71,7 @@ public class BuyAndSellSignalsToChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
-            chartTimeSeries.add(new Minute(Date.from(bar.getEndTime())), indicator.getValue(i).doubleValue());
+            chartTimeSeries.add(new Minute(Date.from(bar.getBeginTime())), indicator.getValue(i).doubleValue());
         }
         return chartTimeSeries;
     }
@@ -91,14 +91,14 @@ public class BuyAndSellSignalsToChart {
         // Adding markers to plot
         for (Position position : positions) {
             // Buy signal
-            double buySignalBarTime = new Minute(Date.from(series.getBar(position.getEntry().getIndex()).getEndTime()))
+            double buySignalBarTime = new Minute(Date.from(series.getBar(position.getEntry().getIndex()).getBeginTime()))
                     .getFirstMillisecond();
             Marker buyMarker = new ValueMarker(buySignalBarTime);
             buyMarker.setPaint(Color.GREEN);
             buyMarker.setLabel("B");
             plot.addDomainMarker(buyMarker);
             // Sell signal
-            double sellSignalBarTime = new Minute(Date.from(series.getBar(position.getExit().getIndex()).getEndTime()))
+            double sellSignalBarTime = new Minute(Date.from(series.getBar(position.getExit().getIndex()).getBeginTime()))
                     .getFirstMillisecond();
             Marker sellMarker = new ValueMarker(sellSignalBarTime);
             sellMarker.setPaint(Color.RED);

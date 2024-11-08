@@ -69,7 +69,7 @@ public class CandlestickChart {
 
         for (int i = 0; i < nbBars; i++) {
             Bar bar = series.getBar(i);
-            dates[i] = new Date(bar.getEndTime().toEpochMilli());
+            dates[i] = new Date(bar.getBeginTime().toEpochMilli());
             opens[i] = bar.getOpenPrice().doubleValue();
             highs[i] = bar.getHighPrice().doubleValue();
             lows[i] = bar.getLowPrice().doubleValue();
@@ -92,7 +92,7 @@ public class CandlestickChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
-            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochMilli())),
+            chartTimeSeries.add(new Second(new Date(bar.getBeginTime().toEpochMilli())),
                     indicator.getValue(i).doubleValue());
         }
         dataset.addSeries(chartTimeSeries);

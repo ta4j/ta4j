@@ -276,7 +276,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(missingBars.get(1), this.time.plus(Duration.ofDays(3)));
         assertEquals(missingBars.get(2), this.time.plus(Duration.ofDays(6)));
         // there must be 1 bar with invalid data (e.g. price, volume)
-        assertEquals(missingBars.get(3), bar8.getEndTime());
+        assertEquals(missingBars.get(3), bar8.getBeginTime());
     }
 
     @Test
@@ -424,8 +424,8 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         // add 3 bars to empty barSeries
         BarSeriesUtils.addBars(barSeries, bars);
 
-        assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
-        assertEquals(bar2.getEndTime(), barSeries.getLastBar().getEndTime());
+        assertEquals(bar0.getBeginTime(), barSeries.getFirstBar().getBeginTime());
+        assertEquals(bar2.getBeginTime(), barSeries.getLastBar().getBeginTime());
 
         final Bar bar3 = barSeries.barBuilder()
                 .beginTime(time.plus(Duration.ofDays(3)))
@@ -442,7 +442,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         // add 1 bar to non empty barSeries
         BarSeriesUtils.addBars(barSeries, bars);
-        assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
+        assertEquals(bar3.getBeginTime(), barSeries.getLastBar().getBeginTime());
     }
 
     @Test
@@ -496,10 +496,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         sortedBars.add(bar3);
 
         BarSeriesUtils.sortBars(sortedBars);
-        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+        assertEquals(bar0.getBeginTime(), sortedBars.get(0).getBeginTime());
+        assertEquals(bar1.getBeginTime(), sortedBars.get(1).getBeginTime());
+        assertEquals(bar2.getBeginTime(), sortedBars.get(2).getBeginTime());
+        assertEquals(bar3.getBeginTime(), sortedBars.get(3).getBeginTime());
 
         final List<Bar> unsortedBars = new ArrayList<>();
         unsortedBars.add(bar3);
@@ -508,10 +508,10 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         unsortedBars.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars);
-        assertEquals(bar0.getEndTime(), unsortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), unsortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), unsortedBars.get(3).getEndTime());
+        assertEquals(bar0.getBeginTime(), unsortedBars.get(0).getBeginTime());
+        assertEquals(bar1.getBeginTime(), unsortedBars.get(1).getBeginTime());
+        assertEquals(bar2.getBeginTime(), unsortedBars.get(2).getBeginTime());
+        assertEquals(bar3.getBeginTime(), unsortedBars.get(3).getBeginTime());
 
         final List<Bar> unsortedBars2 = new ArrayList<>();
         unsortedBars2.add(bar2);
@@ -520,16 +520,16 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         unsortedBars2.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars2);
-        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+        assertEquals(bar0.getBeginTime(), unsortedBars2.get(0).getBeginTime());
+        assertEquals(bar1.getBeginTime(), unsortedBars2.get(1).getBeginTime());
+        assertEquals(bar2.getBeginTime(), unsortedBars2.get(2).getBeginTime());
+        assertEquals(bar3.getBeginTime(), unsortedBars2.get(3).getBeginTime());
 
         Collections.shuffle(unsortedBars2);
         BarSeriesUtils.sortBars(unsortedBars2);
-        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+        assertEquals(bar0.getBeginTime(), unsortedBars2.get(0).getBeginTime());
+        assertEquals(bar1.getBeginTime(), unsortedBars2.get(1).getBeginTime());
+        assertEquals(bar2.getBeginTime(), unsortedBars2.get(2).getBeginTime());
+        assertEquals(bar3.getBeginTime(), unsortedBars2.get(3).getBeginTime());
     }
 }

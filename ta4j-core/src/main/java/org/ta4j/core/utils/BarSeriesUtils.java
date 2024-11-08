@@ -49,7 +49,7 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
      * values before higher values).
      */
-    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
+    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getBeginTime().isAfter(b2.getBeginTime()) ? 1 : -1;
 
     private BarSeriesUtils() {
     }
@@ -91,16 +91,16 @@ public final class BarSeriesUtils {
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
             boolean isSameBar = bar.getBeginTime().equals(newBar.getBeginTime())
-                    && bar.getEndTime().equals(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
-            if (isSameBar && !bar.equals(newBar))
+            if (isSameBar && !bar.equals(newBar)) {
                 return bars.set(i, newBar);
+            }
         }
         return null;
     }
 
     /**
-     * Finds possibly missing bars. The returned list contains the {@code endTime}
+     * Finds possibly missing bars. The returned list contains the {@code beginTime}
      * of each missing bar. A bar is possibly missing if: (1) the subsequent bar
      * starts not with the end time of the previous bar or (2) if any open, high,
      * low price is missing.
@@ -133,7 +133,7 @@ public final class BarSeriesUtils {
             }
             boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
             if (noFullData) {
-                missingBars.add(bar.getEndTime());
+                missingBars.add(bar.getBeginTime());
             }
         }
         return missingBars;
@@ -189,14 +189,12 @@ public final class BarSeriesUtils {
         List<Bar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return new ArrayList<>();
-        Duration period = bars.iterator().next().getTimePeriod();
         List<Bar> overlappingBars = new ArrayList<>();
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
             Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
             if (nextBar != null) {
-                if (bar.getEndTime().isAfter(nextBar.getBeginTime())
-                        || bar.getBeginTime().plus(period).isBefore(nextBar.getBeginTime())) {
+                if (!bar.getEndTime().equals(nextBar.getBeginTime())) {
                     overlappingBars.add(nextBar);
                 }
             }
@@ -214,7 +212,7 @@ public final class BarSeriesUtils {
         if (newBars != null && !newBars.isEmpty()) {
             sortBars(newBars);
             for (Bar bar : newBars) {
-                if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
+                if (barSeries.isEmpty() || bar.getBeginTime().isAfter(barSeries.getLastBar().getBeginTime())) {
                     barSeries.addBar(bar);
                 }
             }

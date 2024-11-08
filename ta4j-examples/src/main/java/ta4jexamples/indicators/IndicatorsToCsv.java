@@ -96,7 +96,7 @@ public class IndicatorsToCsv {
          */
         final int nbBars = series.getBarCount();
         for (int i = 0; i < nbBars; i++) {
-            sb.append(series.getBar(i).getEndTime())
+            sb.append(series.getBar(i).getBeginTime())
                     .append(',')
                     .append(closePrice.getValue(i))
                     .append(',')

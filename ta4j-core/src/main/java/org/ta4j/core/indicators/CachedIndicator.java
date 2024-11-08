@@ -116,6 +116,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
         } else {
             if (index == series.getEndIndex()) {
+                // The candle may still be open 
                 // Don't cache result if last bar
                 result = calculate(index);
             } else {

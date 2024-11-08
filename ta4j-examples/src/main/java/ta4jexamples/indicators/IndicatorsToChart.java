@@ -66,7 +66,7 @@ public class IndicatorsToChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
-            chartTimeSeries.add(new Day(Date.from(bar.getEndTime())), indicator.getValue(i).doubleValue());
+            chartTimeSeries.add(new Day(Date.from(bar.getBeginTime())), indicator.getValue(i).doubleValue());
         }
         return chartTimeSeries;
     }

@@ -70,12 +70,12 @@ public class WalkForward {
         beginIndexes.add(beginIndex);
 
         // Building the first interval before next split
-        Instant beginInterval = series.getFirstBar().getEndTime();
+        Instant beginInterval = series.getFirstBar().getBeginTime();
         Instant endInterval = beginInterval.plus(splitDuration);
 
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each bar...
-            Instant barTime = series.getBar(i).getEndTime();
+            Instant barTime = series.getBar(i).getBeginTime();
             if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
                 // Bar out of the interval
                 if (!endInterval.isAfter(barTime)) {
@@ -109,7 +109,7 @@ public class WalkForward {
     public static BarSeries subseries(BarSeries series, int beginIndex, Duration duration) {
 
         // Calculating the sub-series interval
-        Instant beginInterval = series.getBar(beginIndex).getEndTime();
+        Instant beginInterval = series.getBar(beginIndex).getBeginTime();
         Instant endInterval = beginInterval.plus(duration);
 
         // Checking bars belonging to the sub-series (starting at the provided index)
@@ -117,7 +117,7 @@ public class WalkForward {
         int endIndex = series.getEndIndex();
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each bar...
-            Instant barTime = series.getBar(i).getEndTime();
+            Instant barTime = series.getBar(i).getBeginTime();
             if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
                 // Bar out of the interval
                 break;
