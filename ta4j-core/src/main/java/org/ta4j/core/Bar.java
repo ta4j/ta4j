@@ -50,6 +50,11 @@ public interface Bar extends Serializable {
      * @return the begin timestamp of the bar period (in UTC).
      */
     Instant getBeginTime();
+    
+    /**
+     * @return the end timestamp of the bar period (in UTC).
+     */
+    Instant getEndTime();
 
     /**
      * @return the open price of the bar period
@@ -93,13 +98,6 @@ public interface Bar extends Serializable {
      */
     default boolean inPeriod(Instant timestamp) {
         return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
-    }
-
-    /**
-     * @return the end timestamp of the bar period (in UTC).
-     */
-    default Instant getEndTime() {
-        return getBeginTime().plus(getTimePeriod());
     }
     
     /**

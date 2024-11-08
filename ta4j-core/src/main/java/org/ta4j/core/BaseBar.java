@@ -107,6 +107,11 @@ public class BaseBar implements Bar {
     public Instant getBeginTime() {
         return beginTime;
     }
+    
+    @Override
+    public Instant getEndTime() {
+        return beginTime.plus(timePeriod);
+    }
 
     @Override
     public Num getOpenPrice() {
