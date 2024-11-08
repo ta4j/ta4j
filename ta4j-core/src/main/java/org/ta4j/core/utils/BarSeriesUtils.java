@@ -126,7 +126,7 @@ public final class BarSeriesUtils {
                 if (nextBar != null) {
                     // market closing times are also treated as missing bars
                     while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
-                        missingBars.add(bar.getEndTime().plus(incDuration).plus(duration));
+                        missingBars.add(bar.getBeginTime().plus(incDuration).plus(duration));
                         incDuration = incDuration.plus(duration);
                     }
                 }

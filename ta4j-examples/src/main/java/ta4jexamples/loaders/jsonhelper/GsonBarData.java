@@ -30,7 +30,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
 
 public class GsonBarData {
-    private long endTime;
+    private long beginTime;
     private Number openPrice;
     private Number highPrice;
     private Number lowPrice;
@@ -40,7 +40,7 @@ public class GsonBarData {
 
     public static GsonBarData from(Bar bar) {
         var result = new GsonBarData();
-        result.endTime = bar.getEndTime().toEpochMilli();
+        result.beginTime = bar.getBeginTime().toEpochMilli();
         result.openPrice = bar.getOpenPrice().getDelegate();
         result.highPrice = bar.getHighPrice().getDelegate();
         result.lowPrice = bar.getLowPrice().getDelegate();
@@ -51,7 +51,7 @@ public class GsonBarData {
     }
 
     public void addTo(BaseBarSeries barSeries) {
-        var beginTimeInstant = Instant.ofEpochMilli(endTime);
+        var beginTimeInstant = Instant.ofEpochMilli(beginTime);
         barSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .beginTime(beginTimeInstant)
