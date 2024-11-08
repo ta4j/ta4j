@@ -72,7 +72,7 @@ public class SimpleMovingAverageBacktest {
         final var series = new BaseBarSeriesBuilder().build();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(1))
+                .beginTime(createDay(1))
                 .openPrice(100.0)
                 .highPrice(100.0)
                 .lowPrice(100.0)
@@ -81,7 +81,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(2))
+                .beginTime(createDay(2))
                 .openPrice(110.0)
                 .highPrice(110.0)
                 .lowPrice(110.0)
@@ -90,7 +90,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(3))
+                .beginTime(createDay(3))
                 .openPrice(140.0)
                 .highPrice(140.0)
                 .lowPrice(140.0)
@@ -99,7 +99,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(4))
+                .beginTime(createDay(4))
                 .openPrice(119.0)
                 .highPrice(119.0)
                 .lowPrice(119.0)
@@ -108,7 +108,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(5))
+                .beginTime(createDay(5))
                 .openPrice(100.0)
                 .highPrice(100.0)
                 .lowPrice(100.0)
@@ -117,7 +117,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(6))
+                .beginTime(createDay(6))
                 .openPrice(110.0)
                 .highPrice(110.0)
                 .lowPrice(110.0)
@@ -126,7 +126,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(7))
+                .beginTime(createDay(7))
                 .openPrice(120.0)
                 .highPrice(120.0)
                 .lowPrice(120.0)
@@ -135,7 +135,7 @@ public class SimpleMovingAverageBacktest {
                 .add();
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(createDay(8))
+                .beginTime(createDay(8))
                 .openPrice(130.0)
                 .highPrice(130.0)
                 .lowPrice(130.0)

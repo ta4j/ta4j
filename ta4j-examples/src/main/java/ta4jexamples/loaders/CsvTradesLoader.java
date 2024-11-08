@@ -97,7 +97,7 @@ public class CsvTradesLoader {
         do {
             // build a bar
             barEndTime = barEndTime.plus(barDuration);
-            var bar = series.barBuilder().timePeriod(barDuration).endTime(barEndTime).volume(0).amount(0).build();
+            var bar = series.barBuilder().timePeriod(barDuration).beginTime(barEndTime).volume(0).amount(0).build();
             do {
                 // get a trade
                 String[] tradeLine = iterator.next();

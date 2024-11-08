@@ -120,7 +120,7 @@ public class DecimalNumTest {
 
     private void init() {
         final Duration timePeriod = Duration.ofDays(1);
-        Instant endTime = Instant.now();
+        Instant beginTime = Instant.now();
         final double[] deltas = { 20.8, 30.1, -15.3, 10.2, -16.7, -9.8 };
         Num superPrecisionNum = FIRST_SUPER_PRECISION_NUM;
         this.superPrecisionSeries = new BaseBarSeriesBuilder().withName("superPrecision")
@@ -140,7 +140,7 @@ public class DecimalNumTest {
         for (int i = 0; i < NUMBARS; i++) {
             this.superPrecisionSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
+                    .beginTime(beginTime)
                     .openPrice(superPrecisionNum.toString())
                     .closePrice(superPrecisionNum.toString())
                     .highPrice(superPrecisionNum.toString())
@@ -151,7 +151,7 @@ public class DecimalNumTest {
                     .add();
             this.precisionSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
+                    .beginTime(beginTime)
                     .openPrice(superPrecisionNum.toString())
                     .closePrice(superPrecisionNum.toString())
                     .highPrice(superPrecisionNum.toString())
@@ -162,7 +162,7 @@ public class DecimalNumTest {
                     .add();
             this.precision32Series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
+                    .beginTime(beginTime)
                     .openPrice(superPrecisionNum.toString())
                     .closePrice(superPrecisionNum.toString())
                     .highPrice(superPrecisionNum.toString())
@@ -173,7 +173,7 @@ public class DecimalNumTest {
                     .add();
             this.doubleSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
+                    .beginTime(beginTime)
                     .openPrice(superPrecisionNum.toString())
                     .closePrice(superPrecisionNum.toString())
                     .highPrice(superPrecisionNum.toString())
@@ -184,7 +184,7 @@ public class DecimalNumTest {
                     .add();
             this.lowPrecisionSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
+                    .beginTime(beginTime)
                     .openPrice(superPrecisionNum.toString())
                     .closePrice(superPrecisionNum.toString())
                     .highPrice(superPrecisionNum.toString())
@@ -193,7 +193,7 @@ public class DecimalNumTest {
                     .volume("0")
                     .trades("0")
                     .add();
-            endTime = endTime.plus(timePeriod);
+            beginTime = beginTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(DecimalNum.valueOf(deltas[i % 6]));
         }
 

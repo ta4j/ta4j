@@ -46,8 +46,8 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
         Instant expectedDateTime = Instant.parse("2019-09-17T00:04:00Z");
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().endTime(expectedDateTime).add();
-        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
+        series.barBuilder().beginTime(expectedDateTime).add();
+        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
         assertEquals(expectedDateTime, dateTimeIndicator.getValue(0));
     }
 }

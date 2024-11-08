@@ -86,7 +86,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         var now = Instant.now();
         for (long i = 0; i <= 10000; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(NaN)
                     .highPrice(NaN)
@@ -108,7 +108,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
             Num closePrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(closePrice)
                     .highPrice(NaN)

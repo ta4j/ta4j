@@ -80,7 +80,7 @@ public class CsvBarsLoader {
 
                     series.barBuilder()
                             .timePeriod(Duration.ofDays(1))
-                            .endTime(date)
+                            .beginTime(date)
                             .openPrice(open)
                             .closePrice(close)
                             .highPrice(high)

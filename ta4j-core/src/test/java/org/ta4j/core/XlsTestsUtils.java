@@ -165,12 +165,12 @@ public class XlsTestsUtils {
                 cellValues[i] = evaluator.evaluate(row.getCell(i));
             }
             // add a bar to the series
-            Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
-            Instant endDateTime = Instant.ofEpochMilli(endDate.getTime());
+            Date beginDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
+            Instant endDateTime = Instant.ofEpochMilli(beginDate.getTime());
 
             series.addBar(series.barBuilder()
                     .timePeriod(duration)
-                    .endTime(endDateTime)
+                    .beginTime(endDateTime)
                     .openPrice(new BigDecimal(cellValues[1].formatAsString()))
                     .highPrice(new BigDecimal(cellValues[2].formatAsString()))
                     .lowPrice(new BigDecimal(cellValues[3].formatAsString()))

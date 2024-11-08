@@ -53,7 +53,7 @@ public class BaseBarConvertibleBuilderTest extends AbstractIndicatorTest<BarSeri
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
         final var bar = series.barBuilder()
                 .timePeriod(duration)
-                .endTime(endTime)
+                .beginTime(beginTime)
                 .openPrice(BigDecimal.valueOf(101.0))
                 .highPrice(BigDecimal.valueOf(103))
                 .lowPrice(BigDecimal.valueOf(100))

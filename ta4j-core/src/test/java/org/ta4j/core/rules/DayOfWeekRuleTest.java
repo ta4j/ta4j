@@ -45,13 +45,13 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
     public void isSatisfied() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        series.barBuilder().endTime(Instant.parse("2019-09-16T12:00:00Z")).add(); // Index=0, Mon
-        series.barBuilder().endTime(Instant.parse("2019-09-17T12:00:00Z")).add(); // 1, Tue
-        series.barBuilder().endTime(Instant.parse("2019-09-18T12:00:00Z")).add(); // 2, Wed
-        series.barBuilder().endTime(Instant.parse("2019-09-19T12:00:00Z")).add(); // 3, Thu
-        series.barBuilder().endTime(Instant.parse("2019-09-20T12:00:00Z")).add(); // 4, Fri
-        series.barBuilder().endTime(Instant.parse("2019-09-21T12:00:00Z")).add(); // 5, Sat
-        series.barBuilder().endTime(Instant.parse("2019-09-22T12:00:00Z")).add(); // 6, Sun
+        series.barBuilder().beginTime(Instant.parse("2019-09-15T12:00:00Z")).add(); // Index=0, Mon
+        series.barBuilder().beginTime(Instant.parse("2019-09-16T12:00:00Z")).add(); // 1, Tue
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T12:00:00Z")).add(); // 2, Wed
+        series.barBuilder().beginTime(Instant.parse("2019-09-18T12:00:00Z")).add(); // 3, Thu
+        series.barBuilder().beginTime(Instant.parse("2019-09-19T12:00:00Z")).add(); // 4, Fri
+        series.barBuilder().beginTime(Instant.parse("2019-09-20T12:00:00Z")).add(); // 5, Sat
+        series.barBuilder().beginTime(Instant.parse("2019-09-21T12:00:00Z")).add(); // 6, Sun
         var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
         DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY);

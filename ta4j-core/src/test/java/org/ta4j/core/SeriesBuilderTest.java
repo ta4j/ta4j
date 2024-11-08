@@ -62,7 +62,7 @@ public class SeriesBuilderTest {
         for (int i = 1000; i >= 0; i--) {
             defaultSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(now.minusSeconds(i))
+                    .beginTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -71,7 +71,7 @@ public class SeriesBuilderTest {
                     .add();
             defaultSeriesName.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(now.minusSeconds(i))
+                    .beginTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -80,7 +80,7 @@ public class SeriesBuilderTest {
                     .add();
             doubleSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(now.minusSeconds(i))
+                    .beginTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)
@@ -89,7 +89,7 @@ public class SeriesBuilderTest {
                     .add();
             precisionSeries.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(now.minusSeconds(i))
+                    .beginTime(now.minusSeconds(i))
                     .openPrice(i)
                     .closePrice(i)
                     .highPrice(i)

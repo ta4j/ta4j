@@ -135,10 +135,10 @@ public interface BarSeries extends Serializable {
     default String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
         if (!getBarData().isEmpty()) {
-            var endTimeFirstBar = getFirstBar().getEndTime();
-            var endTimeLastBar = getLastBar().getEndTime();
+            var beginTimeFirstBar = getFirstBar().getBeginTime();
+            var beginTimeLastBar = getLastBar().getBeginTime();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
-            sb.append(formatter.format(endTimeFirstBar)).append(" - ").append(formatter.format(endTimeLastBar));
+            sb.append(formatter.format(beginTimeFirstBar)).append(" - ").append(formatter.format(beginTimeLastBar));
         }
         return sb.toString();
     }
@@ -150,10 +150,10 @@ public interface BarSeries extends Serializable {
     default String getSeriesPeriodDescriptionInSystemTimeZone() {
         StringBuilder sb = new StringBuilder();
         if (!getBarData().isEmpty()) {
-            var endTimeFirstBar = getFirstBar().getSystemZonedEndTime();
-            var endTimeLastBar = getLastBar().getSystemZonedEndTime();
+            var beginTimeFirstBar = getFirstBar().getSystemZonedBeginTime();
+            var beginTimeLastBar = getLastBar().getSystemZonedBeginTime();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
-            sb.append(formatter.format(endTimeFirstBar)).append(" - ").append(formatter.format(endTimeLastBar));
+            sb.append(formatter.format(beginTimeFirstBar)).append(" - ").append(formatter.format(beginTimeLastBar));
         }
         return sb.toString();
     }

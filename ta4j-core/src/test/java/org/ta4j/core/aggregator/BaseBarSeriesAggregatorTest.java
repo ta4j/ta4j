@@ -54,7 +54,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
         var bar0 = barSeries.barBuilder()
-                .endTime(time)
+                .beginTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -64,7 +64,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar1 = barSeries.barBuilder()
-                .endTime(time.plus(Duration.ofDays(1)))
+                .beginTime(time.plus(Duration.ofDays(1)))
                 .openPrice(2d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -74,7 +74,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar2 = barSeries.barBuilder()
-                .endTime(time.plus(Duration.ofDays(2)))
+                .beginTime(time.plus(Duration.ofDays(2)))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)
@@ -101,7 +101,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
         var bar0 = barSeries.barBuilder()
-                .endTime(time)
+                .beginTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -111,7 +111,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar1 = barSeries.barBuilder()
-                .endTime(time.plus(Duration.ofDays(1)))
+                .beginTime(time.plus(Duration.ofDays(1)))
                 .openPrice(2d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -121,7 +121,7 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
                 .trades(7)
                 .build();
         var bar2 = barSeries.barBuilder()
-                .endTime(time.plus(Duration.ofDays(2)))
+                .beginTime(time.plus(Duration.ofDays(2)))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)

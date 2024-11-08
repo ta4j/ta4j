@@ -47,17 +47,17 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
     public void isSatisfiedForBuy() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        series.barBuilder().endTime(Instant.parse("2019-09-17T00:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T05:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T07:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T08:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T15:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T15:05:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T16:59:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T17:05:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T23:00:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T23:30:00Z")).closePrice(100).add();
-        series.barBuilder().endTime(Instant.parse("2019-09-17T23:35:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T00:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T05:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T07:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T08:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T15:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T15:05:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T16:59:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T17:05:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T23:00:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T23:30:00Z")).closePrice(100).add();
+        series.barBuilder().beginTime(Instant.parse("2019-09-17T23:35:00Z")).closePrice(100).add();
 
         var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
         var _00_04 = new TimeRangeRule.TimeRange(LocalTime.of(0, 0), LocalTime.of(4, 0));

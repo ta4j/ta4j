@@ -42,9 +42,6 @@ public class BaseBar implements Bar {
     /** The begin time of the bar period (in UTC). */
     private final Instant beginTime;
 
-    /** The end time of the bar period (in UTC). */
-    private final Instant endTime;
-
     /** The open price of the bar period. */
     private Num openPrice;
 
@@ -70,7 +67,7 @@ public class BaseBar implements Bar {
      * Constructor.
      *
      * @param timePeriod the time period
-     * @param endTime    the end time of the bar period (in UTC)
+     * @param beginTime  the start time of the bar period (in UTC)
      * @param openPrice  the open price of the bar period
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
@@ -79,12 +76,11 @@ public class BaseBar implements Bar {
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
      */
-    BaseBar(Duration timePeriod, Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+    BaseBar(Duration timePeriod, Instant beginTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
             Num volume, Num amount, long trades) {
-        checkTimeArguments(timePeriod, endTime);
+        checkTimeArguments(timePeriod, beginTime);
         this.timePeriod = timePeriod;
-        this.endTime = endTime;
-        this.beginTime = endTime.minus(timePeriod);
+        this.beginTime = beginTime;
         this.openPrice = openPrice;
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
@@ -110,11 +106,6 @@ public class BaseBar implements Bar {
     @Override
     public Instant getBeginTime() {
         return beginTime;
-    }
-
-    @Override
-    public Instant getEndTime() {
-        return endTime;
     }
 
     @Override
@@ -181,8 +172,8 @@ public class BaseBar implements Bar {
     @Override
     public String toString() {
         return String.format(
-                "{end time: %1s, close price: %2s, open price: %3s, low price: %4s high price: %5s, volume: %6s}",
-                endTime, closePrice, openPrice, lowPrice, highPrice, volume);
+                "{begin time: %1s, open price: %2s, high price: %3s, low price: %4s close price: %5s, volume: %6s}",
+                beginTime, openPrice, highPrice, lowPrice, closePrice, volume);
     }
 
     /**
@@ -190,15 +181,14 @@ public class BaseBar implements Bar {
      * @param endTime    the end time of the bar
      * @throws NullPointerException if one of the arguments is null
      */
-    private static void checkTimeArguments(Duration timePeriod, Instant endTime) {
+    private static void checkTimeArguments(Duration timePeriod, Instant beginTime) {
         Objects.requireNonNull(timePeriod, "Time period cannot be null");
-        Objects.requireNonNull(endTime, "End time cannot be null");
+        Objects.requireNonNull(beginTime, "Begin time cannot be null");
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount,
-                trades);
+        return Objects.hash(beginTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
     }
 
     @Override
@@ -208,10 +198,10 @@ public class BaseBar implements Bar {
         if (!(obj instanceof BaseBar))
             return false;
         final BaseBar other = (BaseBar) obj;
-        return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)
-                && Objects.equals(timePeriod, other.timePeriod) && Objects.equals(openPrice, other.openPrice)
-                && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)
-                && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
-                && Objects.equals(amount, other.amount) && trades == other.trades;
+        return Objects.equals(beginTime, other.beginTime) && Objects.equals(timePeriod, other.timePeriod)
+                && Objects.equals(openPrice, other.openPrice) && Objects.equals(highPrice, other.highPrice)
+                && Objects.equals(lowPrice, other.lowPrice) && Objects.equals(closePrice, other.closePrice)
+                && Objects.equals(volume, other.volume) && Objects.equals(amount, other.amount)
+                && trades == other.trades;
     }
 }

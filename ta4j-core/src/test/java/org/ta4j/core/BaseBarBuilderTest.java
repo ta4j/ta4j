@@ -46,7 +46,7 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Duration duration = Duration.between(beginTime, endTime);
 
         final BaseBar bar = new BaseBarBuilder(numFactory).timePeriod(duration)
-                .endTime(endTime)
+                .beginTime(beginTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))
                 .lowPrice(numOf(100))

@@ -51,10 +51,10 @@ public class GsonBarData {
     }
 
     public void addTo(BaseBarSeries barSeries) {
-        var endTimeInstant = Instant.ofEpochMilli(endTime);
+        var beginTimeInstant = Instant.ofEpochMilli(endTime);
         barSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTimeInstant)
+                .beginTime(beginTimeInstant)
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)

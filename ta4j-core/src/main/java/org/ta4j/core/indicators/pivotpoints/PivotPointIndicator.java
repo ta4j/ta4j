@@ -97,8 +97,9 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
-        if (barsOfPreviousPeriod.isEmpty())
+        if (barsOfPreviousPeriod.isEmpty()) {
             return NaN;
+        }
         Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num close = bar.getClosePrice();
         Num high = bar.getHighPrice();

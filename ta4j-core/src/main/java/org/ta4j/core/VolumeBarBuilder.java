@@ -37,7 +37,7 @@ public class VolumeBarBuilder implements BarBuilder {
     private final Num volumeThreshold;
     private BarSeries barSeries;
     private Duration timePeriod;
-    private Instant endTime;
+    private Instant bginTime;
     private Num volume;
     private Num openPrice;
     private Num highPrice;
@@ -64,8 +64,8 @@ public class VolumeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public BarBuilder endTime(final Instant endTime) {
-        this.endTime = endTime;
+    public BarBuilder beginTime(final Instant beginTime) {
+        this.bginTime = beginTime;
         return this;
     }
 
@@ -198,7 +198,7 @@ public class VolumeBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
+        return new BaseBar(this.timePeriod, this.bginTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
 

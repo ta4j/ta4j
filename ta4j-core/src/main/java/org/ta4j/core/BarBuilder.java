@@ -36,10 +36,10 @@ public interface BarBuilder {
     BarBuilder timePeriod(Duration timePeriod);
 
     /**
-     * @param endTime the end time of the bar period
+     * @param beginTime the end time of the bar period
      * @return {@code this}
      */
-    BarBuilder endTime(Instant endTime);
+    BarBuilder beginTime(Instant beginTime);
 
     /**
      * @param openPrice the open price of the bar period

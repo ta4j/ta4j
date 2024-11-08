@@ -71,7 +71,7 @@ public class CompareNumTypes {
             Instant date = now.minusSeconds(NUMBARS - i);
             seriesD.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)
@@ -79,7 +79,7 @@ public class CompareNumTypes {
                     .add();
             seriesP.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)
@@ -87,7 +87,7 @@ public class CompareNumTypes {
                     .add();
             seriesPH.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
                     .highPrice(randoms[i] - 21)

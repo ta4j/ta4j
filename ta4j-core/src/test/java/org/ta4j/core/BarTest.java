@@ -57,7 +57,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         this.beginTime = Instant.parse("2014-06-25T00:00:00Z");
         this.endTime = Instant.parse("2014-06-25T01:00:00Z");
         this.bar = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
+                .beginTime(this.beginTime)
                 .volume(0)
                 .amount(0)
                 .build();
@@ -114,7 +114,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void doesNotThrowNullPointerException() {
-        var bar = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        var bar = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).beginTime(beginTime).build();
         // TODO use Junit5: org.junit.jupiter.api.Assertions.assertDoesNotThrow instead:
         assertNotNull(bar.toString());
     }
@@ -122,10 +122,10 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void equals() {
         final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
+                .beginTime(this.beginTime)
                 .build();
         final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
+                .beginTime(this.beginTime)
                 .build();
 
         assertEquals(bar1, bar2);
@@ -135,10 +135,10 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void hashCode2() {
         final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
+                .beginTime(this.beginTime)
                 .build();
         final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
-                .endTime(this.endTime)
+                .beginTime(this.beginTime)
                 .build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());

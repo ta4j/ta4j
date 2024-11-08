@@ -123,7 +123,7 @@ public class TradingBotOnMovingBarSeries {
         return new BaseBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
+                .beginTime(Instant.now())
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)

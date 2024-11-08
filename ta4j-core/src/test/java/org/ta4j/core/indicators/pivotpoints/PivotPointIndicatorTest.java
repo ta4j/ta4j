@@ -618,7 +618,7 @@ public class PivotPointIndicatorTest {
             double close = Double.parseDouble(barData[5]);
             double volume = Double.parseDouble(barData[6]);
             series5Minutes.barBuilder()
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(open)
                     .closePrice(close)
                     .highPrice(high)
@@ -820,7 +820,7 @@ public class PivotPointIndicatorTest {
             double close = Double.parseDouble(barData[5]);
             double volume = Double.parseDouble(barData[6]);
             series1Hours.barBuilder()
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(open)
                     .closePrice(close)
                     .highPrice(high)
@@ -1005,7 +1005,7 @@ public class PivotPointIndicatorTest {
             double high = Double.parseDouble(barData[4]);
             double low = Double.parseDouble(barData[5]);
             series1Days.barBuilder()
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(open)
                     .highPrice(high)
                     .lowPrice(low)
@@ -1313,7 +1313,7 @@ public class PivotPointIndicatorTest {
             double close = Double.parseDouble(barData[4]);
             double volume = Double.parseDouble(barData[6]);
             series1Weeks.barBuilder()
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(open)
                     .highPrice(high)
                     .lowPrice(low)

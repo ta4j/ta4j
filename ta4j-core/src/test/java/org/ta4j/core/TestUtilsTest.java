@@ -80,7 +80,7 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
             time = time.plus(Duration.ofDays(i));
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
+                    .beginTime(time)
                     .openPrice(random)
                     .closePrice(random)
                     .highPrice(random)

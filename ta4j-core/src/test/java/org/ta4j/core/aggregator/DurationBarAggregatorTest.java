@@ -51,7 +51,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
         // days 1 - 5
-        bars.add(new MockBarBuilder(numFactory).endTime(time)
+        bars.add(new MockBarBuilder(numFactory).beginTime(time)
                 .openPrice(1d)
                 .closePrice(2d)
                 .highPrice(3d)
@@ -60,7 +60,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(6d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(1)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(1)))
                 .openPrice(2d)
                 .closePrice(3d)
                 .highPrice(3d)
@@ -69,7 +69,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(6d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(2)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(2)))
                 .openPrice(3d)
                 .closePrice(4d)
                 .highPrice(4d)
@@ -78,7 +78,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(7d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(3)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(3)))
                 .openPrice(4d)
                 .closePrice(5d)
                 .highPrice(6d)
@@ -87,7 +87,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(8d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(4)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(4)))
                 .openPrice(5d)
                 .closePrice(9d)
                 .highPrice(3d)
@@ -98,7 +98,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .build());
 
         // days 6 - 10
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(5)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(5)))
                 .openPrice(6d)
                 .closePrice(10d)
                 .highPrice(9d)
@@ -107,7 +107,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(3d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(6)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(6)))
                 .openPrice(3d)
                 .closePrice(3d)
                 .highPrice(4d)
@@ -116,7 +116,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(74d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(7)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(7)))
                 .openPrice(4d)
                 .closePrice(7d)
                 .highPrice(63d)
@@ -125,7 +125,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(89d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(8)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(8)))
                 .openPrice(5d)
                 .closePrice(93d)
                 .highPrice(3d)
@@ -134,7 +134,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(62d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(9)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(9)))
                 .openPrice(6d)
                 .closePrice(10d)
                 .highPrice(91d)
@@ -145,7 +145,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .build());
 
         // days 11 - 15
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(10)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(10)))
                 .openPrice(4d)
                 .closePrice(10d)
                 .highPrice(943d)
@@ -154,7 +154,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(43d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(11)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(11)))
                 .openPrice(3d)
                 .closePrice(3d)
                 .highPrice(43d)
@@ -163,7 +163,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(784d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(12)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(12)))
                 .openPrice(4d)
                 .closePrice(74d)
                 .highPrice(53d)
@@ -172,7 +172,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(89d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(13)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(13)))
                 .openPrice(5d)
                 .closePrice(93d)
                 .highPrice(31d)
@@ -181,7 +181,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(62d)
                 .trades(7)
                 .build());
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(14)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(14)))
                 .openPrice(6d)
                 .closePrice(10d)
                 .highPrice(991d)
@@ -192,7 +192,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .build());
 
         // day 16
-        bars.add(new MockBarBuilder(numFactory).endTime(time.plus(Duration.ofDays(15)))
+        bars.add(new MockBarBuilder(numFactory).beginTime(time.plus(Duration.ofDays(15)))
                 .openPrice(6d)
                 .closePrice(108d)
                 .highPrice(1991d)
@@ -285,7 +285,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
         barSeries.barBuilder()
                 .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(1)))
+                .beginTime(now.plus(Duration.ofMinutes(1)))
                 .openPrice(1)
                 .highPrice(1)
                 .closePrice(2)
@@ -294,7 +294,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .add();
         barSeries.barBuilder()
                 .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(2)))
+                .beginTime(now.plus(Duration.ofMinutes(2)))
                 .openPrice(1)
                 .highPrice(1)
                 .closePrice(3)
@@ -304,7 +304,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         ;
         barSeries.barBuilder()
                 .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(60)))
+                .beginTime(now.plus(Duration.ofMinutes(60)))
                 .openPrice(1)
                 .highPrice(1)
                 .closePrice(1)

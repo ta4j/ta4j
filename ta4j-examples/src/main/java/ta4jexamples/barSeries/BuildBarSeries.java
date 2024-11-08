@@ -70,7 +70,7 @@ public class BuildBarSeries {
     private static void addBars(final BarSeries series, final Instant endTime) {
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
+                .beginTime(endTime)
                 .openPrice(105.42)
                 .highPrice(112.99)
                 .lowPrice(104.01)
@@ -79,7 +79,7 @@ public class BuildBarSeries {
                 .build());
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plus(Duration.ofDays(1)))
+                .beginTime(endTime.plus(Duration.ofDays(1)))
                 .openPrice(111.43)
                 .highPrice(112.83)
                 .lowPrice(107.77)
@@ -88,7 +88,7 @@ public class BuildBarSeries {
                 .build());
         series.addBar(series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plus(Duration.ofDays(2)))
+                .beginTime(endTime.plus(Duration.ofDays(2)))
                 .openPrice(107.90)
                 .highPrice(117.50)
                 .lowPrice(107.90)
@@ -151,7 +151,7 @@ public class BuildBarSeries {
         var endTime = Instant.now();
         Bar b1 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
+                .beginTime(endTime)
                 .openPrice(105.42)
                 .highPrice(112.99)
                 .lowPrice(104.01)
@@ -160,7 +160,7 @@ public class BuildBarSeries {
                 .build();
         Bar b2 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plus(Duration.ofDays(1)))
+                .beginTime(endTime.plus(Duration.ofDays(1)))
                 .openPrice(111.43)
                 .highPrice(112.83)
                 .lowPrice(107.77)
@@ -169,7 +169,7 @@ public class BuildBarSeries {
                 .build();
         Bar b3 = series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime.plus(Duration.ofDays(2)))
+                .beginTime(endTime.plus(Duration.ofDays(2)))
                 .openPrice(107.90)
                 .highPrice(117.50)
                 .lowPrice(107.90)

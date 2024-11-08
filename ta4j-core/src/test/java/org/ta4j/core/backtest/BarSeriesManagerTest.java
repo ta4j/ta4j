@@ -62,15 +62,15 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void setUp() {
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-08-01T05:00:00Z")).closePrice(2d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-10-01T05:00:00Z")).closePrice(3d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-12-01T05:00:00Z")).closePrice(4d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2014-02-01T05:00:00Z")).closePrice(5d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-01-01T05:00:00Z")).closePrice(6d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-08-01T05:00:00Z")).closePrice(7d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-10-01T05:00:00Z")).closePrice(8d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-12-01T05:00:00Z")).closePrice(7d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2013-08-01T05:00:00Z")).closePrice(2d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2013-10-01T05:00:00Z")).closePrice(3d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2013-12-01T05:00:00Z")).closePrice(4d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2014-02-01T05:00:00Z")).closePrice(5d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2015-01-01T05:00:00Z")).closePrice(6d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2015-08-01T05:00:00Z")).closePrice(7d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2015-10-01T05:00:00Z")).closePrice(8d).add();
+        seriesForRun.barBuilder().beginTime(Instant.parse("2015-12-01T05:00:00Z")).closePrice(7d).add();
 
         manager = new BarSeriesManager(seriesForRun, new TradeOnCurrentCloseModel());
 

@@ -255,11 +255,11 @@ public class BaseBarSeries implements BarSeries {
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
-            final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
-            if (!bar.getEndTime().isAfter(seriesEndTime)) {
+            final Instant seriesBeginTime = this.bars.get(lastBarIndex).getBeginTime();
+            if (!bar.getBeginTime().isAfter(seriesBeginTime)) {
                 throw new IllegalArgumentException(
-                        String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
-                                bar.getEndTime(), seriesEndTime));
+                        String.format("Cannot add a bar with begin time:%s that is <= to series begin time: %s",
+                                bar.getBeginTime(), seriesBeginTime));
             }
         }
 

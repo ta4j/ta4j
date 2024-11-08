@@ -56,7 +56,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)
@@ -73,7 +73,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price remains above stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(90)
                 .highPrice(95)
                 .lowPrice(85)
@@ -83,7 +83,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price drops below stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(90)
                 .highPrice(95)
                 .lowPrice(85)
@@ -98,7 +98,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)
@@ -115,7 +115,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price below stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(110)
                 .highPrice(123)
                 .lowPrice(113)
@@ -125,7 +125,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price rises above stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(110)
                 .highPrice(127)
                 .lowPrice(117)
@@ -140,7 +140,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)
@@ -156,7 +156,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price stays within stop loss range
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(98)
                 .highPrice(102)
                 .lowPrice(97)
@@ -172,7 +172,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)
@@ -189,7 +189,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         // Price drops below stop loss
         series.barBuilder()
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .beginTime(series.getLastBar().getBeginTime().plus(Duration.ofDays(1)))
                 .openPrice(90)
                 .highPrice(90)
                 .lowPrice(73)
@@ -204,7 +204,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)
@@ -223,7 +223,7 @@ public class AverageTrueRangeStopLossRuleTest {
 
         for (int i = 0; i < 10; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(100)
                     .highPrice(105)
                     .lowPrice(95)

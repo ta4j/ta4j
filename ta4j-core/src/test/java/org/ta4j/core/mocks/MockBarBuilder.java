@@ -46,9 +46,9 @@ public class MockBarBuilder extends BaseBarBuilder {
     }
 
     @Override
-    public BaseBarBuilder endTime(final Instant endTime) {
+    public BaseBarBuilder beginTime(final Instant beginTime) {
         endTimeSet = true;
-        return super.endTime(endTime);
+        return super.beginTime(beginTime);
     }
 
     @Override
@@ -65,7 +65,7 @@ public class MockBarBuilder extends BaseBarBuilder {
         }
 
         if (!endTimeSet) {
-            endTime(Instant.now(Clock.offset(clock, timePeriod.multipliedBy(++countOfProducedBars))));
+            beginTime(Instant.now(Clock.offset(clock, timePeriod.multipliedBy(++countOfProducedBars))));
         }
         return super.build();
     }

@@ -161,7 +161,7 @@ public final class BarSeriesUtils {
             Bar bar = bars.get(i);
             convertedBarSeries.barBuilder()
                     .timePeriod(bar.getTimePeriod())
-                    .endTime(bar.getEndTime())
+                    .beginTime(bar.getBeginTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
                     .highPrice(bar.getHighPrice().getDelegate())
                     .lowPrice(bar.getLowPrice().getDelegate())

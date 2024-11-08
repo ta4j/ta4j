@@ -95,7 +95,7 @@ public class AroonUpIndicatorTest {
         var now = Instant.now();
         for (long i = 0; i <= 1000; i++) {
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(NaN)
                     .highPrice(NaN)
@@ -117,7 +117,7 @@ public class AroonUpIndicatorTest {
         for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
             Num highPrice = i % 2 == 0 ? series.numFactory().numOf(i) : NaN;
             series.barBuilder()
-                    .endTime(now.plus(Duration.ofDays(i)))
+                    .beginTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
                     .closePrice(NaN)
                     .highPrice(highPrice)

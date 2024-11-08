@@ -51,7 +51,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         var now = Instant.now();
         series.addBar(series.barBuilder()
-                .endTime(now.minusSeconds(5))
+                .beginTime(now.minusSeconds(5))
                 .openPrice(0)
                 .closePrice(12)
                 .highPrice(15)
@@ -60,7 +60,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .volume(0)
                 .build());
         series.barBuilder()
-                .endTime(now.minusSeconds(4))
+                .beginTime(now.minusSeconds(4))
                 .openPrice(0)
                 .closePrice(8)
                 .highPrice(11)
@@ -70,7 +70,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(now.minusSeconds(3))
+                .beginTime(now.minusSeconds(3))
                 .openPrice(0)
                 .closePrice(15)
                 .highPrice(17)
@@ -80,7 +80,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(now.minusSeconds(2))
+                .beginTime(now.minusSeconds(2))
                 .openPrice(0)
                 .closePrice(15)
                 .highPrice(17)
@@ -90,7 +90,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .trades(0)
                 .add();
         series.barBuilder()
-                .endTime(now.minusSeconds(1))
+                .beginTime(now.minusSeconds(1))
                 .openPrice(0)
                 .closePrice(0)
                 .highPrice(0)

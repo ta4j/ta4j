@@ -211,7 +211,7 @@ public class AroonOscillatorIndicatorTest {
             String[] tickData = dataLine[i].split(",");
             Instant date = LocalDate.parse(tickData[0], dtf).atStartOfDay(ZoneOffset.UTC).toInstant();
             data.barBuilder()
-                    .endTime(date)
+                    .beginTime(date)
                     .openPrice(tickData[3])
                     .highPrice(tickData[4])
                     .lowPrice(tickData[5])

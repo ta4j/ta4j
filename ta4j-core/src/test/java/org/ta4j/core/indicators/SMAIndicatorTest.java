@@ -53,14 +53,12 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
-                .build();
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2).build();
     }
 
-    public Instant getNextEndTime() {
+    public Instant getNextBeginTime() {
         var lastBar = data.getLastBar();
-        return lastBar == null ? null : lastBar.getEndTime().plus(lastBar.getTimePeriod());
+        return lastBar == null ? null : lastBar.getBeginTime().plus(lastBar.getTimePeriod());
     }
 
     @Test
@@ -85,7 +83,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void usingBarCount3UsingClosePriceMovingSerie() {
         data.setMaximumBarCount(13);
-        data.barBuilder().closePrice(5.).endTime(getNextEndTime()).add();
+        data.barBuilder().closePrice(5.).beginTime(getNextBeginTime()).add();
 
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
@@ -112,18 +110,15 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         actualIndicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
-                TestUtils.GENERAL_OFFSET);
+        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

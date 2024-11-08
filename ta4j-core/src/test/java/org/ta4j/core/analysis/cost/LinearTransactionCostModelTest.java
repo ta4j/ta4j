@@ -143,23 +143,23 @@ public class LinearTransactionCostModelTest {
         Num two = series.numFactory().numOf(2);
         Num three = series.numFactory().numOf(3);
         Num four = series.numFactory().numOf(4);
-        series.barBuilder().endTime(now).openPrice(one).closePrice(one).highPrice(one).lowPrice(one).add();
+        series.barBuilder().beginTime(now).openPrice(one).closePrice(one).highPrice(one).lowPrice(one).add();
         series.barBuilder()
-                .endTime(now.plusSeconds(1))
+                .beginTime(now.plusSeconds(1))
                 .openPrice(two)
                 .closePrice(two)
                 .highPrice(two)
                 .lowPrice(two)
                 .add();
         series.barBuilder()
-                .endTime(now.plusSeconds(2))
+                .beginTime(now.plusSeconds(2))
                 .openPrice(three)
                 .closePrice(three)
                 .highPrice(three)
                 .lowPrice(three)
                 .add();
         series.barBuilder()
-                .endTime(now.plusSeconds(3))
+                .beginTime(now.plusSeconds(3))
                 .openPrice(four)
                 .closePrice(four)
                 .highPrice(four)

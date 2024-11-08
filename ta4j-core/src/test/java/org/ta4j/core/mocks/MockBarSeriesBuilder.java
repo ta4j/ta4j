@@ -74,7 +74,7 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
         var now = Instant.now();
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(now.minus(Duration.ofMinutes((data.size() + 1 - i))))
+                    .beginTime(now.minus(Duration.ofMinutes((data.size() + 1 - i))))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
@@ -90,7 +90,7 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
         var now = Instant.now();
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
-                    .endTime(now.minus(Duration.ofMinutes((long) (5001 - i))))
+                    .beginTime(now.minus(Duration.ofMinutes((long) (5001 - i))))
                     .openPrice(i)
                     .closePrice(i + 1)
                     .highPrice(i + 2)

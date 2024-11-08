@@ -61,7 +61,7 @@ public class PreviousValueIndicatorTest {
             double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
             Instant dateTime = now.minusSeconds(1001 - i);
             series.barBuilder()
-                    .endTime(dateTime)
+                    .beginTime(dateTime)
                     .openPrice(open)
                     .closePrice(close)
                     .highPrice(max)

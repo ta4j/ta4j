@@ -82,7 +82,7 @@ public class UnstableIndicatorStrategy {
 
         closePrices.forEach(close -> series.barBuilder()
                 .timePeriod(MINUTE)
-                .endTime(TIME)
+                .beginTime(TIME)
                 .openPrice(0)
                 .closePrice(close)
                 .highPrice(0)

@@ -78,32 +78,32 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-13T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-13T00:00:00Z"))
                 .closePrice(1d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-14T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-14T00:00:00Z"))
                 .closePrice(2d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-15T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-15T00:00:00Z"))
                 .closePrice(3d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-20T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-20T00:00:00Z"))
                 .closePrice(4d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-25T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-25T00:00:00Z"))
                 .closePrice(5d)
                 .add();
         defaultSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.parse("2014-06-30T00:00:00Z"))
+                .beginTime(Instant.parse("2014-06-30T00:00:00Z"))
                 .closePrice(6d)
                 .add();
 
@@ -124,17 +124,17 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
-        series.addBar(series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(now).closePrice(1d).build(), true);
+        series.addBar(series.barBuilder().timePeriod(Duration.ofDays(1)).beginTime(now).closePrice(1d).build(), true);
         assertEquals(1, series.getBarCount());
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().one());
 
-        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(1))).closePrice(2d).build(), false);
-        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(2))).closePrice(3d).build(), false);
+        series.addBar(series.barBuilder().beginTime(now.plus(Duration.ofMinutes(1))).closePrice(2d).build(), false);
+        series.addBar(series.barBuilder().beginTime(now.plus(Duration.ofMinutes(2))).closePrice(3d).build(), false);
         assertEquals(3, series.getBarCount());
 
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(3));
-        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(3))).closePrice(4d).build(), true);
-        series.addBar(series.barBuilder().endTime(now.plus(Duration.ofMinutes(4))).closePrice(5d).build(), true);
+        series.addBar(series.barBuilder().beginTime(now.plus(Duration.ofMinutes(3))).closePrice(4d).build(), true);
+        series.addBar(series.barBuilder().beginTime(now.plus(Duration.ofMinutes(4))).closePrice(5d).build(), true);
         assertEquals(3, series.getBarCount());
 
         assertNumEquals(series.getLastBar().getClosePrice(), series.numFactory().numOf(5));
@@ -175,18 +175,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         // Default series
         var barData = defaultSeries.getBarData();
         var defaultDescription = defaultSeries.getSeriesPeriodDescription();
-        var lastEndTimeDefault = barData.get(defaultSeries.getEndIndex()).getEndTime();
-        var firstEndTimeDefault = barData.get(defaultSeries.getBeginIndex()).getEndTime();
-        assertTrue(defaultDescription.endsWith(formatter.format(lastEndTimeDefault)));
-        assertTrue(defaultDescription.startsWith(formatter.format(firstEndTimeDefault)));
+        var lastbeginTimeDefault = barData.get(defaultSeries.getEndIndex()).getBeginTime();
+        var firstBeginTimeDefault = barData.get(defaultSeries.getBeginIndex()).getBeginTime();
+        assertTrue(defaultDescription.endsWith(formatter.format(lastbeginTimeDefault)));
+        assertTrue(defaultDescription.startsWith(formatter.format(firstBeginTimeDefault)));
 
         // Constrained series
         var subSeries = defaultSeries.getSubSeries(2, 4);
         var subDescription = subSeries.getSeriesPeriodDescription();
-        var lastEndTimeConstrained = subSeries.getLastBar().getEndTime();
-        var firstEndTimeConstrained = subSeries.getFirstBar().getEndTime();
-        assertTrue(subDescription.endsWith(formatter.format(lastEndTimeConstrained)));
-        assertTrue(subDescription.startsWith(formatter.format(firstEndTimeConstrained)));
+        var lastBeginTimeConstrained = subSeries.getLastBar().getBeginTime();
+        var firstBeginTimeConstrained = subSeries.getFirstBar().getBeginTime();
+        assertTrue(subDescription.endsWith(formatter.format(lastBeginTimeConstrained)));
+        assertTrue(subDescription.startsWith(formatter.format(firstBeginTimeConstrained)));
 
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
@@ -199,18 +199,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         // Default series
         var barData = defaultSeries.getBarData();
         var defaultDescription = defaultSeries.getSeriesPeriodDescriptionInSystemTimeZone();
-        var lastEndTimeDefault = barData.get(defaultSeries.getEndIndex()).getSystemZonedEndTime();
-        var firstEndTimeDefault = barData.get(defaultSeries.getBeginIndex()).getSystemZonedEndTime();
-        assertTrue(defaultDescription.endsWith(formatter.format(lastEndTimeDefault)));
-        assertTrue(defaultDescription.startsWith(formatter.format(firstEndTimeDefault)));
+        var lastBeginTimeDefault = barData.get(defaultSeries.getEndIndex()).getSystemZonedBeginTime();
+        var firstBeginTimeDefault = barData.get(defaultSeries.getBeginIndex()).getSystemZonedBeginTime();
+        assertTrue(defaultDescription.endsWith(formatter.format(lastBeginTimeDefault)));
+        assertTrue(defaultDescription.startsWith(formatter.format(firstBeginTimeDefault)));
 
         // Constrained series
         var subSeries = defaultSeries.getSubSeries(2, 4);
         var subDescription = subSeries.getSeriesPeriodDescriptionInSystemTimeZone();
-        var lastEndTimeConstrained = subSeries.getLastBar().getSystemZonedEndTime();
-        var firstEndTimeConstrained = subSeries.getFirstBar().getSystemZonedEndTime();
-        assertTrue(subDescription.endsWith(formatter.format(lastEndTimeConstrained)));
-        assertTrue(subDescription.startsWith(formatter.format(firstEndTimeConstrained)));
+        var lastBeginTimeConstrained = subSeries.getLastBar().getSystemZonedBeginTime();
+        var firstBeginTimeConstrained = subSeries.getFirstBar().getSystemZonedBeginTime();
+        assertTrue(subDescription.endsWith(formatter.format(lastBeginTimeConstrained)));
+        assertTrue(subDescription.startsWith(formatter.format(firstBeginTimeConstrained)));
 
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
@@ -323,7 +323,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowExceptionTest() {
         defaultSeries.addBar(
-                defaultSeries.barBuilder().endTime(Instant.parse("2000-01-01T00:00:00Z")).closePrice(99d).build());
+                defaultSeries.barBuilder().beginTime(Instant.parse("2000-01-01T00:00:00Z")).closePrice(99d).build());
     }
 
     @Test
@@ -332,9 +332,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
 
-        Bar bar1 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-13T00:00:00Z")).closePrice(1d).build();
+        Bar bar1 = defaultSeries.barBuilder().beginTime(Instant.parse("2014-06-13T00:00:00Z")).closePrice(1d).build();
 
-        Bar bar2 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(2d).build();
+        Bar bar2 = defaultSeries.barBuilder().beginTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(2d).build();
 
         assertEquals(0, defaultSeries.getBarCount());
         assertEquals(-1, defaultSeries.getBeginIndex());
@@ -403,7 +403,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void wrongBarTypeDoubleTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
         series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
+                .beginTime(Instant.now())
                 .closePrice(DecimalNumFactory.getInstance().one())
                 .build());
     }
@@ -412,7 +412,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void wrongBarTypeBigDecimalTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
+                .beginTime(Instant.now())
                 .closePrice(DoubleNumFactory.getInstance().one())
                 .build());
     }
@@ -430,7 +430,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         IntStream.range(0, 100).forEach(i -> {
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(now.plus(Duration.ofMinutes(i)))
+                    .beginTime(now.plus(Duration.ofMinutes(i)))
                     .openPrice(5)
                     .highPrice(7)
                     .lowPrice(1)

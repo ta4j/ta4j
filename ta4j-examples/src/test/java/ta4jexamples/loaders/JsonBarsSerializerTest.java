@@ -60,7 +60,7 @@ public class JsonBarsSerializerTest {
         Bar randomInitialBar = series.getBar(randomIndex);
         Bar randomNewBar = loadedSeries.getBar(randomIndex);
 
-        assertEquals(randomInitialBar.getEndTime(), randomNewBar.getEndTime());
+        assertEquals(randomInitialBar.getBeginTime(), randomNewBar.getBeginTime());
         assertEquals(randomInitialBar.getOpenPrice(), randomNewBar.getOpenPrice());
         assertTrue(randomInitialBar.getOpenPrice().getDelegate() instanceof BigDecimal);
         assertTrue(randomNewBar.getOpenPrice().getDelegate() instanceof BigDecimal);
