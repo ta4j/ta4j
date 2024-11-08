@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.18
 
 ### Breaking
+- Using beginTime for creating bars instead of endTime.
 - Updated project Java JDK from 11 > 21
 - Updated Github workflows to use JDK 21
 - Extracted NumFactory as source of numbers with defined precision
