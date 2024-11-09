@@ -50,7 +50,7 @@ public interface Bar extends Serializable {
      * @return the begin timestamp of the bar period (in UTC).
      */
     Instant getBeginTime();
-    
+
     /**
      * @return the end timestamp of the bar period (in UTC).
      */
@@ -90,7 +90,7 @@ public interface Bar extends Serializable {
      * @return the number of trades of the bar period
      */
     long getTrades();
-    
+
     /**
      * @param timestamp a timestamp
      * @return true if the provided timestamp is between the begin time and the end
@@ -99,7 +99,7 @@ public interface Bar extends Serializable {
     default boolean inPeriod(Instant timestamp) {
         return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
     }
-    
+
     /**
      * @return the bar's begin time in UTC as {@link ZonedDateTime}
      */

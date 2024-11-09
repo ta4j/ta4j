@@ -36,11 +36,12 @@ public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
 
+    /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
 
     /** The begin time of the bar period (in UTC). */
     private final Instant beginTime;
-    
+
     /** The end time of the bar period (in UTC). */
     private final Instant endTime;
 
@@ -106,7 +107,7 @@ public class BaseBar implements Bar {
     public Instant getBeginTime() {
         return beginTime;
     }
-    
+
     @Override
     public Instant getEndTime() {
         return endTime;
@@ -192,7 +193,8 @@ public class BaseBar implements Bar {
 
     @Override
     public int hashCode() {
-        return Objects.hash(beginTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+        return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades);
     }
 
     @Override
