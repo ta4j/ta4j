@@ -41,6 +41,9 @@ public class BaseBar implements Bar {
 
     /** The begin time of the bar period (in UTC). */
     private final Instant beginTime;
+    
+    /** The end time of the bar period (in UTC). */
+    private final Instant endTime;
 
     /** The open price of the bar period. */
     private Num openPrice;
@@ -81,6 +84,7 @@ public class BaseBar implements Bar {
         checkTimeArguments(timePeriod, beginTime);
         this.timePeriod = timePeriod;
         this.beginTime = beginTime;
+        this.endTime = beginTime.plus(timePeriod);
         this.openPrice = openPrice;
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
@@ -99,18 +103,18 @@ public class BaseBar implements Bar {
         return timePeriod;
     }
 
-    /**
-     * @return the begin timestamp of the bar period (derived by {@link #endTime} -
-     *         {@link #timePeriod})
-     */
     @Override
     public Instant getBeginTime() {
         return beginTime;
     }
     
+    /**
+     * @return the end timestamp of the bar period (derived by {@link #beginTime} +
+     *         {@link #timePeriod})
+     */
     @Override
     public Instant getEndTime() {
-        return beginTime.plus(timePeriod);
+        return endTime;
     }
 
     @Override
@@ -203,10 +207,10 @@ public class BaseBar implements Bar {
         if (!(obj instanceof BaseBar))
             return false;
         final BaseBar other = (BaseBar) obj;
-        return Objects.equals(beginTime, other.beginTime) && Objects.equals(timePeriod, other.timePeriod)
-                && Objects.equals(openPrice, other.openPrice) && Objects.equals(highPrice, other.highPrice)
-                && Objects.equals(lowPrice, other.lowPrice) && Objects.equals(closePrice, other.closePrice)
-                && Objects.equals(volume, other.volume) && Objects.equals(amount, other.amount)
-                && trades == other.trades;
+        return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)
+                && Objects.equals(timePeriod, other.timePeriod) && Objects.equals(openPrice, other.openPrice)
+                && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)
+                && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
+                && Objects.equals(amount, other.amount) && trades == other.trades;
     }
 }
