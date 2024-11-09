@@ -135,7 +135,8 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
+                final Bar aggregatedBar = new BaseBarBuilder()
+                        .timePeriod(timePeriod)
                         .beginTime(beginTime)
                         .openPrice(open)
                         .highPrice(high)

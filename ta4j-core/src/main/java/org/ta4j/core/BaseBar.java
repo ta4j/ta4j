@@ -36,7 +36,6 @@ public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
 
-    /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
 
     /** The begin time of the bar period (in UTC). */
@@ -108,10 +107,6 @@ public class BaseBar implements Bar {
         return beginTime;
     }
     
-    /**
-     * @return the end timestamp of the bar period (derived by {@link #beginTime} +
-     *         {@link #timePeriod})
-     */
     @Override
     public Instant getEndTime() {
         return endTime;
