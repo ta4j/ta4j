@@ -40,7 +40,6 @@ import org.ta4j.core.num.Num;
  * period. It represents the "end bar" of a time period.
  */
 public interface Bar extends Serializable {
-    
     /**
      * @return the time period of the bar
      */
