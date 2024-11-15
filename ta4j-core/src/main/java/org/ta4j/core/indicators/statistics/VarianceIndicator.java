@@ -25,52 +25,104 @@ package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
-/**
- * Variance indicator. Uses sample variance algorithm.
- */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
+    private final boolean isSampleVariance;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param barCount  the time frame
-     */
-    public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
+    // State for sequential calculation
+    private int previousIndex = -1;
+    private Num previousSum;
+    private Num previousSumOfSquares;
+
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final boolean isSampleVariance) {
         super(indicator);
         this.indicator = indicator;
-        this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+        this.barCount = Math.max(barCount, 1);
+        this.isSampleVariance = isSampleVariance;
+        this.previousSum = numFactory().zero();
+        this.previousSumOfSquares = numFactory().zero();
+    }
+
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
+        this(indicator, barCount, false);
     }
 
     @Override
     protected Num calculate(final int index) {
-        final int startIndex = Math.max(0, index - this.barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
+        if (this.previousIndex != -1 && this.previousIndex == index - 1) {
+            return fastPath(index);
+        }
+        return slowPath(index);
+    }
 
-        if (numberOfObservations < 2) {
-            return numFactory.zero();
+    private Num fastPath(final int index) {
+        // Add new value
+        final Num newValue = this.indicator.getValue(index);
+        Num newSum = this.previousSum.plus(newValue);
+        Num newSumOfSquares = this.previousSumOfSquares.plus(newValue.pow(2));
+
+        // Remove oldest value if window is full
+        final int windowSize = Math.min(this.barCount, index + 1);
+        if (windowSize == this.barCount && index >= this.barCount) {
+            final Num oldValue = this.indicator.getValue(index - this.barCount);
+            newSum = newSum.minus(oldValue);
+            newSumOfSquares = newSumOfSquares.minus(oldValue.pow(2));
         }
 
-        var variance = numFactory.zero();
-        final Num average = this.sma.getValue(index);
+        // Update state
+      this.previousIndex = index;
+      this.previousSum = newSum;
+      this.previousSumOfSquares = newSumOfSquares;
+
+        return calculateVariance(windowSize, newSum, newSumOfSquares);
+    }
+
+    private Num slowPath(final int index) {
+        final int windowSize = Math.min(this.barCount, index + 1);
+        final int startIndex = Math.max(0, index - windowSize + 1);
+
+        if (windowSize < 2 && this.isSampleVariance) {
+            return numFactory().zero();
+        }
+
+        // Calculate sums
+        Num sum = numFactory().zero();
+        Num sumOfSquares = numFactory().zero();
 
         for (int i = startIndex; i <= index; i++) {
-            final var pow = this.indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
+            final Num value = this.indicator.getValue(i);
+            sum = sum.plus(value);
+            sumOfSquares = sumOfSquares.plus(value.pow(2));
         }
 
-        // Divide by (n-1) for sample variance
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations - 1));
-        return variance;
+        // Update state
+      this.previousIndex = index;
+      this.previousSum = sum;
+      this.previousSumOfSquares = sumOfSquares;
+
+        return calculateVariance(windowSize, sum, sumOfSquares);
+    }
+
+    private Num calculateVariance(final int windowSize, final Num sum, final Num sumOfSquares) {
+        if (windowSize < 2 && this.isSampleVariance) {
+            return numFactory().zero();
+        }
+
+        // Calculate variance using sum of squares formula
+        // Variance = (sum(x^2) - (sum(x)^2)/n) / (n or n-1)
+        final Num variance = sumOfSquares.minus(sum.pow(2).dividedBy(numFactory().numOf(windowSize)));
+        final int divisor = this.isSampleVariance ? windowSize - 1 : windowSize;
+
+        return variance.dividedBy(numFactory().numOf(divisor));
+    }
+
+    private NumFactory numFactory() {
+        return getBarSeries().numFactory();
     }
 
     @Override
@@ -80,6 +132,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + " type: "
+               + (this.isSampleVariance ? "sample" : "population");
     }
 }

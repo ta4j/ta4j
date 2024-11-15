@@ -44,12 +44,14 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Before
     public void setUp() {
-      this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9)
+                .build();
     }
 
     @Test
     public void varianceUsingBarCount4UsingClosePrice() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4);
+        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4, true);
 
         assertNumEquals(0, variance.getValue(0));
         assertNumEquals(0.5, variance.getValue(1));
@@ -61,25 +63,25 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(0.66666, variance.getValue(7));
         assertNumEquals(0.66666, variance.getValue(8));
         assertNumEquals(4.66666, variance.getValue(9));
-        assertNumEquals(14, variance.getValue(10));
+        assertNumEquals(14.0000, variance.getValue(10));
     }
 
     @Test
     public void firstValueShouldBeZero() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4);
+        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4, true);
         assertNumEquals(0, variance.getValue(0));
     }
 
     @Test
     public void varianceShouldBeZeroWhenBarCountIs1() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 1);
+        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 1, true);
         assertNumEquals(0, variance.getValue(3));
         assertNumEquals(0, variance.getValue(8));
     }
 
     @Test
     public void varianceUsingBarCount2UsingClosePrice() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 2);
+        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 2, true);
 
         assertNumEquals(0, variance.getValue(0));
         assertNumEquals(0.5, variance.getValue(1));
