@@ -28,6 +28,10 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+/**
+ * Variance indicator with optimized calculation for sequential access.
+ * Uses Welford's online algorithm for sequential variance calculation.
+ */
 public final class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
