@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Variance indicator.
+ * Variance indicator. Uses sample variance algorithm.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
@@ -43,7 +43,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      * @param barCount  the time frame
      */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
@@ -51,27 +51,35 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
+    protected Num calculate(final int index) {
+        final int startIndex = Math.max(0, index - this.barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         final var numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
-        Num average = sma.getValue(index);
+
+        if (numberOfObservations < 2) {
+            return numFactory.zero();
+        }
+
+        var variance = numFactory.zero();
+        final Num average = this.sma.getValue(index);
+
         for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
+            final var pow = this.indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
+
+        // Divide by (n-1) for sample variance
+        variance = variance.dividedBy(numFactory.numOf(numberOfObservations - 1));
         return variance;
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
 }
