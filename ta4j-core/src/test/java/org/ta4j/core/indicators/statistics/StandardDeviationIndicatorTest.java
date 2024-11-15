@@ -38,18 +38,20 @@ import org.ta4j.core.num.NumFactory;
 public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public StandardDeviationIndicatorTest(NumFactory numFunction) {
+    public StandardDeviationIndicatorTest(final NumFactory numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9)
+                .build();
     }
 
     @Test
     public void standardDeviationUsingBarCount4UsingClosePrice() {
-        var sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
+        final var sdv = StandardDeviationIndicator.ofPopulation(new ClosePriceIndicator(this.data), 4);
 
         assertNumEquals(0, sdv.getValue(0));
         assertNumEquals(Math.sqrt(0.25), sdv.getValue(1));
@@ -66,7 +68,7 @@ public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Test
     public void standardDeviationShouldBeZeroWhenBarCountIs1() {
-        var sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
+        final var sdv = StandardDeviationIndicator.ofPopulation(new ClosePriceIndicator(this.data), 1);
         assertNumEquals(0, sdv.getValue(3));
         assertNumEquals(0, sdv.getValue(8));
     }

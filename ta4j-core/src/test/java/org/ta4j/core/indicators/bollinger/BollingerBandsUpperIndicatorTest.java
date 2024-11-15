@@ -45,26 +45,26 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
 
     private SMAIndicator sma;
 
-    public BollingerBandsUpperIndicatorTest(NumFactory numFactory) {
+    public BollingerBandsUpperIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        final BarSeries data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
-        barCount = 3;
-        closePrice = new ClosePriceIndicator(data);
-        sma = new SMAIndicator(closePrice, barCount);
+        this.barCount = 3;
+        this.closePrice = new ClosePriceIndicator(data);
+        this.sma = new SMAIndicator(this.closePrice, this.barCount);
     }
 
     @Test
     public void bollingerBandsUpperUsingSMAAndStandardDeviation() {
 
-        var bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        var standardDeviation = new StandardDeviationIndicator(closePrice, barCount);
-        var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
+        final var bbmSMA = new BollingerBandsMiddleIndicator(this.sma);
+        final var standardDeviation = StandardDeviationIndicator.ofPopulation(this.closePrice, this.barCount);
+        final var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
         assertNumEquals(2, bbuSMA.getK());
 
@@ -79,8 +79,8 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(5.633, bbuSMA.getValue(8));
         assertNumEquals(4.2761, bbuSMA.getValue(9));
 
-        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation,
-                numFactory.numOf(1.5));
+        final BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation,
+                this.numFactory.numOf(1.5));
 
         assertNumEquals(1.5, bbuSMAwithK.getK());
 

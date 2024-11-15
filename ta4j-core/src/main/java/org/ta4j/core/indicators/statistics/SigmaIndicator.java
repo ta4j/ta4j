@@ -47,27 +47,36 @@ public class SigmaIndicator extends CachedIndicator<Num> {
      * @param ref      the indicator
      * @param barCount the time frame
      */
-    public SigmaIndicator(Indicator<Num> ref, int barCount) {
+    private SigmaIndicator(final Indicator<Num> ref, final int barCount, final boolean isSample) {
         super(ref);
         this.ref = ref;
         this.barCount = barCount;
         this.mean = new SMAIndicator(ref, barCount);
-        this.sd = new StandardDeviationIndicator(ref, barCount);
+        this.sd = isSample ? StandardDeviationIndicator.ofSample(ref, barCount)
+                : StandardDeviationIndicator.ofPopulation(ref, barCount);
+    }
+
+    public static SigmaIndicator ofSample(final Indicator<Num> ref, final int barCount) {
+        return new SigmaIndicator(ref, barCount, true);
+    }
+
+    public static SigmaIndicator ofPopulation(final Indicator<Num> ref, final int barCount) {
+        return new SigmaIndicator(ref, barCount, false);
     }
 
     @Override
-    protected Num calculate(int index) {
+    protected Num calculate(final int index) {
         // z-score = (ref - mean) / sd
-        return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
+        return (this.ref.getValue(index).minus(this.mean.getValue(index))).dividedBy(this.sd.getValue(index));
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
 }

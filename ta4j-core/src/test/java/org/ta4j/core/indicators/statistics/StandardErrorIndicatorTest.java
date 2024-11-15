@@ -38,20 +38,20 @@ import org.ta4j.core.num.NumFactory;
 public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public StandardErrorIndicatorTest(NumFactory numFactory) {
+    public StandardErrorIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(10, 20, 30, 40, 50, 40, 40, 50, 40, 30, 20, 10)
                 .build();
     }
 
     @Test
     public void usingBarCount5UsingClosePrice() {
-        var se = new StandardErrorIndicator(new ClosePriceIndicator(data), 5);
+        final var se = StandardErrorIndicator.ofPopulation(new ClosePriceIndicator(this.data), 5);
 
         assertNumEquals(0, se.getValue(0));
         assertNumEquals(3.5355, se.getValue(1));
@@ -69,7 +69,7 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Test
     public void shouldBeZeroWhenBarCountIs1() {
-        var se = new StandardErrorIndicator(new ClosePriceIndicator(data), 1);
+        final var se = StandardErrorIndicator.ofPopulation(new ClosePriceIndicator(this.data), 1);
         assertNumEquals(0, se.getValue(1));
         assertNumEquals(0, se.getValue(3));
     }

@@ -39,19 +39,19 @@ public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     private BarSeries data;
 
-    public SigmaIndicatorTest(NumFactory numFunction) {
+    public SigmaIndicatorTest(final NumFactory numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 5, 6).build();
     }
 
     @Test
     public void test() {
 
-        var zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
+        final var zScore = SigmaIndicator.ofPopulation(new ClosePriceIndicator(this.data), 5);
 
         assertNumEquals(1.0, zScore.getValue(1));
         assertNumEquals(1.224744871391589, zScore.getValue(2));
