@@ -51,7 +51,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void varianceUsingBarCount4UsingClosePrice() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4, true);
+        final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 4);
 
         assertNumEquals(0, variance.getValue(0));
         assertNumEquals(0.5, variance.getValue(1));
@@ -68,20 +68,20 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void firstValueShouldBeZero() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 4, true);
+        final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 4);
         assertNumEquals(0, variance.getValue(0));
     }
 
     @Test
     public void varianceShouldBeZeroWhenBarCountIs1() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 1, true);
+        final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 1);
         assertNumEquals(0, variance.getValue(3));
         assertNumEquals(0, variance.getValue(8));
     }
 
     @Test
     public void varianceUsingBarCount2UsingClosePrice() {
-        final var variance = new VarianceIndicator(new ClosePriceIndicator(this.data), 2, true);
+        final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 2);
 
         assertNumEquals(0, variance.getValue(0));
         assertNumEquals(0.5, variance.getValue(1));

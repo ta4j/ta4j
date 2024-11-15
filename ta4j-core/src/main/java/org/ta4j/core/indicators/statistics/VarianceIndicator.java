@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class VarianceIndicator extends CachedIndicator<Num> {
+public final class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -39,7 +39,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     private Num previousSum;
     private Num previousSumOfSquares;
 
-    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final boolean isSampleVariance) {
+    private VarianceIndicator(final Indicator<Num> indicator, final int barCount, final boolean isSampleVariance) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = Math.max(barCount, 1);
@@ -48,8 +48,12 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         this.previousSumOfSquares = numFactory().zero();
     }
 
-    public VarianceIndicator(final Indicator<Num> indicator, final int barCount) {
-        this(indicator, barCount, false);
+    public static VarianceIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, true);
+    }
+
+    public static VarianceIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, false);
     }
 
     @Override
@@ -62,12 +66,12 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     private Num fastPath(final int index) {
         // Add new value
-        final Num newValue = this.indicator.getValue(index);
-        Num newSum = this.previousSum.plus(newValue);
-        Num newSumOfSquares = this.previousSumOfSquares.plus(newValue.pow(2));
+        final var newValue = this.indicator.getValue(index);
+        var newSum = this.previousSum.plus(newValue);
+        var newSumOfSquares = this.previousSumOfSquares.plus(newValue.pow(2));
 
         // Remove oldest value if window is full
-        final int windowSize = Math.min(this.barCount, index + 1);
+        final var windowSize = Math.min(this.barCount, index + 1);
         if (windowSize == this.barCount && index >= this.barCount) {
             final Num oldValue = this.indicator.getValue(index - this.barCount);
             newSum = newSum.minus(oldValue);
@@ -75,35 +79,35 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         }
 
         // Update state
-      this.previousIndex = index;
-      this.previousSum = newSum;
-      this.previousSumOfSquares = newSumOfSquares;
+        this.previousIndex = index;
+        this.previousSum = newSum;
+        this.previousSumOfSquares = newSumOfSquares;
 
         return calculateVariance(windowSize, newSum, newSumOfSquares);
     }
 
     private Num slowPath(final int index) {
-        final int windowSize = Math.min(this.barCount, index + 1);
-        final int startIndex = Math.max(0, index - windowSize + 1);
+        final var windowSize = Math.min(this.barCount, index + 1);
+        final var startIndex = Math.max(0, index - windowSize + 1);
 
         if (windowSize < 2 && this.isSampleVariance) {
             return numFactory().zero();
         }
 
         // Calculate sums
-        Num sum = numFactory().zero();
-        Num sumOfSquares = numFactory().zero();
+        var sum = numFactory().zero();
+        var sumOfSquares = numFactory().zero();
 
-        for (int i = startIndex; i <= index; i++) {
+        for (var i = startIndex; i <= index; i++) {
             final Num value = this.indicator.getValue(i);
             sum = sum.plus(value);
             sumOfSquares = sumOfSquares.plus(value.pow(2));
         }
 
         // Update state
-      this.previousIndex = index;
-      this.previousSum = sum;
-      this.previousSumOfSquares = sumOfSquares;
+        this.previousIndex = index;
+        this.previousSum = sum;
+        this.previousSumOfSquares = sumOfSquares;
 
         return calculateVariance(windowSize, sum, sumOfSquares);
     }
@@ -115,7 +119,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
         // Calculate variance using sum of squares formula
         // Variance = (sum(x^2) - (sum(x)^2)/n) / (n or n-1)
-        final Num variance = sumOfSquares.minus(sum.pow(2).dividedBy(numFactory().numOf(windowSize)));
+        final var variance = sumOfSquares.minus(sum.pow(2).dividedBy(numFactory().numOf(windowSize)));
         final int divisor = this.isSampleVariance ? windowSize - 1 : windowSize;
 
         return variance.dividedBy(numFactory().numOf(divisor));
@@ -133,6 +137,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + this.barCount + " type: "
-               + (this.isSampleVariance ? "sample" : "population");
+                + (this.isSampleVariance ? "ofSample" : "ofPopulation");
     }
 }
