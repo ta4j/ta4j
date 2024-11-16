@@ -21,52 +21,58 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.bars;
+package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+@RunWith(Parameterized.class)
+public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    public BaseBarBuilderTest(NumFactory numFactory) {
+    public BaseBarSeriesBuilderTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void testBuildBar() {
+    public void testBuildBigDecimal() {
 
         final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
         final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarBuilder(numFactory).timePeriod(duration)
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        final var bar = series.barBuilder()
+                .timePeriod(duration)
                 .endTime(endTime)
-                .openPrice(numOf(101))
-                .highPrice(numOf(103))
-                .lowPrice(numOf(100))
-                .closePrice(numOf(102))
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
                 .trades(4)
-                .volume(numOf(40))
-                .amount(numOf(4020))
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
                 .build();
 
         assertEquals(duration, bar.getTimePeriod());
         assertEquals(beginTime, bar.getBeginTime());
         assertEquals(endTime, bar.getEndTime());
-        assertEquals(numOf(101), bar.getOpenPrice());
-        assertEquals(numOf(103), bar.getHighPrice());
-        assertEquals(numOf(100), bar.getLowPrice());
-        assertEquals(numOf(102), bar.getClosePrice());
+        assertNumEquals(numOf(101.0), bar.getOpenPrice());
+        assertNumEquals(numOf(103), bar.getHighPrice());
+        assertNumEquals(numOf(100), bar.getLowPrice());
+        assertNumEquals(numOf(102), bar.getClosePrice());
         assertEquals(4, bar.getTrades());
-        assertEquals(numOf(40), bar.getVolume());
-        assertEquals(numOf(4020), bar.getAmount());
+        assertNumEquals(numOf(40), bar.getVolume());
+        assertNumEquals(numOf(4020), bar.getAmount());
     }
 }

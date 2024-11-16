@@ -8,7 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Extracted NumFactory as source of numbers with defined precision
 - Replaced `ZonedDateTime` with `Instant`
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
-- Moved `BaseBar`, `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package
+- Moved `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package and renamed to `TimeBarBuilder` and `TimeBarBuilderFactory`
+- Renamed `BaseBarConvertibleBuilderTest` to `BaseBarSeriesBuilderTest`
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
@@ -31,8 +32,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `KRIIndicator`
 - Added constructor with `amount` for  `EnterAndHoldCriterion`
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
-- Added `TickBarBuilder` to `bars`-package
-- Added `VolumeBarBuilder` to `bars`-package
+- Added `TickBarBuilder` to `bars`-package to aggregate bars after a fixed number of ticks
+- Added `VolumeBarBuilder` to `bars`-package to  aggregate bars after a fixed number of contracts (volume)
 
 ## 0.17 (released September 9, 2024)
 
