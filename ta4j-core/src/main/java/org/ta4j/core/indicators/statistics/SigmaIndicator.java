@@ -46,22 +46,23 @@ public class SigmaIndicator extends CachedIndicator<Num> {
      *
      * @param ref      the indicator
      * @param barCount the time frame
+     * @param type     sample/population
      */
-    private SigmaIndicator(final Indicator<Num> ref, final int barCount, final boolean isSample) {
+    public SigmaIndicator(final Indicator<Num> ref, final int barCount, final Type type) {
         super(ref);
         this.ref = ref;
         this.barCount = barCount;
         this.mean = new SMAIndicator(ref, barCount);
-        this.sd = isSample ? StandardDeviationIndicator.ofSample(ref, barCount)
+        this.sd = type.isSample() ? StandardDeviationIndicator.ofSample(ref, barCount)
                 : StandardDeviationIndicator.ofPopulation(ref, barCount);
     }
 
     public static SigmaIndicator ofSample(final Indicator<Num> ref, final int barCount) {
-        return new SigmaIndicator(ref, barCount, true);
+        return new SigmaIndicator(ref, barCount, Type.SAMPLE);
     }
 
     public static SigmaIndicator ofPopulation(final Indicator<Num> ref, final int barCount) {
-        return new SigmaIndicator(ref, barCount, false);
+        return new SigmaIndicator(ref, barCount, Type.POPULATION);
     }
 
     @Override

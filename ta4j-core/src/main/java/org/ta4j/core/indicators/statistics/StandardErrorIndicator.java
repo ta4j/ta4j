@@ -40,20 +40,21 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
      *
      * @param indicator the indicator
      * @param barCount  the time frame
+     * @param type      sample/population
      */
-    private StandardErrorIndicator(final Indicator<Num> indicator, final int barCount, final boolean isSample) {
+    public StandardErrorIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
         super(indicator);
         this.barCount = barCount;
-        this.sdev = isSample ? StandardDeviationIndicator.ofSample(indicator, barCount)
+        this.sdev = type.isSample() ? StandardDeviationIndicator.ofSample(indicator, barCount)
                 : StandardDeviationIndicator.ofPopulation(indicator, barCount);
     }
 
     public static StandardErrorIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
-        return new StandardErrorIndicator(indicator, barCount, true);
+        return new StandardErrorIndicator(indicator, barCount, Type.SAMPLE);
     }
 
     public static StandardErrorIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
-        return new StandardErrorIndicator(indicator, barCount, false);
+        return new StandardErrorIndicator(indicator, barCount, Type.POPULATION);
     }
 
     @Override

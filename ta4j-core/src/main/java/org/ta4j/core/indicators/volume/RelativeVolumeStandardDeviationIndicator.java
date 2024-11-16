@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.Type;
 import org.ta4j.core.num.Num;
 
 /**
@@ -60,22 +61,23 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
      *
      * @param series   the bar series
      * @param barCount the time frame
+     * @param type     sample/population
      */
-    private RelativeVolumeStandardDeviationIndicator(final BarSeries series, final int barCount, boolean isSample) {
+    public RelativeVolumeStandardDeviationIndicator(final BarSeries series, final int barCount, final Type type) {
         super(series);
         this.barCount = barCount;
         this.volume = new VolumeIndicator(series);
         this.averageVolume = new SMAIndicator(this.volume, barCount);
-        this.volumeStandardDeviation = isSample ? StandardDeviationIndicator.ofSample(this.volume, barCount)
+        this.volumeStandardDeviation = type.isSample() ? StandardDeviationIndicator.ofSample(this.volume, barCount)
                 : StandardDeviationIndicator.ofPopulation(this.volume, barCount);
     }
 
-    public static RelativeVolumeStandardDeviationIndicator ofSample(BarSeries series, int barCount) {
-        return new RelativeVolumeStandardDeviationIndicator(series, barCount, true);
+    public static RelativeVolumeStandardDeviationIndicator ofSample(final BarSeries series, final int barCount) {
+        return new RelativeVolumeStandardDeviationIndicator(series, barCount, Type.SAMPLE);
     }
 
-    public static RelativeVolumeStandardDeviationIndicator ofPopulation(BarSeries series, int barCount) {
-        return new RelativeVolumeStandardDeviationIndicator(series, barCount, false);
+    public static RelativeVolumeStandardDeviationIndicator ofPopulation(final BarSeries series, final int barCount) {
+        return new RelativeVolumeStandardDeviationIndicator(series, barCount, Type.POPULATION);
     }
 
     @Override

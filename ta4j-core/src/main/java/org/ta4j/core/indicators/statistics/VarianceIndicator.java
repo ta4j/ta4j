@@ -23,14 +23,16 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Variance indicator with optimized calculation for sequential access.
- * Uses Welford's online algorithm for sequential variance calculation.
+ * Variance indicator with optimized calculation for sequential access. Uses
+ * Welford's online algorithm for sequential variance calculation.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
@@ -47,7 +49,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = Math.max(barCount, 1);
-        this.type = type;
+        this.type = Objects.requireNonNull(type);
         this.previousSum = numFactory().zero();
         this.previousSumOfSquares = numFactory().zero();
     }
@@ -130,16 +132,15 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     }
 
     private boolean isSample() {
-        return this.type == Type.SAMPLE;
+        return this.type.isSample();
     }
 
     private int getDivisor(final int windowSize) {
         return switch (this.type) {
-            case SAMPLE -> windowSize - 1;
-            case POPULATION -> windowSize;
+        case SAMPLE -> windowSize - 1;
+        case POPULATION -> windowSize;
         };
     }
-
 
     private NumFactory numFactory() {
         return getBarSeries().numFactory();
@@ -152,13 +153,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount + " type: "
-                + this.type;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + " type: " + this.type;
     }
 
-
-    public enum Type {
-        SAMPLE,
-        POPULATION
-    }
 }
