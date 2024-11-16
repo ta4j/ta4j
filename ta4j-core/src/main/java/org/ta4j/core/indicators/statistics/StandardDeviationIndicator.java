@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
+ * @see <a href="https://en.wikipedia.org/wiki/Standard_deviation">Standard deviation on wikipedia</a>
  */
 public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
