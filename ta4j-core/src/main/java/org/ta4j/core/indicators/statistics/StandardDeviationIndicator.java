@@ -31,8 +31,10 @@ import org.ta4j.core.num.Num;
  * Standard deviation indicator.
  *
  * @see <a href=
- *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/standard-deviation-volatility">Standard Deviation (Volatility)</a>
- * @see <a href="https://en.wikipedia.org/wiki/Standard_deviation">Standard deviation on wikipedia</a>
+ *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/standard-deviation-volatility">Standard
+ *      Deviation (Volatility)</a>
+ * @see <a href="https://en.wikipedia.org/wiki/Standard_deviation">Standard
+ *      deviation on wikipedia</a>
  */
 public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
