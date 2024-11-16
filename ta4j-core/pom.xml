@@ -11,6 +11,10 @@
     <name>Ta4j Core</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
 
+    <properties>
+        <junit-jupiter.version>5.11.3</junit-jupiter.version>
+    </properties>
+
     <dependencies>
 
         <!-- Logging facade -->
@@ -28,11 +32,18 @@
 
         <!-- Test dependencies -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
