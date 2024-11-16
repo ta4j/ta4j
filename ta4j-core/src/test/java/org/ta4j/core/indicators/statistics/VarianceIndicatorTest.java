@@ -67,6 +67,16 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     }
 
     @Test
+    // @DisplayName("Random access that uses slow path")
+    public void randomAccess() {
+        final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 4);
+
+        assertNumEquals(14.0000, variance.getValue(10));
+        assertNumEquals(0.66666, variance.getValue(6));
+        assertNumEquals(14.0000, variance.getValue(10));
+    }
+
+    @Test
     public void firstValueShouldBeZero() {
         final var variance = VarianceIndicator.ofSample(new ClosePriceIndicator(this.data), 4);
         assertNumEquals(0, variance.getValue(0));
