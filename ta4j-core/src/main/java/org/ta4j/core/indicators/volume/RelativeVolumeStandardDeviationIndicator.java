@@ -23,14 +23,15 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.Type;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Relative Volume Standard Deviation Indicator. This class is an indicator that
@@ -60,17 +61,27 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
      *
      * @param series   the bar series
      * @param barCount the time frame
+     * @param type     sample/population
      */
-    public RelativeVolumeStandardDeviationIndicator(BarSeries series, int barCount) {
+    public RelativeVolumeStandardDeviationIndicator(final BarSeries series, final int barCount, final Type type) {
         super(series);
         this.barCount = barCount;
         this.volume = new VolumeIndicator(series);
         this.averageVolume = new SMAIndicator(this.volume, barCount);
-        this.volumeStandardDeviation = new StandardDeviationIndicator(volume, barCount);
+        this.volumeStandardDeviation = type.isSample() ? StandardDeviationIndicator.ofSample(this.volume, barCount)
+                : StandardDeviationIndicator.ofPopulation(this.volume, barCount);
+    }
+
+    public static RelativeVolumeStandardDeviationIndicator ofSample(final BarSeries series, final int barCount) {
+        return new RelativeVolumeStandardDeviationIndicator(series, barCount, Type.SAMPLE);
+    }
+
+    public static RelativeVolumeStandardDeviationIndicator ofPopulation(final BarSeries series, final int barCount) {
+        return new RelativeVolumeStandardDeviationIndicator(series, barCount, Type.POPULATION);
     }
 
     @Override
-    protected Num calculate(int index) {
+    protected Num calculate(final int index) {
         // If the index is less than the required unstable bars, return NaN
         if (index < this.getUnstableBars()) {
             return NaN;
@@ -84,11 +95,11 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount;
     }
 }

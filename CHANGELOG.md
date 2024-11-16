@@ -1,6 +1,8 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ## 0.18
+- Fixed sample calculation of variance and deviation
+- Improved performance of VarianceIndicator
 
 ### Breaking
 - Updated project Java JDK from 11 > 21

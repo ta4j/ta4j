@@ -252,7 +252,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link StandardDeviationIndicator} of {@code this}
      */
     public NumericIndicator stddev(int barCount) {
-        return NumericIndicator.of(new StandardDeviationIndicator(this, barCount));
+        return NumericIndicator.of(StandardDeviationIndicator.ofSample(this, barCount));
     }
 
     /**

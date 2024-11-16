@@ -40,22 +40,32 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
      *
      * @param indicator the indicator
      * @param barCount  the time frame
+     * @param type      sample/population
      */
-    public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
+    public StandardErrorIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
         super(indicator);
         this.barCount = barCount;
-        this.sdev = new StandardDeviationIndicator(indicator, barCount);
+        this.sdev = type.isSample() ? StandardDeviationIndicator.ofSample(indicator, barCount)
+                : StandardDeviationIndicator.ofPopulation(indicator, barCount);
+    }
+
+    public static StandardErrorIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
+        return new StandardErrorIndicator(indicator, barCount, Type.SAMPLE);
+    }
+
+    public static StandardErrorIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
+        return new StandardErrorIndicator(indicator, barCount, Type.POPULATION);
     }
 
     @Override
-    protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
+    protected Num calculate(final int index) {
+        final int startIndex = Math.max(0, index - this.barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        return sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
+        return this.sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 }

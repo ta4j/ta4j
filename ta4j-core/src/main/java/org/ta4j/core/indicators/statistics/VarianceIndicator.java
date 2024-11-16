@@ -23,55 +23,137 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Variance indicator.
+ * Variance indicator with optimized calculation for sequential access. Uses
+ * Welford's online algorithm for sequential variance calculation.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
+    private final Type type;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param barCount  the time frame
-     */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
+    // State for sequential calculation
+    private int previousIndex = -1;
+    private Num previousSum;
+    private Num previousSumOfSquares;
+
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
         super(indicator);
         this.indicator = indicator;
-        this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+        this.barCount = Math.max(barCount, 1);
+        this.type = Objects.requireNonNull(type);
+        this.previousSum = numFactory().zero();
+        this.previousSumOfSquares = numFactory().zero();
+    }
+
+    public static VarianceIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, Type.SAMPLE);
+    }
+
+    public static VarianceIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, Type.POPULATION);
     }
 
     @Override
-    protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
-        Num average = sma.getValue(index);
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
+    protected Num calculate(final int index) {
+        if (this.previousIndex != -1 && this.previousIndex == index - 1) {
+            return fastPath(index);
         }
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
-        return variance;
+        return slowPath(index);
+    }
+
+    private Num fastPath(final int index) {
+        // Add new value
+        final var newValue = this.indicator.getValue(index);
+        var newSum = this.previousSum.plus(newValue);
+        var newSumOfSquares = this.previousSumOfSquares.plus(newValue.pow(2));
+
+        // Remove oldest value if window is full
+        final var windowSize = Math.min(this.barCount, index + 1);
+        if (windowSize == this.barCount && index >= this.barCount) {
+            final Num oldValue = this.indicator.getValue(index - this.barCount);
+            newSum = newSum.minus(oldValue);
+            newSumOfSquares = newSumOfSquares.minus(oldValue.pow(2));
+        }
+
+        // Update state
+        this.previousIndex = index;
+        this.previousSum = newSum;
+        this.previousSumOfSquares = newSumOfSquares;
+
+        return calculateVariance(windowSize, newSum, newSumOfSquares);
+    }
+
+    private Num slowPath(final int index) {
+        final var windowSize = Math.min(this.barCount, index + 1);
+        final var startIndex = Math.max(0, index - windowSize + 1);
+
+        if (windowSize < 2 && isSample()) {
+            return numFactory().zero();
+        }
+
+        // Calculate sums
+        var sum = numFactory().zero();
+        var sumOfSquares = numFactory().zero();
+
+        for (var i = startIndex; i <= index; i++) {
+            final Num value = this.indicator.getValue(i);
+            sum = sum.plus(value);
+            sumOfSquares = sumOfSquares.plus(value.pow(2));
+        }
+
+        // Update state
+        this.previousIndex = index;
+        this.previousSum = sum;
+        this.previousSumOfSquares = sumOfSquares;
+
+        return calculateVariance(windowSize, sum, sumOfSquares);
+    }
+
+    private Num calculateVariance(final int windowSize, final Num sum, final Num sumOfSquares) {
+        if (windowSize < 2 && isSample()) {
+            return numFactory().zero();
+        }
+
+        // Calculate variance using sum of squares formula
+        // Variance = (sum(x^2) - (sum(x)^2)/n) / (n or n-1)
+        final var variance = sumOfSquares.minus(sum.pow(2).dividedBy(numFactory().numOf(windowSize)));
+        final int divisor = getDivisor(windowSize);
+
+        return variance.dividedBy(numFactory().numOf(divisor));
+    }
+
+    private boolean isSample() {
+        return this.type.isSample();
+    }
+
+    private int getDivisor(final int windowSize) {
+        return switch (this.type) {
+        case SAMPLE -> windowSize - 1;
+        case POPULATION -> windowSize;
+        };
+    }
+
+    private NumFactory numFactory() {
+        return getBarSeries().numFactory();
     }
 
     @Override
     public int getUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + " type: " + this.type;
     }
+
 }

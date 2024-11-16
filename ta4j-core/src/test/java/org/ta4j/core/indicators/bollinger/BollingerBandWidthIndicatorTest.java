@@ -40,29 +40,29 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
     private ClosePriceIndicator closePrice;
 
-    public BollingerBandWidthIndicatorTest(NumFactory numFactory) {
+    public BollingerBandWidthIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
-        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        final var data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9, 10, 9, 10)
                 .build();
-        closePrice = new ClosePriceIndicator(data);
+        this.closePrice = new ClosePriceIndicator(data);
     }
 
     @Test
     public void bollingerBandWidthUsingSMAAndStandardDeviation() {
 
-        var sma = new SMAIndicator(closePrice, 5);
-        var standardDeviation = new StandardDeviationIndicator(closePrice, 5);
+        final var sma = new SMAIndicator(this.closePrice, 5);
+        final var standardDeviation = StandardDeviationIndicator.ofPopulation(this.closePrice, 5);
 
-        var bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
-        var bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
+        final var bbmSMA = new BollingerBandsMiddleIndicator(sma);
+        final var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
+        final var bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-        var bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
+        final var bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
 
         assertNumEquals(0.0, bandwidth.getValue(0));
         assertNumEquals(36.3636, bandwidth.getValue(1));

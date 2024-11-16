@@ -303,7 +303,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if positive convergent
      */
     private Boolean calculatePositiveConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
@@ -317,7 +317,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative convergent
      */
     private Boolean calculateNegativeConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
@@ -333,7 +333,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergence(int index) {
 
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isDivergent = cc.getValue(index)
                 .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().minusOne()));
 
@@ -352,7 +352,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergence(int index) {
 
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isDivergent = cc.getValue(index)
                 .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().numOf(-1)));
 
