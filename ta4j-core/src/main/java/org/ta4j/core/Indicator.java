@@ -53,6 +53,22 @@ public interface Indicator<T> {
     int getUnstableBars();
 
     /**
+     * Returns {@code true} once {@code this} indicator has enough bars to
+     * accurately calculate its value. Otherwise, {@code false} will be returned,
+     * which means the indicator will give incorrect values ​​due to insufficient
+     * data. This method determines stability using the formula:
+     *
+     * <pre>
+     * isStable = {@link BarSeries#getBarCount()} >= {@link #getUnstableBars()}
+     * </pre>
+     *
+     * @return true if the calculated indicator value is correct
+     */
+    default boolean isStable() {
+        return getBarSeries().getBarCount() >= getUnstableBars();
+    }
+
+    /**
      * @return the related bar series
      */
     BarSeries getBarSeries();

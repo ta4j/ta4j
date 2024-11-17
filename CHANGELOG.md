@@ -33,6 +33,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
 - Added `TickBarBuilder` to `bars`-package
 - Added `VolumeBarBuilder` to `bars`-package
+- Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
 
 ## 0.17 (released September 9, 2024)
 
