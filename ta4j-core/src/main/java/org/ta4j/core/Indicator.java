@@ -45,28 +45,28 @@ public interface Indicator<T> {
     T getValue(int index);
 
     /**
-     * Returns the number of bars up to which {@code this} Indicator calculates
-     * wrong values.
-     *
-     * @return unstable bars
-     */
-    int getUnstableBars();
-
-    /**
      * Returns {@code true} once {@code this} indicator has enough bars to
      * accurately calculate its value. Otherwise, {@code false} will be returned,
      * which means the indicator will give incorrect values ​​due to insufficient
      * data. This method determines stability using the formula:
      *
      * <pre>
-     * isStable = {@link BarSeries#getBarCount()} >= {@link #getUnstableBars()}
+     * isStable = {@link BarSeries#getBarCount()} >= {@link #getCountOfUnstableBars()}
      * </pre>
      *
      * @return true if the calculated indicator value is correct
      */
     default boolean isStable() {
-        return getBarSeries().getBarCount() >= getUnstableBars();
+        return getBarSeries().getBarCount() >= getCountOfUnstableBars();
     }
+
+    /**
+     * Returns the number of bars up to which {@code this} Indicator calculates
+     * wrong values.
+     *
+     * @return unstable bars
+     */
+    int getCountOfUnstableBars();
 
     /**
      * @return the related bar series

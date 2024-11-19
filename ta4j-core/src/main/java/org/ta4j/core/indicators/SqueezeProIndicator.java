@@ -110,7 +110,7 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
      */
     @Override
     protected Boolean calculate(int index) {
-        if (index < getUnstableBars()) {
+        if (index < getCountOfUnstableBars()) {
             return false;
         }
 
@@ -139,7 +139,7 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return this.barCount;
     }
 }

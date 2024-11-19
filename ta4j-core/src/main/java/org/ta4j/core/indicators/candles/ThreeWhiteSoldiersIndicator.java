@@ -73,7 +73,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 4;
     }
 

@@ -67,7 +67,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // Return NaN for unstable bars
-        if (index < this.getUnstableBars()) {
+        if (index < this.getCountOfUnstableBars()) {
             return NaN;
         }
 
@@ -103,7 +103,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
