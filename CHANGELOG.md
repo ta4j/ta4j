@@ -41,6 +41,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `TickBarBuilder` to `bars`-package
 - Added `VolumeBarBuilder` to `bars`-package
 - Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
+- Added `WildersMAIndicator` to `indicators.averages`-package: Wilder's moving average indicator
+- Added `DMAIndicator` to `indicators.averages`-package: Displaced Moving Average (DMA) indicator
 
 ## 0.17 (released September 9, 2024)
 
