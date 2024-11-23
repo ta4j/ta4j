@@ -32,6 +32,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.DMAIndicator;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
+import org.ta4j.core.indicators.averages.JMAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -53,7 +54,7 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
             DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class, WMAIndicator.class,
             ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class, LWMAIndicator.class,
             AbstractEMAIndicator.class, MMAIndicator.class, WildersMAIndicator.class, DMAIndicator.class, 
-            EDMAIndicator.class));
+            EDMAIndicator.class, JMAIndicator.class));
 
     private final Indicator<Num> movingAverage;
 
