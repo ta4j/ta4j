@@ -30,7 +30,9 @@ import java.util.Set;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.averages.*;
+import org.ta4j.core.indicators.averages.DMAIndicator;
+import org.ta4j.core.indicators.averages.EDMAIndicator;
+import org.ta4j.core.indicators.averages.WildersMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -50,7 +52,8 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(Arrays.asList(EMAIndicator.class,
             DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class, WMAIndicator.class,
             ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class, LWMAIndicator.class,
-            AbstractEMAIndicator.class, MMAIndicator.class, WildersMAIndicator.class, DMAIndicator.class));
+            AbstractEMAIndicator.class, MMAIndicator.class, WildersMAIndicator.class, DMAIndicator.class, 
+            EDMAIndicator.class));
 
     private final Indicator<Num> movingAverage;
 
