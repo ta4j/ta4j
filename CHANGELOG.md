@@ -45,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `DMAIndicator` to `indicators.averages`-package: Displaced Moving Average (DMA) indicator
 - Added `EDMAIndicator` to `indicators.averages`-package: Exponential Displaced Moving Average (EDMA) indicator
 - Added `JMAIndicator` to `indicators.averages`-package: Jurik Moving Average (JMA) indicator
+- Added `TMAIndicator` to `indicators.averages`-package: Trangular Moving Average (TMA) indicator
+- Added `ATMAIndicator` to `indicators.averages`-package: Asymmetric Trangular Moving Average (TMA) indicator
 
 ## 0.17 (released September 9, 2024)
 
