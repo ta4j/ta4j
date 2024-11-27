@@ -47,6 +47,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `JMAIndicator` to `indicators.averages`-package: Jurik Moving Average (JMA) indicator
 - Added `TMAIndicator` to `indicators.averages`-package: Trangular Moving Average (TMA) indicator
 - Added `ATMAIndicator` to `indicators.averages`-package: Asymmetric Trangular Moving Average (TMA) indicator
+- Added `MCGinleyMAIndicator` to `indicators.averages`-package: McGinley Moving Average (McGinleyMA) indicator
 
 ## 0.17 (released September 9, 2024)
 
