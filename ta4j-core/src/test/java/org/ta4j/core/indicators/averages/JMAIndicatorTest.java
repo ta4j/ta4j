@@ -278,8 +278,6 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         for (int i = 21; i < data.getBarCount(); i++) {
             
-            double j = jma.calculate(i).doubleValue();
-            
             assertNumEquals(expectedDoubles[i], jma.getValue(i));
         }
 
