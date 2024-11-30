@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.*;
 
 import org.junit.Test;
@@ -31,53 +30,33 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class SGMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class KiJunV2IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public SGMAIndicatorTest(NumFactory numFactory) {
+    public KiJunV2IndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void sgmaIndicatorTest() {
+    public void kijunv2IndicatorTest() {
 
-        MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
+        MockIndicator mock = CsvTestUtils.getCsvFile(KiJunV2IndicatorTest.class, "KiJunV2.csv", numFactory);
 
         BarSeries barSeries = mock.getBarSeries();
 
-        SGMAIndicator ma = new SGMAIndicator(new ClosePriceIndicator(barSeries), 9, 2);
+        KiJunV2Indicator kijunv2 = new KiJunV2Indicator(new HighPriceIndicator(barSeries), new LowPriceIndicator(barSeries), 9);
 
         for (int i = 0; i < barSeries.getBarCount(); i++) {
-
             Num expected = mock.getValue(i);
-            Num value = ma.getValue(i);
+            Num value = kijunv2.getValue(i);
+            
             assertNumEquals(expected.doubleValue(), value);
         }
     }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void evenBarCountThrowsException() {
-        MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
-
-        BarSeries barSeries = mock.getBarSeries();
-
-        new SGMAIndicator(new ClosePriceIndicator(barSeries), 10, 2);
-
-        fail("Should have thrown an exception");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void barCountShouldBeGreaterThanPolynomialOrderThrowsException() {
-        MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
-
-        BarSeries barSeries = mock.getBarSeries();
-
-        new SGMAIndicator(new ClosePriceIndicator(barSeries), 3, 5);
-
-        fail("Should have thrown an exception");
-    }
+    
 }
