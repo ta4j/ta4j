@@ -50,6 +50,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `MCGinleyMAIndicator` to `indicators.averages`-package: McGinley Moving Average (McGinleyMA) indicator
 - Added `SMMAIndicator` to `indicators.averages`-package: Smoothed Moving Average (SMMA) indicator
 - Added `SGMAIndicator` to `indicators.averages`-package: Savitzky-Golay Moving Average (SGMA) indicator
+- Added `LSMAIndicator` to `indicators.averages`-package: Least Squares Moving Average (LSMA) indicator
 
 ## 0.17 (released September 9, 2024)
 
