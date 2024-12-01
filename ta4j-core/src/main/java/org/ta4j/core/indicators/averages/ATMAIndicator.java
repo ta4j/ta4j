@@ -30,13 +30,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Asymmetric Triangular Moving Average (ATMA) Indicator.
- * 
+ *
  * ATMA is a double-smoothing of the Simple Moving Average (SMA), however unlike
  * the Triangular Moving Average (TMA) the modified equation creates a smoother
  * and slightly lagged moving average compared to the traditional TMA. By
  * varying the smoothing lengths asymmetrically, it balances responsiveness to
  * initial price changes with reduced noise in the final result.
- * 
+ *
  */
 public class ATMAIndicator extends CachedIndicator<Num> {
 
@@ -74,6 +74,6 @@ public class ATMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount + " fast: " + fast + " slow: " + slow ;
+        return getClass().getSimpleName() + " barCount: " + barCount + " fast: " + fast + " slow: " + slow;
     }
 }

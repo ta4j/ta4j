@@ -33,6 +33,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
 public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public JMAIndicatorTest(NumFactory numFunction) {
@@ -277,7 +278,7 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         var jma = new JMAIndicator(new ClosePriceIndicator(data), 7, phase, power);
 
         for (int i = 21; i < data.getBarCount(); i++) {
-            
+
             assertNumEquals(expectedDoubles[i], jma.getValue(i));
         }
 

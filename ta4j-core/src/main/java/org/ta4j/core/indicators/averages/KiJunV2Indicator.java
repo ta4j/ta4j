@@ -30,13 +30,14 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * Kihon Moving Average Indicator (KiJunV2).
- * 
- * Kihon Moving Average (KiJunV2) is a technical indicator derived from Ichimoku Kinko Hyo, 
- * a popular Japanese trading strategy. It calculates the average of the highest high and 
- * the lowest low over a specific period. As a midpoint-based moving average, it provides 
- * an intuitive way to understand market equilibrium and is particularly useful in identifying 
- * trends and potential reversals.
- * 
+ *
+ * Kihon Moving Average (KiJunV2) is a technical indicator derived from Ichimoku
+ * Kinko Hyo, a popular Japanese trading strategy. It calculates the average of
+ * the highest high and the lowest low over a specific period. As a
+ * midpoint-based moving average, it provides an intuitive way to understand
+ * market equilibrium and is particularly useful in identifying trends and
+ * potential reversals.
+ *
  */
 public class KiJunV2Indicator extends CachedIndicator<Num> {
 

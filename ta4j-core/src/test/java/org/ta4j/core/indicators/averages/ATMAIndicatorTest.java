@@ -52,9 +52,9 @@ public class ATMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         for (int i = 10; i < barSeries.getBarCount(); i++) {
             barSeries.getBar(i).getClosePrice();
-            
+
             assertNumEquals(mock.getValue(i).doubleValue(), atma.getValue(i));
         }
     }
-    
+
 }

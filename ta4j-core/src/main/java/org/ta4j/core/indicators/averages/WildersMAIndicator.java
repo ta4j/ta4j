@@ -30,17 +30,17 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * Wilder's moving average indicator.
- * 
+ *
  * The Wilder’s Moving Average indicator (Wilder’s Smoothed Moving Average ) was
  * developed by Welles Wilder and introduced in his 1978 book, “New Concepts in
  * Technical Trading Systems.”
- * 
+ *
  * The WMA inherently "remembers" past values due to its recursive formula, but
  * the initialization WMA can significantly bias early values. This bias
  * diminishes over time as more data contributes to the calculation. See the
  * test cases for this indicator as it skips the initial data until the
  * calculation stabilizes.
- * 
+ *
  * @see <a href=
  *      "https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.">
  *      https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.</a>

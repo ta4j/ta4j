@@ -31,7 +31,7 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * McGinley Moving Average (McGinleyMA) Indicator.
- * 
+ *
  * The McGinley Moving Average is a technical analysis tool developed by John
  * McGinley to address issues with traditional moving averages such as lag and
  * responsiveness to market volatility. It is designed to adapt dynamically to
@@ -39,7 +39,7 @@ import org.ta4j.core.num.NumFactory;
  * automatically based on the speed of price movement. This makes it less prone
  * to false signals and more reliable for identifying trends in both volatile
  * and stable markets.
- * 
+ *
  */
 public class MCGinleyMAIndicator extends CachedIndicator<Num> {
 
@@ -69,8 +69,9 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
             return indicator.getValue(0);
         }
 
-        // McGinley_t = McGinley_(t-1) + (Price_t - McGinley_(t-1)) / (barCount * (Price_t / McGinley_(t-1))^2)
-        
+        // McGinley_t = McGinley_(t-1) + (Price_t - McGinley_(t-1)) / (barCount *
+        // (Price_t / McGinley_(t-1))^2)
+
         // Get the previous McGinley value
         Num previousMcGinley = getValue(index - 1);
 
@@ -82,7 +83,7 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
 
         // McGinley formula
         return previousMcGinley.plus(currentPrice.minus(previousMcGinley).dividedBy(speedRatio));
-        
+
     }
 
     @Override
