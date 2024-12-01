@@ -49,14 +49,15 @@ public class KiJunV2IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
 
         BarSeries barSeries = mock.getBarSeries();
 
-        KiJunV2Indicator kijunv2 = new KiJunV2Indicator(new HighPriceIndicator(barSeries), new LowPriceIndicator(barSeries), 9);
+        KiJunV2Indicator kijunv2 = new KiJunV2Indicator(new HighPriceIndicator(barSeries),
+                new LowPriceIndicator(barSeries), 9);
 
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Num expected = mock.getValue(i);
             Num value = kijunv2.getValue(i);
-            
+
             assertNumEquals(expected.doubleValue(), value);
         }
     }
-    
+
 }

@@ -36,7 +36,7 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * Least Squares Moving Average (LSMA) Indicator.
- * 
+ *
  * Least Squares Moving Average (LSMA), also known as the Linear Regression Line
  * or End Point Moving Average, is a unique type of moving average that
  * minimizes the sum of squared differences between data points and a regression
@@ -45,7 +45,7 @@ import org.ta4j.core.num.NumFactory;
  * specific period and uses the end point of that line as the average. This
  * makes LSMA effective at forecasting trends while reducing lag, making it
  * popular in technical analysis.
- * 
+ *
  * The offset parameter projects the regression line forward or backward.
  */
 public class LSMAIndicator extends CachedIndicator<Num> {

@@ -34,10 +34,18 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * Savitzky-Golay Moving Average (SGMA) Indicator.
- * 
+ *
  * Applies polynomial regression over a moving window to smooth data while
  * preserving key features like peaks and trends.
  * 
+ * Savitzky-Golay Moving Average (SGMA) is a digital filtering technique that 
+ * smooths data while preserving the essential characteristics of the dataset, 
+ * such as peaks and trends. Unlike traditional moving averages that simply 
+ * average data points, SGMA uses polynomial regression over a moving window 
+ * to perform the smoothing. This makes it ideal for reducing noise in signals 
+ * while maintaining the integrity of the underlying trends, making it popular 
+ * in both financial analysis and scientific data processing.
+ *
  */
 public class SGMAIndicator extends CachedIndicator<Num> {
 
@@ -51,9 +59,9 @@ public class SGMAIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator an indicator
-     * @param barCount  the Simple Moving Average time frame
-     * @param polynomialOrder  the degree of the polynomial, default 2
+     * @param indicator       an indicator
+     * @param barCount        the Simple Moving Average time frame
+     * @param polynomialOrder the degree of the polynomial, default 2
      */
     public SGMAIndicator(Indicator<Num> indicator, int barCount, int polynomialOrder) {
         super(indicator.getBarSeries());

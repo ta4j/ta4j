@@ -42,7 +42,7 @@ public class LSMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void lsmaIndicatorTest() { 
+    public void lsmaIndicatorTest() {
 
         MockIndicator mock = CsvTestUtils.getCsvFile(LSMAIndicatorTest.class, "LSMA.csv", numFactory);
 

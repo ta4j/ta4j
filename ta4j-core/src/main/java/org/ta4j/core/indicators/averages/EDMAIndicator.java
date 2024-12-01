@@ -34,13 +34,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Exponential Displaced Moving Average (EDMA)
- * 
+ *
  * Exponential Displaced Moving Average (EDMA) is a variation of the traditional
  * Exponential Moving Average (EMA) where the calculated average is shifted in
  * time by a specified number of periods. This displacement enhances trend
  * visualization and provides traders with an adjusted perspective of price
  * action, either anticipating future price movements or analyzing past trends.
- * 
+ *
  */
 public class EDMAIndicator extends AbstractIndicator<Num> {
 
@@ -51,7 +51,7 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator    an indicator
      * @param barCount     the Exponential Moving Average time frame
      * @param displacement the Exponential Moving Average displacement

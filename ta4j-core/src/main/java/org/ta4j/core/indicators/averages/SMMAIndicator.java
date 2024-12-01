@@ -29,19 +29,20 @@ import org.ta4j.core.num.Num;
 
 /**
  * Smoothed Moving Average (SMMA) Indicator.
- * 
- * Smoothed Moving Average (SMMA) is a type of moving average that 
- * applies exponential smoothing over a longer period. It is designed 
- * to emphasize the overall trend by minimizing the impact of short-term 
- * fluctuations. Unlike the Exponential Moving Average (EMA), which 
- * assigns more weight to recent prices, the SMMA evenly distributes the 
- * influence of older data while still applying some smoothing.
- * 
+ *
+ * Smoothed Moving Average (SMMA) is a type of moving average that applies
+ * exponential smoothing over a longer period. It is designed to emphasize the
+ * overall trend by minimizing the impact of short-term fluctuations. Unlike the
+ * Exponential Moving Average (EMA), which assigns more weight to recent prices,
+ * the SMMA evenly distributes the influence of older data while still applying
+ * some smoothing.
+ *
  */
 public class SMMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> indicator;
+
     /**
      * Constructor.
      *
@@ -81,6 +82,6 @@ public class SMMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount  ;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }
