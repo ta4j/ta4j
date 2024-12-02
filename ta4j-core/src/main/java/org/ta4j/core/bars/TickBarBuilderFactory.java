@@ -21,7 +21,11 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.bars;
+
+import org.ta4j.core.BarBuilder;
+import org.ta4j.core.BarBuilderFactory;
+import org.ta4j.core.BarSeries;
 
 public class TickBarBuilderFactory implements BarBuilderFactory {
 

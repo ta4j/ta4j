@@ -51,7 +51,7 @@ public class ClosePriceIndicator extends AbstractIndicator<Num> {
 
     /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

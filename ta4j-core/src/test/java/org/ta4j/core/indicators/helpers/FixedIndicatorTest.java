@@ -44,7 +44,6 @@ public class FixedIndicatorTest {
         assertNumEquals("3.0", fixedDecimalIndicator.getValue(0));
         assertNumEquals("-123.456", fixedDecimalIndicator.getValue(1));
         assertNumEquals("0.0", fixedDecimalIndicator.getValue(2));
-
     }
 
     @Test

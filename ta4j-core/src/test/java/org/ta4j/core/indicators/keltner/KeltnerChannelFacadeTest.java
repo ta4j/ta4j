@@ -81,7 +81,6 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
         data.barBuilder().openPrice(12219.79).closePrice(12288.17).highPrice(12303.16).lowPrice(12219.79).add();
         data.barBuilder().openPrice(12287.72).closePrice(12318.14).highPrice(12331.31).lowPrice(12253.24).add();
         data.barBuilder().openPrice(12389.74).closePrice(12212.79).highPrice(12389.82).lowPrice(12176.31).add();
-
     }
 
     @Test

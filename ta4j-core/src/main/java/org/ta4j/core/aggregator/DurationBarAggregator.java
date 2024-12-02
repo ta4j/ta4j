@@ -29,8 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.bars.BaseBar;
+import org.ta4j.core.bars.BaseBarBuilder;
 import org.ta4j.core.num.Num;
 
 /**

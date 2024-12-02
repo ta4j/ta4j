@@ -21,12 +21,13 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.bars;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.num.Num;
 
 /**

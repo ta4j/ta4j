@@ -113,6 +113,6 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void testUnstableBars() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
-        Assert.assertEquals(0, kalmanIndicator.getUnstableBars());
+        Assert.assertEquals(0, kalmanIndicator.getCountOfUnstableBars());
     }
 }

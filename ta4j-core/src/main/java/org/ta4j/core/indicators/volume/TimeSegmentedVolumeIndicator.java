@@ -64,7 +64,7 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // If the index is less than the required unstable bars, return NaN
-        if (index < this.getUnstableBars()) {
+        if (index < this.getCountOfUnstableBars()) {
             return NaN;
         }
 
@@ -83,7 +83,7 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

@@ -57,7 +57,6 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
         mockBarSeries.barBuilder().openPrice(11).closePrice(8).highPrice(11).lowPrice(8).volume(12).add();
         mockBarSeries.barBuilder().openPrice(10).closePrice(13).highPrice(13).lowPrice(9).volume(15).add();
         mockBarSeries.barBuilder().openPrice(11).closePrice(2).highPrice(11).lowPrice(2).volume(12).add();
-
     }
 
     @Test

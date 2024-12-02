@@ -47,7 +47,6 @@ public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         highPriceIndicator = new HighPriceIndicator(barSeries);
-
     }
 
     @Test

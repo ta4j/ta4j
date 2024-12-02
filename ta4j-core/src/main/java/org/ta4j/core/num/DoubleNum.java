@@ -30,6 +30,10 @@ import java.math.BigDecimal;
 /**
  * Representation of {@link Double}. High performance, lower precision.
  *
+ * *
+ * <p>
+ * It uses a precision of up to {@value #EPS} decimal places.
+ *
  * @apiNote the delegate should never become a NaN value. No self NaN checks are
  *          provided.
  */

@@ -74,7 +74,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return Math.max(diBarCount, adxBarCount);
     }
 

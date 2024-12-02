@@ -178,7 +178,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         int surroundingBars = 2;
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, surroundingBars);
 
-        assertEquals(surroundingBars * 2, swingHighIndicator.getUnstableBars());
+        assertEquals(surroundingBars * 2, swingHighIndicator.getCountOfUnstableBars());
     }
 
     @Test

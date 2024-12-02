@@ -67,7 +67,6 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         assertNumEquals("2.0", lowestValue.getValue(10));
         assertNumEquals("2.0", lowestValue.getValue(11));
         assertNumEquals("2.0", lowestValue.getValue(12));
-
     }
 
     @Test

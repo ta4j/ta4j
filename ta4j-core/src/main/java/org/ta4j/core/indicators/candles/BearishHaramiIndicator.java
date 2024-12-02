@@ -65,7 +65,7 @@ public class BearishHaramiIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

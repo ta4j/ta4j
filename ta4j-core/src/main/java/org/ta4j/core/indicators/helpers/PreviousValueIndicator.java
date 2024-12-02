@@ -71,7 +71,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     /** @return {@link #n} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return n;
     }
 

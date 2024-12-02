@@ -21,23 +21,15 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core;
+package org.ta4j.core.bars;
 
-public class VolumeBarBuilderFactory implements BarBuilderFactory {
+import org.ta4j.core.BarBuilderFactory;
+import org.ta4j.core.BarSeries;
 
-    private final int volumeThreshold;
-    private VolumeBarBuilder barBuilder;
-
-    public VolumeBarBuilderFactory(final int volumeThreshold) {
-        this.volumeThreshold = volumeThreshold;
-    }
+public class BaseBarBuilderFactory implements BarBuilderFactory {
 
     @Override
-    public BarBuilder createBarBuilder(final BarSeries series) {
-        if (this.barBuilder == null) {
-            this.barBuilder = new VolumeBarBuilder(series.numFactory(), this.volumeThreshold).bindTo(series);
-        }
-
-        return this.barBuilder;
+    public BaseBarBuilder createBarBuilder(BarSeries series) {
+        return new BaseBarBuilder(series.numFactory()).bindTo(series);
     }
 }

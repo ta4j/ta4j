@@ -25,7 +25,7 @@ package org.ta4j.core.mocks;
 
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.bars.BaseBarBuilder;
 
 public class MockBarBuilderFactory implements BarBuilderFactory {
     @Override

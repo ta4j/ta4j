@@ -60,7 +60,7 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return unstableBars;
     }
 }

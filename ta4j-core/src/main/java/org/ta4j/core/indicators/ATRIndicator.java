@@ -63,7 +63,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return getBarCount();
     }
 
