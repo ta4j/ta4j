@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
-//import static org.ta4j.core.TestUtils.*;
+import static org.ta4j.core.TestUtils.*;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -50,17 +50,11 @@ public class VIDYAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         VIDYAIndicator vidya = new VIDYAIndicator(new ClosePriceIndicator(barSeries), 9, 20);
 
-        System.out.println("------");
-        System.out.println(vidya);
-        System.out.println("index, close, expected, vidya, diff, passed");
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Num expected = mock.getValue(i);
             Num value = vidya.getValue(i);
 
-            System.out.println(i + ", " + barSeries.getBar(i).getClosePrice() + ", " + expected + ", " + value + ", "
-                    + expected.minus(value) + ", " + (Math.abs((expected.minus(value)).doubleValue()) < 0.001));
-            // System.out.println(value);
-            // assertNumEquals(expected.doubleValue(), value);
+            assertNumEquals(expected.doubleValue(), value);
         }
     }
 

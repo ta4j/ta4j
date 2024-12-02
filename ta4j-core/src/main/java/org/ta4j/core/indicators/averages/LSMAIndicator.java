@@ -23,17 +23,14 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-
 /**
  * Least Squares Moving Average (LSMA) Indicator.
  *
@@ -55,8 +52,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
     private final int offset;
     private final NumFactory numFactory;
     private final BarSeries barSeries;
-    private final List<Double> values = new ArrayList<>();
-
+    private final Num avgTime;
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     /**
@@ -73,9 +69,13 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         this.offset = offset;
         this.barSeries = indicator.getBarSeries();
         this.numFactory = barSeries.numFactory();
-        for (int i = 0; i < barSeries.getBarCount(); i++) {
-            values.add(indicator.getValue(i).doubleValue());
+
+        Num sumTime = numFactory.numOf(0);
+        for (int i = 1; i <= barCount; i++) {
+            sumTime = sumTime.plus(numFactory.numOf(i));
         }
+        this.avgTime = sumTime.dividedBy(numFactory.numOf(barCount));
+        
     }
 
     @Override
@@ -84,21 +84,13 @@ public class LSMAIndicator extends CachedIndicator<Num> {
             return indicator.getValue(index);
         }
 
-        // Step 1: Calculate AvgPrice
-        Num sumPrice = numFactory.numOf(0);
-        for (int i = 0; i < barCount; i++) {
-            sumPrice = sumPrice.plus(indicator.getValue(index - i));
-        }
+        // Calculate AvgPrice
+        RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
+        
+        Num sumPrice = sumPriceIndicator.getValue(index);
         Num avgPrice = sumPrice.dividedBy(numFactory.numOf(barCount));
 
-        // Step 2: Calculate AvgTime
-        Num sumTime = numFactory.numOf(0);
-        for (int i = 1; i <= barCount; i++) {
-            sumTime = sumTime.plus(numFactory.numOf(i));
-        }
-        Num avgTime = sumTime.dividedBy(numFactory.numOf(barCount));
-
-        // Step 3: Calculate sx and sy
+        // Calculate sx and sy
         Num sx = numFactory.numOf(0);
         Num sy = numFactory.numOf(0);
         for (int i = 1; i <= barCount; i++) {
