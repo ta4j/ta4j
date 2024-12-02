@@ -77,7 +77,7 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

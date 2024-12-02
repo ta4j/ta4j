@@ -72,7 +72,7 @@ public class DMAIndicator extends SMAIndicator {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount * 2;
     }
 

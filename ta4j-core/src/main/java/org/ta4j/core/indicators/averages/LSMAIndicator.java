@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
 /**
  * Least Squares Moving Average (LSMA) Indicator.
  *
@@ -75,7 +76,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
             sumTime = sumTime.plus(numFactory.numOf(i));
         }
         this.avgTime = sumTime.dividedBy(numFactory.numOf(barCount));
-        
+
     }
 
     @Override
@@ -86,7 +87,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
 
         // Calculate AvgPrice
         RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
-        
+
         Num sumPrice = sumPriceIndicator.getValue(index);
         Num avgPrice = sumPrice.dividedBy(numFactory.numOf(barCount));
 
@@ -111,7 +112,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
