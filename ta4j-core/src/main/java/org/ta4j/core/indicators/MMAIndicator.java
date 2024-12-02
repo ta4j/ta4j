@@ -46,7 +46,7 @@ public class MMAIndicator extends AbstractEMAIndicator {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return getBarCount();
     }
 }

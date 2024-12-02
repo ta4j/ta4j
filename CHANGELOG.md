@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Replaced `ZonedDateTime` with `Instant`
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
 - Moved `BaseBar`, `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package
+- Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
@@ -37,6 +38,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
 - Added `TickBarBuilder` to `bars`-package
 - Added `VolumeBarBuilder` to `bars`-package
+- Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
 
 ## 0.17 (released September 9, 2024)
 

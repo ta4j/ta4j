@@ -73,7 +73,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 4;
     }
 
