@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -70,6 +71,8 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
         Num k = one.dividedBy(numFactory.numOf(barCount));
         Num prevWMA = indicator.getValue(0);
 
+        RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
+
         // Simulate extended historical data for initialization
         if (index < barCount) {
             // Pretend there are extra `barCount` points before the first real point
@@ -77,10 +80,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
             Num simulatedValue = indicator.getValue(0);
 
             // Initialize with a simulated Simple Moving Average (SMA)
-            Num sum = numFactory.zero();
-            for (int i = 0; i <= index; i++) {
-                sum = sum.plus(indicator.getValue(i));
-            }
+            Num sum = sumPriceIndicator.getValue(index);
 
             // Return average of available points for initialization
             Num preResult = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - index - 1)))
@@ -100,7 +100,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount * 2;
     }
 

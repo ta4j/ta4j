@@ -37,13 +37,13 @@ import org.ta4j.core.num.NumFactory;
  *
  * Applies polynomial regression over a moving window to smooth data while
  * preserving key features like peaks and trends.
- * 
- * Savitzky-Golay Moving Average (SGMA) is a digital filtering technique that 
- * smooths data while preserving the essential characteristics of the dataset, 
- * such as peaks and trends. Unlike traditional moving averages that simply 
- * average data points, SGMA uses polynomial regression over a moving window 
- * to perform the smoothing. This makes it ideal for reducing noise in signals 
- * while maintaining the integrity of the underlying trends, making it popular 
+ *
+ * Savitzky-Golay Moving Average (SGMA) is a digital filtering technique that
+ * smooths data while preserving the essential characteristics of the dataset,
+ * such as peaks and trends. Unlike traditional moving averages that simply
+ * average data points, SGMA uses polynomial regression over a moving window to
+ * perform the smoothing. This makes it ideal for reducing noise in signals
+ * while maintaining the integrity of the underlying trends, making it popular
  * in both financial analysis and scientific data processing.
  *
  */
@@ -101,7 +101,7 @@ public class SGMAIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

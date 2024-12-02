@@ -33,13 +33,12 @@ import org.ta4j.core.num.Num;
  *
  * TMA is a double-smoothing of the Simple Moving Average (SMA).
  *
- * Triangular Moving Average (TMA) is a type of moving average that 
- * places greater emphasis on the central portion of the data series. 
- * It is calculated as a second smoothing of a Simple Moving Average (SMA), 
- * making it smoother than the SMA or Exponential Moving Average (EMA). Due 
- * to its double-smoothing nature, the TMA is commonly used to identify 
- * long-term trends in financial markets, reducing noise from short-term 
- * fluctuations.
+ * Triangular Moving Average (TMA) is a type of moving average that places
+ * greater emphasis on the central portion of the data series. It is calculated
+ * as a second smoothing of a Simple Moving Average (SMA), making it smoother
+ * than the SMA or Exponential Moving Average (EMA). Due to its double-smoothing
+ * nature, the TMA is commonly used to identify long-term trends in financial
+ * markets, reducing noise from short-term fluctuations.
  */
 public class TMAIndicator extends CachedIndicator<Num> {
 
@@ -67,7 +66,7 @@ public class TMAIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
