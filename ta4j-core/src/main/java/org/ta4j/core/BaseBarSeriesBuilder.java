@@ -26,6 +26,7 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ta4j.core.bars.BaseBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 

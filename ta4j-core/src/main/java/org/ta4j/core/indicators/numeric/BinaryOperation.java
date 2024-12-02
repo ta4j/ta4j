@@ -133,7 +133,7 @@ public class BinaryOperation implements Indicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

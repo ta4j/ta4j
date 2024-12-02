@@ -57,7 +57,7 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
 
     /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

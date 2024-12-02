@@ -57,7 +57,6 @@ public class DonchianChannelLowerIndicatorTest extends AbstractIndicatorTest<Bar
         series.barBuilder().openPrice(110).highPrice(115).lowPrice(105).closePrice(110).add();
         series.barBuilder().openPrice(105).highPrice(110).lowPrice(100).closePrice(105).add();
         series.barBuilder().openPrice(100).highPrice(105).lowPrice(95).closePrice(100).add();
-
     }
 
     @After

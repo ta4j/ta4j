@@ -8,16 +8,22 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Extracted NumFactory as source of numbers with defined precision
 - Replaced `ZonedDateTime` with `Instant`
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
+- Moved `BaseBar`, `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package
+- Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
 - Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
 - Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
 - Consider `base` when calculating `ReturnCriterion` of a position
+- Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
 - Updated **logback-classic** 1.4.12 > 1.5.6 to resolve [CVE-2023-6481](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
+- Cleaned code by using new java syntax `text blocks`
+- Faster test execution by using `String.lines()` instead of `String` concatenation
+- Improve Javadoc for `DecimalNum`and `DoubleNum`
 
 ### Removed/Deprecated
 
@@ -32,6 +38,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `KRIIndicator`
 - Added constructor with `amount` for  `EnterAndHoldCriterion`
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
+- Added `TickBarBuilder` to `bars`-package
+- Added `VolumeBarBuilder` to `bars`-package
+- Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
 
 ## 0.17 (released September 9, 2024)
 

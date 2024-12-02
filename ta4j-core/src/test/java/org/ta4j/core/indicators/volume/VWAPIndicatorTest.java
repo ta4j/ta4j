@@ -44,7 +44,6 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         data.barBuilder().openPrice(44.98).closePrice(45.05).highPrice(45.17).lowPrice(44.96).volume(1).add();
         data.barBuilder().openPrice(45.05).closePrice(45.10).highPrice(45.15).lowPrice(44.99).volume(1).add();

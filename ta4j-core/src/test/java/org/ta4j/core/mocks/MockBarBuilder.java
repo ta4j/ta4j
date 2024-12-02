@@ -28,8 +28,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.bars.BaseBar;
+import org.ta4j.core.bars.BaseBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
 public class MockBarBuilder extends BaseBarBuilder {

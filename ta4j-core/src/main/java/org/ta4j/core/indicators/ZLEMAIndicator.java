@@ -72,7 +72,7 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
