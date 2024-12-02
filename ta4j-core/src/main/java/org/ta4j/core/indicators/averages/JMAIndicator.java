@@ -102,14 +102,9 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         JmaData previousJMA = jmaDataMap.get(index - 1);
 
-        Num e0 = currentPrice.multipliedBy(numFactory.one().minus(alpha)).plus(previousJMA.e0.multipliedBy(alpha));
-        Num e1 = currentPrice.minus(e0)
-                .multipliedBy(numFactory.one().minus(beta))
-                .plus(previousJMA.e1.multipliedBy(beta));
-        Num e2 = e0.plus(phaseRatio.multipliedBy(e1))
-                .minus(previousJMA.jma)
-                .multipliedBy(numFactory.one().minus(alpha).pow(2))
-                .plus(previousJMA.e2.multipliedBy(alpha.pow(2)));
+        Num e0 = calculateE0(numFactory, currentPrice, previousJMA);
+        Num e1 = calculateE1(numFactory, currentPrice, previousJMA, e0);
+        Num e2 = calculateE2(numFactory, previousJMA, e0, e1);
 
         Num jma = previousJMA.jma.plus(e2);
 
@@ -118,6 +113,26 @@ public class JMAIndicator extends CachedIndicator<Num> {
         }
 
         return jma;
+    }
+
+    private Num calculateE0(NumFactory numFactory, Num currentPrice, JmaData previousJMA) {
+        Num e0 = currentPrice.multipliedBy(numFactory.one().minus(alpha)).plus(previousJMA.e0.multipliedBy(alpha));
+        return e0;
+    }
+
+    private Num calculateE1(NumFactory numFactory, Num currentPrice, JmaData previousJMA, Num e0) {
+        Num e1 = currentPrice.minus(e0)
+                .multipliedBy(numFactory.one().minus(beta))
+                .plus(previousJMA.e1.multipliedBy(beta));
+        return e1;
+    }
+
+    private Num calculateE2(NumFactory numFactory, JmaData previousJMA, Num e0, Num e1) {
+        Num e2 = e0.plus(phaseRatio.multipliedBy(e1))
+                .minus(previousJMA.jma)
+                .multipliedBy(numFactory.one().minus(alpha).pow(2))
+                .plus(previousJMA.e2.multipliedBy(alpha.pow(2)));
+        return e2;
     }
 
     @Override
