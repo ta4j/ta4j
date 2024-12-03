@@ -24,6 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Cleaned code by using new java syntax `text blocks`
 - Faster test execution by using `String.lines()` instead of `String` concatenation
 - Improve Javadoc for `DecimalNum`and `DoubleNum`
+- Allowed JUnit5 for new tests. Old remain as is.
 
 ### Removed/Deprecated
 
