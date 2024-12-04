@@ -21,48 +21,66 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
+import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ClosePriceIndicator closePrice;
+    private BarSeries data;
 
-    public DoubleEMAIndicatorTest(NumFactory numFactory) {
+    public ZLEMAIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
-        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71, 0.53, 0.73, 0.77, 0.67, 0.68)
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2)
                 .build();
-        closePrice = new ClosePriceIndicator(data);
     }
 
     @Test
-    public void doubleEMAUsingBarCount5UsingClosePrice() {
-        var doubleEma = new DoubleEMAIndicator(closePrice, 5);
+    public void ZLEMAUsingBarCount10UsingClosePrice() {
+        var zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
-        assertNumEquals(0.73, doubleEma.getValue(0));
-        assertNumEquals(0.7244, doubleEma.getValue(1));
-        assertNumEquals(0.7992, doubleEma.getValue(2));
+        assertNumEquals(11.9091, zlema.getValue(9));
+        assertNumEquals(8.8347, zlema.getValue(10));
+        assertNumEquals(5.7739, zlema.getValue(11));
+    }
 
-        assertNumEquals(0.7858, doubleEma.getValue(6));
-        assertNumEquals(0.7374, doubleEma.getValue(7));
-        assertNumEquals(0.6884, doubleEma.getValue(8));
+    @Test
+    public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
+        var zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        assertNumEquals(10, zlema.getValue(0));
+    }
 
-        assertNumEquals(0.7184, doubleEma.getValue(12));
-        assertNumEquals(0.6939, doubleEma.getValue(13));
-        assertNumEquals(0.6859, doubleEma.getValue(14));
+    @Test
+    public void valuesLessThanBarCountMustBeEqualsToSMAValues() {
+        var zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        var sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
+
+        for (int i = 0; i < 9; i++) {
+            assertEquals(sma.getValue(i), zlema.getValue(i));
+        }
+    }
+
+    @Test
+    public void smallBarCount() {
+        var zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
+        assertNumEquals(10, zlema.getValue(0));
     }
 }
