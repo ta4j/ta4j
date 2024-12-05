@@ -23,11 +23,9 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * McGinley Moving Average (McGinleyMA) Indicator.
@@ -45,8 +43,6 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final NumFactory numFactory;
-    private final BarSeries barSeries;
 
     /**
      * Constructor.
@@ -58,8 +54,6 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
         super(indicator.getBarSeries());
         this.indicator = indicator;
         this.barCount = barCount;
-        this.barSeries = indicator.getBarSeries();
-        this.numFactory = barSeries.numFactory();
 
     }
 
@@ -79,7 +73,10 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
         Num currentPrice = indicator.getValue(index);
 
         // Speed ratio (smoothing factor)
-        Num speedRatio = numFactory.numOf(barCount).multipliedBy(currentPrice.dividedBy(previousMcGinley).pow(2));
+        Num speedRatio = indicator.getBarSeries()
+                .numFactory()
+                .numOf(barCount)
+                .multipliedBy(currentPrice.dividedBy(previousMcGinley).pow(2));
 
         // McGinley formula
         return previousMcGinley.plus(currentPrice.minus(previousMcGinley).dividedBy(speedRatio));

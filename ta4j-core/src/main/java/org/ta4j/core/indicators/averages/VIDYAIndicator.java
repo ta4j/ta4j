@@ -27,7 +27,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CMOIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Chande's Variable Index Dynamic Moving Average (VIDYA) Indicator
@@ -45,7 +44,6 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator; // Input price (e.g., close price)
     private final int cmoPeriod; // Lookback period for cmoPeriod
     private final int vidyaPeriod; // Lookback period for VIDYA
-    private final NumFactory numFactory;
     private final CMOIndicator cmoIndicator;
 
     /**
@@ -60,7 +58,6 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         this.cmoPeriod = cmoPeriod;
         this.vidyaPeriod = vidyaPeriod;
-        this.numFactory = indicator.getBarSeries().numFactory();
         this.cmoIndicator = new CMOIndicator(indicator, cmoPeriod);
 
     }
@@ -76,7 +73,7 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
         Num cmo = cmoIndicator.getValue(index);
 
         // Normalize the CMO to derive the smoothing constant
-        Num smoothingConstant = cmo.abs().dividedBy(numFactory.hundred());
+        Num smoothingConstant = cmo.abs().dividedBy(indicator.getBarSeries().numFactory().hundred());
 
         // Calculate VIDYA using the smoothing constant
         Num previousVIDYA = getValue(index - 1);

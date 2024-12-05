@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.averages;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -53,8 +52,6 @@ public class SGMAIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator; // Input series
     private final Num polynomialOrder; // The degree of the polynomial as a Num
     private final List<Num> coefficients; // Pre-computed coefficients for smoothing
-    private final BarSeries barSeries;
-    private final NumFactory numFactory;
 
     /**
      * Constructor.
@@ -75,11 +72,9 @@ public class SGMAIndicator extends CachedIndicator<Num> {
 
         this.barCount = barCount;
         this.indicator = indicator;
-        this.barSeries = indicator.getBarSeries();
-        this.numFactory = barSeries.numFactory();
 
         // Convert int parameters to Num objects
-        this.polynomialOrder = numFactory.numOf(polynomialOrder);
+        this.polynomialOrder = indicator.getBarSeries().numFactory().numOf(polynomialOrder);
 
         // Precompute coefficients
         this.coefficients = calculateCoefficients(barCount, polynomialOrder);

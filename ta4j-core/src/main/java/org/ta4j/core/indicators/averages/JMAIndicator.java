@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.averages;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -49,7 +48,6 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final Num phase; // Phase adjustment (usually between -100 and +100)
     private final Num power; // Smoothing power factor (default is 2)
     private final Map<Integer, JmaData> jmaDataMap;
-    private final BarSeries barSeries;
     private final NumFactory numFactory;
     private final Num beta;
     private final Num phaseRatio;
@@ -65,8 +63,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
      */
     public JMAIndicator(Indicator<Num> indicator, int barCount, double phase, double power) {
         super(indicator.getBarSeries());
-        this.barSeries = indicator.getBarSeries();
-        this.numFactory = barSeries.numFactory();
+        this.numFactory = indicator.getBarSeries().numFactory();
         this.indicator = indicator;
         this.barCount = barCount;
         this.phase = numFactory.numOf(Math.min(Math.max(phase, -100), 100)); // Clamp phase between -100 and 100
