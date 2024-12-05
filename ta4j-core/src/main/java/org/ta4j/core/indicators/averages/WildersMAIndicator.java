@@ -66,7 +66,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         NumFactory numFactory = getBarSeries().numFactory();
-        Num one = numFactory.numOf(1);
+        Num one = numFactory.one();
 
         Num k = one.dividedBy(numFactory.numOf(barCount));
         Num prevWMA = indicator.getValue(0);
@@ -96,7 +96,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
             prevWMA = getValue(index - 1);
         }
         Num currentPrice = indicator.getValue(index);
-        return currentPrice.multipliedBy(k).plus(prevWMA.multipliedBy(numFactory.numOf(1).minus(k)));
+        return currentPrice.multipliedBy(k).plus(prevWMA.multipliedBy(numFactory.one().minus(k)));
     }
 
     @Override

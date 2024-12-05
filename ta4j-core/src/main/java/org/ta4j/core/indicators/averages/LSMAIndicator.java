@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
@@ -52,9 +49,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final int offset;
     private final NumFactory numFactory;
-    private final BarSeries barSeries;
     private final Num avgTime;
-    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     /**
      * Constructor.
@@ -68,10 +63,9 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         this.barCount = barCount;
         this.offset = offset;
-        this.barSeries = indicator.getBarSeries();
-        this.numFactory = barSeries.numFactory();
+        this.numFactory = indicator.getBarSeries().numFactory();
 
-        Num sumTime = numFactory.numOf(0);
+        Num sumTime = numFactory.zero();
         for (int i = 1; i <= barCount; i++) {
             sumTime = sumTime.plus(numFactory.numOf(i));
         }
@@ -92,8 +86,8 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         Num avgPrice = sumPrice.dividedBy(numFactory.numOf(barCount));
 
         // Calculate sx and sy
-        Num sx = numFactory.numOf(0);
-        Num sy = numFactory.numOf(0);
+        Num sx = numFactory.zero();
+        Num sy = numFactory.zero();
         for (int i = 1; i <= barCount; i++) {
             Num timeDeviation = numFactory.numOf(i).minus(avgTime);
             Num priceDeviation = indicator.getValue(index - (i - 1)).minus(avgPrice);
