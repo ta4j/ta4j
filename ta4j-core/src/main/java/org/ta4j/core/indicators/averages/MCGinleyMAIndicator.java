@@ -73,10 +73,8 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
         Num currentPrice = indicator.getValue(index);
 
         // Speed ratio (smoothing factor)
-        Num speedRatio = indicator.getBarSeries()
-                .numFactory()
-                .numOf(barCount)
-                .multipliedBy(currentPrice.dividedBy(previousMcGinley).pow(2));
+        Num numBars = indicator.getBarSeries().numFactory().numOf(barCount);
+        Num speedRatio = numBars.multipliedBy(currentPrice.dividedBy(previousMcGinley).pow(2));
 
         // McGinley formula
         return previousMcGinley.plus(currentPrice.minus(previousMcGinley).dividedBy(speedRatio));

@@ -68,7 +68,8 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
         NumFactory numFactory = getBarSeries().numFactory();
         Num one = numFactory.one();
 
-        Num k = one.dividedBy(numFactory.numOf(barCount));
+        Num numBars = numFactory.numOf(barCount);
+        Num k = one.dividedBy(numBars);
         Num prevWMA = indicator.getValue(0);
 
         RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
@@ -84,7 +85,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
             // Return average of available points for initialization
             Num preResult = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - index - 1)))
-                    .dividedBy(numFactory.numOf(barCount));
+                    .dividedBy(numBars);
 
             prevWMA = preResult;
             return preResult;
