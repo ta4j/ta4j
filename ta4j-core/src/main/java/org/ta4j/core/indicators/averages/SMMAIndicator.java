@@ -69,10 +69,12 @@ public class SMMAIndicator extends CachedIndicator<Num> {
         // Current price
         Num currentPrice = indicator.getValue(index);
 
+        var numFactory = indicator.getBarSeries().numFactory();
+
         // SMMA formula
-        return previousSMMA.multipliedBy(indicator.getBarSeries().numFactory().numOf(barCount - 1))
+        return previousSMMA.multipliedBy(numFactory.numOf(barCount - 1))
                 .plus(currentPrice)
-                .dividedBy(indicator.getBarSeries().numFactory().numOf(barCount));
+                .dividedBy(numFactory.numOf(barCount));
     }
 
     @Override

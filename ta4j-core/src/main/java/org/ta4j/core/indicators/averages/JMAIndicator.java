@@ -91,9 +91,10 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         NumFactory numFactory = indicator.getBarSeries().numFactory();
         Num currentPrice = indicator.getValue(index);
+        Num zero = numFactory.zero();
 
         if (index <= 0) {
-            jmaDataMap.put(index, new JmaData(currentPrice, numFactory.zero(), numFactory.zero(), currentPrice));
+            jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
             return currentPrice;
         }
 

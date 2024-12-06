@@ -86,8 +86,9 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         Num avgPrice = sumPrice.dividedBy(numFactory.numOf(barCount));
 
         // Calculate sx and sy
-        Num sx = numFactory.zero();
-        Num sy = numFactory.zero();
+        Num zero = numFactory.zero();
+        Num sx = zero;
+        Num sy = zero;
         for (int i = 1; i <= barCount; i++) {
             Num timeDeviation = numFactory.numOf(i).minus(avgTime);
             Num priceDeviation = indicator.getValue(index - (i - 1)).minus(avgPrice);
