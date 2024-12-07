@@ -23,18 +23,15 @@
  */
 package org.ta4j.core.mocks;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-
 import org.ta4j.core.bars.BaseBar;
 import org.ta4j.core.bars.BaseBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
 public class MockBarBuilder extends BaseBarBuilder {
 
-    private Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneOffset.UTC);
+    private Instant beginTime = Instant.now();
     private boolean periodSet;
     private boolean endTimeSet;
 
@@ -65,8 +62,9 @@ public class MockBarBuilder extends BaseBarBuilder {
         }
 
         if (!endTimeSet) {
-            endTime(Instant.now(Clock.offset(clock, timePeriod.multipliedBy(++countOfProducedBars))));
+            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
         }
         return super.build();
     }
+
 }
