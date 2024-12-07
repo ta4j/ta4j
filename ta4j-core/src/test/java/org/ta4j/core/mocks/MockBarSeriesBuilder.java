@@ -71,10 +71,11 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
-        var now = Instant.now();
+        final var now = Instant.now();
+        final var maxBars = data.size() + 1;
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(now.minus(Duration.ofMinutes((data.size() + 1 - i))))
+                    .endTime(now.minus(Duration.ofMinutes(maxBars - i)))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
@@ -87,7 +88,7 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void arbitraryBars(final BarSeries series) {
-        var now = Instant.now();
+        final var now = Instant.now();
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
                     .endTime(now.minus(Duration.ofMinutes((long) (5001 - i))))
