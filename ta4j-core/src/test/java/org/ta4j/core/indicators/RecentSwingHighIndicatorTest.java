@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -202,8 +203,9 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void testCalculate_OnMovingBarSeries_ReturnsValue() {
-        // movingSeries: [1]
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        // movingSeries: [1]    	
+        BarSeries movingSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(1).build());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(movingSeries);
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(closePrice, 1, 1, 0);
 
