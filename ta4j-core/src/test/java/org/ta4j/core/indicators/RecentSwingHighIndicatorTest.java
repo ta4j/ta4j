@@ -202,7 +202,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void testCalculate_OnMovingBarSeries_ReturnsValue() {
-        // movingSeries: [1]    	
+        // movingSeries: [1]
         BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(1).build());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(movingSeries);
