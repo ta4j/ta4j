@@ -50,6 +50,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
+    private final RunningTotalIndicator sumPriceIndicator;
 
     /**
      * Constructor.
@@ -61,6 +62,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
+        this.sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
     }
 
     @Override
@@ -71,8 +73,6 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
         Num numBars = numFactory.numOf(barCount);
         Num k = one.dividedBy(numBars);
         Num prevWMA = indicator.getValue(0);
-
-        RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
 
         // Simulate extended historical data for initialization
         if (index < barCount) {

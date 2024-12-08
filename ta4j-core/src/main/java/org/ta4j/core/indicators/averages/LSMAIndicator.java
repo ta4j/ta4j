@@ -50,6 +50,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
     private final int offset;
     private final NumFactory numFactory;
     private final Num avgTime;
+    private final RunningTotalIndicator sumPriceIndicator;
 
     /**
      * Constructor.
@@ -64,6 +65,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.offset = offset;
         this.numFactory = indicator.getBarSeries().numFactory();
+        this.sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
 
         Num sumTime = numFactory.zero();
         for (int i = 1; i <= barCount; i++) {
@@ -78,9 +80,6 @@ public class LSMAIndicator extends CachedIndicator<Num> {
         if (index < barCount - 1) {
             return indicator.getValue(index);
         }
-
-        // Calculate AvgPrice
-        RunningTotalIndicator sumPriceIndicator = new RunningTotalIndicator(indicator, barCount);
 
         Num sumPrice = sumPriceIndicator.getValue(index);
         Num avgPrice = sumPrice.dividedBy(numFactory.numOf(barCount));

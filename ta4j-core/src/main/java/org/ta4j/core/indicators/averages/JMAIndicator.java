@@ -81,7 +81,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         alpha = beta.pow(this.power);
 
-        for (int i = 0; i < indicator.getBarSeries().getBarCount(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getBarCount(); i++) {
             calculate(i);
         }
     }
@@ -125,6 +125,11 @@ public class JMAIndicator extends CachedIndicator<Num> {
         return e1;
     }
 
+    /*
+     * Since previous e2 and previous JMA has to be used to calculate e2 I didn't
+     * see a way to abstract this out to a separate indicator which would have made
+     * JMA so much simpler to calculate and we wouldn't need the internal cache.
+     */
     private Num calculateE2(NumFactory numFactory, JmaData previousJMA, Num e0, Num e1) {
         Num e2 = e0.plus(phaseRatio.multipliedBy(e1))
                 .minus(previousJMA.jma)
