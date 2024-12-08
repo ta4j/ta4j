@@ -18,6 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Consider `base` when calculating `ReturnCriterion` of a position.
 - Fixed calculation for `VersusEnterAndHoldCriterion`
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
+- Fixed `RecentSwingHighIndicatorTest` to create bars consistently
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
