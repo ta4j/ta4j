@@ -25,6 +25,10 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -41,10 +45,10 @@ import org.ta4j.core.num.NumFactory;
  */
 public class KiJunV2Indicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> highPrice; // Indicator for the high price
-    private final Indicator<Num> lowPrice; // Indicator for the low price
     private final int barCount; // Lookback period
     private final NumFactory numFactory;
+    private final HighestValueIndicator highestValue;
+    private final LowestValueIndicator lowestValue;
 
     /**
      * Constructor.
@@ -55,22 +59,18 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
      */
     public KiJunV2Indicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, int barCount) {
         super(highPrice.getBarSeries());
-        this.highPrice = highPrice;
-        this.lowPrice = lowPrice;
         this.barCount = barCount;
         this.numFactory = highPrice.getBarSeries().numFactory();
+        this.highestValue = new HighestValueIndicator(new HighPriceIndicator(highPrice.getBarSeries()), barCount);
+        this.lowestValue = new LowestValueIndicator(new LowPriceIndicator(lowPrice.getBarSeries()), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        // Get the highest high and lowest low within the barCount period
-        Num highestHigh = numFactory.numOf(Double.MIN_VALUE);
-        Num lowestLow = numFactory.numOf(Double.MAX_VALUE);
 
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            highestHigh = highestHigh.max(highPrice.getValue(i));
-            lowestLow = lowestLow.min(lowPrice.getValue(i));
-        }
+        // Get the highest high and lowest low within the barCount period
+        Num highestHigh = highestValue.calculate(index);
+        Num lowestLow = lowestValue.calculate(index);
 
         // Calculate the midpoint
         return highestHigh.plus(lowestLow).dividedBy(numFactory.two());

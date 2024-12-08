@@ -51,7 +51,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
+    public Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
             return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
         }
