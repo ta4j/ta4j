@@ -125,7 +125,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
      * @return 0, as there are no unstable bars for this indicator
      */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

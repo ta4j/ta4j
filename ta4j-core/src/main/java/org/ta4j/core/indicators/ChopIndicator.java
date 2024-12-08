@@ -91,7 +91,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return timeFrame;
     }
 }

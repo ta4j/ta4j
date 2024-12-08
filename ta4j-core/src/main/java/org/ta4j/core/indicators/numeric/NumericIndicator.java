@@ -362,7 +362,7 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

@@ -41,6 +41,9 @@ import org.slf4j.LoggerFactory;
  * consists of a {@code BigDecimal} with arbitrary {@link MathContext}
  * (precision and rounding mode).
  *
+ * <p>
+ * It uses a precision of up to {@value #DEFAULT_PRECISION} decimal places.
+ *
  * @see BigDecimal
  * @see MathContext
  * @see RoundingMode

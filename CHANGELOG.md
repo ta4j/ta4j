@@ -10,15 +10,22 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
 - Moved `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package and renamed to `TimeBarBuilder` and `TimeBarBuilderFactory`
 - Renamed `BaseBarConvertibleBuilderTest` to `BaseBarSeriesBuilderTest`
+- Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
 - Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
 - Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
+- Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
+- Fixed `RecentSwingHighIndicatorTest` to create bars consistently
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
 - Updated **logback-classic** 1.4.12 > 1.5.6 to resolve [CVE-2023-6481](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
+- Cleaned code by using new java syntax `text blocks`
+- Faster test execution by using `String.lines()` instead of `String` concatenation
+- Improve Javadoc for `DecimalNum`and `DoubleNum`
+- Allowed JUnit5 for new tests. Old remain as is.
 
 ### Removed/Deprecated
 
@@ -34,6 +41,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
 - Added `TickBarBuilder` to `bars`-package to aggregate bars after a fixed number of ticks
 - Added `VolumeBarBuilder` to `bars`-package to  aggregate bars after a fixed number of contracts (volume)
+- Added `TickBarBuilder` to `bars`-package
+- Added `VolumeBarBuilder` to `bars`-package
+- Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
 
 ## 0.17 (released September 9, 2024)
 

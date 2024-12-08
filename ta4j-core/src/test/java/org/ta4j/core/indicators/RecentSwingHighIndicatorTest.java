@@ -178,7 +178,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
         int surroundingBars = 2;
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, surroundingBars);
 
-        assertEquals(surroundingBars * 2, swingHighIndicator.getUnstableBars());
+        assertEquals(surroundingBars * 2, swingHighIndicator.getCountOfUnstableBars());
     }
 
     @Test
@@ -203,7 +203,8 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void testCalculate_OnMovingBarSeries_ReturnsValue() {
         // movingSeries: [1]
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(1).build());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(movingSeries);
         RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(closePrice, 1, 1, 0);
 

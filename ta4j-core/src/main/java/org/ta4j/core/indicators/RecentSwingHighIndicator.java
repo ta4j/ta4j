@@ -168,7 +168,7 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index < getUnstableBars() || index >= getBarSeries().getBarCount()) {
+        if (index < getCountOfUnstableBars() || index >= getBarSeries().getBarCount()) {
             return NaN;
         }
 
@@ -180,7 +180,7 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
         return NaN;
     }
 
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return precedingLowerBars + followingLowerBars;
     }
 }
