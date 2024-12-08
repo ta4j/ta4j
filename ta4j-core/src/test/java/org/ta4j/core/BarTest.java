@@ -36,7 +36,7 @@ import java.time.ZonedDateTime;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -57,7 +57,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void setUp() {
         this.beginTime = Instant.parse("2014-06-25T00:00:00Z");
         this.endTime = Instant.parse("2014-06-25T01:00:00Z");
-        this.bar = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+        this.bar = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(this.endTime)
                 .volume(0)
                 .amount(0)
@@ -115,17 +115,17 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void doesNotThrowNullPointerException() {
-        var bar = new BaseBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        var bar = new TimeBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
         // TODO use Junit5: org.junit.jupiter.api.Assertions.assertDoesNotThrow instead:
         assertNotNull(bar.toString());
     }
 
     @Test
     public void equals() {
-        final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+        final Bar bar1 = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(this.endTime)
                 .build();
-        final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+        final Bar bar2 = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(this.endTime)
                 .build();
 
@@ -135,10 +135,10 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void hashCode2() {
-        final Bar bar1 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+        final Bar bar1 = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(this.endTime)
                 .build();
-        final Bar bar2 = new BaseBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+        final Bar bar2 = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .endTime(this.endTime)
                 .build();
 

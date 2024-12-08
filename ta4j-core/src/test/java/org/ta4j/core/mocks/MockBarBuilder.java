@@ -28,11 +28,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
-import org.ta4j.core.bars.BaseBar;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends BaseBarBuilder {
+public class MockBarBuilder extends TimeBarBuilder {
 
     private Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneOffset.UTC);
     private boolean periodSet;
@@ -46,13 +46,13 @@ public class MockBarBuilder extends BaseBarBuilder {
     }
 
     @Override
-    public BaseBarBuilder endTime(final Instant endTime) {
+    public TimeBarBuilder endTime(final Instant endTime) {
         endTimeSet = true;
         return super.endTime(endTime);
     }
 
     @Override
-    public BaseBarBuilder timePeriod(final Duration timePeriod) {
+    public TimeBarBuilder timePeriod(final Duration timePeriod) {
         periodSet = true;
         this.timePeriod = timePeriod;
         return super.timePeriod(this.timePeriod);

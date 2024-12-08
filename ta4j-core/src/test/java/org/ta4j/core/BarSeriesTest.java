@@ -41,7 +41,7 @@ import java.util.stream.IntStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -403,7 +403,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDoubleTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
-        series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+        series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(Instant.now())
                 .closePrice(DecimalNumFactory.getInstance().one())
                 .build());
@@ -412,7 +412,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
         var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
-        series.addBar(new BaseBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+        series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(Instant.now())
                 .closePrice(DoubleNumFactory.getInstance().one())
                 .build());

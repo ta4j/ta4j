@@ -30,10 +30,15 @@ import java.util.Objects;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+/**
+ * A volume bar is sampled after a fixed number of contracts (volume) have been
+ * traded.
+ */
 public class VolumeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
@@ -49,10 +54,21 @@ public class VolumeBarBuilder implements BarBuilder {
     private Num amount;
     private long trades;
 
+    /**
+     * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
+     *
+     * @param volumeThreshold the threshold at which a new bar should be created
+     */
     public VolumeBarBuilder(final int volumeThreshold) {
         this(DoubleNumFactory.getInstance(), volumeThreshold);
     }
 
+    /**
+     * A builder to build a new {@link BaseBar}
+     *
+     * @param numFactory
+     * @param volumeThreshold the threshold at which a new bar should be created
+     */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold) {
         this.numFactory = numFactory;
         this.volumeThreshold = numFactory.numOf(volumeThreshold);
@@ -62,7 +78,7 @@ public class VolumeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder timePeriod(final Duration timePeriod) {
-        this.timePeriod = timePeriod;
+        this.timePeriod = this.timePeriod == null ? timePeriod : this.timePeriod.plus(timePeriod);
         return this;
     }
 
@@ -74,47 +90,47 @@ public class VolumeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder openPrice(final Num openPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder openPrice(final Number openPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder openPrice(final String openPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder highPrice(final Number highPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder highPrice(final String highPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder highPrice(final Num highPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder lowPrice(final Num lowPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder lowPrice(final Number lowPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
     public BarBuilder lowPrice(final String lowPrice) {
-        throw new IllegalArgumentException("Ticks are build just from closePrices");
+        throw new IllegalArgumentException("VolumeBar can only be built from closePrice");
     }
 
     @Override
@@ -223,6 +239,7 @@ public class VolumeBarBuilder implements BarBuilder {
     }
 
     private void reset() {
+        this.timePeriod = null;
         this.openPrice = null;
         this.highPrice = this.numFactory.zero();
         this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
