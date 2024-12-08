@@ -21,51 +21,50 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Highest value indicator.
+ * Triangular Moving Average (TMA) Indicator.
  *
- * <p>
- * Returns the highest indicator value from the bar series within the bar count.
+ * TMA is a double-smoothing of the Simple Moving Average (SMA).
+ *
+ * Triangular Moving Average (TMA) is a type of moving average that places
+ * greater emphasis on the central portion of the data series. It is calculated
+ * as a second smoothing of a Simple Moving Average (SMA), making it smoother
+ * than the SMA or Exponential Moving Average (EMA). Due to its double-smoothing
+ * nature, the TMA is commonly used to identify long-term trends in financial
+ * markets, reducing noise from short-term fluctuations.
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class TMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private final SMAIndicator sma;
+    private final SMAIndicator smaSma;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator an indicator
+     * @param barCount  the Simple Moving Average time frame
      */
-    public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
+    public TMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator.getBarSeries());
         this.barCount = barCount;
+        this.sma = new SMAIndicator(indicator, barCount);
+        this.smaSma = new SMAIndicator(sma, barCount);
     }
 
     @Override
-    public Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
-        }
-        int end = Math.max(0, index - barCount + 1);
-        Num highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (highest.isLessThan(indicator.getValue(i))) {
-                highest = indicator.getValue(i);
-            }
-        }
-        return highest;
+    protected Num calculate(int index) {
+
+        return smaSma.getValue(index);
     }
 
-    /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
         return barCount;
