@@ -25,13 +25,14 @@ package org.ta4j.core.mocks;
 
 import java.time.Duration;
 import java.time.Instant;
+
 import org.ta4j.core.bars.BaseBar;
 import org.ta4j.core.bars.BaseBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
 public class MockBarBuilder extends BaseBarBuilder {
 
-    private Instant beginTime = Instant.now();
+    private final Instant beginTime = Instant.EPOCH;
     private boolean periodSet;
     private boolean endTimeSet;
 
