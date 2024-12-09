@@ -40,6 +40,7 @@ import org.ta4j.core.num.NumFactory;
  */
 public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
 
+    private static final Instant testStartTime = Instant.EPOCH;
     private List<Double> data;
     private boolean defaultData;
 
@@ -71,11 +72,10 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void doublesToBars(final BarSeries series, final List<Double> data) {
-        final var now = Instant.now();
         final var maxBars = data.size() + 1;
         for (int i = 0; i < data.size(); i++) {
             series.barBuilder()
-                    .endTime(now.minus(Duration.ofMinutes(maxBars - i)))
+                    .endTime(testStartTime.minus(Duration.ofMinutes(maxBars - i)))
                     .closePrice(data.get(i))
                     .openPrice(0)
                     .add();
@@ -88,10 +88,9 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
     }
 
     private static void arbitraryBars(final BarSeries series) {
-        final var now = Instant.now();
         for (double i = 0d; i < 5000; i++) {
             series.barBuilder()
-                    .endTime(now.minus(Duration.ofMinutes((long) (5001 - i))))
+                    .endTime(testStartTime.minus(Duration.ofMinutes((long) (5001 - i))))
                     .openPrice(i)
                     .closePrice(i + 1)
                     .highPrice(i + 2)
