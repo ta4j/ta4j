@@ -21,51 +21,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Highest value indicator.
+ * Asymmetric Triangular Moving Average (ATMA) Indicator.
  *
- * <p>
- * Returns the highest indicator value from the bar series within the bar count.
+ * ATMA is a double-smoothing of the Simple Moving Average (SMA), however unlike
+ * the Triangular Moving Average (TMA) the modified equation creates a smoother
+ * and slightly lagged moving average compared to the traditional TMA. By
+ * varying the smoothing lengths asymmetrically, it balances responsiveness to
+ * initial price changes with reduced noise in the final result.
+ *
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class ATMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private final int slow;
+    private final int fast;
+    private final SMAIndicator sma;
+    private final SMAIndicator smaSma;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator an indicator
+     * @param barCount  the Simple Moving Average time frame
      */
-    public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
+    public ATMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator.getBarSeries());
         this.barCount = barCount;
+        this.fast = (int) (Math.ceil(barCount / 2));
+        this.slow = (int) (Math.floor(barCount / 2) + 1);
+        this.sma = new SMAIndicator(indicator, slow);
+        this.smaSma = new SMAIndicator(sma, fast);
     }
 
     @Override
-    public Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
-        }
-        int end = Math.max(0, index - barCount + 1);
-        Num highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (highest.isLessThan(indicator.getValue(i))) {
-                highest = indicator.getValue(i);
-            }
-        }
-        return highest;
+    protected Num calculate(int index) {
+
+        return smaSma.getValue(index);
     }
 
-    /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
         return barCount;
@@ -73,6 +74,6 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount + " fast: " + fast + " slow: " + slow;
     }
 }
