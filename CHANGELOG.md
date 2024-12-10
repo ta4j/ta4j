@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
 - Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
+- Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
 
 ### Changed
