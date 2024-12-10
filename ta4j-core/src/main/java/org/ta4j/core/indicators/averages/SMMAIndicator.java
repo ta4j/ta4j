@@ -21,51 +21,62 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Highest value indicator.
+ * Smoothed Moving Average (SMMA) Indicator.
  *
- * <p>
- * Returns the highest indicator value from the bar series within the bar count.
+ * Smoothed Moving Average (SMMA) is a type of moving average that applies
+ * exponential smoothing over a longer period. It is designed to emphasize the
+ * overall trend by minimizing the impact of short-term fluctuations. Unlike the
+ * Exponential Moving Average (EMA), which assigns more weight to recent prices,
+ * the SMMA evenly distributes the influence of older data while still applying
+ * some smoothing.
+ *
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class SMMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private final Indicator<Num> indicator;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator an indicator
+     * @param barCount  the Simple Moving Average time frame
      */
-    public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
+    public SMMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator.getBarSeries());
         this.barCount = barCount;
+        this.indicator = indicator;
     }
 
     @Override
-    public Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+    protected Num calculate(int index) {
+
+        if (index == 0) {
+            // The first SMMA value is the first data point
+            return indicator.getValue(0);
         }
-        int end = Math.max(0, index - barCount + 1);
-        Num highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (highest.isLessThan(indicator.getValue(i))) {
-                highest = indicator.getValue(i);
-            }
-        }
-        return highest;
+
+        // Previous SMMA value
+        Num previousSMMA = getValue(index - 1);
+
+        // Current price
+        Num currentPrice = indicator.getValue(index);
+
+        var numFactory = indicator.getBarSeries().numFactory();
+
+        // SMMA formula
+        return previousSMMA.multipliedBy(numFactory.numOf(barCount - 1))
+                .plus(currentPrice)
+                .dividedBy(numFactory.numOf(barCount));
     }
 
-    /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
         return barCount;

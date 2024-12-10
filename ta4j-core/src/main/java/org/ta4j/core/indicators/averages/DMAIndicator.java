@@ -21,54 +21,59 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Highest value indicator.
+ * Displaced Moving Average (DMA) indicator.
  *
- * <p>
- * Returns the highest indicator value from the bar series within the bar count.
+ * Displaced Moving Average (DMA) is a variation of traditional moving averages,
+ * where the average is shifted forward or backward in time. This displacement
+ * allows traders to anticipate future price movements or analyze historical
+ * trends more effectively. DMA is not a standalone moving average but rather a
+ * way of adjusting existing ones (such as SMA or EMA) by a certain number of
+ * periods.
+ *
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class DMAIndicator extends SMAIndicator {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
+    private final int displacement;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator    an indicator
+     * @param barCount     the Simple Moving Average time frame
+     * @param displacement the Simple Moving Average displacement, positive or
+     *                     negative
      */
-    public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
+    public DMAIndicator(Indicator<Num> indicator, int barCount, int displacement) {
+        super(indicator, barCount);
         this.barCount = barCount;
+        this.displacement = displacement;
     }
 
     @Override
-    public Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+    protected Num calculate(int index) {
+
+        int displacedIndex = index - displacement;
+        if (displacedIndex < 0) {
+            return super.calculate(0);
         }
-        int end = Math.max(0, index - barCount + 1);
-        Num highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (highest.isLessThan(indicator.getValue(i))) {
-                highest = indicator.getValue(i);
-            }
+        if (displacedIndex >= getBarSeries().getEndIndex()) {
+            return super.calculate(getBarSeries().getEndIndex() - 1);
         }
-        return highest;
+
+        return super.calculate(displacedIndex);
     }
 
-    /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return barCount * 2;
     }
 
     @Override

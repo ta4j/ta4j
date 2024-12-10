@@ -21,51 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.mocks;
+package org.ta4j.core.indicators.averages;
 
-import java.time.Duration;
-import java.time.Instant;
+import static org.ta4j.core.TestUtils.*;
 
-import org.ta4j.core.bars.BaseBar;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.CsvTestUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends BaseBarBuilder {
+public class McGinleysMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final Instant beginTime = Instant.EPOCH;
-    private boolean periodSet;
-    private boolean endTimeSet;
-
-    private static long countOfProducedBars;
-    private Duration timePeriod;
-
-    public MockBarBuilder(NumFactory numFactory) {
+    public McGinleysMAIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    @Override
-    public BaseBarBuilder endTime(final Instant endTime) {
-        endTimeSet = true;
-        return super.endTime(endTime);
-    }
+    @Test
+    public void mcginleysIndicatorTest() {
 
-    @Override
-    public BaseBarBuilder timePeriod(final Duration timePeriod) {
-        periodSet = true;
-        this.timePeriod = timePeriod;
-        return super.timePeriod(this.timePeriod);
-    }
+        MockIndicator mock = CsvTestUtils.getCsvFile(McGinleysMAIndicatorTest.class, "McGinley.csv", numFactory);
 
-    @Override
-    public BaseBar build() {
-        if (!periodSet) {
-            timePeriod(Duration.ofDays(1));
+        BarSeries barSeries = mock.getBarSeries();
+
+        MCGinleyMAIndicator mcg = new MCGinleyMAIndicator(new ClosePriceIndicator(barSeries), 14);
+
+        for (int i = 1; i < barSeries.getBarCount(); i++) {
+
+            Num expected = mock.getValue(i);
+            Num value = mcg.getValue(i);
+
+            assertNumEquals(expected.doubleValue(), value);
         }
-
-        if (!endTimeSet) {
-            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
-        }
-        return super.build();
     }
 
 }
