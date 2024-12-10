@@ -21,51 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.mocks;
+package org.ta4j.core.indicators.averages;
 
-import java.time.Duration;
-import java.time.Instant;
+import static org.ta4j.core.TestUtils.*;
 
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.bars.TimeBarBuilder;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.CsvTestUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends TimeBarBuilder {
+public class ATMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final Instant beginTime = Instant.EPOCH;
-    private boolean periodSet;
-    private boolean endTimeSet;
-
-    private static long countOfProducedBars;
-    private Duration timePeriod;
-
-    public MockBarBuilder(NumFactory numFactory) {
+    public ATMAIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    @Override
-    public TimeBarBuilder endTime(final Instant endTime) {
-        endTimeSet = true;
-        return super.endTime(endTime);
-    }
+    @Test
+    public void atmaIndicatorTest() {
 
-    @Override
-    public TimeBarBuilder timePeriod(final Duration timePeriod) {
-        periodSet = true;
-        this.timePeriod = timePeriod;
-        return super.timePeriod(this.timePeriod);
-    }
+        MockIndicator mock = CsvTestUtils.getCsvFile(ATMAIndicatorTest.class, "ATMA.csv", numFactory);
 
-    @Override
-    public BaseBar build() {
-        if (!periodSet) {
-            timePeriod(Duration.ofDays(1));
+        BarSeries barSeries = mock.getBarSeries();
+
+        ATMAIndicator atma = new ATMAIndicator(new ClosePriceIndicator(barSeries), 10);
+
+        for (int i = 10; i < barSeries.getBarCount(); i++) {
+            barSeries.getBar(i).getClosePrice();
+
+            assertNumEquals(mock.getValue(i).doubleValue(), atma.getValue(i));
         }
-
-        if (!endTimeSet) {
-            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
-        }
-        return super.build();
     }
 
 }

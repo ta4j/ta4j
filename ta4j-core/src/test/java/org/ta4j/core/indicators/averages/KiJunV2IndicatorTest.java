@@ -21,51 +21,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.mocks;
+package org.ta4j.core.indicators.averages;
 
-import java.time.Duration;
-import java.time.Instant;
+import static org.ta4j.core.TestUtils.*;
 
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.bars.TimeBarBuilder;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.CsvTestUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends TimeBarBuilder {
+public class KiJunV2IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private final Instant beginTime = Instant.EPOCH;
-    private boolean periodSet;
-    private boolean endTimeSet;
-
-    private static long countOfProducedBars;
-    private Duration timePeriod;
-
-    public MockBarBuilder(NumFactory numFactory) {
+    public KiJunV2IndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    @Override
-    public TimeBarBuilder endTime(final Instant endTime) {
-        endTimeSet = true;
-        return super.endTime(endTime);
-    }
+    @Test
+    public void kijunv2IndicatorTest() {
 
-    @Override
-    public TimeBarBuilder timePeriod(final Duration timePeriod) {
-        periodSet = true;
-        this.timePeriod = timePeriod;
-        return super.timePeriod(this.timePeriod);
-    }
+        MockIndicator mock = CsvTestUtils.getCsvFile(KiJunV2IndicatorTest.class, "KiJunV2.csv", numFactory);
 
-    @Override
-    public BaseBar build() {
-        if (!periodSet) {
-            timePeriod(Duration.ofDays(1));
+        BarSeries barSeries = mock.getBarSeries();
+
+        KiJunV2Indicator kijunv2 = new KiJunV2Indicator(new HighPriceIndicator(barSeries),
+                new LowPriceIndicator(barSeries), 9);
+
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Num expected = mock.getValue(i);
+            Num value = kijunv2.getValue(i);
+
+            assertNumEquals(expected.doubleValue(), value);
         }
-
-        if (!endTimeSet) {
-            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
-        }
-        return super.build();
     }
 
 }
