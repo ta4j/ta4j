@@ -41,6 +41,19 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `TickBarBuilder` to `bars`-package
 - Added `VolumeBarBuilder` to `bars`-package
 - Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
+- Added `WildersMAIndicator` to `indicators.averages`-package: Wilder's moving average indicator
+- Added `DMAIndicator` to `indicators.averages`-package: Displaced Moving Average (DMA) indicator
+- Added `EDMAIndicator` to `indicators.averages`-package: Exponential Displaced Moving Average (EDMA) indicator
+- Added `JMAIndicator` to `indicators.averages`-package: Jurik Moving Average (JMA) indicator
+- Added `TMAIndicator` to `indicators.averages`-package: Trangular Moving Average (TMA) indicator
+- Added `ATMAIndicator` to `indicators.averages`-package: Asymmetric Trangular Moving Average (TMA) indicator
+- Added `MCGinleyMAIndicator` to `indicators.averages`-package: McGinley Moving Average (McGinleyMA) indicator
+- Added `SMMAIndicator` to `indicators.averages`-package: Smoothed Moving Average (SMMA) indicator
+- Added `SGMAIndicator` to `indicators.averages`-package: Savitzky-Golay Moving Average (SGMA) indicator
+- Added `LSMAIndicator` to `indicators.averages`-package: Least Squares Moving Average (LSMA) indicator
+- Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
+- Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
+
 
 ## 0.17 (released September 9, 2024)
 
