@@ -26,10 +26,10 @@ package org.ta4j.core.bars;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
 
-public class BaseBarBuilderFactory implements BarBuilderFactory {
+public class TimeBarBuilderFactory implements BarBuilderFactory {
 
     @Override
-    public BaseBarBuilder createBarBuilder(BarSeries series) {
-        return new BaseBarBuilder(series.numFactory()).bindTo(series);
+    public TimeBarBuilder createBarBuilder(BarSeries series) {
+        return new TimeBarBuilder(series.numFactory()).bindTo(series);
     }
 }

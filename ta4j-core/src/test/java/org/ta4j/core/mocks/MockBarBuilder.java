@@ -26,11 +26,11 @@ package org.ta4j.core.mocks;
 import java.time.Duration;
 import java.time.Instant;
 
-import org.ta4j.core.bars.BaseBar;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends BaseBarBuilder {
+public class MockBarBuilder extends TimeBarBuilder {
 
     private final Instant beginTime = Instant.EPOCH;
     private boolean periodSet;
@@ -44,13 +44,13 @@ public class MockBarBuilder extends BaseBarBuilder {
     }
 
     @Override
-    public BaseBarBuilder endTime(final Instant endTime) {
+    public TimeBarBuilder endTime(final Instant endTime) {
         endTimeSet = true;
         return super.endTime(endTime);
     }
 
     @Override
-    public BaseBarBuilder timePeriod(final Duration timePeriod) {
+    public TimeBarBuilder timePeriod(final Duration timePeriod) {
         periodSet = true;
         this.timePeriod = timePeriod;
         return super.timePeriod(this.timePeriod);

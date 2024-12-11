@@ -29,6 +29,7 @@ import java.time.Instant;
 import org.ta4j.core.num.Num;
 
 public interface BarBuilder {
+
     /**
      * @param timePeriod the time period
      * @return {@code this}
