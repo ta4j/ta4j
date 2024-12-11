@@ -21,23 +21,25 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.DoubleEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public TripleEMAIndicatorTest(NumFactory numFactory) {
+    public DoubleEMAIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -50,19 +52,19 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void tripleEMAUsingBarCount5UsingClosePrice() {
-        var tripleEma = new TripleEMAIndicator(closePrice, 5);
+    public void doubleEMAUsingBarCount5UsingClosePrice() {
+        var doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
-        assertNumEquals(0.73, tripleEma.getValue(0));
-        assertNumEquals(0.7229, tripleEma.getValue(1));
-        assertNumEquals(0.8185, tripleEma.getValue(2));
+        assertNumEquals(0.73, doubleEma.getValue(0));
+        assertNumEquals(0.7244, doubleEma.getValue(1));
+        assertNumEquals(0.7992, doubleEma.getValue(2));
 
-        assertNumEquals(0.8027, tripleEma.getValue(6));
-        assertNumEquals(0.7328, tripleEma.getValue(7));
-        assertNumEquals(0.6725, tripleEma.getValue(8));
+        assertNumEquals(0.7858, doubleEma.getValue(6));
+        assertNumEquals(0.7374, doubleEma.getValue(7));
+        assertNumEquals(0.6884, doubleEma.getValue(8));
 
-        assertNumEquals(0.7386, tripleEma.getValue(12));
-        assertNumEquals(0.6994, tripleEma.getValue(13));
-        assertNumEquals(0.6876, tripleEma.getValue(14));
+        assertNumEquals(0.7184, doubleEma.getValue(12));
+        assertNumEquals(0.6939, doubleEma.getValue(13));
+        assertNumEquals(0.6859, doubleEma.getValue(14));
     }
 }
