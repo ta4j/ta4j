@@ -31,17 +31,28 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.ATMAIndicator;
+import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
 import org.ta4j.core.indicators.averages.DMAIndicator;
+import org.ta4j.core.indicators.averages.DoubleEMAIndicator;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.HMAIndicator;
 import org.ta4j.core.indicators.averages.JMAIndicator;
+import org.ta4j.core.indicators.averages.KAMAIndicator;
 import org.ta4j.core.indicators.averages.KiJunV2Indicator;
 import org.ta4j.core.indicators.averages.LSMAIndicator;
+import org.ta4j.core.indicators.averages.LWMAIndicator;
 import org.ta4j.core.indicators.averages.MCGinleyMAIndicator;
+import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SGMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.TMAIndicator;
+import org.ta4j.core.indicators.averages.TripleEMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
+import org.ta4j.core.indicators.averages.WMAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
+import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
