@@ -12,8 +12,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
 - Moved `indicators/AbstractEMAIndicator` to `indicators/averages`-package
 - Moved `indicators/DoubleEMAIndicator` to `indicators/averages`-package
-- Moved `indicators/EMAIndicator` 	to `indicators/averages`-package
-- Moved `indicators/HMAIndicator` 	to `indicators/averages`-package
+- Moved `indicators/EMAIndicator` to `indicators/averages`-package
+- Moved `indicators/HMAIndicator` to `indicators/averages`-package
 - Moved `indicators/KAMAIndicator` to `indicators/averages`-package
 - Moved `indicators/LWMAIndicator` to `indicators/averages`-package
 - Moved `indicators/MMAIndicator` to `indicators/averages`-package
