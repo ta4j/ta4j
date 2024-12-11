@@ -21,50 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Simple moving average (SMA) indicator.
- *
- * @see <a href=
- *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
+ * Base class for Exponential Moving Average implementations.
  */
-public class SMAIndicator extends CachedIndicator<Num> {
+public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private RunningTotalIndicator previousSum;
+    private final Num multiplier;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator  the {@link Indicator}
+     * @param barCount   the time frame
+     * @param multiplier the multiplier
      */
-    public SMAIndicator(Indicator<Num> indicator, int barCount) {
+    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
-        this.previousSum = new RunningTotalIndicator(indicator, barCount);
+        this.indicator = indicator;
         this.barCount = barCount;
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int realBarCount = Math.min(barCount, index + 1);
-        final var sum = partialSum(index);
-        return sum.dividedBy(getBarSeries().numFactory().numOf(realBarCount));
-    }
-
-    private Num partialSum(int index) {
-        return this.previousSum.getValue(index);
-    }
-
-    /** @return {@link #barCount} */
-    @Override
-    public int getCountOfUnstableBars() {
-        return barCount;
+        if (index == 0) {
+            return indicator.getValue(0);
+        }
+        Num prevValue = getValue(index - 1);
+        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
     }
 
     @Override
@@ -72,4 +64,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
+    public int getBarCount() {
+        return barCount;
+    }
 }

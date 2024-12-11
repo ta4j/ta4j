@@ -29,7 +29,6 @@ import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**

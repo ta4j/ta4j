@@ -21,29 +21,25 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Triple exponential moving average indicator (also called "TRIX").
- *
- * <p>
- * TEMA needs "3 * period - 2" of data to start producing values in contrast to
- * the period samples needed by a regular EMA.
+ * Double exponential moving average indicator.
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
- * @see <a href=
- *      "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
+ *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
+ *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
  */
-public class TripleEMAIndicator extends CachedIndicator<Num> {
+public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
+    private final Num two;
     private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;
-    private final EMAIndicator emaEmaEma;
 
     /**
      * Constructor.
@@ -51,21 +47,17 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      * @param barCount  the time frame
      */
-    public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
+    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.two = getBarSeries().numFactory().two();
         this.barCount = barCount;
         this.ema = new EMAIndicator(indicator, barCount);
         this.emaEma = new EMAIndicator(ema, barCount);
-        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        // trix = 3 * ( ema - emaEma ) + emaEmaEma
-        final var numFactory = getBarSeries().numFactory();
-        return numFactory.numOf(3)
-                .multipliedBy(ema.getValue(index).minus(emaEma.getValue(index)))
-                .plus(emaEmaEma.getValue(index));
+        return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
     }
 
     @Override

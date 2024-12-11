@@ -21,22 +21,26 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Linearly Weighted Moving Average (LWMA) indicator.
+ * Zero-lag exponential moving average indicator.
  *
  * @see <a href=
- *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">
- *      https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp</a>
+ *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
+ *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
-public class LWMAIndicator extends CachedIndicator<Num> {
+public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
+    private final Num two;
+    private final Num k;
+    private final int lag;
 
     /**
      * Constructor.
@@ -44,35 +48,33 @@ public class LWMAIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public LWMAIndicator(Indicator<Num> indicator, int barCount) {
+    public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
+        this.two = getBarSeries().numFactory().numOf(2);
+        this.k = two.dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
+        this.lag = (barCount - 1) / 2;
     }
 
     @Override
     protected Num calculate(int index) {
-        final var numFactory = getBarSeries().numFactory();
-        Num sum = numFactory.zero();
-        Num denominator = numFactory.zero();
-        int count = 0;
-
-        if ((index + 1) < barCount) {
-            return numFactory.zero();
+        if (index + 1 < barCount) {
+            // Starting point of the ZLEMA
+            return new SMAIndicator(indicator, barCount).getValue(index);
         }
-
-        int startIndex = (index - barCount) + 1;
-        for (int i = startIndex; i <= index; i++) {
-            count++;
-            denominator = denominator.plus(numFactory.numOf(count));
-            sum = sum.plus(indicator.getValue(i).multipliedBy(numFactory.numOf(count)));
+        if (index == 0) {
+            // If the barCount is bigger than the indicator's value count
+            return indicator.getValue(0);
         }
-        return sum.dividedBy(denominator);
+        Num zlemaPrev = getValue(index - 1);
+        return k.multipliedBy(two.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index - lag)))
+                .plus(getBarSeries().numFactory().one().minus(k).multipliedBy(zlemaPrev));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return barCount;
     }
 
     @Override

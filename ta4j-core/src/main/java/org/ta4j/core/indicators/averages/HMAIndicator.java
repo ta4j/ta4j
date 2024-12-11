@@ -21,41 +21,51 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Base class for Exponential Moving Average implementations.
+ * Hull moving average (HMA) indicator.
+ *
+ * @see <a href="http://alanhull.com/hull-moving-average">
+ *      http://alanhull.com/hull-moving-average</a>
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class HMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num multiplier;
+    private final WMAIndicator sqrtWma;
 
     /**
      * Constructor.
      *
-     * @param indicator  the {@link Indicator}
-     * @param barCount   the time frame
-     * @param multiplier the multiplier
+     * @param indicator the {@link Indicator}
+     * @param barCount  the time frame
      */
-    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
+    public HMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.indicator = indicator;
         this.barCount = barCount;
-        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
+
+        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
+        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
+
+        Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
+        this.sqrtWma = new WMAIndicator(indicatorForSqrtWma,
+                getBarSeries().numFactory().numOf(barCount).sqrt().intValue());
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
-        }
-        Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+        return sqrtWma.getValue(index);
+    }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return barCount;
     }
 
     @Override
@@ -63,7 +73,4 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
-    public int getBarCount() {
-        return barCount;
-    }
 }

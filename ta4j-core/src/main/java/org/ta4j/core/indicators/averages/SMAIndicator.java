@@ -21,44 +21,48 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Double exponential moving average indicator.
+ * Simple moving average (SMA) indicator.
  *
  * @see <a href=
- *      "https://en.wikipedia.org/wiki/Double_exponential_moving_average">
- *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
+ *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
  */
-public class DoubleEMAIndicator extends CachedIndicator<Num> {
+public class SMAIndicator extends CachedIndicator<Num> {
 
-    private final Num two;
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
+    private RunningTotalIndicator previousSum;
 
     /**
      * Constructor.
      *
-     * @param indicator the indicator
+     * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
-    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
+    public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.two = getBarSeries().numFactory().two();
+        this.previousSum = new RunningTotalIndicator(indicator, barCount);
         this.barCount = barCount;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
+        final int realBarCount = Math.min(barCount, index + 1);
+        final var sum = partialSum(index);
+        return sum.dividedBy(getBarSeries().numFactory().numOf(realBarCount));
     }
 
+    private Num partialSum(int index) {
+        return this.previousSum.getValue(index);
+    }
+
+    /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
         return barCount;
@@ -68,4 +72,5 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
 }

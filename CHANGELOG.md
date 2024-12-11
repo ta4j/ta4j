@@ -10,6 +10,17 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
 - Moved `BaseBar`, `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package
 - Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
+- Moved `indicators/AbstractEMAIndicator` to `indicators/averages`-package
+- Moved `indicators/DoubleEMAIndicator` to `indicators/averages`-package
+- Moved `indicators/EMAIndicator` to `indicators/averages`-package
+- Moved `indicators/HMAIndicator` to `indicators/averages`-package
+- Moved `indicators/KAMAIndicator` to `indicators/averages`-package
+- Moved `indicators/LWMAIndicator` to `indicators/averages`-package
+- Moved `indicators/MMAIndicator` to `indicators/averages`-package
+- Moved `indicators/SMAIndicator` to `indicators/averages`-package
+- Moved `indicators/TripleEMAIndicator` to `indicators/averages`-package
+- Moved `indicators/WMAIndicator` to `indicators/averages`-package
+- Moved `indicators/ZLEMAIndicator` to `indicators/averages`-package
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null

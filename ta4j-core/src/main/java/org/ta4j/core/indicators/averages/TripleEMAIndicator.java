@@ -21,45 +21,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.CombineIndicator;
-import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Hull moving average (HMA) indicator.
+ * Triple exponential moving average indicator (also called "TRIX").
  *
- * @see <a href="http://alanhull.com/hull-moving-average">
- *      http://alanhull.com/hull-moving-average</a>
+ * <p>
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to
+ * the period samples needed by a regular EMA.
+ *
+ * @see <a href=
+ *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
  */
-public class HMAIndicator extends CachedIndicator<Num> {
+public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final WMAIndicator sqrtWma;
+    private final EMAIndicator ema;
+    private final EMAIndicator emaEma;
+    private final EMAIndicator emaEmaEma;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
+     * @param indicator the indicator
      * @param barCount  the time frame
      */
-    public HMAIndicator(Indicator<Num> indicator, int barCount) {
+    public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.barCount = barCount;
-
-        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
-        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
-
-        Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
-        this.sqrtWma = new WMAIndicator(indicatorForSqrtWma,
-                getBarSeries().numFactory().numOf(barCount).sqrt().intValue());
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
+        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return sqrtWma.getValue(index);
+        // trix = 3 * ( ema - emaEma ) + emaEmaEma
+        final var numFactory = getBarSeries().numFactory();
+        return numFactory.numOf(3)
+                .multipliedBy(ema.getValue(index).minus(emaEma.getValue(index)))
+                .plus(emaEmaEma.getValue(index));
     }
 
     @Override
@@ -71,5 +78,4 @@ public class HMAIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
-
 }
