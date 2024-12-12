@@ -65,6 +65,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `LSMAIndicator` to `indicators.averages`-package: Least Squares Moving Average (LSMA) indicator
 - Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
 - Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
+- Added `VWMAIndicator` to `indicators.averages`-package: Volume Weighted Moving Average (VWMA) indicator
 
 
 ## 0.17 (released September 9, 2024)
