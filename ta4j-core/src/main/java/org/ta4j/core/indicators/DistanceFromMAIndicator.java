@@ -23,37 +23,17 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.averages.ATMAIndicator;
-import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
-import org.ta4j.core.indicators.averages.DMAIndicator;
-import org.ta4j.core.indicators.averages.DoubleEMAIndicator;
-import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
-import org.ta4j.core.indicators.averages.HMAIndicator;
-import org.ta4j.core.indicators.averages.JMAIndicator;
-import org.ta4j.core.indicators.averages.KAMAIndicator;
-import org.ta4j.core.indicators.averages.KiJunV2Indicator;
-import org.ta4j.core.indicators.averages.LSMAIndicator;
-import org.ta4j.core.indicators.averages.LWMAIndicator;
-import org.ta4j.core.indicators.averages.MCGinleyMAIndicator;
-import org.ta4j.core.indicators.averages.MMAIndicator;
-import org.ta4j.core.indicators.averages.SGMAIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.averages.SMMAIndicator;
-import org.ta4j.core.indicators.averages.TMAIndicator;
-import org.ta4j.core.indicators.averages.TripleEMAIndicator;
-import org.ta4j.core.indicators.averages.VIDYAIndicator;
-import org.ta4j.core.indicators.averages.WMAIndicator;
-import org.ta4j.core.indicators.averages.WildersMAIndicator;
-import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.num.Num;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Set;
+
+import static java.util.stream.Collectors.toUnmodifiableSet;
 
 /**
  * Distance From Moving Average
@@ -69,13 +49,8 @@ import org.ta4j.core.num.Num;
  */
 public class DistanceFromMAIndicator extends CachedIndicator<Num> {
 
-    private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(
-            Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
-                    WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
-                    LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class, WildersMAIndicator.class,
-                    DMAIndicator.class, EDMAIndicator.class, JMAIndicator.class, TMAIndicator.class,
-                    ATMAIndicator.class, MCGinleyMAIndicator.class, SMMAIndicator.class, SGMAIndicator.class,
-                    LSMAIndicator.class, KiJunV2Indicator.class, VIDYAIndicator.class));
+    private static final String averagesIndicatorPackage = "org.ta4j.core.indicators.averages";
+    private static final Set<Class<?>> supportedMovingAverages = getMovingAverageIndicators();
 
     private final Indicator<Num> movingAverage;
 
@@ -106,4 +81,41 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return 0;
     }
+
+    /**
+     * Gets all indicators inside the org.ta4j.core.indicators.averages package
+     *
+     * @return indicators inside the org.ta4j.core.indicators.averages package
+     */
+    private static Set<Class<?>> getMovingAverageIndicators() {
+        try {
+            // a way to get the classes in main/, and not in test/
+            var codeSource = EMAIndicator.class.getProtectionDomain().getCodeSource();
+            var classPath = Path.of(codeSource.getLocation().toURI());
+            var dirPath = classPath.resolve(averagesIndicatorPackage.replace('.', '/'));
+
+            try (var files = Files.list(dirPath)) {
+                return files
+                        // exclude other files and record inside classes
+                        .filter(path -> path.toString().endsWith(".class")
+                                && !path.getFileName().toString().contains("$"))
+                        .map(path -> path.getFileName().toString().replace(".class", ""))
+                        .map(className -> {
+                            try {
+                                return Class.forName(averagesIndicatorPackage + "." + className);
+                            } catch (ClassNotFoundException e) {
+                                var message = String.format(
+                                        "Couldn't find a class (%s) while loading indicators from %s", className,
+                                        averagesIndicatorPackage);
+                                throw new RuntimeException(message, e);
+                            }
+                        })
+                        .collect(toUnmodifiableSet());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Something went wrong when loading indicators from " + averagesIndicatorPackage,
+                    e);
+        }
+    }
+
 }
