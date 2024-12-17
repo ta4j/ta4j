@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
 - Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
 - Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
+- Consider `base` when calculating `ReturnCriterion` of a position
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
 - Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
@@ -48,6 +49,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
 - added `Bar.getSystemZonedEndTime`: the bar's end time converted to system time zone
 - added `BarSeries.getSeriesPeriodDescriptionInSystemTimeZone`: with times printed in system's default time zone
+- Added `base` to `ReturnOverMaxDrawdown` to include or exclude the base from the calculation
 - added `KRIIndicator`
 - Added constructor with `amount` for  `EnterAndHoldCriterion`
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
