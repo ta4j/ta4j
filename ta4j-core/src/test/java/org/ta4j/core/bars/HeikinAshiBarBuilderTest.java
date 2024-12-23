@@ -107,7 +107,7 @@ public class HeikinAshiBarBuilderTest extends AbstractIndicatorTest<BarSeries, N
                 numFactory.numOf(100), 2);
 
         var ohlcBars = List.of(bar1, bar2);
-        var haBars = unit.fromOhlcTtoHeikinAshi(ohlcBars);
+        var haBars = HeikinAshiBarBuilder.fromOhlcTtoHeikinAshi(ohlcBars);
         assertEquals(2, haBars.size());
 
         // First HA bar should be identical to the original bar, since no previous HA
