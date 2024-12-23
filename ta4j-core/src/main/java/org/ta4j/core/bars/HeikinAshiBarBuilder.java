@@ -76,6 +76,11 @@ public class HeikinAshiBarBuilder extends TimeBarBuilder {
         }
     }
 
+    /**
+     * Transform a list of OHLC bars into a list of Heikin-Ashi bars
+     *
+     * @return list of Heikin-Ashi bars
+     */
     public static List<Bar> fromOhlcTtoHeikinAshi(List<Bar> ohlcBars) {
         var heikinAshiBars = new ArrayList<Bar>();
         var haBuilder = new HeikinAshiBarBuilder();
