@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -48,7 +49,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new TimeBarBuilder(numFactory).timePeriod(duration)
+        final Bar bar = new TimeBarBuilder(numFactory).timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))
