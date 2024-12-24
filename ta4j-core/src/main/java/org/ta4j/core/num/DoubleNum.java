@@ -53,7 +53,6 @@ public class DoubleNum implements Num {
     private final static double EPS = 0.00001; // precision
     private final double delegate;
 
-
     private DoubleNum(final double val) {
         this.delegate = val;
     }
@@ -154,7 +153,7 @@ public class DoubleNum implements Num {
     @Override
     public BigDecimal bigDecimalValue() {
         return Double.isNaN(this.delegate) || Double.isInfinite(this.delegate) ? null
-                                                                               : BigDecimal.valueOf(this.delegate);
+                : BigDecimal.valueOf(this.delegate);
     }
 
     @Override

@@ -52,7 +52,6 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public static final int HIGH_PRECISION = 128;
     private static final MathContext HIGH_PRECISION_CONTEXT = new MathContext(HIGH_PRECISION, HALF_UP);
 
-
     public NumTest(final NumFactory numFactory) {
         super(numFactory);
     }
@@ -102,8 +101,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     @Test
     public void testDecimalNumPrecision() {
-        final String highPrecisionString =
-            "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
+        final String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         final Num num = numOf(highPrecisionString, HIGH_PRECISION);
         final Num highPrecisionNum = DecimalNum.valueOf(highPrecisionString, HIGH_PRECISION_CONTEXT);
         assertTrue(((DecimalNum) highPrecisionNum).matches(num, 17));
@@ -119,7 +117,6 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
             assertTrue(((DecimalNum) highPrecisionNum).matches(num, 10000));
         }
     }
-
 
     private Num numOf(final String string, final int precision) {
         return DecimalNumFactory.getInstance(precision).numOf(string);
@@ -269,8 +266,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     @Test
     public void sqrtOfBigDouble() {
-        final String sqrtOfOnePointTwo =
-            "1.095445115010332226913939565601604267905489389995966508453788899464986554245445467601716872327741252";
+        final String sqrtOfOnePointTwo = "1.095445115010332226913939565601604267905489389995966508453788899464986554245445467601716872327741252";
 
         assertNumEquals(sqrtOfOnePointTwo, this.numFactory.numOf(1.2).sqrt(new MathContext(100)));
     }
@@ -326,7 +322,6 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         final Num numVal = this.numFactory.numOf(1.3);
         serializeDeserialize(numVal);
     }
-
 
     private static void serializeDeserialize(final Num o) throws IOException, ClassNotFoundException {
         final byte[] array;
