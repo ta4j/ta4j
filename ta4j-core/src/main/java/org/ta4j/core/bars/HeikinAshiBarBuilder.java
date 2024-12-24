@@ -76,41 +76,4 @@ public class HeikinAshiBarBuilder extends TimeBarBuilder {
         }
     }
 
-    /**
-     * Transform a list of OHLC bars into a list of Heikin-Ashi bars
-     *
-     * @return list of Heikin-Ashi bars
-     */
-    public static List<Bar> fromOhlcTtoHeikinAshi(List<Bar> ohlcBars) {
-        var heikinAshiBars = new ArrayList<Bar>();
-        var haBuilder = new HeikinAshiBarBuilder();
-        Num previousOpen = null;
-        Num previousClose = null;
-
-        for (Bar ohlcBar : ohlcBars) {
-            haBuilder.timePeriod(ohlcBar.getTimePeriod())
-                    .endTime(ohlcBar.getEndTime())
-                    .openPrice(ohlcBar.getOpenPrice())
-                    .highPrice(ohlcBar.getHighPrice())
-                    .lowPrice(ohlcBar.getLowPrice())
-                    .closePrice(ohlcBar.getClosePrice())
-                    .volume(ohlcBar.getVolume())
-                    .amount(ohlcBar.getAmount())
-                    .trades(ohlcBar.getTrades());
-
-            if (previousOpen != null && previousClose != null) {
-                haBuilder.previousHeikinAshiOpenPrice(previousOpen).previousHeikinAshiClosePrice(previousClose);
-            } else {
-                haBuilder.previousHeikinAshiOpenPrice(null).previousHeikinAshiClosePrice(null);
-            }
-
-            var haBar = haBuilder.build();
-            heikinAshiBars.add(haBar);
-
-            previousOpen = haBar.getOpenPrice();
-            previousClose = haBar.getClosePrice();
-        }
-        return heikinAshiBars;
-    }
-
 }
