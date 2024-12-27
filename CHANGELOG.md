@@ -30,6 +30,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
 - Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
+- Fixed `LSMAIndicator` to fix lsma calculation for incorrect values
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
