@@ -65,7 +65,7 @@ public final class DecimalNum implements Num {
      *
      * <p>
      * Constructs the most precise {@code Num}, because it converts a {@code String}
-     * to a {@code Num} with a precision at least of {@link #DEFAULT_PRECISION};
+     * to a {@code Num} with a precision of at least {@link #DEFAULT_PRECISION};
      * only a string parameter can accurately represent a value.
      *
      * @param val the string representation of the Num value
