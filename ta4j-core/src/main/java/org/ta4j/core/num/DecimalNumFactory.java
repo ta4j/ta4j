@@ -40,10 +40,6 @@ public class DecimalNumFactory implements NumFactory {
 
     private final MathContext mathContext;
 
-    private DecimalNumFactory() {
-        this(DEFAULT_PRECISION);
-    }
-
     private DecimalNumFactory(final int precision) {
         this.mathContext = new MathContext(precision, RoundingMode.HALF_UP);
     }
