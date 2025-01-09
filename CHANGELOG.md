@@ -22,6 +22,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Moved `indicators/TripleEMAIndicator` to `indicators/averages`-package
 - Moved `indicators/WMAIndicator` to `indicators/averages`-package
 - Moved `indicators/ZLEMAIndicator` to `indicators/averages`-package
+- Implemented sharing of `MathContext` in `DecimalNum`. For creation of numbers are `NumFactory` implementations the preferred way.
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
