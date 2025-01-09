@@ -65,11 +65,16 @@ public final class DecimalNum implements Num {
      *
      * <p>
      * Constructs the most precise {@code Num}, because it converts a {@code String}
-     * to a {@code Num} with a precision of {@link #DEFAULT_PRECISION}; only a
-     * string parameter can accurately represent a value.
+     * to a {@code Num} with a precision at least of {@link #DEFAULT_PRECISION};
+     * only a string parameter can accurately represent a value.
      *
      * @param val the string representation of the Num value
+     *
+     * @deprecated This constructor leaks higher precisions into overall
+     *             calculations. Use {@link DecimalNum(String, MathContext)}
+     *             instead. {@link DecimalNumFactory#numOf(String)} does.
      */
+    @Deprecated(since = "0.18", forRemoval = true)
     private DecimalNum(final String val) {
         this.delegate = new BigDecimal(val);
         final int precision = Math.max(this.delegate.precision(), DEFAULT_PRECISION);
