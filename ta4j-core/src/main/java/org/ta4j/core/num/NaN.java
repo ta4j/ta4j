@@ -24,6 +24,7 @@
 package org.ta4j.core.num;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)
@@ -217,7 +218,7 @@ public class NaN implements Num {
     }
 
     @Override
-    public Num sqrt(int precision) {
+    public Num sqrt(final MathContext mathContext) {
         return this;
     }
 
