@@ -21,52 +21,17 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.mocks;
+package org.ta4j.core.bars;
 
-import java.time.Duration;
-import java.time.Instant;
-
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
-import org.ta4j.core.bars.TimeBarBuilder;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.BarBuilderFactory;
+import org.ta4j.core.BarSeries;
 
-public class MockBarBuilder extends TimeBarBuilder {
-
-    private final Instant beginTime = Instant.EPOCH;
-    private boolean periodSet;
-    private boolean endTimeSet;
-
-    private static long countOfProducedBars;
-    private Duration timePeriod;
-
-    public MockBarBuilder(NumFactory numFactory) {
-        super(numFactory);
-    }
+public class HeikinAshiBarBuilderFactory implements BarBuilderFactory {
 
     @Override
-    public BarBuilder endTime(final Instant endTime) {
-        endTimeSet = true;
-        return super.endTime(endTime);
-    }
-
-    @Override
-    public BarBuilder timePeriod(final Duration timePeriod) {
-        periodSet = true;
-        this.timePeriod = timePeriod;
-        return super.timePeriod(this.timePeriod);
-    }
-
-    @Override
-    public Bar build() {
-        if (!periodSet) {
-            timePeriod(Duration.ofDays(1));
-        }
-
-        if (!endTimeSet) {
-            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
-        }
-        return super.build();
+    public BarBuilder createBarBuilder(BarSeries series) {
+        return new HeikinAshiBarBuilder(series.numFactory()).bindTo(series);
     }
 
 }

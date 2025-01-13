@@ -23,13 +23,14 @@
  */
 package org.ta4j.core.bars;
 
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
 
 public class TimeBarBuilderFactory implements BarBuilderFactory {
 
     @Override
-    public TimeBarBuilder createBarBuilder(BarSeries series) {
+    public BarBuilder createBarBuilder(BarSeries series) {
         return new TimeBarBuilder(series.numFactory()).bindTo(series);
     }
 }

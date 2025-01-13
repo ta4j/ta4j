@@ -45,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Added
+- added `HeikinAshiBarAggregator`: Heikin-Ashi bar aggregator implementation
+- added `HeikinAshiBarBuilder`: Heikin-Ashi bar builder implementation
 - added `Bar.getZonedBeginTime`: the bar's begin time usable as ZonedDateTime
 - added `Bar.getZonedEndTime`: the bar's end time usable as ZonedDateTime
 - added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
