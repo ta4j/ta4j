@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -48,6 +50,8 @@ import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
 
 public class CsvTestUtils {
+
+    private static Logger log = LoggerFactory.getLogger(CsvTestUtils.class.getName());
 
     public static MockIndicator getCsvFile(Class<?> clazz, String fileName, NumFactory numFactory) {
         InputStream inputStream = clazz.getResourceAsStream(fileName);
@@ -71,7 +75,7 @@ public class CsvTestUtils {
                 double low = Double.parseDouble(line[3]);
                 double close = Double.parseDouble(line[4]);
                 double volume = Double.parseDouble(line[5]);
-                double tma = Double.parseDouble(line[6]);
+                double ma = Double.parseDouble(line[6]);
 
                 Instant instant = dateTime.toInstant(ZoneOffset.UTC);
                 Bar bar = series.barBuilder()
@@ -85,13 +89,12 @@ public class CsvTestUtils {
                         .build();
 
                 series.addBar(bar);
-                values.add(numFactory.numOf(tma));
+                values.add(numFactory.numOf(ma));
             }
 
             return new MockIndicator(series, values);
         } catch (CsvValidationException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            log.error("Error while reading CSV file", e);
         }
         return null;
     }

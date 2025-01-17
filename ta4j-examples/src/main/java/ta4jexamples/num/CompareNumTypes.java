@@ -23,6 +23,7 @@
  */
 package ta4jexamples.num;
 
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Random;
@@ -94,9 +95,9 @@ public class CompareNumTypes {
                     .lowPrice(randoms[i] - 5)
                     .add();
         }
-        Num D = DecimalNum.valueOf(test(seriesD).toString(), 256);
-        Num P = DecimalNum.valueOf(test(seriesP).toString(), 256);
-        Num standard = DecimalNum.valueOf(test(seriesPH).toString(), 256);
+        Num D = DecimalNum.valueOf(test(seriesD).toString(), new MathContext(256));
+        Num P = DecimalNum.valueOf(test(seriesP).toString(), new MathContext(256));
+        Num standard = DecimalNum.valueOf(test(seriesPH).toString(), new MathContext(256));
         System.out.println(seriesD.getName() + " error: "
                 + D.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
         System.out.println(seriesP.getName() + " error: "
