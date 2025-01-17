@@ -8,7 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Extracted NumFactory as source of numbers with defined precision
 - Replaced `ZonedDateTime` with `Instant`
 - Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
-- Moved `BaseBar`, `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package
+- Moved `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package and renamed to `TimeBarBuilder` and `TimeBarBuilderFactory`
+- Renamed `BaseBarConvertibleBuilderTest` to `BaseBarSeriesBuilderTest`
 - Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
 - Moved `indicators/AbstractEMAIndicator` to `indicators/averages`-package
 - Moved `indicators/DoubleEMAIndicator` to `indicators/averages`-package
@@ -21,6 +22,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Moved `indicators/TripleEMAIndicator` to `indicators/averages`-package
 - Moved `indicators/WMAIndicator` to `indicators/averages`-package
 - Moved `indicators/ZLEMAIndicator` to `indicators/averages`-package
+- Implemented sharing of `MathContext` in `DecimalNum`. For creating numbers, `NumFactory` implementations are the preferred way.
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
@@ -30,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
 - Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
+- Fixed `LSMAIndicator` to fix lsma calculation for incorrect values
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
@@ -52,6 +55,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `KRIIndicator`
 - Added constructor with `amount` for  `EnterAndHoldCriterion`
 - Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
+- Added `TickBarBuilder` to `bars`-package to aggregate bars after a fixed number of ticks
+- Added `VolumeBarBuilder` to `bars`-package to  aggregate bars after a fixed number of contracts (volume)
 - Added `TickBarBuilder` to `bars`-package
 - Added `VolumeBarBuilder` to `bars`-package
 - Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
@@ -67,6 +72,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `LSMAIndicator` to `indicators.averages`-package: Least Squares Moving Average (LSMA) indicator
 - Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
 - Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
+- Added `VWMAIndicator` to `indicators.averages`-package: Volume Weighted Moving Average (VWMA) indicator
 
 
 ## 0.17 (released September 9, 2024)

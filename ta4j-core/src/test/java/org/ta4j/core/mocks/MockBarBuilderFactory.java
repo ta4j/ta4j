@@ -25,11 +25,11 @@ package org.ta4j.core.mocks;
 
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.bars.BaseBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 
 public class MockBarBuilderFactory implements BarBuilderFactory {
     @Override
-    public BaseBarBuilder createBarBuilder(final BarSeries series) {
+    public TimeBarBuilder createBarBuilder(final BarSeries series) {
         return new MockBarBuilder(series.numFactory()).bindTo(series);
     }
 }
