@@ -38,8 +38,8 @@ import java.util.function.UnaryOperator;
  * Transforms the {@link Num} of any indicator by using common math operations.
  *
  * @apiNote Minimal deviations in last decimal places possible. During some
- * calculations this indicator converts {@link Num DecimalNum} to
- * {@link Double double}
+ *          calculations this indicator converts {@link Num DecimalNum} to
+ *          {@link Double double}
  */
 public class TransformIndicator extends CachedIndicator<Num> {
 
@@ -132,10 +132,11 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.log().
      *
      * @apiNote precision may be lost, because this implementation is using the
-     * underlying doubleValue method
+     *          underlying doubleValue method
      */
     public static TransformIndicator log(Indicator<Num> indicator) {
-        return new TransformIndicator(indicator, val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())));
+        return new TransformIndicator(indicator,
+                val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())));
     }
 
     /**
@@ -144,7 +145,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * @param indicator    the source indicator whose NaN values should be replaced
      * @param defaultValue the value to use when the indicator returns NaN
      * @return a new TransformIndicator that replaces NaN values with the specified
-     * default
+     *         default
      * @throws IllegalArgumentException if the indicator or defaultValue is null
      * @see Num#isNaN()
      */
@@ -156,8 +157,8 @@ public class TransformIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Creates a new TransformIndicator that replaces occurrences of a specified value
-     * with a substitute value within the given indicator.
+     * Creates a new TransformIndicator that replaces occurrences of a specified
+     * value with a substitute value within the given indicator.
      *
      * @param indicator       The source indicator whose values will be evaluated.
      * @param targetValue     The value that will trigger the substitution.

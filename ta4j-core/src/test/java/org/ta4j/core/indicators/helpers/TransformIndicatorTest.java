@@ -145,7 +145,9 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         Num targetValue = numOf(5);
         Num substituteValue = numOf(10);
 
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> TransformIndicator.substitute(null, targetValue, substituteValue), "Expected exception for null indicator");
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> TransformIndicator.substitute(null, targetValue, substituteValue),
+                "Expected exception for null indicator");
 
         assertEquals("The input indicator must not be null.", thrown.getMessage());
     }
