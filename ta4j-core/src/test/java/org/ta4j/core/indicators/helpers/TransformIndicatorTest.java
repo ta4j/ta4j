@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -34,7 +33,8 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -89,26 +89,64 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void testReplaceNaN() {
-        // Setup
-        var mockIndicator = Mockito.mock(Indicator.class);
-        when(mockIndicator.getBarSeries()).thenReturn(barSeries);
-
-        when(mockIndicator.getValue(0)).thenReturn(numFactory.one());
-        when(mockIndicator.getValue(1)).thenReturn(NaN.NaN);
-        when(mockIndicator.getValue(2)).thenReturn(numOf(3));
-        when(mockIndicator.getValue(3)).thenReturn(NaN.NaN);
-        when(mockIndicator.getValue(4)).thenReturn(numOf(5));
+    public void testReplaceNaN_ReplacesMatchingValues() {
+        Indicator<Num> indicator = new FixedIndicator<>(barSeries, numOf(1), NaN.NaN, numOf(3), NaN.NaN, numOf(5));
         Num defaultValue = numFactory.zero();
 
-        // Action
-        TransformIndicator subject = TransformIndicator.replaceNaN(mockIndicator, defaultValue);
+        TransformIndicator subject = TransformIndicator.replaceNaN(indicator, defaultValue);
 
-        // Assert
         assertNumEquals(numFactory.one(), subject.getValue(0));
         assertNumEquals(numFactory.zero(), subject.getValue(1));
         assertNumEquals(numOf(3), subject.getValue(2));
         assertNumEquals(numOf(0), subject.getValue(3));
         assertNumEquals(numOf(5), subject.getValue(4));
+    }
+
+    @Test
+    public void testSubstitute_ReplacesMatchingValues() {
+        Num targetValue = numOf(5);
+        Num substituteValue = numOf(10);
+        Indicator<Num> indicator = new ConstantIndicator<>(barSeries, numOf(5));
+
+        TransformIndicator transformed = TransformIndicator.substitute(indicator, targetValue, substituteValue);
+
+        assertNumEquals(substituteValue, transformed.getValue(0));
+        assertNumEquals(substituteValue, transformed.getValue(1));
+    }
+
+    @Test
+    public void testSubstitute_DoesNotReplaceNonMatchingValues() {
+        Num targetValue = numOf(5);
+        Num substituteValue = numOf(10);
+        Indicator<Num> indicator = new ConstantIndicator<>(barSeries, numOf(3));
+
+        TransformIndicator transformed = TransformIndicator.substitute(indicator, targetValue, substituteValue);
+
+        assertNumEquals(numOf(3), transformed.getValue(0));
+    }
+
+    @Test
+    public void testSubstitute_MixedValues() {
+        Num targetValue = numOf(5);
+        Num substituteValue = numOf(10);
+
+        Indicator<Num> indicator = new FixedIndicator<>(barSeries, numOf(5), numOf(3), numOf(5), numOf(7));
+
+        TransformIndicator transformed = TransformIndicator.substitute(indicator, targetValue, substituteValue);
+
+        assertNumEquals(substituteValue, transformed.getValue(0));
+        assertNumEquals(numOf(3), transformed.getValue(1));
+        assertNumEquals(substituteValue, transformed.getValue(2));
+        assertNumEquals(numOf(7), transformed.getValue(3));
+    }
+
+    @Test
+    public void testSubstitute_ThrowsExceptionForNullIndicator() {
+        Num targetValue = numOf(5);
+        Num substituteValue = numOf(10);
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> TransformIndicator.substitute(null, targetValue, substituteValue), "Expected exception for null indicator");
+
+        assertEquals("The input indicator must not be null.", thrown.getMessage());
     }
 }
