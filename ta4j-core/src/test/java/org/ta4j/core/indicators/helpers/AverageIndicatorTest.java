@@ -40,13 +40,11 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private ConstantIndicator<Num> one;
-    private ConstantIndicator<Num> two;
-    private ConstantIndicator<Num> three;
-    private ConstantIndicator<Num> nan;
-    private FixedIndicator<Num> nanPartly;
-
-    private BarSeries barSeries;
+    private Indicator<Num> one;
+    private Indicator<Num> two;
+    private Indicator<Num> three;
+    private Indicator<Num> nan;
+    private Indicator<Num> nanPartly;
 
     public AverageIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -54,7 +52,7 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         one = new ConstantIndicator<>(barSeries, numFactory.numOf(1.0));
         two = new ConstantIndicator<>(barSeries, numFactory.numOf(2.0));
         three = new ConstantIndicator<>(barSeries, numFactory.numOf(3.0));
