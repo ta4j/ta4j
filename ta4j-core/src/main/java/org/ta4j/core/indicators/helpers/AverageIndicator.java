@@ -37,15 +37,30 @@ public class AverageIndicator extends CachedIndicator<Num> {
     private final List<Indicator<Num>> indicators;
     private final int unstableBars;
 
+    @SafeVarargs
     public AverageIndicator(Indicator<Num>... indicators) {
         this(Arrays.asList(indicators));
     }
 
     public AverageIndicator(List<Indicator<Num>> indicators) {
-        super(indicators.getFirst());
+        super(validateAndGetFirst(indicators));
 
         this.indicators = indicators;
-        this.unstableBars = indicators.stream().mapToInt(Indicator::getCountOfUnstableBars).max().getAsInt();
+        this.unstableBars = indicators.stream().mapToInt(Indicator::getCountOfUnstableBars).max().orElse(0);
+    }
+
+    /**
+     * Validates that the given list of indicators is not null or empty and returns the first indicator.
+     *
+     * @param indicators the list of indicators to validate
+     * @return the first indicator in the list
+     * @throws IllegalArgumentException if the list is null or empty
+     */
+    private static Indicator<Num> validateAndGetFirst(List<Indicator<Num>> indicators) {
+        if (indicators == null || indicators.isEmpty()) {
+            throw new IllegalArgumentException("At least one indicator must be provided");
+        }
+        return indicators.getFirst();
     }
 
     @Override
