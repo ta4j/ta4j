@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
@@ -40,15 +41,15 @@ import org.ta4j.core.num.NumFactory;
 public class TimeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
-    private Duration timePeriod;
-    private Instant endTime;
-    private Num openPrice;
-    private Num highPrice;
-    private Num lowPrice;
-    private Num closePrice;
-    private Num volume;
-    private Num amount;
-    private long trades;
+    Duration timePeriod;
+    Instant endTime;
+    Num openPrice;
+    Num highPrice;
+    Num lowPrice;
+    Num closePrice;
+    Num volume;
+    Num amount;
+    long trades;
     private BarSeries baseBarSeries;
 
     /** A builder to build a new {@link BaseBar} with {@link DoubleNumFactory} */
@@ -66,19 +67,19 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder timePeriod(final Duration timePeriod) {
+    public BarBuilder timePeriod(final Duration timePeriod) {
         this.timePeriod = timePeriod;
         return this;
     }
 
     @Override
-    public TimeBarBuilder endTime(final Instant endTime) {
+    public BarBuilder endTime(final Instant endTime) {
         this.endTime = endTime;
         return this;
     }
 
     @Override
-    public TimeBarBuilder openPrice(final Num openPrice) {
+    public BarBuilder openPrice(final Num openPrice) {
         this.openPrice = openPrice;
         return this;
     }
@@ -108,13 +109,13 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder highPrice(final Num highPrice) {
+    public BarBuilder highPrice(final Num highPrice) {
         this.highPrice = highPrice;
         return this;
     }
 
     @Override
-    public TimeBarBuilder lowPrice(final Num lowPrice) {
+    public BarBuilder lowPrice(final Num lowPrice) {
         this.lowPrice = lowPrice;
         return this;
     }
@@ -132,7 +133,7 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder closePrice(final Num closePrice) {
+    public BarBuilder closePrice(final Num closePrice) {
         this.closePrice = closePrice;
         return this;
     }
@@ -150,7 +151,7 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder volume(final Num volume) {
+    public BarBuilder volume(final Num volume) {
         this.volume = volume;
         return this;
     }
@@ -168,7 +169,7 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder amount(final Num amount) {
+    public BarBuilder amount(final Num amount) {
         this.amount = amount;
         return this;
     }
@@ -186,25 +187,25 @@ public class TimeBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TimeBarBuilder trades(final long trades) {
+    public BarBuilder trades(final long trades) {
         this.trades = trades;
         return this;
     }
 
     @Override
-    public TimeBarBuilder trades(final String trades) {
+    public BarBuilder trades(final String trades) {
         trades(Long.parseLong(trades));
         return this;
     }
 
     @Override
-    public TimeBarBuilder bindTo(final BarSeries barSeries) {
+    public BarBuilder bindTo(final BarSeries barSeries) {
         this.baseBarSeries = Objects.requireNonNull(barSeries);
         return this;
     }
 
     @Override
-    public BaseBar build() {
+    public Bar build() {
         return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
