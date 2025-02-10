@@ -45,7 +45,7 @@ public class AverageIndicator extends CachedIndicator<Num> {
         super(indicators.getFirst());
 
         this.indicators = indicators;
-        this.unstableBars = indicators.stream().mapToInt(Indicator::getUnstableBars).max().getAsInt();
+        this.unstableBars = indicators.stream().mapToInt(Indicator::getCountOfUnstableBars).max().getAsInt();
     }
 
     @Override
@@ -60,7 +60,7 @@ public class AverageIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return unstableBars;
     }
 }
