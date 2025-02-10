@@ -50,7 +50,8 @@ public class AverageIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Validates that the given list of indicators is not null or empty and returns the first indicator.
+     * Validates that the given list of indicators is not null or empty and returns
+     * the first indicator.
      *
      * @param indicators the list of indicators to validate
      * @return the first indicator in the list
