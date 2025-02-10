@@ -23,18 +23,17 @@
  */
 package org.ta4j.core.mocks;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.NumFactory;
 
-public class MockBarBuilder extends BaseBarBuilder {
+public class MockBarBuilder extends TimeBarBuilder {
 
-    private Clock clock = Clock.fixed(Instant.ofEpochMilli(0), ZoneOffset.UTC);
+    private final Instant beginTime = Instant.EPOCH;
     private boolean periodSet;
     private boolean endTimeSet;
 
@@ -46,27 +45,28 @@ public class MockBarBuilder extends BaseBarBuilder {
     }
 
     @Override
-    public BaseBarBuilder endTime(final Instant endTime) {
+    public BarBuilder endTime(final Instant endTime) {
         endTimeSet = true;
         return super.endTime(endTime);
     }
 
     @Override
-    public BaseBarBuilder timePeriod(final Duration timePeriod) {
+    public BarBuilder timePeriod(final Duration timePeriod) {
         periodSet = true;
         this.timePeriod = timePeriod;
         return super.timePeriod(this.timePeriod);
     }
 
     @Override
-    public BaseBar build() {
+    public Bar build() {
         if (!periodSet) {
             timePeriod(Duration.ofDays(1));
         }
 
         if (!endTimeSet) {
-            endTime(Instant.now(Clock.offset(clock, timePeriod.multipliedBy(++countOfProducedBars))));
+            endTime(beginTime.plus(timePeriod.multipliedBy(++countOfProducedBars)));
         }
         return super.build();
     }
+
 }

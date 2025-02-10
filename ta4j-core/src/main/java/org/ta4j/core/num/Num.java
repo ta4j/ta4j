@@ -25,6 +25,7 @@ package org.ta4j.core.num;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
@@ -141,10 +142,10 @@ public interface Num extends Comparable<Num>, Serializable {
     /**
      * Returns a {@code Num} whose value is {@code √(this)}.
      *
-     * @param precision to calculate.
+     * @param mathContext to calculate.
      * @return {@code √(this)}
      */
-    Num sqrt(int precision);
+    Num sqrt(MathContext mathContext);
 
     /**
      * Returns a {@code Num} whose value is the absolute value of this {@code Num}.

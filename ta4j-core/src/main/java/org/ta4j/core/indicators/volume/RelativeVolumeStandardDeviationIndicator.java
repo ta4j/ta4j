@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -72,7 +72,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
     @Override
     protected Num calculate(int index) {
         // If the index is less than the required unstable bars, return NaN
-        if (index < this.getUnstableBars()) {
+        if (index < this.getCountOfUnstableBars()) {
             return NaN;
         }
 
@@ -83,7 +83,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

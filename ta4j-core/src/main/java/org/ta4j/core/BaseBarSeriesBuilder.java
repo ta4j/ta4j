@@ -26,6 +26,7 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
@@ -42,7 +43,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private boolean constrained;
     private int maxBarCount;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new BaseBarBuilderFactory();
+    private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
 
     /** Constructor to build a {@code BaseBarSeries}. */
     public BaseBarSeriesBuilder() {

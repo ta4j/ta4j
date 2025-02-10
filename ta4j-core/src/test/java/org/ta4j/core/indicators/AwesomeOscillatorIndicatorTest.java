@@ -43,14 +43,12 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Before
     public void setUp() {
-
         this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
-
     }
 
     @Test

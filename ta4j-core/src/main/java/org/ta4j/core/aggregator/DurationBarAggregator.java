@@ -30,7 +30,7 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -135,7 +135,7 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
+                final Bar aggregatedBar = new TimeBarBuilder().timePeriod(timePeriod)
                         .endTime(beginTime.plus(timePeriod))
                         .openPrice(open)
                         .highPrice(high)
