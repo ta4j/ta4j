@@ -28,14 +28,15 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.NoSuchElementException;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -45,6 +46,7 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
     private Indicator<Num> three;
     private Indicator<Num> nan;
     private Indicator<Num> nanPartly;
+    private Indicator<Num> sma;
 
     public AverageIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -58,6 +60,7 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         three = new ConstantIndicator<>(barSeries, numFactory.numOf(3.0));
         nan = new ConstantIndicator<>(barSeries, NaN);
         nanPartly = new FixedIndicator<>(barSeries, numFactory.numOf(4.0), NaN, numFactory.numOf(5.0));
+        sma = new SMAIndicator(one, 4);
     }
 
     @Test
@@ -96,14 +99,26 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         assertNumEquals(3, averageIndicator.getValue(2));
     }
 
-    @Test(expected = NoSuchElementException.class)
+    @Test
+    public void indicatorGetCountOfUnstableBarsReturnsMaxAmongIndicators() {
+        AverageIndicator averageIndicator = new AverageIndicator(sma, one);
+
+        assertEquals(sma.getCountOfUnstableBars(), averageIndicator.getCountOfUnstableBars());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
     public void indicatorShouldFailOnNull() {
         new AverageIndicator();
     }
 
-    @Test(expected = NoSuchElementException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void indicatorShouldFailOnEmptyList() {
         new AverageIndicator(Collections.emptyList());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void indicatorShouldFailOnImplicitEmptyList() {
+        new AverageIndicator();
     }
 
     @Test(expected = NullPointerException.class)
