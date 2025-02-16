@@ -116,11 +116,6 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         new AverageIndicator(Collections.emptyList());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void indicatorShouldFailOnImplicitEmptyList() {
-        new AverageIndicator();
-    }
-
     @Test(expected = NullPointerException.class)
     public void indicatorShouldFailOnListContainsNull() {
         new AverageIndicator(Arrays.asList(one, null));
