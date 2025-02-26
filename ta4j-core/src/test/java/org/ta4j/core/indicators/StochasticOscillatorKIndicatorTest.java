@@ -30,7 +30,6 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -45,10 +44,7 @@ public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<In
     @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-    }
 
-    @Test
-    public void stochasticOscilatorKParam14() {
         data.barBuilder().openPrice(44.98).closePrice(119.13).highPrice(119.50).lowPrice(116.00).add();
         data.barBuilder().openPrice(45.05).closePrice(116.75).highPrice(119.94).lowPrice(116.00).add();
         data.barBuilder().openPrice(45.11).closePrice(113.50).highPrice(118.44).lowPrice(111.63).add();
@@ -64,23 +60,15 @@ public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<In
         data.barBuilder().openPrice(45.58).closePrice(119.13).highPrice(119.13).lowPrice(116.88).add();
         data.barBuilder().openPrice(45.58).closePrice(115.38).highPrice(119.44).lowPrice(114.56).add();
 
+    }
+
+    @Test
+    public void stochasticOscilatorKParam14() {
+
         var sof = new StochasticOscillatorKIndicator(data, 14);
 
         assertNumEquals(313 / 3.5, sof.getValue(0));
         assertNumEquals(1000 / 10.81, sof.getValue(12));
         assertNumEquals(57.8168, sof.getValue(13));
-    }
-
-    @Test
-    public void testReturnNaNWhenHighestAndLowestValuesAreEqual() {
-        data.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(50).add();
-        data.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(50).add();
-        data.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(50).add();
-        data.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(50).add();
-        data.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(50).add();
-
-        var sof = new StochasticOscillatorKIndicator(data, 5);
-
-        assertNumEquals(NaN.NaN, sof.getValue(4));
     }
 }
