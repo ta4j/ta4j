@@ -52,11 +52,14 @@ public abstract class AbstractEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
+        // seed with first data point
+        Num ema = indicator.getValue(0);
+        // iteratively roll forward from 1 → index
+        for (int i = 1; i <= index; i++) {
+            Num price = indicator.getValue(i);
+            ema = price.minus(ema).multipliedBy(multiplier).plus(ema);
         }
-        Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+        return ema;
     }
 
     @Override
