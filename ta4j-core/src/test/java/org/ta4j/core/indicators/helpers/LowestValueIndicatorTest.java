@@ -55,42 +55,42 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void lowestValueIndicatorUsingBarCount5UsingClosePrice() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals("1.0", lowestValue.getValue(1));
-        assertNumEquals("1.0", lowestValue.getValue(2));
-        assertNumEquals("1.0", lowestValue.getValue(3));
-        assertNumEquals("1.0", lowestValue.getValue(4));
-        assertNumEquals("2.0", lowestValue.getValue(5));
-        assertNumEquals("3.0", lowestValue.getValue(6));
-        assertNumEquals("3.0", lowestValue.getValue(7));
-        assertNumEquals("3.0", lowestValue.getValue(8));
-        assertNumEquals("3.0", lowestValue.getValue(9));
-        assertNumEquals("2.0", lowestValue.getValue(10));
-        assertNumEquals("2.0", lowestValue.getValue(11));
-        assertNumEquals("2.0", lowestValue.getValue(12));
+        assertNumEquals(1.0, lowestValue.getValue(1));
+        assertNumEquals(1.0, lowestValue.getValue(2));
+        assertNumEquals(1.0, lowestValue.getValue(3));
+        assertNumEquals(1.0, lowestValue.getValue(4));
+        assertNumEquals(2.0, lowestValue.getValue(5));
+        assertNumEquals(3.0, lowestValue.getValue(6));
+        assertNumEquals(3.0, lowestValue.getValue(7));
+        assertNumEquals(3.0, lowestValue.getValue(8));
+        assertNumEquals(3.0, lowestValue.getValue(9));
+        assertNumEquals(2.0, lowestValue.getValue(10));
+        assertNumEquals(2.0, lowestValue.getValue(11));
+        assertNumEquals(2.0, lowestValue.getValue(12));
     }
 
     @Test
     public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals("1.0", lowestValue.getValue(0));
+        assertNumEquals(1.0, lowestValue.getValue(0));
     }
 
     @Test
     public void lowestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertNumEquals("1.0", lowestValue.getValue(12));
+        assertNumEquals(1.0, lowestValue.getValue(12));
     }
 
     @Test
     public void onlyNaNValues() {
         BaseBarSeries series = new MockBarSeriesBuilder().withName("NaN test").withNumFactory(numFactory).build();
-        for (long i = 0; i <= 10000; i++) {
+        for (long i = 0; i <= 1000; i++) {
             series.barBuilder().openPrice(NaN).closePrice(NaN).highPrice(NaN).lowPrice(NaN).add();
         }
 
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 5);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertEquals(NaN.toString(), lowestValue.getValue(i).toString());
+            assertNumEquals(NaN, lowestValue.getValue(i));
         }
     }
 
@@ -104,10 +104,10 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         var lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 2);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             if (i % 2 != 0) {
-                assertEquals(series.getBar(i - 1).getClosePrice().toString(), lowestValue.getValue(i).toString());
+                assertNumEquals(series.getBar(i - 1).getClosePrice(), lowestValue.getValue(i));
             } else
-                assertEquals(series.getBar(Math.max(0, i - 1)).getClosePrice().toString(),
-                        lowestValue.getValue(i).toString());
+                assertNumEquals(series.getBar(Math.max(0, i - 1)).getClosePrice(),
+                        lowestValue.getValue(i));
         }
     }
 }

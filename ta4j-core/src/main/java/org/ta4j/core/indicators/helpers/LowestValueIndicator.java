@@ -53,7 +53,7 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
     @Override
     public Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+            return new LowestValueIndicator(indicator, barCount - 1).getValue(Math.max(index - 1, 0));
         }
 
         // TODO optimize algorithm, compare previous minimum with current value without

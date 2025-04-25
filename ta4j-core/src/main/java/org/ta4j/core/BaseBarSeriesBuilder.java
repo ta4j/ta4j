@@ -54,7 +54,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         this.bars = new ArrayList<>();
         this.name = "unnamed_series";
         this.constrained = false;
-        this.maxBarCount = Integer.MAX_VALUE;
+        this.maxBarCount = 10_000;
     }
 
     @Override

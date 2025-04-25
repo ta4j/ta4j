@@ -53,7 +53,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
     @Override
     public Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+            return new HighestValueIndicator(indicator, barCount - 1).getValue(Math.max(index - 1, 0));
         }
         int end = Math.max(0, index - barCount + 1);
         Num highest = indicator.getValue(index);

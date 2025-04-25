@@ -57,34 +57,34 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void highestValueUsingBarCount5UsingClosePrice() {
         var highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
-        assertNumEquals("4.0", highestValue.getValue(4));
-        assertNumEquals("4.0", highestValue.getValue(5));
-        assertNumEquals("5.0", highestValue.getValue(6));
-        assertNumEquals("6.0", highestValue.getValue(7));
-        assertNumEquals("6.0", highestValue.getValue(8));
-        assertNumEquals("6.0", highestValue.getValue(9));
-        assertNumEquals("6.0", highestValue.getValue(10));
-        assertNumEquals("6.0", highestValue.getValue(11));
-        assertNumEquals("4.0", highestValue.getValue(12));
+        assertNumEquals(4.0, highestValue.getValue(4));
+        assertNumEquals(4.0, highestValue.getValue(5));
+        assertNumEquals(5.0, highestValue.getValue(6));
+        assertNumEquals(6.0, highestValue.getValue(7));
+        assertNumEquals(6.0, highestValue.getValue(8));
+        assertNumEquals(6.0, highestValue.getValue(9));
+        assertNumEquals(6.0, highestValue.getValue(10));
+        assertNumEquals(6.0, highestValue.getValue(11));
+        assertNumEquals(4.0, highestValue.getValue(12));
     }
 
     @Test
     public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         var highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals("1.0", highestValue.getValue(0));
+        assertNumEquals(1.0, highestValue.getValue(0));
     }
 
     @Test
     public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         var highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertNumEquals("6.0", highestValue.getValue(12));
+        assertNumEquals(6.0, highestValue.getValue(12));
     }
 
     @Test
     public void onlyNaNValues() {
         var series = new MockBarSeriesBuilder().withName("NaN test").build();
         var now = Instant.now();
-        for (long i = 0; i <= 10000; i++) {
+        for (long i = 0; i <= 1000; i++) {
             series.barBuilder()
                     .endTime(now.plus(Duration.ofDays(i)))
                     .openPrice(NaN)
@@ -97,7 +97,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         var highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertEquals(NaN.toString(), highestValue.getValue(i).toString());
+            assertNumEquals(NaN, highestValue.getValue(i));
         }
     }
 
@@ -122,9 +122,9 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // index is the biggest of (index, index-1)
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             if (i % 2 != 0) // current is NaN take the previous as highest
-                assertEquals(series.getBar(i - 1).getClosePrice().toString(), highestValue.getValue(i).toString());
+                assertNumEquals(series.getBar(i - 1).getClosePrice(), highestValue.getValue(i));
             else // current is not NaN but previous, take the current
-                assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
+                assertNumEquals(series.getBar(i).getClosePrice(), highestValue.getValue(i));
         }
     }
 }

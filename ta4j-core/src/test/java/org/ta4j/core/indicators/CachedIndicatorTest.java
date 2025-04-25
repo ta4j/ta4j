@@ -30,15 +30,13 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;

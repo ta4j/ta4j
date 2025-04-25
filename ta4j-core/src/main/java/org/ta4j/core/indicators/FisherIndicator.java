@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://www.investopedia.com/terms/f/fisher-transform.asp">
  *      https://www.investopedia.com/terms/f/fisher-transform.asp</a>
  */
-public class FisherIndicator extends RecursiveCachedIndicator<Num> {
+public class FisherIndicator extends CachedIndicator<Num> {
 
     private static final double ZERO_DOT_FIVE = 0.5;
     private static final double VALUE_MAX = 0.999;
@@ -154,7 +154,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         final Indicator<Num> periodLow = new LowestValueIndicator(
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
-        this.intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
+        this.intermediateValue = new CachedIndicator<Num>(ref) {
 
             @Override
             protected Num calculate(int index) {

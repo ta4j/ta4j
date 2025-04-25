@@ -23,165 +23,96 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * Cached {@link Indicator indicator}.
+ * Cached indicator using an LRU map. Automatically evicts the oldest entries
+ * when the cache size exceeds the series' maximum bar count.
  *
- * <p>
- * Caches the calculated results of the indicator to avoid calculating the same
- * index of the indicator twice. The caching drastically speeds up access to
- * indicator values. Caching is especially recommended when indicators calculate
- * their values based on the values of other indicators. Such nested indicators
- * can call {@link #getValue(int)} multiple times without the need to
- * {@link #calculate(int)} again.
+ * @param <T> the type of indicator value
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /** List of cached results. */
-    private final List<T> results;
+    private final int cacheSize;
+    private final Map<Integer, T> cache;
 
-    /**
-     * Should always be the index of the last (calculated) result in
-     * {@link #results}.
-     */
-    protected int highestResultIndex = -1;
-
-    /**
-     * Constructor.
-     *
-     * @param series the bar series
-     */
     protected CachedIndicator(BarSeries series) {
         super(series);
-        int limit = series.getMaximumBarCount();
-        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        int maxBarCount = series.getMaximumBarCount();
+        // If unbounded, fall back to the actual number of bars we’ve loaded so far
+        this.cacheSize = (maxBarCount == Integer.MAX_VALUE) ? series.getBarCount() // only cache what you actually have
+                : maxBarCount;
+
+        // accessOrder=false so it's insertion order, we evict oldest inserted entries
+        this.cache = new LinkedHashMap<Integer, T>(cacheSize + 1, 0.75f, false) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Integer, T> eldest) {
+                return size() > cacheSize;
+            }
+        };
     }
 
-    /**
-     * Constructor.
-     *
-     * @param indicator a related indicator (with a bar series)
-     */
     protected CachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());
     }
 
     /**
-     * @param index the bar index
-     * @return the value of the indicator
+     * Optional overload so advanced users can specify their own cap.
+     */
+    protected CachedIndicator(BarSeries series, int customCacheSize) {
+        super(series);
+        this.cacheSize = customCacheSize;
+        this.cache = new LinkedHashMap<Integer, T>(cacheSize + 1, 0.75f, false) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Integer, T> eldest) {
+                return size() > cacheSize;
+            }
+        };
+    }
+
+    /**
+     * Compute the value at the given index.
      */
     protected abstract T calculate(int index);
 
     @Override
     public synchronized T getValue(int index) {
         BarSeries series = getBarSeries();
+        // no series → no caching
         if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            T result = calculate(index);
-            if (log.isTraceEnabled()) {
-                log.trace("{}({}): {}", this, index, result);
-            }
-            return result;
+            return calculate(index);
         }
 
-        // Series is not null
+        final int lastIndex = series.getEndIndex();
+        final int removedBars = series.getRemovedBarsCount();
 
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int maximumResultCount = series.getMaximumBarCount();
-
-        T result;
-        if (index < removedBarsCount) {
-            // Result already removed from cache
+        // 1) if they ask for a bar that was evicted from the series...
+        if (index < removedBars) {
             if (log.isTraceEnabled()) {
-                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                        getClass().getSimpleName(), index, removedBarsCount);
+                log.trace("{}: bar {} was removed (removedBars={}), recalculating", getClass().getSimpleName(), index,
+                        removedBars);
             }
-            increaseLengthTo(removedBarsCount, maximumResultCount);
-            highestResultIndex = removedBarsCount;
-            result = results.get(0);
-            if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
-                results.set(0, result);
-            }
-        } else {
-            if (index == series.getEndIndex()) {
-                // Don't cache result if last bar
-                result = calculate(index);
-            } else {
-                increaseLengthTo(index, maximumResultCount);
-                if (index > highestResultIndex) {
-                    // Result not calculated yet
-                    highestResultIndex = index;
-                    result = calculate(index);
-                    results.set(results.size() - 1, result);
-                } else {
-                    // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                    result = results.get(resultInnerIndex);
-                    if (result == null) {
-                        result = calculate(index);
-                        results.set(resultInnerIndex, result);
-                    }
-                }
-            }
+            return calculate(index);
+        }
 
+        // 2) if it's the very last (open) bar, always recompute
+        if (index == lastIndex) {
+            return calculate(index);
+        }
+
+        // 3) else, look up in cache (or compute & cache)
+        T value = cache.get(index);
+        if (value == null) {
+            value = calculate(index);
+            cache.put(index, value);
         }
         if (log.isTraceEnabled()) {
-            log.trace("{}({}): {}", this, index, result);
+            log.trace("{}({}): {}", this, index, value);
         }
-        return result;
-    }
-
-    /**
-     * Increases the size of the cached results buffer.
-     *
-     * @param index     the index to increase length to
-     * @param maxLength the maximum length of the results buffer
-     */
-    private void increaseLengthTo(int index, int maxLength) {
-        if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
-            if (newResultsCount == maxLength) {
-                results.clear();
-                results.addAll(Collections.nCopies(maxLength, null));
-            } else if (newResultsCount > 0) {
-                results.addAll(Collections.nCopies(newResultsCount, null));
-                removeExceedingResults(maxLength);
-            }
-        } else {
-            // First use of cache
-            assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
-        }
-    }
-
-    /**
-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
-     * only the last maximumResultCount results)
-     *
-     * @param maximumResultCount the number of results to keep
-     */
-    private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
-        if (resultCount > maximumResultCount) {
-            // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
-            if (nbResultsToRemove == 1) {
-                results.remove(0);
-            } else {
-                results.subList(0, nbResultsToRemove).clear();
-            }
-        }
+        return value;
     }
 }

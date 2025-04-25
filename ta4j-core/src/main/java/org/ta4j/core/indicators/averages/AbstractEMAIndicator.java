@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Base class for Exponential Moving Average implementations.
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
+public abstract class AbstractEMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;

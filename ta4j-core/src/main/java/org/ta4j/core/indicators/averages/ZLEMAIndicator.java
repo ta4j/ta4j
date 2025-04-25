@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
  *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
-public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class ZLEMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
