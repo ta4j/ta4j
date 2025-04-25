@@ -46,20 +46,23 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return getBarSeries().numFactory().zero();
-        }
-        final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
-        final Num currentClose = getBarSeries().getBar(index).getClosePrice();
+        // OBV starts at zero
+        Num obv = getBarSeries().numFactory().numOf(0);
 
-        final Num obvPrev = getValue(index - 1);
-        if (prevClose.isGreaterThan(currentClose)) {
-            return obvPrev.minus(getBarSeries().getBar(index).getVolume());
-        } else if (prevClose.isLessThan(currentClose)) {
-            return obvPrev.plus(getBarSeries().getBar(index).getVolume());
-        } else {
-            return obvPrev;
+        // Sum from bar 1 up to the requested index
+        for (int i = 1; i <= index; i++) {
+            Num prevClose = getBarSeries().getBar(i - 1).getClosePrice();
+            Num currentClose = getBarSeries().getBar(i).getClosePrice();
+            Num volume = getBarSeries().getBar(i).getVolume();
+
+            if (prevClose.isGreaterThan(currentClose)) {
+                obv = obv.minus(volume);
+            } else if (prevClose.isLessThan(currentClose)) {
+                obv = obv.plus(volume);
+            }
+            // if equal, OBV unchanged
         }
+        return obv;
     }
 
     @Override

@@ -106,8 +106,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             if (i % 2 != 0) {
                 assertNumEquals(series.getBar(i - 1).getClosePrice(), lowestValue.getValue(i));
             } else
-                assertNumEquals(series.getBar(Math.max(0, i - 1)).getClosePrice(),
-                        lowestValue.getValue(i));
+                assertNumEquals(series.getBar(Math.max(0, i - 1)).getClosePrice(), lowestValue.getValue(i));
         }
     }
 }
