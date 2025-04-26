@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.function.Function;
-import java.util.function.UnaryOperator;
-
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
+
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * Transform indicator.
@@ -56,16 +56,6 @@ public class TransformIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.transformationFunction = transformation;
-    }
-
-    @Override
-    protected Num calculate(int index) {
-        return transformationFunction.apply(indicator.getValue(index));
-    }
-
-    @Override
-    public int getCountOfUnstableBars() {
-        return 0;
     }
 
     /**
@@ -147,6 +137,50 @@ public class TransformIndicator extends CachedIndicator<Num> {
     public static TransformIndicator log(Indicator<Num> indicator) {
         return new TransformIndicator(indicator,
                 val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())));
+    }
+
+    /**
+     * Replaces NaN values in the indicator with a specified default value.
+     *
+     * @param indicator    the source indicator whose NaN values should be replaced
+     * @param defaultValue the value to use when the indicator returns NaN
+     * @return a new TransformIndicator that replaces NaN values with the specified
+     *         default
+     * @throws IllegalArgumentException if the indicator or defaultValue is null
+     * @see Num#isNaN()
+     */
+    public static TransformIndicator replaceNaN(Indicator<Num> indicator, Num defaultValue) {
+        if (indicator == null || defaultValue == null) {
+            throw new IllegalArgumentException("Indicator and default value must not be null");
+        }
+        return new TransformIndicator(indicator, val -> val != null && val.isNaN() ? defaultValue : val);
+    }
+
+    /**
+     * Creates a new TransformIndicator that replaces occurrences of a specified
+     * value with a substitute value within the given indicator.
+     *
+     * @param indicator       The source indicator whose values will be evaluated.
+     * @param targetValue     The value that will trigger the substitution.
+     * @param substituteValue The value to replace the target value with.
+     * @return A new TransformIndicator with the specified substitution logic.
+     * @throws IllegalArgumentException if the indicator is null.
+     */
+    public static TransformIndicator substitute(Indicator<Num> indicator, Num targetValue, Num substituteValue) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("The input indicator must not be null.");
+        }
+        return new TransformIndicator(indicator, val -> val.equals(targetValue) ? substituteValue : val);
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        return transformationFunction.apply(indicator.getValue(index));
+    }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return 0;
     }
 
     @Override

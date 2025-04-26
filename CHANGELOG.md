@@ -40,6 +40,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Faster test execution by using `String.lines()` instead of `String` concatenation
 - Improve Javadoc for `DecimalNum`and `DoubleNum`
 - Allowed JUnit5 for new tests. Old remain as is.
+- Updated `TransformIndicator` with substitute functionality
+- Updated `TransformIndicator` with replaceNaN functionality
 
 ### Removed/Deprecated
 
