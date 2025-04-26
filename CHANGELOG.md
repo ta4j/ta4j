@@ -47,6 +47,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Added
+- added `HeikinAshiBarAggregator`: Heikin-Ashi bar aggregator implementation
+- added `HeikinAshiBarBuilder`: Heikin-Ashi bar builder implementation
 - added `Bar.getZonedBeginTime`: the bar's begin time usable as ZonedDateTime
 - added `Bar.getZonedEndTime`: the bar's end time usable as ZonedDateTime
 - added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
@@ -73,7 +75,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
 - Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
 - Added `VWMAIndicator` to `indicators.averages`-package: Volume Weighted Moving Average (VWMA) indicator
-
+- added `AverageIndicator`
 
 ## 0.17 (released September 9, 2024)
 
