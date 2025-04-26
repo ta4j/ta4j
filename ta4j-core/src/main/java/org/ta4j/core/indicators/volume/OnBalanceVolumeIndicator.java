@@ -47,7 +47,7 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // OBV starts at zero
-        Num obv = getBarSeries().numFactory().numOf(0);
+        Num obv = getBarSeries().numFactory().zero();
 
         // Sum from bar 1 up to the requested index
         for (int i = 1; i <= index; i++) {

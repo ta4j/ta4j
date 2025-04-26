@@ -42,10 +42,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     protected CachedIndicator(BarSeries series) {
         super(series);
-        int maxBarCount = series.getMaximumBarCount();
-        // If unbounded, fall back to the actual number of bars we’ve loaded so far
-        this.cacheSize = (maxBarCount == Integer.MAX_VALUE) ? series.getBarCount() // only cache what you actually have
-                : maxBarCount;
+        this.cacheSize = series.getMaximumBarCount();
 
         // accessOrder=false so it's insertion order, we evict oldest inserted entries
         this.cache = new LinkedHashMap<Integer, T>(cacheSize + 1, 0.75f, false) {
@@ -58,20 +55,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     protected CachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());
-    }
-
-    /**
-     * Optional overload so advanced users can specify their own cap.
-     */
-    protected CachedIndicator(BarSeries series, int customCacheSize) {
-        super(series);
-        this.cacheSize = customCacheSize;
-        this.cache = new LinkedHashMap<Integer, T>(cacheSize + 1, 0.75f, false) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Integer, T> eldest) {
-                return size() > cacheSize;
-            }
-        };
     }
 
     /**
