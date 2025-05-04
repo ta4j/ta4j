@@ -251,7 +251,10 @@ public class BaseBarSeries implements BarSeries {
 
         if (!this.bars.isEmpty()) {
             if (replace) {
+                // Return the replaced bar to the pool
+                Bar replacedBar = this.bars.get(this.bars.size() - 1);
                 this.bars.set(this.bars.size() - 1, bar);
+                org.ta4j.core.BarPool.getInstance().returnBar(replacedBar);
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
@@ -296,8 +299,14 @@ public class BaseBarSeries implements BarSeries {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
             if (nbBarsToRemove == 1) {
-                this.bars.remove(0);
+                Bar removedBar = this.bars.remove(0);
+                // Return the removed bar to the pool
+                org.ta4j.core.BarPool.getInstance().returnBar(removedBar);
             } else {
+                // Return the bars to be removed to the pool
+                for (int i = 0; i < nbBarsToRemove; i++) {
+                    org.ta4j.core.BarPool.getInstance().returnBar(this.bars.get(i));
+                }
                 this.bars.subList(0, nbBarsToRemove).clear();
             }
             // Updating removed bars count

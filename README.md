@@ -15,6 +15,7 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
  * [x] More than 130 technical indicators (Aroon, ATR, moving averages, parabolic SAR, RSI, etc.)
  * [x] A powerful engine for building custom trading strategies
  * [x] Utilities to run and compare strategies
+ * [x] Memory optimization with object pooling for Bar instances ([details](BarPool.md))
  * [x] Minimal 3rd party dependencies
  * [x] Simple integration
  * [x] One more thing: it's MIT licensed

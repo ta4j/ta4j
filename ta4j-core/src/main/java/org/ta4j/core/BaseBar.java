@@ -40,10 +40,10 @@ public class BaseBar implements Bar {
     private final Duration timePeriod;
 
     /** The begin time of the bar period (in UTC). */
-    private final Instant beginTime;
+    private Instant beginTime;
 
     /** The end time of the bar period (in UTC). */
-    private final Instant endTime;
+    private Instant endTime;
 
     /** The open price of the bar period. */
     private Num openPrice;
@@ -200,5 +200,31 @@ public class BaseBar implements Bar {
                 && Objects.equals(highPrice, other.highPrice) && Objects.equals(lowPrice, other.lowPrice)
                 && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
                 && Objects.equals(amount, other.amount) && trades == other.trades;
+    }
+
+    /**
+     * Resets this bar with the provided values.
+     * This method is used by the BarPool to reuse Bar instances.
+     *
+     * @param endTime    the end time of the bar period (in UTC)
+     * @param openPrice  the open price of the bar period
+     * @param highPrice  the highest price of the bar period
+     * @param lowPrice   the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume     the total traded volume of the bar period
+     * @param amount     the total traded amount of the bar period
+     * @param trades     the number of trades of the bar period
+     */
+    public void resetBar(Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+            Num volume, Num amount, long trades) {
+        this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
+        this.beginTime = endTime.minus(timePeriod);
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
     }
 }
