@@ -5,6 +5,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 
 ### Fixed
+- Updated Github test workflow to cache dependencies for quicker builds
+- Updated test status badge on README
 
 ### Changed
 
