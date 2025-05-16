@@ -63,15 +63,17 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return calculateProfit(series, position);
+        return calculateProfit(series, position, addBase);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
-                .map(position -> calculateProfit(series, position))
+                // First we need to keep the base..
+                .map(position -> calculateProfit(series, position, true))
                 .reduce(series.numFactory().one(), Num::multipliedBy)
+                // .. In the end we can reduce the base.
                 .minus(addBase ? series.numFactory().zero() : series.numFactory().one());
     }
 
@@ -84,13 +86,15 @@ public class ReturnCriterion extends AbstractAnalysisCriterion {
     /**
      * Calculates the gross return of a position (Buy and sell).
      *
-     * @param series   a bar series
-     * @param position a position
+     * @param series   the bar series
+     * @param position the position
+     * @param addBase  set to true to add base of 1
      * @return the gross return of the position
      */
-    private Num calculateProfit(BarSeries series, Position position) {
+    private static Num calculateProfit(BarSeries series, Position position, boolean addBase) {
         if (position.isClosed()) {
-            return position.getGrossReturn(series);
+            return addBase ? position.getGrossReturn(series)
+                    : position.getGrossReturn(series).minus(series.numFactory().one());
         }
         return addBase ? series.numFactory().one() : series.numFactory().zero();
     }
