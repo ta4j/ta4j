@@ -14,7 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: 'master'
           fetch-depth: 0
 
       - name: Setup Java
@@ -30,4 +29,4 @@ jobs:
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USER }}
           MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_PASSWORD }}
-        run: xvfb-run mvn -B deploy
+        run: xvfb-run mvn -B deploy -X
