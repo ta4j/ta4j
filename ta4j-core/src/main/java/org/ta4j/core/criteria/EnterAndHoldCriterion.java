@@ -53,7 +53,7 @@ import java.util.Objects;
  * </ul>
  *
  * @see <a href=
- * "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
+ *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
 public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
 

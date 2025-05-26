@@ -184,18 +184,15 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithTransactionCosts() {
-        var series = new MockBarSeriesBuilder()
-                .withNumFactory(numFactory)
-                .withData(100, 110)
-                .build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
-        var txCostModel      = new LinearTransactionCostModel(0.05);
+        var txCostModel = new LinearTransactionCostModel(0.05);
         var holdingCostModel = new ZeroCostModel();
 
         var record = new BaseTradingRecord(TradeType.BUY, txCostModel, holdingCostModel);
         var amount = series.numFactory().one();
         record.enter(0, series.getBar(0).getClosePrice(), amount);
-        record.exit (1, series.getBar(1).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
 
         var criterion = getCriterion(new ProfitLossCriterion());
         // net = (110-100) − (100*0.05 + 110*0.05) = 10 - 10.5 = −0.5
@@ -203,7 +200,7 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         record = new BaseTradingRecord(TradeType.BUY);
         record.enter(0, series.getBar(0).getClosePrice(), amount);
-        record.exit (1, series.getBar(1).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
 
         // net = (110-100) = 10
         assertNumEquals(10, criterion.calculate(series, record));
