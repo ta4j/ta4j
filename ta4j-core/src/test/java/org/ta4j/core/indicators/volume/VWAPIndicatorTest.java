@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -44,7 +44,6 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         data.barBuilder().openPrice(44.98).closePrice(45.05).highPrice(45.17).lowPrice(44.96).volume(1).add();
         data.barBuilder().openPrice(45.05).closePrice(45.10).highPrice(45.15).lowPrice(44.99).volume(1).add();

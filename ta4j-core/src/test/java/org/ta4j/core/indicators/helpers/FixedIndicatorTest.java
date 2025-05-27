@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -44,7 +44,6 @@ public class FixedIndicatorTest {
         assertNumEquals("3.0", fixedDecimalIndicator.getValue(0));
         assertNumEquals("-123.456", fixedDecimalIndicator.getValue(1));
         assertNumEquals("0.0", fixedDecimalIndicator.getValue(2));
-
     }
 
     @Test

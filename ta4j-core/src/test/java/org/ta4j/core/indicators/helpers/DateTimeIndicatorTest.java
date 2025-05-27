@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -43,7 +43,6 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void test() {
-
         Instant expectedDateTime = Instant.parse("2019-09-17T00:04:00Z");
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().endTime(expectedDateTime).add();

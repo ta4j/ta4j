@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -43,14 +43,12 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Before
     public void setUp() {
-
         this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
-
     }
 
     @Test

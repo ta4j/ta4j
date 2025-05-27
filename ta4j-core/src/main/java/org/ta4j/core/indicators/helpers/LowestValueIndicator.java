@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -51,7 +51,7 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
+    public Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
             return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
         }
@@ -70,7 +70,7 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
 
     /** @return {@link #barCount} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

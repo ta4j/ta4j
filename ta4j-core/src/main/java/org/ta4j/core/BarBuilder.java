@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,6 +29,7 @@ import java.time.Instant;
 import org.ta4j.core.num.Num;
 
 public interface BarBuilder {
+
     /**
      * @param timePeriod the time period
      * @return {@code this}
