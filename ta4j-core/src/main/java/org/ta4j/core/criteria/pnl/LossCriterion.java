@@ -30,8 +30,8 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Loss criterion which can either compute the <em>net</em> or the <em>gross</em>
- * loss.
+ * Loss criterion which can either compute the <em>net</em> or the
+ * <em>gross</em> loss.
  *
  * <p>
  * If {@code excludeCosts} is {@code false} (the default), trading costs are
@@ -48,8 +48,8 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor creating a criterion that subtracts trading costs from the
-     * result (net loss).
+     * Constructor creating a criterion that subtracts trading costs from the result
+     * (net loss).
      */
     public LossCriterion() {
         this(false);
