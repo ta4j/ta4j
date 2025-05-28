@@ -30,8 +30,14 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit criterion with trading costs (= Gross profit) or without ( = Net
- * profit).
+ * Profit criterion which can either compute the <em>net</em> or the <em>gross</em>
+ * profit.
+ *
+ * <p>
+ * If {@code excludeCosts} is {@code false} (the default), trading costs are
+ * deducted from each position and the resulting value represents the net
+ * profit. If {@code excludeCosts} is {@code true}, the calculation ignores
+ * trading costs and returns the gross profit instead.
  *
  * <p>
  * The profit of the provided {@link Position position(s)} over the provided
@@ -42,7 +48,8 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossProfit (includes trading costs).
+     * Constructor creating a criterion that includes trading costs in the
+     * profit calculation, i.e. net profit is returned.
      */
     public ProfitCriterion() {
         this(false);
@@ -51,7 +58,8 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param excludeCosts set to true to exclude trading costs
+     * @param excludeCosts set to {@code true} to ignore trading costs and return
+     *                     gross profit
      */
     public ProfitCriterion(boolean excludeCosts) {
         this.excludeCosts = excludeCosts;

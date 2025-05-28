@@ -30,7 +30,14 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Loss criterion with trading costs (= Gross loss) or without ( = Net loss).
+ * Loss criterion which can either compute the <em>net</em> or the <em>gross</em>
+ * loss.
+ *
+ * <p>
+ * If {@code excludeCosts} is {@code false} (the default), trading costs are
+ * deducted from each position so the value represents the net loss. If
+ * {@code excludeCosts} is {@code true}, trading costs are ignored and the gross
+ * loss is returned.
  *
  * <p>
  * The loss of the provided {@link Position position(s)} over the provided
@@ -41,7 +48,8 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     private final boolean excludeCosts;
 
     /**
-     * Constructor for GrossLoss (includes trading costs).
+     * Constructor creating a criterion that subtracts trading costs from the
+     * result (net loss).
      */
     public LossCriterion() {
         this(false);
@@ -50,7 +58,8 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param excludeCosts set to true to exclude trading costs
+     * @param excludeCosts set to {@code true} to ignore trading costs and compute
+     *                     the gross loss
      */
     public LossCriterion(boolean excludeCosts) {
         this.excludeCosts = excludeCosts;
