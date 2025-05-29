@@ -45,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
 - Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
 - Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
+- Consider `base` when calculating `ReturnCriterion` of a position.
+- Fixed calculation for `VersusEnterAndHoldCriterion`
 - Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
 - Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
