@@ -25,6 +25,7 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
@@ -42,9 +43,9 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        final var numFactory = series.numFactory();
+        var numFactory = series.numFactory();
         if (position.isClosed()) {
-            Num entryPrice = position.getEntry().getValue();
+            var entryPrice = position.getEntry().getValue();
             return position.getProfit().dividedBy(entryPrice).multipliedBy(numFactory.hundred());
         }
         return numFactory.zero();
@@ -52,20 +53,24 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final var numFactory = series.numFactory();
+        var numFactory = series.numFactory();
+        var zero = numFactory.zero();
 
-        Num totalProfit = tradingRecord.getPositions().stream()
+        var totalProfit = tradingRecord.getPositions()
+                .stream()
                 .filter(Position::isClosed)
                 .map(Position::getProfit)
-                .reduce(numFactory.zero(), Num::plus);
+                .reduce(zero, Num::plus);
 
-        Num totalEntryPrice = tradingRecord.getPositions().stream()
+        var totalEntryPrice = tradingRecord.getPositions()
+                .stream()
                 .filter(Position::isClosed)
-                .map(position -> position.getEntry().getValue())
-                .reduce(numFactory.zero(), Num::plus);
+                .map(Position::getEntry)
+                .map(Trade::getValue)
+                .reduce(zero, Num::plus);
 
         if (totalEntryPrice.isZero()) {
-            return numFactory.zero();
+            return zero;
         }
         return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
     }
