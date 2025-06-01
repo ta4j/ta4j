@@ -7,6 +7,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - Updated Github test workflow to cache dependencies for quicker builds
 - Updated test status badge on README
+- Fixed EnterAndHoldCriterion to keep track of transaction and hold costs
+- Clarify PnL criterion comments about trading costs
 
 ### Changed
 
