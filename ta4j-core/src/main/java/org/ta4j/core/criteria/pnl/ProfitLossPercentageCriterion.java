@@ -42,20 +42,32 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        final var numFactory = series.numFactory();
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.numFactory().hundred());
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(numFactory.hundred());
         }
-        return series.numFactory().zero();
+        return numFactory.zero();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
+        final var numFactory = series.numFactory();
+
+        Num totalProfit = tradingRecord.getPositions().stream()
                 .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numFactory().zero(), Num::plus);
+                .map(Position::getProfit)
+                .reduce(numFactory.zero(), Num::plus);
+
+        Num totalEntryPrice = tradingRecord.getPositions().stream()
+                .filter(Position::isClosed)
+                .map(position -> position.getEntry().getValue())
+                .reduce(numFactory.zero(), Num::plus);
+
+        if (totalEntryPrice.isZero()) {
+            return numFactory.zero();
+        }
+        return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
     }
 
     /** The higher the criterion value, the better. */
