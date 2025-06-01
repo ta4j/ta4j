@@ -31,7 +31,11 @@ import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Average gross profit criterion (includes trading costs).
+ * Average net profit criterion.
+ *
+ * <p>
+ * Uses {@link ProfitCriterion} with trading costs included, meaning costs are
+ * subtracted from each winning position before averaging.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 

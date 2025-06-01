@@ -35,6 +35,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
@@ -179,4 +181,29 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertTrue(sellAndHoldPnlPercentage.betterThan(numOf(1.3), numOf(1.1)));
         assertFalse(sellAndHoldPnlPercentage.betterThan(numOf(0.6), numOf(0.9)));
     }
+
+    @Test
+    public void calculateWithTransactionCosts() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        var txCostModel = new LinearTransactionCostModel(0.05);
+        var holdingCostModel = new ZeroCostModel();
+
+        var record = new BaseTradingRecord(TradeType.BUY, txCostModel, holdingCostModel);
+        var amount = series.numFactory().one();
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
+
+        var criterion = getCriterion(new ProfitLossCriterion());
+        // net = (110-100) − (100*0.05 + 110*0.05) = 10 - 10.5 = −0.5
+        assertNumEquals(-0.5, criterion.calculate(series, record));
+
+        record = new BaseTradingRecord(TradeType.BUY);
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
+
+        // net = (110-100) = 10
+        assertNumEquals(10, criterion.calculate(series, record));
+    }
+
 }
