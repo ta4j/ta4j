@@ -39,36 +39,40 @@ import org.ta4j.core.num.Num;
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
-    private final ProfitCriterion grossProfitCriterion = new ProfitCriterion(false);
+    private final ProfitCriterion netProfitCriterion = new ProfitCriterion(false);
     private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        var zero = series.numFactory().zero();
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
         if (numberOfWinningPositions.isZero()) {
-            return series.numFactory().zero();
+            return zero;
         }
-        Num grossProfit = grossProfitCriterion.calculate(series, position);
+        var grossProfit = netProfitCriterion.calculate(series, position);
         if (grossProfit.isZero()) {
-            return series.numFactory().zero();
+            return zero;
         }
         return grossProfit.dividedBy(numberOfWinningPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
+        var zero = series.numFactory().zero();
+        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfWinningPositions.isZero()) {
-            return series.numFactory().zero();
+            return zero;
         }
-        Num grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
-        if (grossProfit.isZero()) {
-            return series.numFactory().zero();
+        var netProfit = netProfitCriterion.calculate(series, tradingRecord);
+        if (netProfit.isZero()) {
+            return zero;
         }
-        return grossProfit.dividedBy(numberOfWinningPositions);
+        return netProfit.dividedBy(numberOfWinningPositions);
     }
 
-    /** The higher the criterion value, the better. */
+    /**
+     * The higher the criterion value, the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

@@ -50,7 +50,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
+        assertNumEquals(7.5, profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -60,7 +60,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(-5 + -30, profit.calculate(series, tradingRecord));
+        assertNumEquals(-17.5, profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -70,7 +70,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(95 + -30, profit.calculate(series, tradingRecord));
+        assertNumEquals(32.5, profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -79,7 +79,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
+        assertNumEquals(7.5, profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -90,7 +90,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(-10 - 5, profit.calculate(series, tradingRecord));
+        assertNumEquals(-7.5, profit.calculate(series, tradingRecord));
     }
 
     @Test
