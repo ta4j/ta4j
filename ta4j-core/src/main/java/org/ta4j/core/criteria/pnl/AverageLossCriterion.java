@@ -39,33 +39,35 @@ import org.ta4j.core.num.Num;
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
-    private final LossCriterion grossLossCriterion = new LossCriterion(false);
+    private final LossCriterion netLossCriterion = new LossCriterion(false);
     private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
+        var zero = series.numFactory().zero();
+        var numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
         if (numberOfLosingPositions.isZero()) {
-            return series.numFactory().zero();
+            return zero;
         }
-        Num grossLoss = grossLossCriterion.calculate(series, position);
-        if (grossLoss.isZero()) {
-            return series.numFactory().zero();
+        var netLoss = netLossCriterion.calculate(series, position);
+        if (netLoss.isZero()) {
+            return zero;
         }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return netLoss.dividedBy(numberOfLosingPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
+        var zero = series.numFactory().zero();
+        var numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
         if (numberOfLosingPositions.isZero()) {
-            return series.numFactory().zero();
+            return zero;
         }
-        Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
-        if (grossLoss.isZero()) {
-            return series.numFactory().zero();
+        var netLoss = netLossCriterion.calculate(series, tradingRecord);
+        if (netLoss.isZero()) {
+            return zero;
         }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return netLoss.dividedBy(numberOfLosingPositions);
     }
 
     /** The higher the criterion value, the better. */
