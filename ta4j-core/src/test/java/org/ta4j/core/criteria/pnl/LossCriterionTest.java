@@ -37,11 +37,18 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.criteria.pnl.GrossLossCriterion;
+import org.ta4j.core.criteria.pnl.NetLossCriterion;
 
 public class LossCriterionTest extends AbstractCriterionTest {
 
     public LossCriterionTest(NumFactory numFactory) {
-        super(params -> new LossCriterion((boolean) params[0]), numFactory);
+        super(params -> {
+            if ((boolean) params[0]) {
+                return new GrossLossCriterion();
+            }
+            return new NetLossCriterion();
+        }, numFactory);
     }
 
     @Test

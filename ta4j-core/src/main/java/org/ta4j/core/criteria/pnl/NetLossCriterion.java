@@ -21,29 +21,23 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 /**
- * Generates a {@link PerformanceReport} based on the provided trading record
- * and bar series.
+ * Net loss criterion.
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class NetLossCriterion extends AbstractPnLCriterion {
 
     @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    protected Num calculatePosition(Position position) {
+        return loss(netPnL(position), zero(position));
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

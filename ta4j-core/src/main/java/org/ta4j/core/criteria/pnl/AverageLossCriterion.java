@@ -34,12 +34,12 @@ import org.ta4j.core.num.Num;
  * Average net loss criterion.
  *
  * <p>
- * Uses {@link LossCriterion} with trading costs included, meaning costs are
+ * Uses {@link NetLossCriterion} with trading costs included, meaning costs are
  * subtracted from each losing position before averaging.
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
-    private final LossCriterion netLossCriterion = new LossCriterion(false);
+    private final NetLossCriterion netLossCriterion = new NetLossCriterion();
     private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override

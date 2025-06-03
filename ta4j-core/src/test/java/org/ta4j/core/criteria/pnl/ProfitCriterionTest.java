@@ -37,11 +37,18 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 
 public class ProfitCriterionTest extends AbstractCriterionTest {
 
     public ProfitCriterionTest(NumFactory numFactory) {
-        super(params -> new ProfitCriterion((boolean) params[0]), numFactory);
+        super(params -> {
+            if ((boolean) params[0]) {
+                return new GrossProfitCriterion();
+            }
+            return new NetProfitCriterion();
+        }, numFactory);
     }
 
     @Test

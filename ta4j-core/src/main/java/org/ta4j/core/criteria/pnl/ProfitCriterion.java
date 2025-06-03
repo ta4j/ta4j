@@ -30,63 +30,49 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit criterion which can either compute the <em>net</em> or the
- * <em>gross</em> profit.
- *
- * <p>
- * If {@code excludeCosts} is {@code false} (the default), trading costs are
- * deducted from each position and the resulting value represents the net
- * profit. If {@code excludeCosts} is {@code true}, the calculation ignores
- * trading costs and returns the gross profit instead.
- *
- * <p>
- * The profit of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
+ * Wrapper criterion delegating to {@link NetProfitCriterion} or
+ * {@link GrossProfitCriterion}.
  */
 public class ProfitCriterion extends AbstractAnalysisCriterion {
 
-    private final boolean excludeCosts;
+    private final AbstractPnLCriterion delegate;
 
     /**
-     * Constructor creating a criterion that includes trading costs in the profit
-     * calculation, i.e. net profit is returned.
+     * Creates a profit criterion that includes trading costs (net profit).
      */
     public ProfitCriterion() {
-        this(false);
+        delegate = new NetProfitCriterion();
     }
 
     /**
-     * Constructor.
+     * Constructor retained for backward compatibility.
      *
-     * @param excludeCosts set to {@code true} to ignore trading costs and return
-     *                     gross profit
+     * @param excludeCosts if {@code true} trading costs are ignored (gross profit)
+     *                     otherwise net profit is used
      */
+    @Deprecated
     public ProfitCriterion(boolean excludeCosts) {
-        this.excludeCosts = excludeCosts;
+        if (excludeCosts) {
+            delegate = new GrossProfitCriterion();
+        } else {
+            delegate = new NetProfitCriterion();
+        }
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num profit = excludeCosts ? position.getGrossProfit() : position.getProfit();
-            return profit.isPositive() ? profit : series.numFactory().zero();
-        }
-        return series.numFactory().zero();
+        return delegate.calculate(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numFactory().zero(), Num::plus);
+        return delegate.calculate(series, tradingRecord);
     }
 
     /** The higher the criterion value (= the higher the profit), the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return delegate.betterThan(criterionValue1, criterionValue2);
     }
 
 }
