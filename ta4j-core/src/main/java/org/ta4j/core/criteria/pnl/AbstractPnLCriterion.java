@@ -61,16 +61,6 @@ public abstract class AbstractPnLCriterion extends AbstractAnalysisCriterion {
     protected abstract Num calculatePosition(Position position);
 
     /**
-     * Returns a zero value using the position's num factory.
-     *
-     * @param position the position
-     * @return zero in the same num scale
-     */
-    protected Num zero(Position position) {
-        return position.getEntry().getNetPrice().getNumFactory().zero();
-    }
-
-    /**
      * Returns the net profit or loss of the position (includes costs).
      *
      * @param position the position
@@ -93,28 +83,26 @@ public abstract class AbstractPnLCriterion extends AbstractAnalysisCriterion {
     /**
      * Returns the profit part of the given pnl, otherwise zero.
      *
-     * @param pnl  the profit or loss
-     * @param zero the zero value
+     * @param pnl the profit or loss
      * @return the profit or zero
      */
-    protected Num profit(Num pnl, Num zero) {
+    protected Num profit(Num pnl) {
         if (pnl.isPositive()) {
             return pnl;
         }
-        return zero;
+        return pnl.getNumFactory().zero();
     }
 
     /**
      * Returns the loss part of the given pnl, otherwise zero.
      *
-     * @param pnl  the profit or loss
-     * @param zero the zero value
+     * @param pnl the profit or loss
      * @return the loss or zero
      */
-    protected Num loss(Num pnl, Num zero) {
+    protected Num loss(Num pnl) {
         if (pnl.isNegative()) {
             return pnl;
         }
-        return zero;
+        return pnl.getNumFactory().zero();
     }
 }

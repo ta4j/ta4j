@@ -33,7 +33,7 @@ public class GrossLossCriterion extends AbstractPnLCriterion {
 
     @Override
     protected Num calculatePosition(Position position) {
-        return loss(grossPnL(position), zero(position));
+        return loss(grossPnL(position));
     }
 
     @Override

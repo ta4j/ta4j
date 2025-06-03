@@ -33,7 +33,7 @@ public class NetProfitCriterion extends AbstractPnLCriterion {
 
     @Override
     protected Num calculatePosition(Position position) {
-        return profit(netPnL(position), zero(position));
+        return profit(netPnL(position));
     }
 
     @Override

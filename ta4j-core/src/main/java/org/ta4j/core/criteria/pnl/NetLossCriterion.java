@@ -33,7 +33,7 @@ public class NetLossCriterion extends AbstractPnLCriterion {
 
     @Override
     protected Num calculatePosition(Position position) {
-        return loss(netPnL(position), zero(position));
+        return loss(netPnL(position));
     }
 
     @Override
