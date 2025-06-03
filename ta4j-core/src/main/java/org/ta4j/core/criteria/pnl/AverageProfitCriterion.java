@@ -34,8 +34,8 @@ import org.ta4j.core.num.Num;
  * Average net profit criterion.
  *
  * <p>
- * Uses {@link NetProfitCriterion} with trading costs included, meaning costs are
- * subtracted from each winning position before averaging.
+ * Uses {@link NetProfitCriterion} with trading costs included, meaning costs
+ * are subtracted from each winning position before averaging.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
@@ -49,11 +49,11 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
         if (numberOfWinningPositions.isZero()) {
             return zero;
         }
-        var grossProfit = netProfitCriterion.calculate(series, position);
-        if (grossProfit.isZero()) {
+        var netProfit = netProfitCriterion.calculate(series, position);
+        if (netProfit.isZero()) {
             return zero;
         }
-        return grossProfit.dividedBy(numberOfWinningPositions);
+        return netProfit.dividedBy(numberOfWinningPositions);
     }
 
     @Override
