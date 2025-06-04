@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 /**
  * Net loss criterion.
  */
-public class NetLossCriterion extends AbstractPnLCriterion {
+public class NetLossCriterion extends AbstractPnlCriterion {
 
     @Override
     protected Num calculatePosition(Position position) {

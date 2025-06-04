@@ -27,7 +27,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import org.ta4j.core.CriterionFactory;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;

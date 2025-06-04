@@ -28,7 +28,7 @@ import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 /**
  * Average net profit criterion.
  */
-public class NetAverageProfitCriterion extends AbstractAverageCriterion {
+public class NetAverageProfitCriterion extends AbstractAveragePnlCriterion {
 
     public NetAverageProfitCriterion() {
         super(new NetProfitCriterion(), new NumberOfWinningPositionsCriterion());

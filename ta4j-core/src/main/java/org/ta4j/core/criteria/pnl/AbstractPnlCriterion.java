@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 /**
  * Base class for profit and loss criteria.
  */
-public abstract class AbstractPnLCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractPnlCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {

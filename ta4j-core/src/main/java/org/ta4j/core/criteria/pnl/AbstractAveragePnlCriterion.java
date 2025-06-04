@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.criteria.pnl;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -32,13 +33,12 @@ import org.ta4j.core.num.Num;
 /**
  * Base class for average profit and loss criteria.
  */
-public abstract class AbstractAverageCriterion extends AbstractPnLCriterion {
+public abstract class AbstractAveragePnlCriterion extends AbstractPnlCriterion {
 
-    private final AbstractAnalysisCriterion pnlCriterion;
-    private final AbstractAnalysisCriterion positionsCriterion;
+    private final AnalysisCriterion pnlCriterion;
+    private final AnalysisCriterion positionsCriterion;
 
-    protected AbstractAverageCriterion(AbstractAnalysisCriterion pnlCriterion,
-            AbstractAnalysisCriterion positionsCriterion) {
+    protected AbstractAveragePnlCriterion(AnalysisCriterion pnlCriterion, AnalysisCriterion positionsCriterion) {
         this.pnlCriterion = pnlCriterion;
         this.positionsCriterion = positionsCriterion;
     }
@@ -70,4 +70,5 @@ public abstract class AbstractAverageCriterion extends AbstractPnLCriterion {
         }
         return pnl.dividedBy(count);
     }
+
 }

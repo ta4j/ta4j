@@ -29,7 +29,7 @@ import org.ta4j.core.Position;
 /**
  * Net profit criterion.
  */
-public class NetProfitCriterion extends AbstractPnLCriterion {
+public class NetProfitCriterion extends AbstractPnlCriterion {
 
     @Override
     protected Num calculatePosition(Position position) {
