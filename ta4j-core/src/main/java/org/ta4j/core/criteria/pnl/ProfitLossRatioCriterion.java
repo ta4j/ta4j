@@ -40,8 +40,8 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final AverageProfitCriterion averageProfitCriterion = new AverageProfitCriterion();
-    private final AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
+    private final NetAverageProfitCriterion averageProfitCriterion = new NetAverageProfitCriterion();
+    private final NetAverageLossCriterion averageLossCriterion = new NetAverageLossCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -58,6 +58,12 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         return averageProfit.dividedBy(averageLoss).abs();
     }
 
+    /** The higher the criterion value, the better. */
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
@@ -71,12 +77,6 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }
