@@ -23,56 +23,54 @@
  */
 package org.ta4j.core.criteria.pnl;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Average net profit criterion.
- *
- * <p>
- * Uses {@link ProfitCriterion} with trading costs included, meaning costs are
- * subtracted from each winning position before averaging.
+ * Base class for average profit and loss criteria.
  */
-public class AverageProfitCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractAveragePnlCriterion extends AbstractAnalysisCriterion {
 
-    private final ProfitCriterion netProfitCriterion = new ProfitCriterion(false);
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final AnalysisCriterion pnlCriterion;
+    private final AnalysisCriterion positionsCriterion;
+
+    protected AbstractAveragePnlCriterion(AnalysisCriterion pnlCriterion, AnalysisCriterion positionsCriterion) {
+        this.pnlCriterion = pnlCriterion;
+        this.positionsCriterion = positionsCriterion;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         var zero = series.numFactory().zero();
-        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
-        if (numberOfWinningPositions.isZero()) {
+        var count = positionsCriterion.calculate(series, position);
+        if (count.isZero()) {
             return zero;
         }
-        var grossProfit = netProfitCriterion.calculate(series, position);
-        if (grossProfit.isZero()) {
+        var pnl = pnlCriterion.calculate(series, position);
+        if (pnl.isZero()) {
             return zero;
         }
-        return grossProfit.dividedBy(numberOfWinningPositions);
+        return pnl.dividedBy(count);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var zero = series.numFactory().zero();
-        var numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
-        if (numberOfWinningPositions.isZero()) {
+        var count = positionsCriterion.calculate(series, tradingRecord);
+        if (count.isZero()) {
             return zero;
         }
-        var netProfit = netProfitCriterion.calculate(series, tradingRecord);
-        if (netProfit.isZero()) {
+        var pnl = pnlCriterion.calculate(series, tradingRecord);
+        if (pnl.isZero()) {
             return zero;
         }
-        return netProfit.dividedBy(numberOfWinningPositions);
+        return pnl.dividedBy(count);
     }
 
-    /**
-     * The higher the criterion value, the better.
-     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

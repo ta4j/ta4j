@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.helpers.StandardDeviationCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -52,16 +52,16 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     private final Integer nPositions;
 
     /**
-     * Constructor with {@code criterion} = {@link ProfitLossCriterion}.
+     * Constructor with {@code criterion} = {@link NetProfitLossCriterion}.
      */
     public SqnCriterion() {
-        this(new ProfitLossCriterion());
+        this(new NetProfitLossCriterion());
     }
 
     /**
      * Constructor.
      *
-     * @param criterion the Criterion (e.g. ProfitLossCriterion or
+     * @param criterion the Criterion (e.g. NetProfitLossCriterion or
      *                  ExpectancyCriterion)
      */
     public SqnCriterion(AnalysisCriterion criterion) {
@@ -71,7 +71,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param criterion  the Criterion (e.g. ProfitLossCriterion or
+     * @param criterion  the Criterion (e.g. NetProfitLossCriterion or
      *                   ExpectancyCriterion)
      * @param nPositions the {@link #nPositions} (optional)
      */
