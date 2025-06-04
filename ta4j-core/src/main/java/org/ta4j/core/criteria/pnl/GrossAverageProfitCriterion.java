@@ -33,4 +33,5 @@ public class GrossAverageProfitCriterion extends AbstractAveragePnlCriterion {
     public GrossAverageProfitCriterion() {
         super(new GrossProfitCriterion(), new NumberOfWinningPositionsCriterion());
     }
+
 }

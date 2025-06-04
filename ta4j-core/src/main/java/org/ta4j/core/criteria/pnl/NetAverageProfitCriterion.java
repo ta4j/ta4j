@@ -33,4 +33,5 @@ public class NetAverageProfitCriterion extends AbstractAveragePnlCriterion {
     public NetAverageProfitCriterion() {
         super(new NetProfitCriterion(), new NumberOfWinningPositionsCriterion());
     }
+
 }

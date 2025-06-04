@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 /**
  * Base class for average profit and loss criteria.
  */
-public abstract class AbstractAveragePnlCriterion extends AbstractPnlCriterion {
+public abstract class AbstractAveragePnlCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion pnlCriterion;
     private final AnalysisCriterion positionsCriterion;
@@ -69,6 +69,11 @@ public abstract class AbstractAveragePnlCriterion extends AbstractPnlCriterion {
             return zero;
         }
         return pnl.dividedBy(count);
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

@@ -153,7 +153,8 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // buy and hold with amount of 10 (which means the pnl is 10 times higher than
         // amount of 1)
-        var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), BigDecimal.valueOf(10));
+        var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
+                BigDecimal.valueOf(10));
         var buyAndHoldPnlValue = buyAndHoldPnl.calculate(series, tradingRecord);
         assertNumEquals(5 * 10d, buyAndHoldPnlValue);
     }
