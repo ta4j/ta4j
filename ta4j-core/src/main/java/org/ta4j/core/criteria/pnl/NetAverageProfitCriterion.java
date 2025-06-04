@@ -23,17 +23,14 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.Position;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 
 /**
- * Net profit and loss criterion.
+ * Average net profit criterion.
  */
-public class NetProfitLossCriterion extends AbstractPnLCriterion {
+public class NetAverageProfitCriterion extends AbstractAverageCriterion {
 
-    @Override
-    protected Num calculatePosition(Position position) {
-        return netPnL(position);
+    public NetAverageProfitCriterion() {
+        super(new NetProfitCriterion(), new NumberOfWinningPositionsCriterion());
     }
-
 }

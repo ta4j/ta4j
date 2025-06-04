@@ -37,7 +37,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -153,7 +153,7 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // buy and hold with amount of 10 (which means the pnl is 10 times higher than
         // amount of 1)
-        var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), BigDecimal.valueOf(10));
+        var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), BigDecimal.valueOf(10));
         var buyAndHoldPnlValue = buyAndHoldPnl.calculate(series, tradingRecord);
         assertNumEquals(5 * 10d, buyAndHoldPnlValue);
     }
@@ -194,7 +194,7 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         record.enter(0, series.getBar(0).getClosePrice(), amount);
         record.exit(1, series.getBar(1).getClosePrice(), amount);
 
-        var criterion = getCriterion(new ProfitLossCriterion());
+        var criterion = getCriterion(new NetProfitLossCriterion());
         // net = (110-100) − (100*0.05 + 110*0.05) = 10 - 10.5 = −0.5
         assertNumEquals(-0.5, criterion.calculate(series, record));
 

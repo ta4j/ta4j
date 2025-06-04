@@ -28,7 +28,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.NetLossCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +40,7 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
 
     @Override
     public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
+        final Num pnl = new NetProfitLossCriterion().calculate(series, tradingRecord);
         final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
         final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
         final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);

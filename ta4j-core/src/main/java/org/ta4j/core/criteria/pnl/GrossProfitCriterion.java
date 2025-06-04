@@ -36,8 +36,4 @@ public class GrossProfitCriterion extends AbstractPnLCriterion {
         return profit(grossPnL(position));
     }
 
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
 }

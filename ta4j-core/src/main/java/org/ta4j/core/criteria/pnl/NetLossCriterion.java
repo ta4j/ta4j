@@ -36,8 +36,4 @@ public class NetLossCriterion extends AbstractPnLCriterion {
         return loss(netPnL(position));
     }
 
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
 }
