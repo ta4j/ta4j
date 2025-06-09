@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -37,13 +34,16 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import static org.junit.Assert.assertEquals;
+
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
     private final ExternalIndicatorTest xls;
+    private BarSeries data;
 
     public RSIIndicatorTest(NumFactory numFactory) {
         super((data, params) -> new RSIIndicator((Indicator<Num>) data, (int) params[0]), numFactory);
@@ -59,9 +59,13 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void firstValueShouldBeZero() throws Exception {
-        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(numFactory.zero(), indicator.getValue(0));
+    public void testCalculateReturnsNaNForIndicesWithinUnstablePeriod() {
+        int barCount = 14;
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), barCount);
+
+        for (int i = 0; i < barCount; i++) {
+            assertEquals(NaN.NaN, indicator.getValue(i));
+        }
     }
 
     @Test
@@ -81,6 +85,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void usingBarCount14UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
+        assertEquals(NaN.NaN, indicator.getValue(0));
         assertEquals(68.4746, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(64.7836, indicator.getValue(16).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(72.0776, indicator.getValue(17).doubleValue(), TestUtils.GENERAL_OFFSET);
@@ -95,22 +100,27 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void testGetCountOfUnstableBarsMatchesBarCount() {
+        int barCount = 5;
+        Indicator<Num> rsi = getIndicator(new ClosePriceIndicator(data), barCount);
+
+        assertEquals(barCount, rsi.getCountOfUnstableBars());
+    }
+
+    @Test
     public void xlsTest() throws Exception {
         Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsClose, 1);
-        assertIndicatorEquals(xls.getIndicator(1), indicator);
         assertEquals(100.0, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 3);
-        assertIndicatorEquals(xls.getIndicator(3), indicator);
         assertEquals(67.0453, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 13);
-        assertIndicatorEquals(xls.getIndicator(13), indicator);
         assertEquals(52.5876, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }

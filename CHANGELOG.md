@@ -3,12 +3,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.19
 
 ### Breaking
+- Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion` and `AverageLossCriterion` criteria into their net and gross concrete classes
 
 ### Fixed
 - Updated Github test workflow to cache dependencies for quicker builds
 - Updated test status badge on README
 - Fixed EnterAndHoldCriterion to keep track of transaction and hold costs
 - Clarify PnL criterion comments about trading costs
+- Refactor ProfitLossPercentageCriterion to calculate aggregated return
 
 ### Changed
 
@@ -50,6 +52,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed `MockBarBuilder` to use `Instant.now` for beginTime
 - Fixed `RecentSwingHighIndicatorTest` to create bars consistently
 - Fixed `LSMAIndicator` to fix lsma calculation for incorrect values
+- Fixed `RSIIndicator` getCountOfUnstableBars to return barCount value instead of 0 
+- Fixed `RSIIndicator` calculate to return NaN during unstable period
 
 ### Changed
 - Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
@@ -58,6 +62,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Faster test execution by using `String.lines()` instead of `String` concatenation
 - Improve Javadoc for `DecimalNum`and `DoubleNum`
 - Allowed JUnit5 for new tests. Old remain as is.
+- Updated `StochasticOscillatorKIndicator` constructor to use generic params
+- Updated `StochasticRSIIndicator` to use `StochasticOscillatorKIndicator` instead of duplicating the logic
+- Updated `TestUtils` assertIndicatorEquals and assertIndicatorNotEquals to handle NaN values
 
 ### Removed/Deprecated
 

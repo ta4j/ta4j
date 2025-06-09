@@ -36,7 +36,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -121,12 +121,12 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // vs buy and hold of pnl with amount of 1
         var amount1 = BigDecimal.valueOf(1);
-        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), amount1);
+        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount1);
         var vsBuyAndHoldPnlValue1 = vsBuyAndHoldPnl1.calculate(series, tradingRecord);
 
         // vs buy and hold of pnl with amount of 10
         var amount2 = BigDecimal.valueOf(10);
-        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), amount2);
+        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount2);
         var vsBuyAndHoldPnlValue2 = vsBuyAndHoldPnl2.calculate(series, tradingRecord);
 
         assertNumEquals(3 * 1d, vsBuyAndHoldPnlValue1);

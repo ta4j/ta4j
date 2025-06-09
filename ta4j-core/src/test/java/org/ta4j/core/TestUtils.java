@@ -200,10 +200,21 @@ public class TestUtils {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            if (expectedValue.isNaN() || actualValue.isNaN()) {
+                if (expectedValue.isNaN() && actualValue.isNaN()) {
+                    continue;
+                }
+                throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s", i,
+                        expectedValue, actualValue));
+            }
+
             // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expectedValue.toString());
+            Num act = DecimalNum.valueOf(actualValue.toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 log.debug("{} expected does not match", exp);
@@ -235,8 +246,19 @@ public class TestUtils {
             return;
         }
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            // Handle potential NaN values in double representations
+            if (expectedValue.isNaN() || actualValue.isNaN()) {
+                if (!expectedValue.isNaN() || !actualValue.isNaN()) {
+                    return; // Found a NaN mismatch - test passes
+                }
+                continue; // Both NaNs, continue checking other values
+            }
+
+            Num exp = DecimalNum.valueOf(expectedValue.toString());
+            Num act = DecimalNum.valueOf(actualValue.toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 return;
