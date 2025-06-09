@@ -25,6 +25,7 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
@@ -42,26 +43,42 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        var numFactory = series.numFactory();
         if (position.isClosed()) {
-            Num entryPrice = position.getEntry().getValue();
-            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.numFactory().hundred());
+            var entryPrice = position.getEntry().getValue();
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(numFactory.hundred());
         }
-        return series.numFactory().zero();
-    }
-
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numFactory().zero(), Num::plus);
+        return numFactory.zero();
     }
 
     /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        var numFactory = series.numFactory();
+        var zero = numFactory.zero();
+
+        var totalProfit = tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(Position::getProfit)
+                .reduce(zero, Num::plus);
+
+        var totalEntryPrice = tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(Position::getEntry)
+                .map(Trade::getValue)
+                .reduce(zero, Num::plus);
+
+        if (totalEntryPrice.isZero()) {
+            return zero;
+        }
+        return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
     }
 
 }
