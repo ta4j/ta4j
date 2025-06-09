@@ -51,6 +51,12 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
         return numFactory.zero();
     }
 
+    /** The higher the criterion value, the better. */
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var numFactory = series.numFactory();
@@ -73,12 +79,6 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
         return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

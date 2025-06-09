@@ -33,7 +33,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractCriterionTest;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -53,20 +53,20 @@ public class AverageCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series, series.numFactory().one()), Trade.buyAt(3, series, series.numFactory().one()),
                 Trade.sellAt(5, series, series.numFactory().one()));
 
-        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
+        AnalysisCriterion criterion = getCriterion(new NetProfitLossCriterion());
         assertNumEquals(7.5, criterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThanWithLessIsBetter() {
-        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion(), true);
+        AnalysisCriterion criterion = getCriterion(new NetProfitLossCriterion(), true);
         assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
         assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
     }
 
     @Test
     public void betterThanWithLessIsNotBetter() {
-        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
+        AnalysisCriterion criterion = getCriterion(new NetProfitLossCriterion());
         assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
         assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));
     }
@@ -74,7 +74,7 @@ public class AverageCriterionTest extends AbstractCriterionTest {
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory,
-                getCriterion(new ProfitLossCriterion()), 0);
+                getCriterion(new NetProfitLossCriterion()), 0);
     }
 
 }

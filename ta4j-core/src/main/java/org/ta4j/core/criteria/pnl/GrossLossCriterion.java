@@ -23,38 +23,17 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net Profit and loss criterion (absolute PnL).
- *
- * <p>
- * Trading costs are subtracted from each position so the returned value
- * reflects the net profit or loss over the provided {@link BarSeries series}.
+ * Gross loss criterion.
  */
-public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+public class GrossLossCriterion extends AbstractPnlCriterion {
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return position.getProfit();
+    protected Num calculatePosition(Position position) {
+        return loss(grossPnL(position));
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numFactory().zero(), Num::plus);
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
 }
