@@ -29,6 +29,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
+import org.ta4j.core.BarPool;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -206,7 +207,7 @@ public class TimeBarBuilder implements BarBuilder {
 
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
+        return BarPool.getInstance().getBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
 
