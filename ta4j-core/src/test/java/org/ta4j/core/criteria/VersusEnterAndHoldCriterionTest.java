@@ -162,9 +162,6 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         var buyAndHold = getCriterion(new NumberOfBarsCriterion());
         assertNumEquals(tradingVsEnterAndHold, buyAndHold.calculate(series, tradingRecord));
-
-        var buyAndHold = getCriterion(new NumberOfBarsCriterion());
-        assertNumEquals(6d / 6d, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
