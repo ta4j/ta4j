@@ -26,7 +26,7 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,29 +37,36 @@ import org.ta4j.core.num.Num;
  * returns over the specified number of bars:
  *
  * <pre>
- * AverageReturnPerBar = pow({@link ReturnCriterion gross return}, 1/ {@link NumberOfBarsCriterion number of bars})
+ * AverageReturnPerBar = pow({@link NetReturnCriterion net return}, 1/ {@link NumberOfBarsCriterion number of bars})
  * </pre>
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private final ReturnCriterion grossReturn = new ReturnCriterion();
+    private final NetReturnCriterion netReturn = new NetReturnCriterion();
     private final NumberOfBarsCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num bars = numberOfBars.calculate(series, position);
-        // If a simple division was used (grossreturn/bars), compounding would not be
+        var bars = numberOfBars.calculate(series, position);
+        // If a simple division was used (net return/bars), compounding would not be
         // considered, leading to inaccuracies in the calculation.
-        // Therefore we need to use "pow" to accurately capture the compounding effect.
-        return bars.isZero() ? series.numFactory().one()
-                : grossReturn.calculate(series, position).pow(series.numFactory().one().dividedBy(bars));
+        // Therefore, we need to use "pow" to accurately capture the compounding effect.
+        var one = series.numFactory().one();
+        if (bars.isZero()) {
+            return one;
+        }
+        return netReturn.calculate(series, position).pow(one.dividedBy(bars));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num bars = numberOfBars.calculate(series, tradingRecord);
-        return bars.isZero() ? series.numFactory().one()
-                : grossReturn.calculate(series, tradingRecord).pow(series.numFactory().one().dividedBy(bars));
+        var bars = numberOfBars.calculate(series, tradingRecord);
+        var one = series.numFactory().one();
+        if (bars.isZero()) {
+            return one;
+        }
+        var netReturn = this.netReturn.calculate(series, tradingRecord);
+        return netReturn.pow(one.dividedBy(bars));
     }
 
     /** The higher the criterion value, the better. */

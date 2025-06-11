@@ -25,60 +25,77 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Net profit and loss in percentage criterion (relative PnL, excludes trading
- * costs), returned in percentage format (e.g. 1 = 1%).
- *
+ * Base class for return based criteria.
  * <p>
- * Defined as the position profit over the purchase price. The profit or loss in
- * percentage over the provided {@link Position position(s)}.
- * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
+ * Handles calculation of the aggregated return across positions and the
+ * optional inclusion of the base percentage.
  */
-public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion {
+
+    /**
+     * If {@code true} the base percentage of {@code 1} (equivalent to 100%) is
+     * included in the returned value.
+     */
+    protected final boolean addBase;
+
+    /**
+     * Constructor with {@link #addBase} set to {@code true}.
+     */
+    protected AbstractReturnCriterion() {
+        this(true);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param addBase whether to include the base percentage
+     */
+    protected AbstractReturnCriterion(boolean addBase) {
+        this.addBase = addBase;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var numFactory = series.numFactory();
         if (position.isClosed()) {
-            var entryPrice = position.getEntry().getValue();
-            return position.getProfit().dividedBy(entryPrice).multipliedBy(numFactory.hundred());
+            return calculateReturn(series, position);
+        }
+        var numFactory = series.numFactory();
+        if (addBase) {
+            return numFactory.one();
         }
         return numFactory.zero();
     }
 
-    /** The higher the criterion value, the better. */
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        var one = series.numFactory().one();
+        var result = tradingRecord.getPositions()
+                .stream()
+                .map(p -> calculate(series, p))
+                .reduce(one, Num::multipliedBy);
+        if (addBase) {
+            return result;
+        }
+        return result.minus(one);
+    }
+
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
-
-        var totalProfit = tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(Position::getProfit)
-                .reduce(zero, Num::plus);
-
-        var totalEntryPrice = tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(Position::getEntry)
-                .map(Trade::getValue)
-                .reduce(zero, Num::plus);
-
-        if (totalEntryPrice.isZero()) {
-            return zero;
-        }
-        return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
-    }
-
+    /**
+     * Calculates the return of the given closed position including the base.
+     *
+     * @param series   the bar series
+     * @param position the closed position
+     * @return the return of the position including the base
+     */
+    protected abstract Num calculateReturn(BarSeries series, Position position);
 }

@@ -23,24 +23,23 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
+public class GrossProfitLossRatioCriterionTest extends AbstractPnlCriterionTest {
 
-    public NetAverageProfitCriterionTest(NumFactory numFactory) {
-        super(params -> new NetAverageProfitCriterion(), numFactory);
+    public GrossProfitLossRatioCriterionTest(NumFactory numFactory) {
+        super(params -> new GrossProfitLossRatioCriterion(), numFactory);
     }
 
     @Override
     protected void handleCalculateWithProfits(Num result) {
-        assertNumEquals(10.5, result);
+        assertNumEquals(1, result);
     }
 
     @Override
@@ -50,12 +49,12 @@ public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
 
     @Override
     protected void handleCalculateOnlyWithProfitPositions(Num result) {
-        assertNumEquals(7.5, result);
+        assertNumEquals(1, result);
     }
 
     @Override
     protected void handleCalculateOnlyWithProfitPositions2(Num result) {
-        assertNumEquals(12.5, result);
+        assertNumEquals(1, result);
     }
 
     @Override
@@ -81,7 +80,7 @@ public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
 
     @Override
     protected void handleCalculateWithOpenedPosition(Num result) {
-        assertNumEquals(10, result);
+        assertNumEquals(1, result);
     }
 
     @Override

@@ -30,7 +30,8 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
@@ -65,11 +66,11 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     private final AnalysisCriterion criterion;
 
     /**
-     * The {@link ReturnCriterion} (with base) from a buy-and-hold strategy with an
-     * {@link #amount} of {@code 1}.
+     * The {@link NetReturnCriterion} (with base) from a buy-and-hold strategy with
+     * an {@link #amount} of {@code 1}.
      */
     public static EnterAndHoldCriterion EnterAndHoldReturnCriterion() {
-        return new EnterAndHoldCriterion(TradeType.BUY, new ReturnCriterion());
+        return new EnterAndHoldCriterion(TradeType.BUY, new NetReturnCriterion());
     }
 
     /**
