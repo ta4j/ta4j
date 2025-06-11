@@ -3,7 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.19
 
 ### Breaking
-- Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion` and `ProfitLossRatioCriterion` criteria into their net and gross concrete classes
+- Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion` and `ProfitLossPercentageCriterion` criteria into their net and gross concrete classes
 
 ### Fixed
 - Updated Github test workflow to cache dependencies for quicker builds
