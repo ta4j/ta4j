@@ -104,9 +104,9 @@ public class Quickstart {
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
-        // Total return of our strategy vs total return of a buy-and-hold strategy
+        // Net return of our strategy vs net return of a buy-and-hold strategy
         AnalysisCriterion vsBuyAndHold = new VersusEnterAndHoldCriterion(new NetReturnCriterion());
-        System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
+        System.out.println("Our net return vs buy-and-hold net return: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!
     }

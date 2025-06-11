@@ -94,6 +94,6 @@ public class GlobalExtremaStrategy {
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Total return for the strategy: " + grossReturn);
+        System.out.println("Gross return for the strategy: " + grossReturn);
     }
 }
