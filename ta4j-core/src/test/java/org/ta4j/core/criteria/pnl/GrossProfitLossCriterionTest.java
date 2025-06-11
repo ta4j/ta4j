@@ -84,4 +84,9 @@ public class GrossProfitLossCriterionTest extends AbstractPnlCriterionTest {
     protected void handleCalculateWithOpenedPosition(Num result) {
         assertNumEquals(10, result);
     }
+
+    @Override
+    protected void handleCalculateWithNoPositions(Num result) {
+        assertNumEquals(0, result);
+    }
 }

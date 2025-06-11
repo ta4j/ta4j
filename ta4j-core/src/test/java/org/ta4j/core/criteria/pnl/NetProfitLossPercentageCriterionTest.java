@@ -27,15 +27,14 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
+public class NetProfitLossPercentageCriterionTest extends AbstractPnlCriterionTest {
 
-    public NetAverageProfitCriterionTest(NumFactory numFactory) {
-        super(params -> new NetAverageProfitCriterion(), numFactory);
+    public NetProfitLossPercentageCriterionTest(NumFactory numFactory) {
+        super(params -> new NetProfitLossPercentageCriterion(), numFactory);
     }
 
     @Override
@@ -45,7 +44,7 @@ public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
 
     @Override
     protected void handleCalculateWithLosses(Num result) {
-        assertNumEquals(0, result);
+        assertNumEquals(-19.325, result);
     }
 
     @Override
@@ -60,18 +59,18 @@ public class NetAverageProfitCriterionTest extends AbstractPnlCriterionTest {
 
     @Override
     protected void handleCalculateOnlyWithLossPositions(Num result) {
-        assertNumEquals(0, result);
+        assertNumEquals(-17.5, result);
     }
 
     @Override
     protected void handleCalculateProfitWithShortPositions(Num result) {
-        assertNumEquals(0, result);
+        assertNumEquals(-21.21212121, result);
     }
 
     @Override
     protected void handleBetterThan(AnalysisCriterion criterion) {
-        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
+        assertTrue(criterion.betterThan(numOf(5), numOf(3)));
+        assertFalse(criterion.betterThan(numOf(3), numOf(5)));
     }
 
     @Override

@@ -35,7 +35,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -119,7 +119,7 @@ public class CompareNumTypes {
         long start = System.currentTimeMillis();
         BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record1 = manager.run(strategy1);
-        ReturnCriterion totalReturn1 = new ReturnCriterion();
+        GrossReturnCriterion totalReturn1 = new GrossReturnCriterion();
         Num returnResult1 = totalReturn1.calculate(series, record1);
         long end = System.currentTimeMillis();
 

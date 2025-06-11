@@ -27,7 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -36,32 +36,32 @@ import org.ta4j.core.num.Num;
  * format.
  *
  * <pre>
- * RoMaD = {@link ReturnCriterion gross return (with base)} / {@link MaximumDrawdownCriterion maximum drawdown}
+ * RoMaD = {@link NetReturnCriterion net return (with base)} / {@link MaximumDrawdownCriterion maximum drawdown}
  * </pre>
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion grossReturnCriterion = new ReturnCriterion();
+    private final AnalysisCriterion netReturnCriterion = new NetReturnCriterion();
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, position);
+            var totalProfit = netReturnCriterion.calculate(series, position);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
+            var totalProfit = netReturnCriterion.calculate(series, tradingRecord);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }

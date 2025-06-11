@@ -21,7 +21,6 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 package org.ta4j.core.criteria.pnl;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -82,6 +81,11 @@ public class GrossLossCriterionTest extends AbstractPnlCriterionTest {
 
     @Override
     protected void handleCalculateWithOpenedPosition(Num result) {
+        assertNumEquals(0, result);
+    }
+
+    @Override
+    protected void handleCalculateWithNoPositions(Num result) {
         assertNumEquals(0, result);
     }
 }

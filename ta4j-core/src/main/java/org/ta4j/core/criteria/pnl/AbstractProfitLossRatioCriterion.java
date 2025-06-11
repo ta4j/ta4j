@@ -26,57 +26,53 @@ package org.ta4j.core.criteria.pnl;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit/Loss ratio criterion.
- *
+ * Base class for profit/loss ratio criteria.
  * <p>
- * Defined as the average net profit divided by the average net loss. Both
- * averages include trading costs; that is, costs are subtracted from each
- * position before computing the mean values. The ratio is returned in decimal
- * format.
+ * Calculates the ratio of the average profit over the average loss.
  */
-public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final NetAverageProfitCriterion averageProfitCriterion = new NetAverageProfitCriterion();
-    private final NetAverageLossCriterion averageLossCriterion = new NetAverageLossCriterion();
+    private final AnalysisCriterion averageProfitCriterion;
+    private final AnalysisCriterion averageLossCriterion;
+
+    protected AbstractProfitLossRatioCriterion(AnalysisCriterion averageProfitCriterion,
+            AnalysisCriterion averageLossCriterion) {
+        this.averageProfitCriterion = averageProfitCriterion;
+        this.averageLossCriterion = averageLossCriterion;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num averageProfit = averageProfitCriterion.calculate(series, position);
-        if (averageProfit.isZero()) {
-            // only losing positions means a ratio of 0
-            return series.numFactory().zero();
-        }
-        Num averageLoss = averageLossCriterion.calculate(series, position);
-        if (averageLoss.isZero()) {
-            // only winning positions means a ratio of 1
-            return series.numFactory().one();
-        }
-        return averageProfit.dividedBy(averageLoss).abs();
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        var averageProfit = averageProfitCriterion.calculate(series, position);
+        var averageLoss = averageLossCriterion.calculate(series, position);
+        return calculateRatio(series, averageProfit, averageLoss);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
+        var averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
+        var averageLoss = averageLossCriterion.calculate(series, tradingRecord);
+        return calculateRatio(series, averageProfit, averageLoss);
+    }
+
+    private Num calculateRatio(BarSeries series, Num averageProfit, Num averageLoss) {
+        var numFactory = series.numFactory();
         if (averageProfit.isZero()) {
-            // only losing positions means a ratio of 0
-            return series.numFactory().zero();
+            return numFactory.zero();
         }
-        Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
         if (averageLoss.isZero()) {
-            // only winning positions means a ratio of 1
-            return series.numFactory().one();
+            return numFactory.one();
         }
         return averageProfit.dividedBy(averageLoss).abs();
     }
 
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
 }

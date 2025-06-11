@@ -33,7 +33,7 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -41,12 +41,11 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
-
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Quickstart for ta4j.
- *
+ * <p>
  * Global example.
  */
 public class Quickstart {
@@ -105,9 +104,10 @@ public class Quickstart {
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
-        // Total return of our strategy vs total return of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusEnterAndHoldCriterion(new ReturnCriterion());
-        System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
+        // Net return of our strategy vs net return of a buy-and-hold strategy
+        AnalysisCriterion versusEnterAndHoldCriterion = new VersusEnterAndHoldCriterion(new NetReturnCriterion());
+        Num versusEnterAndHold = versusEnterAndHoldCriterion.calculate(series, tradingRecord);
+        System.out.println("Our net return vs buy-and-hold net return: " + versusEnterAndHold);
 
         // Your turn!
     }

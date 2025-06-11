@@ -36,7 +36,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -174,7 +174,7 @@ public class WalkForward {
         Map<Strategy, String> strategies = buildStrategiesMap(series);
 
         // The analysis criterion
-        AnalysisCriterion returnCriterion = new ReturnCriterion();
+        AnalysisCriterion returnCriterion = new GrossReturnCriterion();
 
         for (BarSeries slice : subseries) {
             // For each sub-series...

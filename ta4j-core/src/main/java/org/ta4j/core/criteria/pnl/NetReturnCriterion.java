@@ -21,29 +21,46 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**
- * Generates a {@link PerformanceReport} based on the provided trading record
- * and bar series.
+ * Return (in percentage) criterion, returned in decimal format.
+ *
+ * <p>
+ * This criterion uses the net return of the positions; trading costs are
+ * deducted from the calculation. It represents the percentage change including
+ * the base value.
+ *
+ * <p>
+ * The return of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class NetReturnCriterion extends AbstractReturnCriterion {
+    public NetReturnCriterion() {
+        super();
+    }
+
+    public NetReturnCriterion(boolean addBase) {
+        super(addBase);
+    }
 
     @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new NetProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new NetProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    protected Num calculateReturn(BarSeries series, Position position) {
+        var entry = position.getEntry();
+        var amount = entry.getAmount();
+        var netPrice = entry.getNetPrice();
+        var entryValue = netPrice.multipliedBy(amount);
+        var one = series.numFactory().one();
+        if (entryValue.isZero()) {
+            return one;
+        }
+        var profit = position.getProfit();
+        return profit.dividedBy(entryValue).plus(one);
     }
+
 }

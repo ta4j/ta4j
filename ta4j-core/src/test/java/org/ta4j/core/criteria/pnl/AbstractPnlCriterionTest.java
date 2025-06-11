@@ -148,7 +148,7 @@ public abstract class AbstractPnlCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
         AnalysisCriterion criterion = getCriterion();
-        assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
+        handleCalculateWithNoPositions(criterion.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -179,4 +179,6 @@ public abstract class AbstractPnlCriterionTest extends AbstractCriterionTest {
     protected abstract void handleCalculateOneOpenPositionShouldReturnZero();
 
     protected abstract void handleCalculateWithOpenedPosition(Num result);
+
+    protected abstract void handleCalculateWithNoPositions(Num result);
 }
