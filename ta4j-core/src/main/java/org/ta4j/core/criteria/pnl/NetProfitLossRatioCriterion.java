@@ -21,29 +21,12 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
-import org.ta4j.core.num.Num;
+/** Net profit/loss ratio criterion. */
+public class NetProfitLossRatioCriterion extends AbstractProfitLossRatioCriterion {
 
-/**
- * Generates a {@link PerformanceReport} based on the provided trading record
- * and bar series.
- */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
-
-    @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new NetProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new NetProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    public NetProfitLossRatioCriterion() {
+        super(new NetAverageProfitCriterion(), new NetAverageLossCriterion());
     }
 }

@@ -35,7 +35,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.BooleanRule;
@@ -50,7 +50,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(NumFactory numFactory) {
-        super(params -> new ReturnCriterion(), numFactory);
+        super(params -> new GrossReturnCriterion(), numFactory);
     }
 
     @Before
@@ -82,8 +82,8 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void toStringMethod() {
         AbstractAnalysisCriterion c1 = new AverageReturnPerBarCriterion();
         assertEquals("Average Return Per Bar", c1.toString());
-        AbstractAnalysisCriterion c2 = new EnterAndHoldCriterion(new ReturnCriterion());
-        assertEquals("EnterAndHoldCriterion of ReturnCriterion", c2.toString());
+        AbstractAnalysisCriterion c2 = new EnterAndHoldCriterion(new GrossReturnCriterion());
+        assertEquals("EnterAndHoldCriterion of GrossReturnCriterion", c2.toString());
         AbstractAnalysisCriterion c3 = new ReturnOverMaxDrawdownCriterion();
         assertEquals("Return Over Max Drawdown", c3.toString());
     }
