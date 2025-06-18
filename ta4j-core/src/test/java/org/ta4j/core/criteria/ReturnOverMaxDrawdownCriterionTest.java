@@ -60,7 +60,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series));
 
-        double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
+        double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95) - 1;
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
