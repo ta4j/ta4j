@@ -28,9 +28,6 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /*
  * Heikin-Ashi bar builder
  * @see <a href="https://www.investopedia.com/trading/heikin-ashi-better-candlestick/">Heikin-Ashi</a>
