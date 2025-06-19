@@ -69,8 +69,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 210% better than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new GrossReturnCriterion(false));
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, tradingRecord));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(false));
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -90,8 +90,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // trading is approx. 0.05 worse than "enter and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new GrossReturnCriterion(true));
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, tradingRecord));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(true));
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -104,8 +104,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 35% better than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, position));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion());
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, position));
     }
 
     @Test
@@ -117,8 +117,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 42% better than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, new BaseTradingRecord()));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion());
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -132,8 +132,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. -0.85% worse than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new AverageReturnPerBarCriterion());
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, tradingRecord));
+        var vsBuyAndHold = getCriterion(new AverageReturnPerBarCriterion());
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -147,8 +147,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 0% better or worse than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var versusBuyAndHold = getCriterion(new NumberOfBarsCriterion());
-        assertNumEquals(tradingVsEnterAndHold, versusBuyAndHold.calculate(series, tradingRecord));
+        var vsBuyAndHold = getCriterion(new NumberOfBarsCriterion());
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -162,21 +162,21 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         // vs buy and hold of pnl with amount of 1
-        var one = BigDecimal.valueOf(1);
-        var versusBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), one);
-        var versusBuyAndHoldPnlValue1 = versusBuyAndHoldPnl1.calculate(series, tradingRecord);
+        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
+                BigDecimal.ONE);
+        var vsBuyAndHoldPnlValue1 = vsBuyAndHoldPnl1.calculate(series, tradingRecord);
 
         // vs buy and hold of pnl with amount of 10
-        var ten = BigDecimal.valueOf(10);
-        var versusBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), ten);
-        var versusBuyAndHoldPnlValue2 = versusBuyAndHoldPnl2.calculate(series, tradingRecord);
+        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
+                BigDecimal.TEN);
+        var vsBuyAndHoldPnlValue2 = vsBuyAndHoldPnl2.calculate(series, tradingRecord);
 
-        assertNumEquals(2, versusBuyAndHoldPnlValue1);
-        assertNumEquals(-0.7, versusBuyAndHoldPnlValue2);
+        assertNumEquals(2, vsBuyAndHoldPnlValue1);
+        assertNumEquals(-0.7, vsBuyAndHoldPnlValue2);
 
         // The less amount you need to achieve a given (absolute) profit, the better.
-        assertTrue(versusBuyAndHoldPnl1.betterThan(versusBuyAndHoldPnlValue1, versusBuyAndHoldPnlValue2));
-        assertFalse(versusBuyAndHoldPnl2.betterThan(versusBuyAndHoldPnlValue2, versusBuyAndHoldPnlValue1));
+        assertTrue(vsBuyAndHoldPnl1.betterThan(vsBuyAndHoldPnlValue1, vsBuyAndHoldPnlValue2));
+        assertFalse(vsBuyAndHoldPnl2.betterThan(vsBuyAndHoldPnlValue2, vsBuyAndHoldPnlValue1));
     }
 
     @Test
