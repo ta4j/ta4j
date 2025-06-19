@@ -45,9 +45,9 @@ public class HeikinAshiBarBuilderTest extends AbstractIndicatorTest<BarSeries, N
 
     @Test
     public void testBuild() {
-        var inputBar = new BaseBar(Duration.ofHours(1), Instant.parse("2024-01-01T01:00:00Z"), numFactory.numOf(100),
-                numFactory.numOf(110), numFactory.numOf(95), numFactory.numOf(105), numFactory.numOf(10),
-                numFactory.numOf(1000), 1);
+        var inputBar = new BaseBar(Duration.ofHours(1), null, Instant.parse("2024-01-01T01:00:00Z"),
+                numFactory.numOf(100), numFactory.numOf(110), numFactory.numOf(95), numFactory.numOf(105),
+                numFactory.numOf(10), numFactory.numOf(1000), 1);
 
         // No previous HA data: should return bar as-is.
         var resultBar = unit.timePeriod(inputBar.getTimePeriod())

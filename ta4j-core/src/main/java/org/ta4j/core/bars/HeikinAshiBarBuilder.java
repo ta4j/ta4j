@@ -68,8 +68,8 @@ public class HeikinAshiBarBuilder extends TimeBarBuilder {
                     .dividedBy(numFactory.numOf(2));
             var heikinAshiHigh = highPrice.max(heikinAshiOpen).max(heikinAshiClose);
             var heikinAshiLow = lowPrice.min(heikinAshiOpen).min(heikinAshiClose);
-            return new BaseBar(timePeriod, endTime, heikinAshiOpen, heikinAshiHigh, heikinAshiLow, heikinAshiClose,
-                    volume, amount, trades);
+            return new BaseBar(timePeriod, beginTime, endTime, heikinAshiOpen, heikinAshiHigh, heikinAshiLow,
+                    heikinAshiClose, volume, amount, trades);
         }
     }
 

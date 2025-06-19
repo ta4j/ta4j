@@ -42,6 +42,7 @@ public class TimeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
     Duration timePeriod;
+    Instant beginTime;
     Instant endTime;
     Num openPrice;
     Num highPrice;
@@ -69,6 +70,12 @@ public class TimeBarBuilder implements BarBuilder {
     @Override
     public BarBuilder timePeriod(final Duration timePeriod) {
         this.timePeriod = timePeriod;
+        return this;
+    }
+
+    @Override
+    public BarBuilder beginTime(final Instant beginTime) {
+        this.beginTime = beginTime;
         return this;
     }
 
@@ -206,7 +213,7 @@ public class TimeBarBuilder implements BarBuilder {
 
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
+        return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
 
@@ -214,4 +221,5 @@ public class TimeBarBuilder implements BarBuilder {
     public void add() {
         this.baseBarSeries.addBar(build());
     }
+
 }
