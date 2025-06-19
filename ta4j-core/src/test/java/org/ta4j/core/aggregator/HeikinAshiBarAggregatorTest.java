@@ -51,9 +51,9 @@ public class HeikinAshiBarAggregatorTest extends AbstractIndicatorTest<BarSeries
         var endTime = Instant.parse("2024-01-01T01:00:00Z");
         var timePeriod = Duration.ofHours(1);
 
-        Bar bar1 = new BaseBar(timePeriod, endTime, numFactory.numOf(100), numFactory.numOf(105), numFactory.numOf(95),
-                numFactory.numOf(100), numFactory.numOf(10), numFactory.numOf(50), 1);
-        var bar2 = new BaseBar(timePeriod, endTime.plus(1, ChronoUnit.HOURS), numFactory.numOf(100),
+        Bar bar1 = new BaseBar(timePeriod, null, endTime, numFactory.numOf(100), numFactory.numOf(105),
+                numFactory.numOf(95), numFactory.numOf(100), numFactory.numOf(10), numFactory.numOf(50), 1);
+        var bar2 = new BaseBar(timePeriod, null, endTime.plus(1, ChronoUnit.HOURS), numFactory.numOf(100),
                 numFactory.numOf(110), numFactory.numOf(98), numFactory.numOf(105), numFactory.numOf(20),
                 numFactory.numOf(100), 2);
 

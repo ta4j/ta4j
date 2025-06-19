@@ -45,6 +45,7 @@ public class TickBarBuilder implements BarBuilder {
     private int passedTicksCount;
     private BarSeries barSeries;
     private Duration timePeriod;
+    private Instant beginTime;
     private Instant endTime;
     private Num volume;
     private Num openPrice;
@@ -78,6 +79,12 @@ public class TickBarBuilder implements BarBuilder {
     @Override
     public BarBuilder timePeriod(final Duration timePeriod) {
         this.timePeriod = this.timePeriod == null ? timePeriod : this.timePeriod.plus(timePeriod);
+        return this;
+    }
+
+    @Override
+    public BarBuilder beginTime(final Instant beginTime) {
+        this.beginTime = beginTime;
         return this;
     }
 
@@ -216,7 +223,7 @@ public class TickBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
+        return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
 
