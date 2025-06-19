@@ -42,7 +42,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void testBuildBar() {
+    public void testBuildBarWithEndTime() {
 
         final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
         final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
@@ -50,6 +50,67 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         final Bar bar = new TimeBarBuilder(numFactory).timePeriod(duration)
                 .endTime(endTime)
+                .openPrice(numOf(101))
+                .highPrice(numOf(103))
+                .lowPrice(numOf(100))
+                .closePrice(numOf(102))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .build();
+
+        assertEquals(duration, bar.getTimePeriod());
+        assertEquals(beginTime, bar.getBeginTime());
+        assertEquals(endTime, bar.getEndTime());
+        assertEquals(numOf(101), bar.getOpenPrice());
+        assertEquals(numOf(103), bar.getHighPrice());
+        assertEquals(numOf(100), bar.getLowPrice());
+        assertEquals(numOf(102), bar.getClosePrice());
+        assertEquals(4, bar.getTrades());
+        assertEquals(numOf(40), bar.getVolume());
+        assertEquals(numOf(4020), bar.getAmount());
+    }
+
+    @Test
+    public void testBuildBarWithBeginTime() {
+
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        final Duration duration = Duration.between(beginTime, endTime);
+
+        final Bar bar = new TimeBarBuilder(numFactory).timePeriod(duration)
+                .beginTime(beginTime)
+                .openPrice(numOf(101))
+                .highPrice(numOf(103))
+                .lowPrice(numOf(100))
+                .closePrice(numOf(102))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .build();
+
+        assertEquals(duration, bar.getTimePeriod());
+        assertEquals(beginTime, bar.getBeginTime());
+        assertEquals(endTime, bar.getEndTime());
+        assertEquals(numOf(101), bar.getOpenPrice());
+        assertEquals(numOf(103), bar.getHighPrice());
+        assertEquals(numOf(100), bar.getLowPrice());
+        assertEquals(numOf(102), bar.getClosePrice());
+        assertEquals(4, bar.getTrades());
+        assertEquals(numOf(40), bar.getVolume());
+        assertEquals(numOf(4020), bar.getAmount());
+    }
+
+    @Test
+    public void testBuildBarWithEndTimeAndBeginTime() {
+
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        final Duration duration = Duration.between(beginTime, endTime);
+
+        final Bar bar = new TimeBarBuilder(numFactory).timePeriod(duration)
+                .endTime(endTime)
+                .beginTime(beginTime)
                 .openPrice(numOf(101))
                 .highPrice(numOf(103))
                 .lowPrice(numOf(100))
