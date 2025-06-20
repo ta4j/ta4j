@@ -11,6 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed EnterAndHoldCriterion to keep track of transaction and hold costs
 - Clarify PnL criterion comments about trading costs
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
+- Fixed strict rules of `ConvergenceDivergenceIndicator`
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 
 ### Changed

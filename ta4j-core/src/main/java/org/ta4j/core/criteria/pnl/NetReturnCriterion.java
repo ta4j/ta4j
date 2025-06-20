@@ -25,7 +25,6 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**

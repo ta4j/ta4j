@@ -260,7 +260,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveConvergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsRising.and(otherIsRising)).isSatisfied(index);
     }
@@ -271,7 +271,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeConvergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
     }
@@ -282,7 +282,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsRising.and(otherIsFalling)).isSatisfied(index);
     }
@@ -293,7 +293,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsFalling.and(otherIsRising)).isSatisfied(index);
     }
@@ -352,14 +352,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergence(int index) {
 
+        Num minusOne = getBarSeries().numFactory().minusOne();
         CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index)
-                .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().numOf(-1)));
+        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(minusOne));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
             Num slope = calculateSlopeRel(index);
-            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().numOf(-1)));
+            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(minusOne));
         }
 
         return false;
