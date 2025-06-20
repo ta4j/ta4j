@@ -126,7 +126,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegCon.getValue(2));
 
         assertTrue(isNegCon.getValue(3));
-        assertTrue(isNegCon.getValue(3));
         assertFalse(isNegCon.getValue(4));
         assertFalse(isNegCon.getValue(5));
         assertFalse(isNegCon.getValue(6));
@@ -141,7 +140,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isPosDiv.getValue(1));
         assertFalse(isPosDiv.getValue(2));
 
-        assertTrue(isPosDiv.getValue(3));
         assertTrue(isPosDiv.getValue(3));
         assertFalse(isPosDiv.getValue(4));
         assertTrue(isPosDiv.getValue(5));
@@ -158,7 +156,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegDiv.getValue(2));
 
         assertTrue(isNegDiv.getValue(3));
-        assertTrue(isNegDiv.getValue(3));
         assertTrue(isNegDiv.getValue(4));
         assertFalse(isNegDiv.getValue(5));
         assertFalse(isNegDiv.getValue(6));
@@ -173,7 +170,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isPosConStrict.getValue(1));
         assertFalse(isPosConStrict.getValue(2));
 
-        assertTrue(isPosConStrict.getValue(3));
         assertTrue(isPosConStrict.getValue(3));
         assertTrue(isPosConStrict.getValue(4));
         assertTrue(isPosConStrict.getValue(5));
@@ -190,7 +186,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegConStrict.getValue(2));
 
         assertTrue(isNegConStrict.getValue(3));
-        assertTrue(isNegConStrict.getValue(3));
         assertTrue(isNegConStrict.getValue(4));
         assertTrue(isNegConStrict.getValue(5));
         assertFalse(isNegConStrict.getValue(6));
@@ -205,7 +200,6 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isPosDivStrict.getValue(1));
         assertFalse(isPosDivStrict.getValue(2));
 
-        assertTrue(isPosDivStrict.getValue(3));
         assertTrue(isPosDivStrict.getValue(3));
         assertTrue(isPosDivStrict.getValue(4));
         assertTrue(isPosDivStrict.getValue(5));
