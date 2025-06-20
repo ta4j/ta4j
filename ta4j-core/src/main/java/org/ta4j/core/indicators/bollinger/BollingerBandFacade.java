@@ -54,11 +54,11 @@ public class BollingerBandFacade {
      * @param k         the multiplier used to calculate the upper and lower bands
      */
     public BollingerBandFacade(final BarSeries barSeries, final int barCount, final Number k) {
-        this.price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
-        this.middle = NumericIndicator.of(this.price.sma(barCount));
-        final NumericIndicator stdev = this.price.stddev(barCount);
-        this.upper = this.middle.plus(stdev.multipliedBy(k));
-        this.lower = this.middle.minus(stdev.multipliedBy(k));
+        price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
+        middle = NumericIndicator.of(price.sma(barCount));
+        final NumericIndicator stdev = price.stddev(barCount);
+        upper = middle.plus(stdev.multipliedBy(k));
+        lower = middle.minus(stdev.multipliedBy(k));
     }
 
     /**
@@ -69,11 +69,11 @@ public class BollingerBandFacade {
      * @param k         the multiplier used to calculate the upper and lower bands
      */
     public BollingerBandFacade(final Indicator<Num> indicator, final int barCount, final Number k) {
-        this.price = NumericIndicator.of(indicator);
-        this.middle = NumericIndicator.of(this.price.sma(barCount));
-        final NumericIndicator stdev = this.price.stddev(barCount);
-        this.upper = this.middle.plus(stdev.multipliedBy(k));
-        this.lower = this.middle.minus(stdev.multipliedBy(k));
+        price = NumericIndicator.of(indicator);
+        middle = NumericIndicator.of(price.sma(barCount));
+        final NumericIndicator stdev = price.stddev(barCount);
+        upper = middle.plus(stdev.multipliedBy(k));
+        lower = middle.minus(stdev.multipliedBy(k));
     }
 
     /**
@@ -83,7 +83,7 @@ public class BollingerBandFacade {
      *         price.
      */
     public NumericIndicator middle() {
-        return this.middle;
+        return middle;
     }
 
     /**
@@ -93,7 +93,7 @@ public class BollingerBandFacade {
      *         standard deviation.
      */
     public NumericIndicator upper() {
-        return this.upper;
+        return upper;
     }
 
     /**
@@ -103,7 +103,7 @@ public class BollingerBandFacade {
      *         multiple of standard deviation.
      */
     public NumericIndicator lower() {
-        return this.lower;
+        return lower;
     }
 
     /**
@@ -113,7 +113,7 @@ public class BollingerBandFacade {
      *         middle
      */
     public NumericIndicator bandwidth() {
-        return this.upper.minus(this.lower).dividedBy(this.middle).multipliedBy(100);
+        return upper.minus(lower).dividedBy(middle).multipliedBy(100);
     }
 
     /**
@@ -122,7 +122,7 @@ public class BollingerBandFacade {
      * @return an object that calculates %B from close price, BB upper and lower
      */
     public NumericIndicator percentB() {
-        return this.price.minus(this.lower).dividedBy(this.upper.minus(this.lower));
+        return price.minus(lower).dividedBy(upper.minus(lower));
     }
 
 }
