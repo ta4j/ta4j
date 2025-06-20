@@ -12,6 +12,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Clarify PnL criterion comments about trading costs
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
 - Fixed strict rules of `ConvergenceDivergenceIndicator`
+- Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`

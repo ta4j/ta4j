@@ -40,6 +40,7 @@ import org.ta4j.core.num.Num;
  * {@link BarSeries series}.
  */
 public class NetReturnCriterion extends AbstractReturnCriterion {
+
     public NetReturnCriterion() {
         super();
     }

@@ -36,12 +36,12 @@ import org.ta4j.core.num.Num;
  * format.
  *
  * <pre>
- * RoMaD = {@link NetReturnCriterion net return (with base)} / {@link MaximumDrawdownCriterion maximum drawdown}
+ * RoMaD = {@link NetReturnCriterion net return (without base)} / {@link MaximumDrawdownCriterion maximum drawdown}
  * </pre>
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion netReturnCriterion = new NetReturnCriterion();
+    private final AnalysisCriterion netReturnCriterion = new NetReturnCriterion(false);
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
