@@ -273,8 +273,8 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public void addTrade(final Number price, final Number amount) {
-        addTrade(numFactory().numOf(price), numFactory().numOf(amount));
+    public void addTrade(final Number tradeVolume, final Number tradePrice) {
+        addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
     }
 
     @Override
