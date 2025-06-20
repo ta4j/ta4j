@@ -78,16 +78,16 @@ public class ConvergenceDivergenceIndicatorTest {
         // for convergence and divergence
         // Use lower minStrength to match the actual correlation values in the test data
         isPosCon = new ConvergenceDivergenceIndicator(refPosCon, otherPosCon, 3,
-                ConvergenceDivergenceType.positiveConvergent, 0.5, 0.3);
+                ConvergenceDivergenceType.positiveConvergent, 0.57735, 0.3);
 
         isNegCon = new ConvergenceDivergenceIndicator(refNegCon, otherNegCon, 3,
-                ConvergenceDivergenceType.negativeConvergent, 0.5, 0.3);
+                ConvergenceDivergenceType.negativeConvergent, 0.57735, 0.3);
 
         isPosDiv = new ConvergenceDivergenceIndicator(refPosDiv, otherNegDiv, 3,
-                ConvergenceDivergenceType.positiveDivergent, 0.5, 0.3);
+                ConvergenceDivergenceType.positiveDivergent, 0.57735, 0.3);
 
         isNegDiv = new ConvergenceDivergenceIndicator(refNegDiv, otherPosDiv, 3,
-                ConvergenceDivergenceType.negativeDivergent, 0.5, 0.3);
+                ConvergenceDivergenceType.negativeDivergent, 0.57735, 0.3);
 
         // for strict convergence and divergence
         isPosConStrict = new ConvergenceDivergenceIndicator(refPosCon, otherPosDiv, 3,

@@ -143,7 +143,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * divergence and must be a number between "0.1" and "1.0": <br/>
      * <br/>
      * 0.1: very weak <br/>
-     * 0.8: strong (recommended) <br/>
+     * 0.57735: strong (recommended) <br/>
      * 1.0: very strong <br/>
      *
      * <br/>
