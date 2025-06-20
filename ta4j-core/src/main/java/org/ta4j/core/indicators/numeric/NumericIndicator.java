@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.indicators.statistics.Type;
+import org.ta4j.core.indicators.statistics.SampleType;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
@@ -253,15 +253,15 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link StandardDeviationIndicator} of {@code this}
      */
     public NumericIndicator stddev(final int barCount) {
-        return stddev(barCount, Type.SAMPLE);
+        return stddev(barCount, SampleType.SAMPLE);
     }
 
     /**
      * @param barCount the time frame
      * @return the {@link StandardDeviationIndicator} of {@code this}
      */
-    public NumericIndicator stddev(final int barCount, final Type type) {
-        return NumericIndicator.of(new StandardDeviationIndicator(this, barCount, type));
+    public NumericIndicator stddev(final int barCount, final SampleType sampleType) {
+        return NumericIndicator.of(new StandardDeviationIndicator(this, barCount, sampleType));
     }
 
     /**

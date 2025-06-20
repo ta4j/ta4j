@@ -39,7 +39,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final Type type;
+    private final SampleType sampleType;
 
     // State for Welford's algorithm
     private int previousIndex = -1;
@@ -48,11 +48,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     private Num runningM2;
     private int currentCount;
 
-    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final SampleType sampleType) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = Math.max(barCount, 1);
-        this.type = Objects.requireNonNull(type);
+        this.sampleType = Objects.requireNonNull(sampleType);
         this.previousValueIndicator = new PreviousValueIndicator(this.indicator, this.barCount);
         this.runningMean = numFactory().zero();
         this.runningM2 = numFactory().zero();
@@ -60,11 +60,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     }
 
     public static VarianceIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
-        return new VarianceIndicator(indicator, barCount, Type.SAMPLE);
+        return new VarianceIndicator(indicator, barCount, SampleType.SAMPLE);
     }
 
     public static VarianceIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
-        return new VarianceIndicator(indicator, barCount, Type.POPULATION);
+        return new VarianceIndicator(indicator, barCount, SampleType.POPULATION);
     }
 
     @Override
@@ -148,11 +148,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     }
 
     private boolean isSample() {
-        return this.type.isSample();
+        return this.sampleType.isSample();
     }
 
     private int getDivisor(final int windowSize) {
-        return switch (this.type) {
+        return switch (this.sampleType) {
         case SAMPLE -> windowSize - 1;
         case POPULATION -> windowSize;
         };
@@ -169,7 +169,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + this.barCount + " type: " + this.type;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + " sampleType: " + this.sampleType;
     }
 
 }

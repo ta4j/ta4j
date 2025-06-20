@@ -48,12 +48,12 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
      * @param barCount   the time frame
-     * @param type       sample/population
+     * @param sampleType sample/population
      */
     public CorrelationCoefficientIndicator(final Indicator<Num> indicator1, final Indicator<Num> indicator2,
-            final int barCount, final Type type) {
+            final int barCount, final SampleType sampleType) {
         super(indicator1);
-        final BiFunction<Indicator<Num>, Integer, VarianceIndicator> varianceProvider = type.isSample()
+        final BiFunction<Indicator<Num>, Integer, VarianceIndicator> varianceProvider = sampleType.isSample()
                 ? VarianceIndicator::ofSample
                 : VarianceIndicator::ofPopulation;
         this.variance1 = varianceProvider.apply(indicator1, barCount);
@@ -63,12 +63,12 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
     public static CorrelationCoefficientIndicator ofSample(final Indicator<Num> indicator1,
             final Indicator<Num> indicator2, final int barCount) {
-        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, Type.SAMPLE);
+        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, SampleType.SAMPLE);
     }
 
     public static CorrelationCoefficientIndicator ofPopulation(final Indicator<Num> indicator1,
             final Indicator<Num> indicator2, final int barCount) {
-        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, Type.POPULATION);
+        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, SampleType.POPULATION);
     }
 
     @Override

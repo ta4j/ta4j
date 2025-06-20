@@ -43,22 +43,22 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
-     * @param type      sample/population
+     * @param indicator  the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population
      */
-    public StandardDeviationIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
+    public StandardDeviationIndicator(final Indicator<Num> indicator, final int barCount, final SampleType sampleType) {
         super(indicator);
-        this.variance = type.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
+        this.variance = sampleType.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
                 : VarianceIndicator.ofPopulation(indicator, barCount);
     }
 
     public static StandardDeviationIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
-        return new StandardDeviationIndicator(indicator, barCount, Type.SAMPLE);
+        return new StandardDeviationIndicator(indicator, barCount, SampleType.SAMPLE);
     }
 
     public static StandardDeviationIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
-        return new StandardDeviationIndicator(indicator, barCount, Type.POPULATION);
+        return new StandardDeviationIndicator(indicator, barCount, SampleType.POPULATION);
     }
 
     @Override

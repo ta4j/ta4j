@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-public enum Type {
+public enum SampleType {
     SAMPLE, POPULATION;
 
     public boolean isSample() {
