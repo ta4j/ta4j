@@ -40,7 +40,7 @@ import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.CombineIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -105,23 +105,23 @@ public class CompareNumTypes {
     }
 
     public static Num test(BarSeries series) {
-        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        RSIIndicator rsi = new RSIIndicator(closePriceIndicator, 100);
-        MACDIndicator macdIndicator = new MACDIndicator(rsi);
-        EMAIndicator ema = new EMAIndicator(rsi, 12);
-        EMAIndicator emaLong = new EMAIndicator(rsi, 26);
-        CombineIndicator macdIndicator2 = CombineIndicator.minus(ema, emaLong);
+        final var closePriceIndicator = new ClosePriceIndicator(series);
+        final var rsi = new RSIIndicator(closePriceIndicator, 100);
+        final var macdIndicator = new MACDIndicator(rsi);
+        final var ema = new EMAIndicator(rsi, 12);
+        final var emaLong = new EMAIndicator(rsi, 26);
+        final var macdIndicator2 = BinaryOperation.difference(ema, emaLong);
 
-        Rule entry = new IsEqualRule(macdIndicator, macdIndicator2);
-        Rule exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));
-        Strategy strategy1 = new BaseStrategy(entry, exit); // enter/exit every tick
+        final var entry = new IsEqualRule(macdIndicator, macdIndicator2);
+        final var exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));
+        final var strategy1 = new BaseStrategy(entry, exit); // enter/exit every tick
 
-        long start = System.currentTimeMillis();
-        BarSeriesManager manager = new BarSeriesManager(series);
-        TradingRecord record1 = manager.run(strategy1);
-        GrossReturnCriterion totalReturn1 = new GrossReturnCriterion();
-        Num returnResult1 = totalReturn1.calculate(series, record1);
-        long end = System.currentTimeMillis();
+        final var start = System.currentTimeMillis();
+        final var manager = new BarSeriesManager(series);
+        final var record1 = manager.run(strategy1);
+        final var totalReturn1 = new GrossReturnCriterion();
+        final var returnResult1 = totalReturn1.calculate(series, record1);
+        final var end = System.currentTimeMillis();
 
         System.out.printf("[%s]\n" + "    -Time:   %s ms.\n" + "    -Profit: %s \n" + "    -Bars:   %s\n \n",
                 series.getName(), (end - start), returnResult1, series.getBarCount());
