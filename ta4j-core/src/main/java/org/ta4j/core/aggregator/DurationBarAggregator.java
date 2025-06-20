@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,7 +30,7 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -135,7 +135,7 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBarBuilder().timePeriod(timePeriod)
+                final Bar aggregatedBar = new TimeBarBuilder().timePeriod(timePeriod)
                         .endTime(beginTime.plus(timePeriod))
                         .openPrice(open)
                         .highPrice(high)

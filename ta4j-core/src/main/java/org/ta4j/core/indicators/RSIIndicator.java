@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,20 +24,24 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Relative strength index indicator.
  *
  * <p>
- * Computed using original Welles Wilder formula.
+ * Computed using the original Welles Wilder formula.
  */
 public class RSIIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;
+    private final int barCount;
 
     /**
      * Constructor.
@@ -49,10 +53,14 @@ public class RSIIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         // compute relative strength
         Num averageGain = averageGainIndicator.getValue(index);
         Num averageLoss = averageLossIndicator.getValue(index);
@@ -66,7 +74,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
-        return 0;
+    public int getCountOfUnstableBars() {
+        return this.barCount;
     }
 }

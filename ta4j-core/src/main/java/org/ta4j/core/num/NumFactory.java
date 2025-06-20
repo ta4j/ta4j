@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -84,7 +84,7 @@ public interface NumFactory {
      * @param num to test
      * @return true if made by this factory
      */
-    default boolean produces(Num num) {
+    default boolean produces(final Num num) {
         return num == null || one().getClass() == num.getClass() || num.equals(NaN.NaN);
     }
 }

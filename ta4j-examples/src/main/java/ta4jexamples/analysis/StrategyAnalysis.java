@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,9 +24,6 @@
 package ta4jexamples.analysis;
 
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.AverageReturnPerBarCriterion;
 import org.ta4j.core.criteria.EnterAndHoldCriterion;
@@ -37,8 +34,9 @@ import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
@@ -51,43 +49,50 @@ public class StrategyAnalysis {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        var series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
-        Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
+        var strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord = seriesManager.run(strategy);
+        var seriesManager = new BarSeriesManager(series);
+        var tradingRecord = seriesManager.run(strategy);
 
         /*
          * Analysis criteria
          */
 
-        // Total profit
-        ReturnCriterion totalReturn = new ReturnCriterion();
-        System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
-        // Number of bars
-        System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
-        // Average profit (per bar)
-        System.out.println(
-                "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
-        // Number of positions
-        System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
-        // Profitable position ratio
-        System.out.println("Winning positions ratio: "
-                + new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord));
-        // Maximum drawdown
-        System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
-        // Reward-risk ratio
-        System.out.println("Return over maximum drawdown: "
-                + new ReturnOverMaxDrawdownCriterion().calculate(series, tradingRecord));
-        // Total transaction cost
-        System.out.println("Total transaction cost (from $1000): "
-                + new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord));
-        // Buy-and-hold
-        System.out.println("Buy-and-hold return: "
-                + new EnterAndHoldCriterion(new ReturnCriterion()).calculate(series, tradingRecord));
-        // Total profit vs buy-and-hold
-        System.out.println("Custom strategy return vs buy-and-hold strategy return: "
-                + new VersusEnterAndHoldCriterion(totalReturn).calculate(series, tradingRecord));
+        var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
+        System.out.println("Gross return: " + grossReturn);
+
+        var netReturnCriterion = new NetReturnCriterion();
+        var netReturn = netReturnCriterion.calculate(series, tradingRecord);
+        System.out.println("Gross return: " + netReturn);
+
+        var numberOfBars = new NumberOfBarsCriterion().calculate(series, tradingRecord);
+        System.out.println("Number of bars: " + numberOfBars);
+
+        var AverageReturnPerBar = new AverageReturnPerBarCriterion().calculate(series, tradingRecord);
+        System.out.println("Average return per bar: " + AverageReturnPerBar);
+
+        var numberOfPositions = new NumberOfPositionsCriterion().calculate(series, tradingRecord);
+        System.out.println("Number of positions: " + numberOfPositions);
+
+        var positionsRatio = new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord);
+        System.out.println("Winning positions ratio: " + positionsRatio);
+
+        var maximumDrawdown = new MaximumDrawdownCriterion().calculate(series, tradingRecord);
+        System.out.println("Maximum drawdown: " + maximumDrawdown);
+
+        var returnOverMaxDrawdown = new ReturnOverMaxDrawdownCriterion().calculate(series, tradingRecord);
+        System.out.println("Return over maximum drawdown: " + returnOverMaxDrawdown);
+
+        var linearTransactionCost = new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord);
+        System.out.println("Total transaction cost (from $1000): " + linearTransactionCost);
+
+        var enterAndHold = EnterAndHoldCriterion.EnterAndHoldReturnCriterion().calculate(series, tradingRecord);
+        System.out.println("Buy-and-hold return: " + enterAndHold);
+
+        var versusEnterAndHold = new VersusEnterAndHoldCriterion(netReturnCriterion).calculate(series, tradingRecord);
+        System.out.println("Custom strategy return vs buy-and-hold strategy return: " + versusEnterAndHold);
     }
+
 }

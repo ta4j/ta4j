@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,6 @@ package org.ta4j.core.criteria;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
 
@@ -36,8 +35,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -52,7 +51,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var buyAndHold = getCriterion(new ReturnCriterion());
+        var buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, position));
     }
 
@@ -60,7 +59,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
     public void calculateWithNoPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
-        var buyAndHold = getCriterion(new ReturnCriterion());
+        var buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
@@ -72,7 +71,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        var buyAndHold = getCriterion(new ReturnCriterion());
+        var buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -82,15 +81,15 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        var buyAndHold = getCriterion(new ReturnCriterion());
+        var buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithAverageProfit() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN),
-                Trade.buyAt(2, NaN, NaN), Trade.sellAt(5, NaN, NaN));
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         var buyAndHold = getCriterion(new AverageReturnPerBarCriterion());
 
@@ -106,7 +105,8 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         var buyAndHold = getCriterion(new NumberOfBarsCriterion());
 
-        assertNumEquals(6d / 6d, buyAndHold.calculate(series, tradingRecord));
+        // 6d / 6d
+        assertNumEquals(1.0, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -121,12 +121,12 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // vs buy and hold of pnl with amount of 1
         var amount1 = BigDecimal.valueOf(1);
-        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), amount1);
+        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount1);
         var vsBuyAndHoldPnlValue1 = vsBuyAndHoldPnl1.calculate(series, tradingRecord);
 
         // vs buy and hold of pnl with amount of 10
         var amount2 = BigDecimal.valueOf(10);
-        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new ProfitLossCriterion(), amount2);
+        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount2);
         var vsBuyAndHoldPnlValue2 = vsBuyAndHoldPnl2.calculate(series, tradingRecord);
 
         assertNumEquals(3 * 1d, vsBuyAndHoldPnlValue1);
@@ -139,7 +139,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void betterThan() {
-        var criterion = getCriterion(new ReturnCriterion());
+        var criterion = getCriterion(new GrossReturnCriterion());
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }

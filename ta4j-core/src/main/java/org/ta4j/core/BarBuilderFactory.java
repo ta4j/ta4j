@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,9 +24,15 @@
 package org.ta4j.core;
 
 /**
- * A factory that provides builders of bars.
+ * A factory that provides a builder for a bar.
  */
 public interface BarBuilderFactory {
 
+    /**
+     * Constructor.
+     *
+     * @param series the bar series to which the created bar should be added
+     * @return the bar builder
+     */
     BarBuilder createBarBuilder(BarSeries series);
 }

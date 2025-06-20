@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,6 +26,7 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
@@ -42,7 +43,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private boolean constrained;
     private int maxBarCount;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new BaseBarBuilderFactory();
+    private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
 
     /** Constructor to build a {@code BaseBarSeries}. */
     public BaseBarSeriesBuilder() {

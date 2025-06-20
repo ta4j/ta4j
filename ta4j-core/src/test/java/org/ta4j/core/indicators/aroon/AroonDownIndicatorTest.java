@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -46,6 +46,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void init() {
+        // FB, daily, Sept 19, 2017
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();
         data.barBuilder().openPrice(168.28).highPrice(169.87).lowPrice(167.15).closePrice(169.64).volume(0).add();
         data.barBuilder().openPrice(168.84).highPrice(169.36).lowPrice(168.20).closePrice(168.71).volume(0).add();
@@ -66,10 +67,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(172.26).highPrice(172.28).lowPrice(170.50).closePrice(170.96).volume(0).add();
         data.barBuilder().openPrice(170.88).highPrice(172.34).lowPrice(170.26).closePrice(171.64).volume(0).add();
         data.barBuilder().openPrice(171.85).highPrice(172.07).lowPrice(169.34).closePrice(170.01).volume(0).add();
-        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add(); // FB,
-                                                                                                                   // daily,
-                                                                                                                   // 9.19.'17
-
+        data.barBuilder().openPrice(170.75).highPrice(172.56).lowPrice(170.36).closePrice(172.52).volume(0).add();
     }
 
     @Test

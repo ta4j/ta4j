@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -69,6 +69,10 @@ public class BaseBar implements Bar {
     /**
      * Constructor.
      *
+     * <p>
+     * The {@link #beginTime} will be calculated by {@link #endTime} -
+     * {@link #timePeriod}.
+     *
      * @param timePeriod the time period
      * @param endTime    the end time of the bar period (in UTC)
      * @param openPrice  the open price of the bar period
@@ -78,12 +82,13 @@ public class BaseBar implements Bar {
      * @param volume     the total traded volume of the bar period
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
+     * @throws NullPointerException if {@link #endTime} or {@link #timePeriod} is
+     *                              {@code null}
      */
-    BaseBar(Duration timePeriod, Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+    public BaseBar(Duration timePeriod, Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
             Num volume, Num amount, long trades) {
-        checkTimeArguments(timePeriod, endTime);
-        this.timePeriod = timePeriod;
-        this.endTime = endTime;
+        this.timePeriod = Objects.requireNonNull(timePeriod, "Time period cannot be null");
+        this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
         this.beginTime = endTime.minus(timePeriod);
         this.openPrice = openPrice;
         this.highPrice = highPrice;
@@ -94,19 +99,11 @@ public class BaseBar implements Bar {
         this.trades = trades;
     }
 
-    /**
-     * @return the time period of the bar (must be the same for all bars within the
-     *         same {@code BarSeries})
-     */
     @Override
     public Duration getTimePeriod() {
         return timePeriod;
     }
 
-    /**
-     * @return the begin timestamp of the bar period (derived by {@link #endTime} -
-     *         {@link #timePeriod})
-     */
     @Override
     public Instant getBeginTime() {
         return beginTime;
@@ -183,16 +180,6 @@ public class BaseBar implements Bar {
         return String.format(
                 "{end time: %1s, close price: %2s, open price: %3s, low price: %4s high price: %5s, volume: %6s}",
                 endTime, closePrice, openPrice, lowPrice, highPrice, volume);
-    }
-
-    /**
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar
-     * @throws NullPointerException if one of the arguments is null
-     */
-    private static void checkTimeArguments(Duration timePeriod, Instant endTime) {
-        Objects.requireNonNull(timePeriod, "Time period cannot be null");
-        Objects.requireNonNull(endTime, "End time cannot be null");
     }
 
     @Override

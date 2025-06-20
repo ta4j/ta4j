@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,7 +32,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -56,17 +57,19 @@ import org.ta4j.core.num.Num;
  */
 public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
-    /** The amount to be used to hold the entry position */
+    /**
+     * The amount to be used to hold the entry position
+     */
     private final BigDecimal amount;
     private final TradeType tradeType;
     private final AnalysisCriterion criterion;
 
     /**
-     * The {@link ReturnCriterion} (with base) from a buy-and-hold strategy with an
-     * {@link #amount} of {@code 1}.
+     * The {@link NetReturnCriterion} (with base) from a buy-and-hold strategy with
+     * an {@link #amount} of {@code 1}.
      */
     public static EnterAndHoldCriterion EnterAndHoldReturnCriterion() {
-        return new EnterAndHoldCriterion(TradeType.BUY, new ReturnCriterion());
+        return new EnterAndHoldCriterion(TradeType.BUY, new NetReturnCriterion());
     }
 
     /**
@@ -129,9 +132,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return series.numFactory().one();
         }
-        var beginIndex = tradingRecord.getStartIndex(series);
-        var endIndex = tradingRecord.getEndIndex(series);
-        return criterion.calculate(series, createEnterAndHoldTradingRecord(series, beginIndex, endIndex));
+        return criterion.calculate(series, createEnterAndHoldTradingRecord(series, tradingRecord));
     }
 
     @Override
@@ -147,12 +148,17 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         return position;
     }
 
-    private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        var fakeRecord = new BaseTradingRecord(tradeType);
-        var entryAmount = series.numFactory().numOf(amount);
-        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), entryAmount);
-        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), entryAmount);
-        return fakeRecord;
+    private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, TradingRecord source) {
+        var txCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(), ZeroCostModel::new);
+        var holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
+
+        var record = new BaseTradingRecord(tradeType, txCostModel, holdingCostModel);
+        var amountNum = series.numFactory().numOf(amount);
+        var beginIndex = source.getStartIndex(series);
+        var endIndex = source.getEndIndex(series);
+        record.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), amountNum);
+        record.exit(endIndex, series.getBar(endIndex).getClosePrice(), amountNum);
+        return record;
     }
 
     @Override

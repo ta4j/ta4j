@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,9 +26,14 @@ package org.ta4j.core.num;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 /**
  * Representation of {@link Double}. High performance, lower precision.
+ *
+ * *
+ * <p>
+ * It uses a precision of up to {@value #EPS} decimal places.
  *
  * @apiNote the delegate should never become a NaN value. No self NaN checks are
  *          provided.
@@ -48,8 +53,8 @@ public class DoubleNum implements Num {
     private final static double EPS = 0.00001; // precision
     private final double delegate;
 
-    private DoubleNum(double val) {
-        delegate = val;
+    private DoubleNum(final double val) {
+        this.delegate = val;
     }
 
     /**
@@ -58,7 +63,7 @@ public class DoubleNum implements Num {
      * @param val the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(String val) {
+    public static DoubleNum valueOf(final String val) {
         return new DoubleNum(Double.parseDouble(val));
     }
 
@@ -68,7 +73,7 @@ public class DoubleNum implements Num {
      * @param i the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(Number i) {
+    public static DoubleNum valueOf(final Number i) {
         return new DoubleNum(i.doubleValue());
     }
 
@@ -82,7 +87,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num} whose value is equal to or approximately equal to the
      *         value of {@code val}.
      */
-    public static DoubleNum valueOf(DecimalNum val) {
+    public static DoubleNum valueOf(final DecimalNum val) {
         return valueOf(val.toString());
     }
 
@@ -92,7 +97,7 @@ public class DoubleNum implements Num {
      * @param val the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(int val) {
+    public static DoubleNum valueOf(final int val) {
         return new DoubleNum(val);
     }
 
@@ -102,7 +107,7 @@ public class DoubleNum implements Num {
      * @param val the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(long val) {
+    public static DoubleNum valueOf(final long val) {
         return new DoubleNum(val);
     }
 
@@ -112,7 +117,7 @@ public class DoubleNum implements Num {
      * @param val the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(short val) {
+    public static DoubleNum valueOf(final short val) {
         return new DoubleNum(val);
     }
 
@@ -126,7 +131,7 @@ public class DoubleNum implements Num {
      * @return the {@code Num} whose value is equal to or approximately equal to the
      *         value of {@code val}.
      */
-    public static DoubleNum valueOf(float val) {
+    public static DoubleNum valueOf(final float val) {
         return new DoubleNum(val);
     }
 
@@ -142,180 +147,180 @@ public class DoubleNum implements Num {
 
     @Override
     public Double getDelegate() {
-        return delegate;
+        return this.delegate;
     }
 
     @Override
     public BigDecimal bigDecimalValue() {
-        return Double.isNaN(delegate) || Double.isInfinite(delegate) ? null : BigDecimal.valueOf(delegate);
+        return Double.isNaN(this.delegate) || Double.isInfinite(this.delegate) ? null
+                : BigDecimal.valueOf(this.delegate);
     }
 
     @Override
-    public Num plus(Num augend) {
-        return augend.isNaN() ? NaN : new DoubleNum(delegate + ((DoubleNum) augend).delegate);
+    public Num plus(final Num augend) {
+        return augend.isNaN() ? NaN : new DoubleNum(this.delegate + ((DoubleNum) augend).delegate);
     }
 
     @Override
-    public Num minus(Num subtrahend) {
-        return subtrahend.isNaN() ? NaN : new DoubleNum(delegate - ((DoubleNum) subtrahend).delegate);
+    public Num minus(final Num subtrahend) {
+        return subtrahend.isNaN() ? NaN : new DoubleNum(this.delegate - ((DoubleNum) subtrahend).delegate);
     }
 
     @Override
-    public Num multipliedBy(Num multiplicand) {
-        return multiplicand.isNaN() ? NaN : new DoubleNum(delegate * ((DoubleNum) multiplicand).delegate);
+    public Num multipliedBy(final Num multiplicand) {
+        return multiplicand.isNaN() ? NaN : new DoubleNum(this.delegate * ((DoubleNum) multiplicand).delegate);
     }
 
     @Override
-    public Num dividedBy(Num divisor) {
+    public Num dividedBy(final Num divisor) {
         if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
-        DoubleNum divisorD = (DoubleNum) divisor;
-        return new DoubleNum(delegate / divisorD.delegate);
+        final DoubleNum divisorD = (DoubleNum) divisor;
+        return new DoubleNum(this.delegate / divisorD.delegate);
     }
 
     @Override
-    public Num remainder(Num divisor) {
-        return divisor.isNaN() ? NaN : new DoubleNum(delegate % ((DoubleNum) divisor).delegate);
+    public Num remainder(final Num divisor) {
+        return divisor.isNaN() ? NaN : new DoubleNum(this.delegate % ((DoubleNum) divisor).delegate);
     }
 
     @Override
     public Num floor() {
-        return new DoubleNum(Math.floor(delegate));
+        return new DoubleNum(Math.floor(this.delegate));
     }
 
     @Override
     public Num ceil() {
-        return new DoubleNum(Math.ceil(delegate));
+        return new DoubleNum(Math.ceil(this.delegate));
     }
 
     @Override
-    public Num pow(int n) {
-        return new DoubleNum(Math.pow(delegate, n));
+    public Num pow(final int n) {
+        return new DoubleNum(Math.pow(this.delegate, n));
     }
 
     @Override
-    public Num pow(Num n) {
-        return new DoubleNum(Math.pow(delegate, n.doubleValue()));
+    public Num pow(final Num n) {
+        return new DoubleNum(Math.pow(this.delegate, n.doubleValue()));
     }
 
     @Override
     public Num sqrt() {
-        if (delegate < 0) {
+        if (this.delegate < 0) {
             return NaN;
         }
-        return new DoubleNum(Math.sqrt(delegate));
+        return new DoubleNum(Math.sqrt(this.delegate));
     }
 
     @Override
-    public Num sqrt(int precision) {
+    public Num sqrt(final MathContext mathContext) {
         return sqrt();
     }
 
     @Override
     public Num abs() {
-        return new DoubleNum(Math.abs(delegate));
+        return new DoubleNum(Math.abs(this.delegate));
     }
 
     @Override
     public Num negate() {
-        return new DoubleNum(-delegate);
+        return new DoubleNum(-this.delegate);
     }
 
     @Override
     public boolean isZero() {
-        return delegate == 0;
+        return this.delegate == 0;
     }
 
     @Override
     public boolean isPositive() {
-        return delegate > 0;
+        return this.delegate > 0;
     }
 
     @Override
     public boolean isPositiveOrZero() {
-        return delegate >= 0;
+        return this.delegate >= 0;
     }
 
     @Override
     public boolean isNegative() {
-        return delegate < 0;
+        return this.delegate < 0;
     }
 
     @Override
     public boolean isNegativeOrZero() {
-        return delegate <= 0;
+        return this.delegate <= 0;
     }
 
     @Override
-    public boolean isEqual(Num other) {
-        return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
+    public boolean isEqual(final Num other) {
+        return !other.isNaN() && this.delegate == ((DoubleNum) other).delegate;
     }
 
     @Override
     public Num log() {
-        if (delegate <= 0) {
+        if (this.delegate <= 0) {
             return NaN;
         }
-        return new DoubleNum(Math.log(delegate));
+        return new DoubleNum(Math.log(this.delegate));
     }
 
     @Override
-    public boolean isGreaterThan(Num other) {
+    public boolean isGreaterThan(final Num other) {
         return !other.isNaN() && compareTo(other) > 0;
     }
 
     @Override
-    public boolean isGreaterThanOrEqual(Num other) {
+    public boolean isGreaterThanOrEqual(final Num other) {
         return !other.isNaN() && compareTo(other) > -1;
     }
 
     @Override
-    public boolean isLessThan(Num other) {
+    public boolean isLessThan(final Num other) {
         return !other.isNaN() && compareTo(other) < 0;
     }
 
     @Override
-    public boolean isLessThanOrEqual(Num other) {
+    public boolean isLessThanOrEqual(final Num other) {
         return !other.isNaN() && compareTo(other) < 1;
     }
 
     @Override
-    public Num min(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.min(delegate, ((DoubleNum) other).delegate));
+    public Num min(final Num other) {
+        return other.isNaN() ? NaN : new DoubleNum(Math.min(this.delegate, ((DoubleNum) other).delegate));
     }
 
     @Override
-    public Num max(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.max(delegate, ((DoubleNum) other).delegate));
+    public Num max(final Num other) {
+        return other.isNaN() ? NaN : new DoubleNum(Math.max(this.delegate, ((DoubleNum) other).delegate));
     }
 
     @Override
     public int hashCode() {
-        return ((Double) (delegate)).hashCode();
+        return ((Double) (this.delegate)).hashCode();
     }
 
     @Override
     public String toString() {
-        return Double.toString(delegate);
+        return Double.toString(this.delegate);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof DoubleNum)) {
+    public boolean equals(final Object obj) {
+        if (!(obj instanceof final DoubleNum doubleNumObj)) {
             return false;
         }
 
-        DoubleNum doubleNumObj = (DoubleNum) obj;
-        return Math.abs(delegate - doubleNumObj.delegate) < EPS;
+        return Math.abs(this.delegate - doubleNumObj.delegate) < EPS;
     }
 
     @Override
-    public int compareTo(Num o) {
+    public int compareTo(final Num o) {
         if (this == NaN || o == NaN) {
             return 0;
         }
-        DoubleNum doubleNumO = (DoubleNum) o;
-        return Double.compare(delegate, doubleNumO.delegate);
+        final DoubleNum doubleNumO = (DoubleNum) o;
+        return Double.compare(this.delegate, doubleNumO.delegate);
     }
 }

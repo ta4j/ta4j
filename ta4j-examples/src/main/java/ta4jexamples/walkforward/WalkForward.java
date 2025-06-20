@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,7 +36,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -174,7 +174,7 @@ public class WalkForward {
         Map<Strategy, String> strategies = buildStrategiesMap(series);
 
         // The analysis criterion
-        AnalysisCriterion returnCriterion = new ReturnCriterion();
+        AnalysisCriterion returnCriterion = new GrossReturnCriterion();
 
         for (BarSeries slice : subseries) {
             // For each sub-series...

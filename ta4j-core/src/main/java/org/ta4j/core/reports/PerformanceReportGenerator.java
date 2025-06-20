@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,10 +26,10 @@ package org.ta4j.core.reports;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.LossCriterion;
-import org.ta4j.core.criteria.pnl.ProfitCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.criteria.pnl.NetLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,10 +40,10 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
 
     @Override
     public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new ProfitCriterion(false).calculate(series, tradingRecord);
-        final Num netLoss = new LossCriterion(false).calculate(series, tradingRecord);
+        final Num pnl = new NetProfitLossCriterion().calculate(series, tradingRecord);
+        final Num pnlPercentage = new NetProfitLossPercentageCriterion().calculate(series, tradingRecord);
+        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
+        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
         return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
     }
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2024 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -250,7 +250,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
     /** @return {@link #barCount} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
@@ -260,7 +260,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveConvergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsRising.and(otherIsRising)).isSatisfied(index);
     }
@@ -271,7 +271,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeConvergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
     }
@@ -282,7 +282,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsRising.and(otherIsFalling)).isSatisfied(index);
     }
@@ -293,7 +293,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsFalling.and(otherIsRising)).isSatisfied(index);
     }
@@ -351,15 +351,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative divergent
      */
     private Boolean calculateNegativeDivergence(int index) {
-
+        Num minusOne = getBarSeries().numFactory().minusOne();
         var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index)
-                .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().numOf(-1)));
+        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(minusOne));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
             Num slope = calculateSlopeRel(index);
-            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().numOf(-1)));
+            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(minusOne));
         }
 
         return false;
