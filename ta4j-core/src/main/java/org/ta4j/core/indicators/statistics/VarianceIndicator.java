@@ -27,6 +27,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -40,18 +41,22 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Type type;
 
-    // State for sequential calculation
+    // State for Welford's algorithm
     private int previousIndex = -1;
-    private Num previousSum;
-    private Num previousSumOfSquares;
+    private PreviousValueIndicator previousValueIndicator;
+    private Num runningMean;
+    private Num runningM2;
+    private int currentCount;
 
     public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final Type type) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = Math.max(barCount, 1);
         this.type = Objects.requireNonNull(type);
-        this.previousSum = numFactory().zero();
-        this.previousSumOfSquares = numFactory().zero();
+        this.previousValueIndicator = new PreviousValueIndicator(this.indicator, this.barCount);
+        this.runningMean = numFactory().zero();
+        this.runningM2 = numFactory().zero();
+        this.currentCount = 0;
     }
 
     public static VarianceIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
@@ -71,25 +76,31 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     }
 
     private Num fastPath(final int index) {
-        // Add new value
         final var newValue = this.indicator.getValue(index);
-        var newSum = this.previousSum.plus(newValue);
-        var newSumOfSquares = this.previousSumOfSquares.plus(newValue.pow(2));
-
-        // Remove oldest value if window is full
         final var windowSize = Math.min(this.barCount, index + 1);
+
         if (windowSize == this.barCount && index >= this.barCount) {
-            final Num oldValue = this.indicator.getValue(index - this.barCount);
-            newSum = newSum.minus(oldValue);
-            newSumOfSquares = newSumOfSquares.minus(oldValue.pow(2));
+            // Remove old value using Welford's algorithm
+            final var oldValue = this.previousValueIndicator.getValue(index);
+            if (!oldValue.isNaN()) {
+                final var oldDelta = oldValue.minus(this.runningMean);
+                this.runningMean = this.runningMean.minus(oldDelta.dividedBy(numFactory().numOf(windowSize - 1)));
+                final var newDelta = oldValue.minus(this.runningMean);
+                this.runningM2 = this.runningM2.minus(oldDelta.multipliedBy(newDelta));
+            }
+        } else {
+            this.currentCount++;
         }
 
-        // Update state
-        this.previousIndex = index;
-        this.previousSum = newSum;
-        this.previousSumOfSquares = newSumOfSquares;
+        // Add new value using Welford's algorithm
+        final var delta = newValue.minus(this.runningMean);
+        this.runningMean = this.runningMean.plus(delta.dividedBy(numFactory().numOf(windowSize)));
+        final var delta2 = newValue.minus(this.runningMean);
+        this.runningM2 = this.runningM2.plus(delta.multipliedBy(delta2));
 
-        return calculateVariance(windowSize, newSum, newSumOfSquares);
+        this.previousIndex = index;
+
+        return calculateWelfordVariance(windowSize);
     }
 
     private Num slowPath(final int index) {
@@ -100,35 +111,40 @@ public class VarianceIndicator extends CachedIndicator<Num> {
             return numFactory().zero();
         }
 
-        // Calculate sums
-        var sum = numFactory().zero();
-        var sumOfSquares = numFactory().zero();
+        // Reset Welford state and recalculate from scratch
+        this.runningMean = numFactory().zero();
+        this.runningM2 = numFactory().zero();
+        this.currentCount = 0;
 
+        // Apply Welford's algorithm to current window
         for (var i = startIndex; i <= index; i++) {
             final Num value = this.indicator.getValue(i);
-            sum = sum.plus(value);
-            sumOfSquares = sumOfSquares.plus(value.pow(2));
+            this.currentCount++;
+
+            final var delta = value.minus(this.runningMean);
+            this.runningMean = this.runningMean.plus(delta.dividedBy(numFactory().numOf(this.currentCount)));
+            final var delta2 = value.minus(this.runningMean);
+            this.runningM2 = this.runningM2.plus(delta.multipliedBy(delta2));
         }
 
-        // Update state
         this.previousIndex = index;
-        this.previousSum = sum;
-        this.previousSumOfSquares = sumOfSquares;
 
-        return calculateVariance(windowSize, sum, sumOfSquares);
+        return calculateWelfordVariance(windowSize);
     }
 
-    private Num calculateVariance(final int windowSize, final Num sum, final Num sumOfSquares) {
+    private Num calculateWelfordVariance(final int windowSize) {
         if (windowSize < 2 && isSample()) {
             return numFactory().zero();
         }
 
-        // Calculate variance using sum of squares formula
-        // Variance = (sum(x^2) - (sum(x)^2)/n) / (n or n-1)
-        final var variance = sumOfSquares.minus(sum.pow(2).dividedBy(numFactory().numOf(windowSize)));
+        // Welford's algorithm: variance = M2 / (n-1) for sample, M2 / n for population
         final int divisor = getDivisor(windowSize);
 
-        return variance.dividedBy(numFactory().numOf(divisor));
+        if (divisor <= 0) {
+            return numFactory().zero();
+        }
+
+        return this.runningM2.dividedBy(numFactory().numOf(divisor));
     }
 
     private boolean isSample() {
