@@ -106,7 +106,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testPositiveConvergent() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isPosCon.getValue(0));
+        assertFalse(isPosCon.getValue(1));
+        assertFalse(isPosCon.getValue(2));
+
+        assertTrue(isPosCon.getValue(3));
         assertTrue(isPosCon.getValue(4));
         assertTrue(isPosCon.getValue(5));
         assertFalse(isPosCon.getValue(6));
@@ -117,7 +121,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testNegativeConvergent() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isNegCon.getValue(0));
+        assertFalse(isNegCon.getValue(1));
+        assertFalse(isNegCon.getValue(2));
+
+        assertTrue(isNegCon.getValue(3));
         assertTrue(isNegCon.getValue(3));
         assertFalse(isNegCon.getValue(4));
         assertFalse(isNegCon.getValue(5));
@@ -129,7 +137,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testPositiveDivergent() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isPosDiv.getValue(0));
+        assertFalse(isPosDiv.getValue(1));
+        assertFalse(isPosDiv.getValue(2));
+
+        assertTrue(isPosDiv.getValue(3));
         assertTrue(isPosDiv.getValue(3));
         assertFalse(isPosDiv.getValue(4));
         assertTrue(isPosDiv.getValue(5));
@@ -141,7 +153,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testNegativeDivergent() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isNegDiv.getValue(0));
+        assertFalse(isNegDiv.getValue(1));
+        assertFalse(isNegDiv.getValue(2));
+
+        assertTrue(isNegDiv.getValue(3));
         assertTrue(isNegDiv.getValue(3));
         assertTrue(isNegDiv.getValue(4));
         assertFalse(isNegDiv.getValue(5));
@@ -153,7 +169,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testPositiveConvergentStrict() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isPosConStrict.getValue(0));
+        assertFalse(isPosConStrict.getValue(1));
+        assertFalse(isPosConStrict.getValue(2));
+
+        assertTrue(isPosConStrict.getValue(3));
         assertTrue(isPosConStrict.getValue(3));
         assertTrue(isPosConStrict.getValue(4));
         assertTrue(isPosConStrict.getValue(5));
@@ -165,7 +185,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testNegativeConvergentStrict() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isNegConStrict.getValue(0));
+        assertFalse(isNegConStrict.getValue(1));
+        assertFalse(isNegConStrict.getValue(2));
+
+        assertTrue(isNegConStrict.getValue(3));
         assertTrue(isNegConStrict.getValue(3));
         assertTrue(isNegConStrict.getValue(4));
         assertTrue(isNegConStrict.getValue(5));
@@ -177,7 +201,11 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testPositiveDivergentStrict() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isPosDivStrict.getValue(0));
+        assertFalse(isPosDivStrict.getValue(1));
+        assertFalse(isPosDivStrict.getValue(2));
+
+        assertTrue(isPosDivStrict.getValue(3));
         assertTrue(isPosDivStrict.getValue(3));
         assertTrue(isPosDivStrict.getValue(4));
         assertTrue(isPosDivStrict.getValue(5));
@@ -189,7 +217,10 @@ public class ConvergenceDivergenceIndicatorTest {
 
     @Test
     public void testNegativeDivergentStrict() {
-        // Skip unstable bars (first barCount-1 bars)
+        assertFalse(isNegDivStrict.getValue(0));
+        assertFalse(isNegDivStrict.getValue(1));
+        assertFalse(isNegDivStrict.getValue(2));
+
         assertTrue(isNegDivStrict.getValue(3));
         assertTrue(isNegDivStrict.getValue(4));
         assertTrue(isNegDivStrict.getValue(5));
