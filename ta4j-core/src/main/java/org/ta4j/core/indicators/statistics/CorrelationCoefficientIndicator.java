@@ -73,9 +73,9 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(final int index) {
-        final Num cov = this.covariance.getValue(index);
-        final Num var1 = this.variance1.getValue(index);
-        final Num var2 = this.variance2.getValue(index);
+        final Num cov = covariance.getValue(index);
+        final Num var1 = variance1.getValue(index);
+        final Num var2 = variance2.getValue(index);
         final Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(multipliedSqrt);
     }

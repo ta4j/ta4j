@@ -68,12 +68,12 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(final int index) {
         // z-score = (ref - mean) / sd
-        return (this.ref.getValue(index).minus(this.mean.getValue(index))).dividedBy(this.sd.getValue(index));
+        return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return barCount;
     }
 
     @Override
