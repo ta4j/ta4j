@@ -371,7 +371,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private Num calculateSlopeRel(int index) {
         SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
         int firstIndex = Math.max(0, index - barCount + 1);
-        return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex))).dividedBy(slrRef.getValue(index));
+        Num currentValue = slrRef.getValue(index);
+        Num firstValue = slrRef.getValue(firstIndex);
+
+        if (currentValue.isZero()) {
+            return getBarSeries().numFactory().zero();
+        }
+
+        return currentValue.minus(firstValue).dividedBy(currentValue);
     }
 
 }
