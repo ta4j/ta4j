@@ -23,40 +23,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+public enum SampleType {
+    SAMPLE, POPULATION;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
-
-public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    private BarSeries data;
-
-    public SigmaIndicatorTest(final NumFactory numFunction) {
-        super(numFunction);
-    }
-
-    @Before
-    public void setUp() {
-        this.data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).withData(1, 2, 3, 4, 5, 6).build();
-    }
-
-    @Test
-    public void test() {
-
-        final var zScore = SigmaIndicator.ofPopulation(new ClosePriceIndicator(this.data), 5);
-
-        assertNumEquals(1.0, zScore.getValue(1));
-        assertNumEquals(1.224744871391589, zScore.getValue(2));
-        assertNumEquals(1.34164078649987387, zScore.getValue(3));
-        assertNumEquals(1.414213562373095, zScore.getValue(4));
-        assertNumEquals(1.414213562373095, zScore.getValue(5));
+    public boolean isSample() {
+        return this == SAMPLE;
     }
 }

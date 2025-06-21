@@ -143,7 +143,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * divergence and must be a number between "0.1" and "1.0": <br/>
      * <br/>
      * 0.1: very weak <br/>
-     * 0.8: strong (recommended) <br/>
+     * 0.57735: strong (recommended) <br/>
      * 1.0: very strong <br/>
      *
      * <br/>
@@ -185,7 +185,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type) {
-        this(ref, other, barCount, type, 0.8, 0.3);
+        this(ref, other, barCount, type, 0.57735, 0.3);
     }
 
     /**
@@ -303,7 +303,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if positive convergent
      */
     private Boolean calculatePositiveConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
@@ -317,7 +317,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative convergent
      */
     private Boolean calculateNegativeConvergence(int index) {
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
@@ -333,7 +333,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergence(int index) {
 
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isDivergent = cc.getValue(index)
                 .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().minusOne()));
 
@@ -351,9 +351,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative divergent
      */
     private Boolean calculateNegativeDivergence(int index) {
-
         Num minusOne = getBarSeries().numFactory().minusOne();
-        CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+        var cc = CorrelationCoefficientIndicator.ofSample(ref, other, barCount);
         boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(minusOne));
 
         if (isDivergent) {
@@ -372,7 +371,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private Num calculateSlopeRel(int index) {
         SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
         int firstIndex = Math.max(0, index - barCount + 1);
-        return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex))).dividedBy(slrRef.getValue(index));
+        Num currentValue = slrRef.getValue(index);
+        Num firstValue = slrRef.getValue(firstIndex);
+
+        if (currentValue.isZero()) {
+            return getBarSeries().numFactory().zero();
+        }
+
+        return currentValue.minus(firstValue).dividedBy(currentValue);
     }
 
 }
