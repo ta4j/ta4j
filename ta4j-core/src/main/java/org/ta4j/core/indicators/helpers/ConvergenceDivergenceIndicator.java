@@ -185,7 +185,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type) {
-        this(ref, other, barCount, type, 0.8, 0.3);
+        this(ref, other, barCount, type, 0.57735, 0.3);
     }
 
     /**
