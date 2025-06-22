@@ -1,8 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
+ * Copyright (c) 2017-2025 Ta4j Organization & respective authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -24,7 +23,10 @@
 package org.ta4j.core.indicators.statistics;
 
 public enum SampleType {
-    SAMPLE, POPULATION;
+    /** A subset group under study. */
+    SAMPLE,
+    /** The entire group under study. */
+    POPULATION;
 
     public boolean isSample() {
         return this == SAMPLE;
