@@ -13,6 +13,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
 - Fixed strict rules of `ConvergenceDivergenceIndicator`
 - Fixed calculation for `VersusEnterAndHoldCriterion`
+- swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
@@ -20,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
+- Bars can now be built by `beginTime` instead of `endTime`
 
 
 ## 0.18 (released May 15, 2025)
