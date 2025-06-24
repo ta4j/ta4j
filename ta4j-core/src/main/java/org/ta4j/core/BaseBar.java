@@ -69,12 +69,21 @@ public class BaseBar implements Bar {
     /**
      * Constructor.
      *
-     * <p>
-     * The {@link #beginTime} will be calculated by {@link #endTime} -
-     * {@link #timePeriod}.
+     * <ul>
+     * <li>If {@link #timePeriod} is not provided, it will be calculated as
+     * {@link #endTime} - {@link #beginTime}.
+     * <li>If {@link #beginTime} is not provided, it will be calculated as
+     * {@link #endTime} - {@link #timePeriod}.
+     * <li>If {@link #endTime} is not provided, it will be calculated as
+     * {@link #beginTime} + {@link #timePeriod}.
+     * </ul>
      *
-     * @param timePeriod the time period
-     * @param endTime    the end time of the bar period (in UTC)
+     * @param timePeriod the time period (optional if beginTime and endTime is
+     *                   given)
+     * @param beginTime  the begin time of the bar period (in UTC) (optional if
+     *                   endTime is given)
+     * @param endTime    the end time of the bar period (in UTC) (optional if
+     *                   beginTime is given)
      * @param openPrice  the open price of the bar period
      * @param highPrice  the highest price of the bar period
      * @param lowPrice   the lowest price of the bar period
@@ -82,14 +91,43 @@ public class BaseBar implements Bar {
      * @param volume     the total traded volume of the bar period
      * @param amount     the total traded amount of the bar period
      * @param trades     the number of trades of the bar period
-     * @throws NullPointerException if {@link #endTime} or {@link #timePeriod} is
-     *                              {@code null}
+     * @throws NullPointerException     if given or calculated {@link #timePeriod},
+     *                                  {@link #beginTime} or {@link #endTime}
+     *                                  values are {@code null}
+     * @throws IllegalArgumentException If the calculated timePeriod between the
+     *                                  provided beginTime and endTime does not
+     *                                  match the provided timePeriod
      */
-    public BaseBar(Duration timePeriod, Instant endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
-            Num volume, Num amount, long trades) {
-        this.timePeriod = Objects.requireNonNull(timePeriod, "Time period cannot be null");
-        this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
-        this.beginTime = endTime.minus(timePeriod);
+    public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
+            Num closePrice, Num volume, Num amount, long trades) {
+
+        // set timePeriod
+        if (timePeriod != null) {
+            if (beginTime != null && endTime != null
+                    && timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
+                throw new IllegalArgumentException(
+                        "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
+            }
+            this.timePeriod = timePeriod;
+        } else {
+            this.timePeriod = beginTime != null && endTime != null ? Duration.between(beginTime, endTime)
+                    : Objects.requireNonNull(timePeriod, "Time period cannot be null");
+        }
+
+        // set beginTime
+        if (beginTime == null && endTime != null) {
+            this.beginTime = endTime.minus(timePeriod);
+        } else {
+            this.beginTime = Objects.requireNonNull(beginTime, "Begin time cannot be null");
+        }
+
+        // set endTime
+        if (beginTime != null && endTime == null) {
+            this.endTime = beginTime.plus(timePeriod);
+        } else {
+            this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
+        }
+
         this.openPrice = openPrice;
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
