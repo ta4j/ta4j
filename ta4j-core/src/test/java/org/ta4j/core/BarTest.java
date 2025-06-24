@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -58,6 +59,66 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         this.beginTime = Instant.parse("2014-06-25T00:00:00Z");
         this.endTime = Instant.parse("2014-06-25T01:00:00Z");
         this.bar = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .volume(0)
+                .amount(0)
+                .build();
+    }
+
+    @Test
+    public void createBars() {
+        var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .beginTime(this.beginTime)
+                .volume(0)
+                .amount(0)
+                .build();
+
+        var barByEndTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .endTime(this.endTime)
+                .volume(0)
+                .amount(0)
+                .build();
+
+        var barByBeginTimeAndEndTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
+                .beginTime(this.beginTime)
+                .endTime(this.endTime)
+                .volume(0)
+                .amount(0)
+                .build();
+
+        var barWithoutTimePeriod = new TimeBarBuilder(this.numFactory).beginTime(this.beginTime)
+                .endTime(this.endTime)
+                .volume(0)
+                .amount(0)
+                .build();
+
+        assertEquals(barByBeginTime.getBeginTime(), barByEndTime.getBeginTime());
+        assertEquals(barByBeginTime.getEndTime(), barByEndTime.getEndTime());
+        assertEquals(barByBeginTimeAndEndTime.getTimePeriod(), barWithoutTimePeriod.getTimePeriod());
+        assertEquals(barByBeginTimeAndEndTime.getTimePeriod(), Duration.between(beginTime, endTime));
+        assertNotEquals(barByBeginTimeAndEndTime.getTimePeriod(), Duration.between(endTime, beginTime));
+        assertEquals(barWithoutTimePeriod.getTimePeriod(), Duration.between(beginTime, endTime));
+    }
+
+    @Test(expected = NullPointerException.class)
+    @SuppressWarnings("unused")
+    public void createBarsWithMissingBeginTime() {
+        // TimePeriod is not given and cannot be computed due to missing beginTime.
+        var bar = new TimeBarBuilder(this.numFactory).endTime(endTime).volume(0).amount(0).build();
+    }
+
+    @Test(expected = NullPointerException.class)
+    @SuppressWarnings("unused")
+    public void createBarsWithMissingEndTime() {
+        // TimePeriod is not given and cannot be computed due to missing endTime.
+        var bar = new TimeBarBuilder(this.numFactory).beginTime(beginTime).volume(0).amount(0).build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    @SuppressWarnings("unused")
+    public void createBarsWithInvalidTimePeriod() {
+        var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(2))
+                .beginTime(this.beginTime)
                 .endTime(this.endTime)
                 .volume(0)
                 .amount(0)
