@@ -118,30 +118,28 @@ public class BinaryOperation implements Indicator<Num> {
     // Overloaded methods for operations with constants
 
     /**
-     * Returns an {@code Indicator} whose value is
-     * {@code (indicator + coefficient)}.
+     * Returns an {@code Indicator} whose value is {@code (indicator + addend)}.
      *
-     * @param indicator   the indicator
-     * @param coefficient the coefficient to add
-     * @return {@code indicator + coefficient}, rounded as necessary
+     * @param indicator the indicator
+     * @param addend    the coefficient to add
+     * @return {@code indicator + addend}, rounded as necessary
      */
-    public static BinaryOperation sum(final Indicator<Num> indicator, final Number coefficient) {
+    public static BinaryOperation sum(final Indicator<Num> indicator, final Number addend) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(coefficient));
+                indicator.getBarSeries().numFactory().numOf(addend));
         return new BinaryOperation(Num::plus, indicator, constantIndicator);
     }
 
     /**
-     * Returns an {@code Indicator} whose value is
-     * {@code (indicator - coefficient)}.
+     * Returns an {@code Indicator} whose value is {@code (indicator - subtrahend)}.
      *
-     * @param indicator   the indicator
-     * @param coefficient the coefficient to subtract
-     * @return {@code indicator - coefficient}, rounded as necessary
+     * @param indicator  the indicator
+     * @param subtrahend the subtrahend to subtract
+     * @return {@code indicator - subtrahend}, rounded as necessary
      */
-    public static BinaryOperation difference(final Indicator<Num> indicator, final Number coefficient) {
+    public static BinaryOperation difference(final Indicator<Num> indicator, final Number subtrahend) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(coefficient));
+                indicator.getBarSeries().numFactory().numOf(subtrahend));
         return new BinaryOperation(Num::minus, indicator, constantIndicator);
     }
 
@@ -174,34 +172,34 @@ public class BinaryOperation implements Indicator<Num> {
     }
 
     /**
-     * Returns the minimum of {@code indicator} and {@code coefficient} as an
+     * Returns the minimum of {@code indicator} and {@code constant} as an
      * {@code Indicator}.
      *
-     * @param indicator   the indicator
-     * @param coefficient the coefficient to compare with
+     * @param indicator the indicator
+     * @param constant  the constant to compare with
      * @return the {@code Indicator} whose value is the smaller of {@code indicator}
-     *         and {@code coefficient}. If they are equal, {@code indicator} is
+     *         and {@code constant}. If they are equal, {@code indicator} is
      *         returned.
      */
-    public static BinaryOperation min(final Indicator<Num> indicator, final Number coefficient) {
+    public static BinaryOperation min(final Indicator<Num> indicator, final Number constant) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(coefficient));
+                indicator.getBarSeries().numFactory().numOf(constant));
         return new BinaryOperation(Num::min, indicator, constantIndicator);
     }
 
     /**
-     * Returns the maximum of {@code indicator} and {@code coefficient} as an
+     * Returns the maximum of {@code indicator} and {@code constant} as an
      * {@code Indicator}.
      *
-     * @param indicator   the indicator
-     * @param coefficient the coefficient to compare with
+     * @param indicator the indicator
+     * @param constant  the constant to compare with
      * @return the {@code Indicator} whose value is the greater of {@code indicator}
-     *         and {@code coefficient}. If they are equal, {@code indicator} is
+     *         and {@code constant}. If they are equal, {@code indicator} is
      *         returned.
      */
-    public static BinaryOperation max(final Indicator<Num> indicator, final Number coefficient) {
+    public static BinaryOperation max(final Indicator<Num> indicator, final Number constant) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(coefficient));
+                indicator.getBarSeries().numFactory().numOf(constant));
         return new BinaryOperation(Num::max, indicator, constantIndicator);
     }
 

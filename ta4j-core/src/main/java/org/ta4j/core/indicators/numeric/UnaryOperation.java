@@ -61,16 +61,16 @@ public class UnaryOperation implements Indicator<Num> {
     }
 
     /**
-     * Returns an {@code Indicator} whose value is {@code operand^coefficient}.
+     * Returns an {@code Indicator} whose value is {@code operand^exponent}.
      *
-     * @param operand     the operand indicator
-     * @param coefficient the power coefficient
-     * @return {@code operand^coefficient}
+     * @param operand  the operand indicator
+     * @param exponent the power exponent
+     * @return {@code operand^exponent}
      * @see Num#pow
      */
-    public static UnaryOperation pow(Indicator<Num> operand, Number coefficient) {
-        Num numCoefficient = operand.getBarSeries().numFactory().numOf(coefficient);
-        return new UnaryOperation(val -> val.pow(numCoefficient), operand);
+    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
+        final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
+        return new UnaryOperation(val -> val.pow(numExponent), operand);
     }
 
     /**
