@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion` and `ProfitLossPercentageCriterion` criteria into their net and gross concrete classes
+- [#1266](https://github.com/ta4j/ta4j/issues/1266) Consolidated BinaryOperation, UnaryOperation, TransformIndicator and CombineIndicator
 
 ### Fixed
 - Updated Github test workflow to cache dependencies for quicker builds
@@ -20,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 
 ### Removed/Deprecated
+- TransformIndicator and CombineIndicator
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`

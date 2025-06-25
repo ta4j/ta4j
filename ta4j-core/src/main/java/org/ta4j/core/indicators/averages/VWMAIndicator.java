@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.CombineIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
@@ -54,9 +54,9 @@ public class VWMAIndicator extends CachedIndicator<Num> {
      */
     public VWMAIndicator(Indicator<Num> priceIndicator, int barCount) {
         super(priceIndicator.getBarSeries());
-        VolumeIndicator volumeIndicator = new VolumeIndicator(priceIndicator.getBarSeries());
-        CombineIndicator weightedPriceSum = CombineIndicator.multiply(priceIndicator, volumeIndicator);
-        this.volumeWeightedIndicator = CombineIndicator.divide(new SMAIndicator(weightedPriceSum, barCount),
+        final var volumeIndicator = new VolumeIndicator(priceIndicator.getBarSeries());
+        final var weightedPriceSum = BinaryOperation.product(priceIndicator, volumeIndicator);
+        this.volumeWeightedIndicator = BinaryOperation.quotient(new SMAIndicator(weightedPriceSum, barCount),
                 new SMAIndicator(volumeIndicator, barCount));
         this.barCount = barCount;
     }

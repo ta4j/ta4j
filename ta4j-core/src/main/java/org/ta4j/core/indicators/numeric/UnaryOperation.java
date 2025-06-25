@@ -27,6 +27,7 @@ import java.util.function.UnaryOperator;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -57,6 +58,31 @@ public class UnaryOperation implements Indicator<Num> {
      */
     public static UnaryOperation abs(Indicator<Num> operand) {
         return new UnaryOperation(Num::abs, operand);
+    }
+
+    /**
+     * Returns an {@code Indicator} whose value is {@code operand^exponent}.
+     *
+     * @param operand  the operand indicator
+     * @param exponent the power exponent
+     * @return {@code operand^exponent}
+     * @see Num#pow
+     */
+    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
+        final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
+        return new UnaryOperation(val -> val.pow(numExponent), operand);
+    }
+
+    /**
+     * Returns an {@code Indicator} whose value is {@code log(operand)}.
+     *
+     * @param operand the operand indicator
+     * @return {@code log(operand)}
+     * @apiNote precision may be lost, because this implementation is using the
+     *          underlying doubleValue method
+     */
+    public static UnaryOperation log(Indicator<Num> operand) {
+        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
     private final UnaryOperator<Num> operator;
