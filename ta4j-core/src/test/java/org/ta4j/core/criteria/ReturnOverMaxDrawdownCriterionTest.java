@@ -60,24 +60,24 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series));
 
-        var totalProfit = (105d / 100) * (90d / 95d) * (120d / 95) - 1;
+        var netProfit = (105d / 100) * (90d / 95d) * (120d / 95) - 1;
         var peak = (105d / 100) * (100d / 95);
         var low = (105d / 100) * (90d / 95) * (80d / 95);
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals(totalProfit / ((peak - low) / peak), result);
+        assertNumEquals(netProfit / ((peak - low) / peak), result);
     }
 
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 6, 8, 20, 3).build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals(2d * (20d / 3d), result);
+        assertNumEquals(2d * (20d / 3d) - 1, result);
     }
 
     @Test
@@ -119,7 +119,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals((105d / 100d) * (100d / 95d), result);
+        assertNumEquals((105d / 100d) * (100d / 95d) - 1, result);
     }
 
     @Test
