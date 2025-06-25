@@ -31,13 +31,22 @@ import org.ta4j.core.num.Num;
 public interface BarBuilder {
 
     /**
-     * @param timePeriod the time period
+     * @param timePeriod the time period (optional if {@link #beginTime(Instant)}
+     *                   and {@link #endTime(Instant)} are given)
      * @return {@code this}
      */
     BarBuilder timePeriod(Duration timePeriod);
 
     /**
-     * @param endTime the end time of the bar period
+     * @param beginTime the begin time of the bar period (optional if
+     *                  {@link #endTime(Instant)} is given)
+     * @return {@code this}
+     */
+    BarBuilder beginTime(Instant beginTime);
+
+    /**
+     * @param endTime the end time of the bar period (optional if
+     *                {@link #beginTime(Instant)} is given)
      * @return {@code this}
      */
     BarBuilder endTime(Instant endTime);
