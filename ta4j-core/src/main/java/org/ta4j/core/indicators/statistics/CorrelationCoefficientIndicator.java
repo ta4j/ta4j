@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.function.BiFunction;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -46,20 +48,35 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
      * @param barCount   the time frame
+     * @param sampleType sample/population
      */
-    public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
+    public CorrelationCoefficientIndicator(final Indicator<Num> indicator1, final Indicator<Num> indicator2,
+            final int barCount, final SampleType sampleType) {
         super(indicator1);
-        this.variance1 = new VarianceIndicator(indicator1, barCount);
-        this.variance2 = new VarianceIndicator(indicator2, barCount);
+        final BiFunction<Indicator<Num>, Integer, VarianceIndicator> varianceProvider = sampleType.isSample()
+                ? VarianceIndicator::ofSample
+                : VarianceIndicator::ofPopulation;
+        this.variance1 = varianceProvider.apply(indicator1, barCount);
+        this.variance2 = varianceProvider.apply(indicator2, barCount);
         this.covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
     }
 
+    public static CorrelationCoefficientIndicator ofSample(final Indicator<Num> indicator1,
+            final Indicator<Num> indicator2, final int barCount) {
+        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, SampleType.SAMPLE);
+    }
+
+    public static CorrelationCoefficientIndicator ofPopulation(final Indicator<Num> indicator1,
+            final Indicator<Num> indicator2, final int barCount) {
+        return new CorrelationCoefficientIndicator(indicator1, indicator2, barCount, SampleType.POPULATION);
+    }
+
     @Override
-    protected Num calculate(int index) {
-        Num cov = covariance.getValue(index);
-        Num var1 = variance1.getValue(index);
-        Num var2 = variance2.getValue(index);
-        Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
+    protected Num calculate(final int index) {
+        final Num cov = covariance.getValue(index);
+        final Num var1 = variance1.getValue(index);
+        final Num var2 = variance2.getValue(index);
+        final Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(multipliedSqrt);
     }
 

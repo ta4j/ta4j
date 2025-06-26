@@ -23,55 +23,153 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Variance indicator.
+ * Variance indicator with optimized calculation for sequential access. Uses
+ * Welford's online algorithm for sequential variance calculation.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
+    private final SampleType sampleType;
 
-    /**
-     * Constructor.
-     *
-     * @param indicator the indicator
-     * @param barCount  the time frame
-     */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
+    // State for Welford's algorithm
+    private int previousIndex = -1;
+    private PreviousValueIndicator previousValueIndicator;
+    private Num runningMean;
+    private Num runningM2;
+    private int currentCount;
+
+    public VarianceIndicator(final Indicator<Num> indicator, final int barCount, final SampleType sampleType) {
         super(indicator);
         this.indicator = indicator;
-        this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+        this.barCount = Math.max(barCount, 1);
+        this.sampleType = Objects.requireNonNull(sampleType);
+        this.previousValueIndicator = new PreviousValueIndicator(this.indicator, this.barCount);
+        this.runningMean = numFactory().zero();
+        this.runningM2 = numFactory().zero();
+        this.currentCount = 0;
+    }
+
+    public static VarianceIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, SampleType.SAMPLE);
+    }
+
+    public static VarianceIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
+        return new VarianceIndicator(indicator, barCount, SampleType.POPULATION);
     }
 
     @Override
-    protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
-        Num average = sma.getValue(index);
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
+    protected Num calculate(final int index) {
+        if (this.previousIndex != -1 && this.previousIndex == index - 1) {
+            return fastPath(index);
         }
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
-        return variance;
+        return slowPath(index);
+    }
+
+    private Num fastPath(final int index) {
+        final var newValue = this.indicator.getValue(index);
+        final var windowSize = Math.min(this.barCount, index + 1);
+
+        if (windowSize == this.barCount && index >= this.barCount) {
+            // Remove old value using Welford's algorithm
+            final var oldValue = this.previousValueIndicator.getValue(index);
+            if (!oldValue.isNaN()) {
+                final var oldDelta = oldValue.minus(this.runningMean);
+                this.runningMean = this.runningMean.minus(oldDelta.dividedBy(numFactory().numOf(windowSize - 1)));
+                final var newDelta = oldValue.minus(this.runningMean);
+                this.runningM2 = this.runningM2.minus(oldDelta.multipliedBy(newDelta));
+            }
+        } else {
+            this.currentCount++;
+        }
+
+        // Add new value using Welford's algorithm
+        final var delta = newValue.minus(this.runningMean);
+        this.runningMean = this.runningMean.plus(delta.dividedBy(numFactory().numOf(windowSize)));
+        final var delta2 = newValue.minus(this.runningMean);
+        this.runningM2 = this.runningM2.plus(delta.multipliedBy(delta2));
+
+        this.previousIndex = index;
+
+        return calculateWelfordVariance(windowSize);
+    }
+
+    private Num slowPath(final int index) {
+        final var windowSize = Math.min(this.barCount, index + 1);
+        final var startIndex = Math.max(0, index - windowSize + 1);
+
+        if (windowSize < 2 && isSample()) {
+            return numFactory().zero();
+        }
+
+        // Reset Welford state and recalculate from scratch
+        this.runningMean = numFactory().zero();
+        this.runningM2 = numFactory().zero();
+        this.currentCount = 0;
+
+        // Apply Welford's algorithm to current window
+        for (var i = startIndex; i <= index; i++) {
+            final Num value = this.indicator.getValue(i);
+            this.currentCount++;
+
+            final var delta = value.minus(this.runningMean);
+            this.runningMean = this.runningMean.plus(delta.dividedBy(numFactory().numOf(this.currentCount)));
+            final var delta2 = value.minus(this.runningMean);
+            this.runningM2 = this.runningM2.plus(delta.multipliedBy(delta2));
+        }
+
+        this.previousIndex = index;
+
+        return calculateWelfordVariance(windowSize);
+    }
+
+    private Num calculateWelfordVariance(final int windowSize) {
+        if (windowSize < 2 && isSample()) {
+            return numFactory().zero();
+        }
+
+        // Welford's algorithm: variance = M2 / (n-1) for sample, M2 / n for population
+        final int divisor = getDivisor(windowSize);
+
+        if (divisor <= 0) {
+            return numFactory().zero();
+        }
+
+        return this.runningM2.dividedBy(numFactory().numOf(divisor));
+    }
+
+    private boolean isSample() {
+        return this.sampleType.isSample();
+    }
+
+    private int getDivisor(final int windowSize) {
+        return switch (this.sampleType) {
+        case SAMPLE -> windowSize - 1;
+        case POPULATION -> windowSize;
+        };
+    }
+
+    private NumFactory numFactory() {
+        return getBarSeries().numFactory();
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return this.barCount;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + this.barCount + " sampleType: " + this.sampleType;
     }
+
 }
