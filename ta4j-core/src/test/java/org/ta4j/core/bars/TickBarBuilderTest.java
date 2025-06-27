@@ -31,6 +31,7 @@ import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 
 public class TickBarBuilderTest {
 
@@ -42,9 +43,21 @@ public class TickBarBuilderTest {
 
         series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).add();
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(1))).closePrice(2).volume(1).add();
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(2))).closePrice(5).volume(1).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(2)))
+                .closePrice(5)
+                .volume(1)
+                .trades(9)
+                .add();
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(3))).closePrice(1).volume(1).add();
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(4))).closePrice(4).volume(2).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(4)))
+                .closePrice(4)
+                .volume(2)
+                .trades(1)
+                .add();
 
         assertEquals(1, series.getBarCount());
         final var bar1 = series.getBar(0);
@@ -59,11 +72,27 @@ public class TickBarBuilderTest {
         assertEquals(beginTime0, bar1.getBeginTime());
         assertEquals(endTime4, bar1.getEndTime());
 
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(5))).closePrice(2).volume(1).add();
+        final var numFactory = DecimalNumFactory.getInstance();
+        assertEquals(numFactory.numOf(24), bar1.getAmount());
+        assertEquals(10, bar1.getTrades());
+
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(5)))
+                .closePrice(2)
+                .volume(1)
+                .amount(24)
+                .add();
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(6))).closePrice(3).volume(1).add();
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(7))).closePrice(6).volume(2).add();
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(8))).closePrice(2).volume(1).add();
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(9))).closePrice(5).volume(2).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(9)))
+                .closePrice(5)
+                .volume(2)
+                .trades(100)
+                .add();
         assertEquals(2, series.getBarCount());
 
         final var bar2 = series.getBar(1);
@@ -77,5 +106,7 @@ public class TickBarBuilderTest {
         final var endTime9 = now.plus(Duration.ofDays(9));
         assertEquals(beginTime5, bar2.getBeginTime());
         assertEquals(endTime9, bar2.getEndTime());
+        assertEquals(numFactory.numOf(24), bar2.getAmount());
+        assertEquals(100, bar2.getTrades());
     }
 }

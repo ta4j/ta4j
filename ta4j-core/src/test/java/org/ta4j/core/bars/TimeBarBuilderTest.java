@@ -31,6 +31,7 @@ import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -130,5 +131,20 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(4, bar.getTrades());
         assertEquals(numOf(40), bar.getVolume());
         assertEquals(numOf(4020), bar.getAmount());
+    }
+
+    @Test
+    public void testCalculateAmountIfMissing() {
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        final Duration duration = Duration.between(beginTime, endTime);
+
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+
+        series.barBuilder().timePeriod(duration).endTime(endTime).beginTime(beginTime).closePrice(10).volume(20).add();
+
+        assertEquals(numOf(200), series.getBar(0).getAmount());
     }
 }
