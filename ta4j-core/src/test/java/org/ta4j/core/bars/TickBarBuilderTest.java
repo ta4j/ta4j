@@ -42,12 +42,7 @@ public class TickBarBuilderTest {
         final var oneDay = Duration.ofDays(1);
 
         series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).add();
-        series.barBuilder()
-                .timePeriod(oneDay)
-                .endTime(now.plus(Duration.ofDays(1)))
-                .closePrice(2)
-                .volume(1)
-                .add();
+        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(1))).closePrice(2).volume(1).add();
         series.barBuilder()
                 .timePeriod(oneDay)
                 .endTime(now.plus(Duration.ofDays(2)))
@@ -55,12 +50,7 @@ public class TickBarBuilderTest {
                 .volume(1)
                 .trades(9)
                 .add();
-        series.barBuilder()
-                .timePeriod(oneDay)
-                .endTime(now.plus(Duration.ofDays(3)))
-                .closePrice(1)
-                .volume(1)
-                .add();
+        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(3))).closePrice(1).volume(1).add();
         series.barBuilder()
                 .timePeriod(oneDay)
                 .endTime(now.plus(Duration.ofDays(4)))

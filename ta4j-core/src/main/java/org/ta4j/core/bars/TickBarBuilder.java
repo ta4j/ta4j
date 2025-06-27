@@ -223,8 +223,8 @@ public class TickBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
-        return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice,
-                closePrice, volume, amount, trades);
+        return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades);
     }
 
     @Override
@@ -233,7 +233,7 @@ public class TickBarBuilder implements BarBuilder {
             if (amount == null && volume != null) {
                 amount = closePrice.multipliedBy(volume);
             }
-            
+
             barSeries.addBar(build());
             reset();
         }
