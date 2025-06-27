@@ -141,25 +141,25 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder closePrice(final Num tickPrice) {
-        this.closePrice = tickPrice;
-        if (this.openPrice == null) {
-            this.openPrice = tickPrice;
+        closePrice = tickPrice;
+        if (openPrice == null) {
+            openPrice = tickPrice;
         }
 
-        this.highPrice = this.highPrice.max(tickPrice);
-        this.lowPrice = this.lowPrice.min(tickPrice);
+        highPrice = highPrice.max(tickPrice);
+        lowPrice = lowPrice.min(tickPrice);
 
         return this;
     }
 
     @Override
     public BarBuilder closePrice(final Number closePrice) {
-        return closePrice(this.numFactory.numOf(closePrice));
+        return closePrice(numFactory.numOf(closePrice));
     }
 
     @Override
     public BarBuilder closePrice(final String closePrice) {
-        return closePrice(this.numFactory.numOf(closePrice));
+        return closePrice(numFactory.numOf(closePrice));
     }
 
     @Override
@@ -182,7 +182,7 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder amount(final Num amount) {
-        this.amount = this.amount.plus(amount);
+        this.amount = this.amount == null ? amount : this.amount.plus(amount);
         return this;
     }
 
@@ -223,27 +223,31 @@ public class TickBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
-                this.closePrice, this.volume, this.amount, this.trades);
+        return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice,
+                closePrice, volume, amount, trades);
     }
 
     @Override
     public void add() {
-        if (++this.passedTicksCount % this.tickCount == 0) {
-            this.barSeries.addBar(build());
+        if (++passedTicksCount % tickCount == 0) {
+            if (amount == null && volume != null) {
+                amount = closePrice.multipliedBy(volume);
+            }
+            
+            barSeries.addBar(build());
             reset();
         }
     }
 
     private void reset() {
-        final var zero = this.numFactory.zero();
-        this.timePeriod = null;
-        this.openPrice = null;
-        this.highPrice = zero;
-        this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
-        this.closePrice = null;
-        this.amount = this.numFactory.zero();
-        this.trades = 0;
-        this.volume = zero;
+        final var zero = numFactory.zero();
+        timePeriod = null;
+        openPrice = null;
+        highPrice = zero;
+        lowPrice = numFactory.numOf(Integer.MAX_VALUE);
+        closePrice = null;
+        amount = null;
+        trades = 0;
+        volume = zero;
     }
 }
