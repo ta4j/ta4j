@@ -73,7 +73,6 @@ public class VolumeBarBuilder implements BarBuilder {
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold) {
         this.numFactory = numFactory;
         this.volumeThreshold = numFactory.numOf(volumeThreshold);
-        this.volume = numFactory.zero();
         reset();
     }
 
@@ -142,60 +141,60 @@ public class VolumeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder closePrice(final Num tickPrice) {
-        this.closePrice = tickPrice;
-        if (this.openPrice == null) {
-            this.openPrice = tickPrice;
+        closePrice = tickPrice;
+        if (openPrice == null) {
+            openPrice = tickPrice;
         }
 
-        this.highPrice = this.highPrice.max(tickPrice);
-        this.lowPrice = this.lowPrice.min(tickPrice);
+        highPrice = highPrice.max(tickPrice);
+        lowPrice = lowPrice.min(tickPrice);
 
         return this;
     }
 
     @Override
     public BarBuilder closePrice(final Number closePrice) {
-        return closePrice(this.numFactory.numOf(closePrice));
+        return closePrice(numFactory.numOf(closePrice));
     }
 
     @Override
     public BarBuilder closePrice(final String closePrice) {
-        return closePrice(this.numFactory.numOf(closePrice));
+        return closePrice(numFactory.numOf(closePrice));
     }
 
     @Override
     public BarBuilder volume(final Num volume) {
-        this.volume = this.volume.plus(volume);
+        this.volume = this.volume == null ? volume : this.volume.plus(volume);
         return this;
     }
 
     @Override
     public BarBuilder volume(final Number volume) {
-        volume(this.numFactory.numOf(volume));
+        volume(numFactory.numOf(volume));
         return this;
     }
 
     @Override
     public BarBuilder volume(final String volume) {
-        volume(this.numFactory.numOf(volume));
+        volume(numFactory.numOf(volume));
         return this;
     }
 
     @Override
     public BarBuilder amount(final Num amount) {
-        this.amount = this.amount.plus(amount);
+        this.amount = this.amount == null ? amount : this.amount.plus(amount);
         return this;
     }
 
     @Override
     public BarBuilder amount(final Number amount) {
-        amount(this.numFactory.numOf(amount));
+        amount(numFactory.numOf(amount));
         return this;
     }
 
     @Override
     public BarBuilder amount(final String amount) {
-        amount(this.numFactory.numOf(amount));
+        amount(numFactory.numOf(amount));
         return this;
     }
 
@@ -224,35 +223,39 @@ public class VolumeBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
-        return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
-                this.closePrice, this.volume, this.amount, this.trades);
+        return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades);
     }
 
     @Override
     public void add() {
-        if (this.volume.isGreaterThanOrEqual(this.volumeThreshold)) {
+        if (volume.isGreaterThanOrEqual(volumeThreshold)) {
             // move volume remainder to next bar
-            var volumeRemainder = this.numFactory.zero();
-            if (this.volume.isGreaterThan(this.volumeThreshold)) {
-                volumeRemainder = this.volume.minus(this.volumeThreshold);
+            var volumeRemainder = numFactory.zero();
+            if (volume.isGreaterThan(volumeThreshold)) {
+                volumeRemainder = volume.minus(volumeThreshold);
                 // cap currently built bar, volume is then restored to volumeRemainder
-                this.volume = this.volumeThreshold;
+                volume = volumeThreshold;
             }
 
-            this.barSeries.addBar(build());
-            this.volume = volumeRemainder;
+            if (amount == null) {
+                amount = closePrice.multipliedBy(volume);
+            }
+
+            barSeries.addBar(build());
+            volume = volumeRemainder;
 
             reset();
         }
     }
 
     private void reset() {
-        this.timePeriod = null;
-        this.openPrice = null;
-        this.highPrice = this.numFactory.zero();
-        this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
-        this.amount = this.numFactory.zero();
-        this.trades = 0;
-        this.closePrice = null;
+        timePeriod = null;
+        openPrice = null;
+        highPrice = numFactory.zero();
+        lowPrice = numFactory.numOf(Integer.MAX_VALUE);
+        amount = null;
+        trades = 0;
+        closePrice = null;
     }
 }
