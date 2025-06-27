@@ -182,7 +182,7 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder amount(final Num amount) {
-        this.amount = amount;
+        this.amount = this.amount.plus(amount);
         return this;
     }
 
@@ -200,7 +200,7 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder trades(final long trades) {
-        this.trades = trades;
+        this.trades += trades;
         return this;
     }
 
@@ -242,6 +242,8 @@ public class TickBarBuilder implements BarBuilder {
         this.highPrice = zero;
         this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
         this.closePrice = null;
+        this.amount = this.numFactory.zero();
+        this.trades = 0;
         this.volume = zero;
     }
 }
