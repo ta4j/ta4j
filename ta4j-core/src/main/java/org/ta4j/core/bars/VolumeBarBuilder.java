@@ -183,7 +183,7 @@ public class VolumeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder amount(final Num amount) {
-        this.amount = amount;
+        this.amount = this.amount.plus(amount);
         return this;
     }
 
@@ -201,7 +201,7 @@ public class VolumeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder trades(final long trades) {
-        this.trades = trades;
+        this.trades += trades;
         return this;
     }
 
@@ -235,6 +235,7 @@ public class VolumeBarBuilder implements BarBuilder {
             var volumeRemainder = this.numFactory.zero();
             if (this.volume.isGreaterThan(this.volumeThreshold)) {
                 volumeRemainder = this.volume.minus(this.volumeThreshold);
+                // cap currently built bar, volume is then restored to volumeRemainder
                 this.volume = this.volumeThreshold;
             }
 
@@ -250,6 +251,8 @@ public class VolumeBarBuilder implements BarBuilder {
         this.openPrice = null;
         this.highPrice = this.numFactory.zero();
         this.lowPrice = this.numFactory.numOf(Integer.MAX_VALUE);
+        this.amount = this.numFactory.zero();
+        this.trades = 0;
         this.closePrice = null;
     }
 }
