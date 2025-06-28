@@ -28,7 +28,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
