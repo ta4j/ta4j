@@ -77,6 +77,9 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
             // consider only the positions made till index
             if (entry.getIndex() <= index) {
                 subTradingRecord.enter(entry.getIndex(), entry.getNetPrice(), entry.getAmount());
+            } else {
+                // no need to iterate positions made after the index
+                break;
             }
             if (exit != null && exit.getIndex() <= index) {
                 subTradingRecord.exit(exit.getIndex(), exit.getNetPrice(), exit.getAmount());

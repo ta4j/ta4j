@@ -82,9 +82,9 @@ public class CriterionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         criterionIndicator = new CriterionIndicator(series, tradingRecord, numberOfWinningPositionsCriterion,
                 requiredCriterionValue);
 
-        // till index 0, no winning position were made
+        // till index 0, no winning position was made
         assertFalse(criterionIndicator.getValue(0));
-        // till index 1, no winning position were made
+        // till index 1, no winning position was made
         assertFalse(criterionIndicator.getValue(1));
         // till index 2, at least one winning position was made
         assertTrue(criterionIndicator.getValue(2));
