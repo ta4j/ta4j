@@ -87,7 +87,7 @@ public class SGMAIndicator extends CachedIndicator<Num> {
 
         // Apply smoothing using precomputed coefficients
         for (int i = -halfWindow; i <= halfWindow; i++) {
-            int sourceIndex = Math.max(0, Math.min(index + i, indicator.getBarSeries().getBarCount() - 1));
+            int sourceIndex = Math.clamp(index + i, 0, indicator.getBarSeries().getBarCount() - 1);
             Num value = indicator.getValue(sourceIndex);
             result = result.plus(value.multipliedBy(coefficients.get(i + halfWindow)));
         }
