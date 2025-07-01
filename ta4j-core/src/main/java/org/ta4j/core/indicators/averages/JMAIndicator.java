@@ -106,9 +106,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         Num jma = previousJMA.jma.plus(e2);
 
-        if (!jmaDataMap.containsKey(index)) {
-            jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
-        }
+        jmaDataMap.computeIfAbsent(index, k -> new JmaData(e0, e1, e2, jma));
 
         return jma;
     }
