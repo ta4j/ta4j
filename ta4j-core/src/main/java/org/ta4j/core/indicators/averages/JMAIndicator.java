@@ -66,7 +66,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
         this.numFactory = indicator.getBarSeries().numFactory();
         this.indicator = indicator;
         this.barCount = barCount;
-        this.phase = numFactory.numOf(Math.min(Math.max(phase, -100), 100)); // Clamp phase between -100 and 100
+        this.phase = numFactory.numOf(Math.clamp(phase, -100, 100)); // Clamp phase between -100 and 100
         this.power = numFactory.numOf(Math.max(1, power)); // Ensure power is at least 1
         this.jmaDataMap = new HashMap<>();
 
@@ -106,9 +106,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         Num jma = previousJMA.jma.plus(e2);
 
-        if (!jmaDataMap.containsKey(index)) {
-            jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
-        }
+        jmaDataMap.computeIfAbsent(index, k -> new JmaData(e0, e1, e2, jma));
 
         return jma;
     }
