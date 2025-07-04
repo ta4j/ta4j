@@ -27,24 +27,30 @@ import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
 
-public class TickBarBuilderFactory implements BarBuilderFactory {
+public class AmountBarBuilderFactory implements BarBuilderFactory {
 
-    private final int tickCount;
-    private TickBarBuilder barBuilder;
+    private final int amountThreshold;
+    private final boolean setAmountByVolume;
+    private AmountBarBuilder barBuilder;
 
     /**
      * Constructor.
      *
-     * @param tickCount the number of ticks at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param setAmountByVolume if {@code true} the {@code amount} is set by
+     *                          {@code volume * closePrice}, otherwise
+     *                          {@code amount} must be explicitly set
      */
-    public TickBarBuilderFactory(final int tickCount) {
-        this.tickCount = tickCount;
+    public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume) {
+        this.amountThreshold = amountThreshold;
+        this.setAmountByVolume = setAmountByVolume;
     }
 
     @Override
     public BarBuilder createBarBuilder(final BarSeries series) {
         if (this.barBuilder == null) {
-            this.barBuilder = new TickBarBuilder(series.numFactory(), this.tickCount).bindTo(series);
+            this.barBuilder = new AmountBarBuilder(series.numFactory(), this.amountThreshold, this.setAmountByVolume)
+                    .bindTo(series);
         }
 
         return this.barBuilder;
