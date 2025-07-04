@@ -103,7 +103,7 @@ public class IndicatorsToChart {
         // Close price
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         EMAIndicator avg14 = new EMAIndicator(closePrice, 14);
-        StandardDeviationIndicator sd14 = new StandardDeviationIndicator(closePrice, 14);
+        StandardDeviationIndicator sd14 = StandardDeviationIndicator.ofSample(closePrice, 14);
 
         // Bollinger bands
         BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(avg14);
