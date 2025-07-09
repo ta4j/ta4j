@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
@@ -167,6 +168,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNotEquals(defaultSeries.getBarData(), subSeries.getBarData());
         // Empty series
         assertEquals(0, emptySeries.getBarData().size());
+    }
+
+    @Test
+    public void getSeriesPeriodTest() {
+
+        // Default series
+        assertEquals(17l, defaultSeries.getSeriesPeriod(ChronoUnit.DAYS));
+        assertEquals(408L, defaultSeries.getSeriesPeriod(ChronoUnit.HOURS));
+
+        // Constrained series
+        var subSeries = defaultSeries.getSubSeries(2, 4);
+        assertEquals(5l, subSeries.getSeriesPeriod(ChronoUnit.DAYS));
+        assertEquals(120L, subSeries.getSeriesPeriod(ChronoUnit.HOURS));
     }
 
     @Test

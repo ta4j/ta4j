@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.ta4j.core.num.Num;
@@ -127,6 +128,20 @@ public interface BarSeries extends Serializable {
      * @return the end index of the series
      */
     int getEndIndex();
+
+    /**
+     * @param unit the unit of the period
+     * @return the duration between the endTime of {@link #getFirstBar()} and the
+     *         endTime of {@link #getLastBar()}
+     */
+    default long getSeriesPeriod(final ChronoUnit unit) {
+        if (!getBarData().isEmpty()) {
+            var start = getFirstBar().getEndTime();
+            var end = getLastBar().getEndTime();
+            return unit.between(start, end);
+        }
+        return 0l;
+    }
 
     /**
      * @return the description of the series period (e.g. "from 2014-01-21T12:00:00Z
