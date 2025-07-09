@@ -399,7 +399,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         defaultSeries.addBar(bar1);
         defaultSeries.addBar(bar2);
-        defaultSeries.addLastBar(bar3);
+        defaultSeries.addLastBar(bar3, false);
 
         // last bar is not added but updated
         assertEquals(2, defaultSeries.getBarCount());
@@ -407,9 +407,17 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(1, defaultSeries.getEndIndex());
 
         var bar4 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-15T00:00:00Z")).closePrice(4d).build();
-        defaultSeries.addLastBar(bar4);
+        defaultSeries.addLastBar(bar4, false);
 
         // last bar is added to the end of the series
+        assertEquals(3, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(2, defaultSeries.getEndIndex());
+
+        var bar5 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-15T00:00:00Z")).closePrice(2d).build();
+        defaultSeries.addLastBar(bar5, true);
+
+        // last bar is replaced by bar5
         assertEquals(3, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(2, defaultSeries.getEndIndex());

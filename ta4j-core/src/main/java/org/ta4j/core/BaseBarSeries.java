@@ -252,7 +252,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public void addLastBar(final Bar bar) {
+    public void addLastBar(final Bar bar, final boolean replace) {
         var endTime = bar.getEndTime();
         var isEmpty = isEmpty() || getBarData().isEmpty();
         var lastBar = isEmpty ? null : getLastBar();
@@ -260,8 +260,10 @@ public class BaseBarSeries implements BarSeries {
 
         if ((isEmpty || endTime.isAfter(lastBar.getEndTime())) && isEndTimePast) {
             addBar(bar);
-        } else if (!isEmpty && !isEndTimePast) {
+        } else if (!isEmpty && !isEndTimePast && !replace) {
             lastBar.addTrade(bar.getVolume(), bar.getClosePrice());
+        } else if (!isEmpty && replace) {
+            addBar(bar, true);
         }
     }
 

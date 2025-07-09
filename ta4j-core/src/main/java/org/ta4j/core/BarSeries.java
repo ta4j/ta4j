@@ -229,14 +229,22 @@ public interface BarSeries extends Serializable {
     void addBar(Bar bar, boolean replace);
 
     /**
-     * Adds the {@code bar} to the end of the series if {@link #getBarData()} is
-     * empty or the end time of the {@code bar} is after the end time of
-     * {@link #getLastBar()}. Or updates {@link #getLastBar()} with
-     * {@link #addTrade(Num, Num)} if the end time of {@code bar} is in the future.
+     * Changes the latest bar by using one of the following methods:
      *
-     * @param bar the last bar
+     * <ul>
+     * <li>If {@link #getBarData()} is empty or the end time of the {@code bar} is
+     * after the end time of {@link #getLastBar()}, the {@code bar} is added to the
+     * end of the series.
+     * <li>If the end time of {@code bar} is in the future, {@link #getLastBar()} is
+     * updated by {@link #addTrade(Num, Num)}
+     * <li>If {@code replace} is {@code true}, {@link #getLastBar()} is replaced by
+     * the given {@code bar}.
+     * </ul>
+     *
+     * @param bar     the last bar
+     * @param replace true to replace the latest bar
      */
-    void addLastBar(Bar bar);
+    void addLastBar(Bar bar, boolean replace);
 
     /**
      * Adds a trade and updates the close price of the last bar.
