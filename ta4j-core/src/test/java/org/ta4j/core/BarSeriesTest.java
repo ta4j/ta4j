@@ -374,6 +374,34 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void addLastBarTest() {
+        defaultSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .build();
+
+        var bar1 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-13T00:00:00Z")).closePrice(1d).build();
+        var bar2 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(2d).build();
+        var bar3 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(5d).build();
+
+        defaultSeries.addBar(bar1);
+        defaultSeries.addBar(bar2);
+        defaultSeries.addLastBar(bar3);
+
+        // last bar is not added but updated
+        assertEquals(2, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(1, defaultSeries.getEndIndex());
+
+        var bar4 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-15T00:00:00Z")).closePrice(4d).build();
+        defaultSeries.addLastBar(bar4);
+
+        // last bar is added to the end of the series
+        assertEquals(3, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(2, defaultSeries.getEndIndex());
+    }
+
+    @Test
     public void addPriceTest() {
         var cp = new ClosePriceIndicator(defaultSeries);
         var mxPrice = new HighPriceIndicator(defaultSeries);
