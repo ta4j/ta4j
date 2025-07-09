@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
+- Added `BarSeries#copy(String name, int maximumBarCount)`
 
 
 ## 0.18 (released May 15, 2025)

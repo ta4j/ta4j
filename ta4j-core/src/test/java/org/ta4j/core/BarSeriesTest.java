@@ -288,6 +288,27 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void copySeriesTest() {
+        var copy1 = defaultSeries.copy("Copy of default series", 0);
+        assertEquals(6, copy1.getBarCount());
+        assertEquals(0, copy1.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), copy1.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy1.getEndIndex());
+
+        var copy2 = defaultSeries.copy("Copy of default series", 10);
+        assertEquals(6, copy2.getBarCount());
+        assertEquals(0, copy2.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), copy2.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy2.getEndIndex());
+
+        var copy3 = defaultSeries.copy("Copy of default series", 3);
+        assertEquals(3, copy3.getBarCount());
+        assertEquals(3, copy3.getBeginIndex());
+        assertNotEquals(defaultSeries.getBarCount(), copy3.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy3.getEndIndex());
+    }
+
+    @Test
     public void maximumBarCountOnConstrainedSeriesShouldNotThrowExceptionTest() {
         try {
             subSeries.setMaximumBarCount(10);

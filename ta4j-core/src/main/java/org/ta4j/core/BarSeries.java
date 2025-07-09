@@ -254,6 +254,20 @@ public interface BarSeries extends Serializable {
     }
 
     /**
+     * Returns a new {@link BarSeries} instance that is a copy of this {@code this}
+     * BarSeries instance. It contains all {@link Bar bars} from this {@code this}
+     * instance (i.e. the bars are not deeply copied, but only added to a new list).
+     * If {@code maximumBarCount} is {@code >0}, bars in the copied series are
+     * automatically removed to ensure the maximum number of bars is not exceeded.
+     *
+     * @param name            the name of the series
+     * @param maximumBarCount the maximum number of bars; set to {@code >0} to
+     *                        {@link #setMaximumBarCount(int)}
+     * @return a copy of {@code this} instance
+     */
+    BarSeries copy(String name, int maximumBarCount);
+
+    /**
      * Returns a new {@link BarSeries} instance (= "subseries") that is a subset of
      * {@code this} BarSeries instance. It contains a copy of all {@link Bar bars}
      * between {@code startIndex} (inclusive) and {@code endIndex} (exclusive) of
