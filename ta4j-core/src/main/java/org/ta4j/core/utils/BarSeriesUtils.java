@@ -100,6 +100,24 @@ public final class BarSeriesUtils {
     }
 
     /**
+     * @param barSeries the barSeries with potential stale bars
+     * @param newBars   the bars which has precedence over the same existing bar
+     * @return the previous bars replaced by newBars, or an empty list if there was
+     *         no replacement.
+     * @see BarSeriesUtils#replaceBarIfChanged(BarSeries, Bar)
+     */
+    public static List<Bar> replaceBarsIfChanged(BarSeries barSeries, List<Bar> newBars) {
+        var replacedBars = new ArrayList<Bar>();
+        for (var bar : newBars) {
+            var replacedBar = BarSeriesUtils.replaceBarIfChanged(barSeries, bar);
+            if (replacedBar != null) {
+                replacedBars.add(replacedBar);
+            }
+        }
+        return replacedBars;
+    }
+
+    /**
      * Finds possibly missing bars. The returned list contains the {@code endTime}
      * of each missing bar. A bar is possibly missing if: (1) the subsequent bar
      * starts not with the end time of the previous bar or (2) if any open, high,
