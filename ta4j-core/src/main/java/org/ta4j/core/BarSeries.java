@@ -235,8 +235,9 @@ public interface BarSeries extends Serializable {
      * <li>If {@link #getBarData()} is empty or the end time of the {@code bar} is
      * after the end time of {@link #getLastBar()}, the {@code bar} is added to the
      * end of the series.
-     * <li>If the end time of {@code bar} is in the future, {@link #getLastBar()} is
-     * updated by {@link #addTrade(Num, Num)}
+     * <li>If the end time of the {@code bar} is in the future and {@code replace}
+     * is {@code false}, {@link #getLastBar()} is updated by
+     * {@link #addTrade(Num, Num)}
      * <li>If {@code replace} is {@code true}, {@link #getLastBar()} is replaced by
      * the given {@code bar}.
      * </ul>

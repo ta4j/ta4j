@@ -253,9 +253,9 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addLastBar(final Bar bar, final boolean replace) {
-        var endTime = bar.getEndTime();
         var isEmpty = isEmpty() || getBarData().isEmpty();
         var lastBar = isEmpty ? null : getLastBar();
+        var endTime = bar.getEndTime();
         var isEndTimePast = endTime.isBefore(Instant.now());
 
         if ((isEmpty || endTime.isAfter(lastBar.getEndTime())) && isEndTimePast) {
