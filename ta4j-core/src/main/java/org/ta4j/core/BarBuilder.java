@@ -39,14 +39,16 @@ public interface BarBuilder {
 
     /**
      * @param beginTime the begin time of the bar period (optional if
-     *                  {@link #endTime(Instant)} is given)
+     *                  {@link #endTime(Instant)} and {@link #timePeriod(Duration)}
+     *                  are given)
      * @return {@code this}
      */
     BarBuilder beginTime(Instant beginTime);
 
     /**
      * @param endTime the end time of the bar period (optional if
-     *                {@link #beginTime(Instant)} is given)
+     *                {@link #beginTime(Instant)} and {@link #timePeriod(Duration)}
+     *                are given)
      * @return {@code this}
      */
     BarBuilder endTime(Instant endTime);

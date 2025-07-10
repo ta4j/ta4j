@@ -41,6 +41,7 @@ import org.ta4j.core.num.NumFactory;
 public class TimeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
+    private BarSeries baseBarSeries;
     Duration timePeriod;
     Instant beginTime;
     Instant endTime;
@@ -51,7 +52,6 @@ public class TimeBarBuilder implements BarBuilder {
     Num volume;
     Num amount;
     long trades;
-    private BarSeries baseBarSeries;
 
     /** A builder to build a new {@link BaseBar} with {@link DoubleNumFactory} */
     public TimeBarBuilder() {
