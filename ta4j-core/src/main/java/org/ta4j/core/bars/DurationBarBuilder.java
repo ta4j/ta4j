@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * A tick bar is sampled after a fixed number of ticks.
+ * A duration bar is sampled after a fixed duration.
  */
 public class DurationBarBuilder implements BarBuilder {
 
@@ -49,11 +49,11 @@ public class DurationBarBuilder implements BarBuilder {
     private Duration timePeriod;
     private Instant beginTime;
     private Instant endTime;
-    private Num volume;
     private Num openPrice;
     private Num highPrice;
     private Num closePrice;
     private Num lowPrice;
+    private Num volume;
     private Num amount;
     private long trades;
 
@@ -80,13 +80,7 @@ public class DurationBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder timePeriod(final Duration timePeriod) {
-        final boolean isMultiplication = duration.getSeconds() % timePeriod.getSeconds() == 0;
-        if (!isMultiplication) {
-            throw new IllegalArgumentException(
-                    "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
-        }
         this.timePeriod = timePeriod;
-        this.passedDuration = this.passedDuration.plus(timePeriod);
         return this;
     }
 
@@ -236,10 +230,27 @@ public class DurationBarBuilder implements BarBuilder {
 
     @Override
     public void add() {
+
+        // set timePeriod of this bar
+        if (timePeriod == null) {
+            Objects.requireNonNull(beginTime);
+            Objects.requireNonNull(endTime);
+            timePeriod = Duration.between(beginTime, endTime);
+        }
+
+        // check if timePeriod is valid for aggregation
+        final boolean isMultiplication = duration.getSeconds() % timePeriod.getSeconds() == 0;
+        if (!isMultiplication) {
+            throw new IllegalArgumentException(
+                    "Cannot aggregate bars: bar.timePeriod must be a multiplication of the given duration.");
+        }
+
+        // remember the accumulated duration
+        passedDuration = passedDuration.plus(timePeriod);
+
         if (passedDuration.compareTo(duration) == 0) {
-//            if (!beginTimesInDuration(beginTime, bars.get(i).getBeginTime())) {
-//                break;
-//            }
+            // each aggregated bar has the same (upscaled) duration
+            this.timePeriod = duration;
 
             if (amount == null && volume != null) {
                 amount = closePrice.multipliedBy(volume);
@@ -248,6 +259,7 @@ public class DurationBarBuilder implements BarBuilder {
             if (endTime != null) {
                 beginTime = endTime.minus(duration);
             } else {
+                Objects.requireNonNull(beginTime);
                 endTime = beginTime.plus(duration);
             }
 
@@ -260,17 +272,15 @@ public class DurationBarBuilder implements BarBuilder {
         passedDuration = Duration.ZERO;
         firstOpenPrice = null;
         timePeriod = null;
+        beginTime = null;
+        endTime = null;
         openPrice = null;
         highPrice = null;
         lowPrice = null;
         closePrice = null;
+        volume = null;
         amount = null;
         trades = 0;
-        volume = null;
     }
-
-//    private boolean beginTimesInDuration(Instant startTime, Instant endTime) {
-//        return Duration.between(startTime, endTime).compareTo(duration) < 0;
-//    }
 
 }

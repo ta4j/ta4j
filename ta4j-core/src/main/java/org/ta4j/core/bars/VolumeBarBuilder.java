@@ -47,11 +47,11 @@ public class VolumeBarBuilder implements BarBuilder {
     private Duration timePeriod;
     private Instant beginTime;
     private Instant endTime;
-    private Num volume;
     private Num openPrice;
     private Num highPrice;
     private Num closePrice;
     private Num lowPrice;
+    private Num volume;
     private Num amount;
     private long trades;
 
@@ -254,8 +254,8 @@ public class VolumeBarBuilder implements BarBuilder {
         openPrice = null;
         highPrice = numFactory.zero();
         lowPrice = numFactory.numOf(Integer.MAX_VALUE);
+        closePrice = null;
         amount = null;
         trades = 0;
-        closePrice = null;
     }
 }

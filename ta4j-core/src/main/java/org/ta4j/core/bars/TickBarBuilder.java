@@ -47,11 +47,11 @@ public class TickBarBuilder implements BarBuilder {
     private Duration timePeriod;
     private Instant beginTime;
     private Instant endTime;
-    private Num volume;
     private Num openPrice;
     private Num highPrice;
     private Num closePrice;
     private Num lowPrice;
+    private Num volume;
     private Num amount;
     private long trades;
 
@@ -246,8 +246,8 @@ public class TickBarBuilder implements BarBuilder {
         highPrice = zero;
         lowPrice = numFactory.numOf(Integer.MAX_VALUE);
         closePrice = null;
+        volume = zero;
         amount = null;
         trades = 0;
-        volume = zero;
     }
 }

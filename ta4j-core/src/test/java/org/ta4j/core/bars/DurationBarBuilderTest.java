@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.aggregator;
+package org.ta4j.core.bars;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -35,18 +35,15 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarBuilder;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
-public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class DurationBarBuilderTest {
 
-    public DurationBarAggregatorTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+    private NumFactory numFactory = DecimalNumFactory.getInstance();
 
-    private List<Bar> getOneDayBars() {
+    private List<Bar> getOneDayBars(final NumFactory numFactory) {
         final List<Bar> bars = new LinkedList<>();
         final Instant time = Instant.parse("2019-06-12T04:01:00Z");
 
@@ -201,24 +198,84 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
                 .volume(322d)
                 .trades(7)
                 .build());
+
         return bars;
+    }
+
+    private BarSeries getOneSecondSeriesWithGaps(final NumFactory numFactory) {
+        var now = Instant.now();
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        series.barBuilder()
+                .timePeriod(Duration.ofMinutes(1))
+                .endTime(now.plus(Duration.ofMinutes(1)))
+                .openPrice(1)
+                .highPrice(1)
+                .closePrice(2)
+                .lowPrice(1)
+                .volume(1)
+                .add();
+
+        series.barBuilder()
+                .timePeriod(Duration.ofMinutes(1))
+                .endTime(now.plus(Duration.ofMinutes(2)))
+                .openPrice(1)
+                .highPrice(1)
+                .closePrice(3)
+                .lowPrice(1)
+                .volume(1)
+                .add();
+
+        // We have a time gap between the last and the following bar
+        series.barBuilder()
+                .timePeriod(Duration.ofMinutes(1))
+                .endTime(now.plus(Duration.ofMinutes(60)))
+                .openPrice(1)
+                .highPrice(1)
+                .closePrice(1)
+                .lowPrice(1)
+                .volume(1)
+                .add();
+
+        return series;
     }
 
     /**
      * Tests if the bars are upscaled correctly from 1day to 5day
      */
     @Test
-    public void upscaledTo5DayBars() {
-        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(5), true);
+    public void upscaledTo5DaysBars() {
+        final var series = new BaseBarSeriesBuilder()
+                .withBarBuilderFactory(new DurationBarBuilderFactory(Duration.ofDays(5)))
+                .withNumFactory(numFactory)
+                .build();
 
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+        var oneDaySeries = new BaseBarSeriesBuilder().withName("oneDaySeries")
+                .withBars(getOneDayBars(numFactory))
+                .build();
+
+        var barBuilder = series.barBuilder();
+        for (var bar : oneDaySeries.getBarData()) {
+            barBuilder.timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .trades(bar.getTrades())
+                    .volume(bar.getVolume())
+                    .amount(bar.getAmount())
+                    .add();
+        }
+
+        var bars = series.getBarData();
 
         // must be 3 bars
         assertEquals(3, bars.size());
 
         // bar 1 must have ohlcv (1, 6, 4, 9, 25)
-        final Bar bar1 = bars.get(0);
-        final Num num1 = bar1.getOpenPrice();
+        final var bar1 = bars.get(0);
+        final var num1 = bar1.getOpenPrice();
         assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
         assertNumEquals(num1.getNumFactory().numOf(6), bar1.getHighPrice());
         assertNumEquals(num1.getNumFactory().numOf(4), bar1.getLowPrice());
@@ -226,8 +283,8 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         assertNumEquals(num1.getNumFactory().numOf(33), bar1.getVolume());
 
         // bar 2 must have ohlcv (6, 91, 4, 10, 260)
-        final Bar bar2 = bars.get(1);
-        final Num num2 = bar2.getOpenPrice();
+        final var bar2 = bars.get(1);
+        final var num2 = bar2.getOpenPrice();
         assertNumEquals(num2.getNumFactory().numOf(6), bar2.getOpenPrice());
         assertNumEquals(num2.getNumFactory().numOf(91), bar2.getHighPrice());
         assertNumEquals(num2.getNumFactory().numOf(4), bar2.getLowPrice());
@@ -235,8 +292,8 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         assertNumEquals(num2.getNumFactory().numOf(260), bar2.getVolume());
 
         // bar 3 must have ohlcv (1d, 6d, 4d, 9d, 25)
-        Bar bar3 = bars.get(2);
-        Num num3 = bar3.getOpenPrice();
+        final var bar3 = bars.get(2);
+        final var num3 = bar3.getOpenPrice();
         assertNumEquals(num3.getNumFactory().numOf(4), bar3.getOpenPrice());
         assertNumEquals(num3.getNumFactory().numOf(991), bar3.getHighPrice());
         assertNumEquals(num3.getNumFactory().numOf(43), bar3.getLowPrice());
@@ -248,16 +305,38 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
      * Tests if the bars are upscaled correctly from 1day to 10day
      */
     @Test
-    public void upscaledTo10DayBars() {
-        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), true);
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+    public void upscaledTo10DaysBars() {
+        final var series = new BaseBarSeriesBuilder()
+                .withBarBuilderFactory(new DurationBarBuilderFactory(Duration.ofDays(10)))
+                .withNumFactory(numFactory)
+                .build();
+
+        var oneDaySeries = new BaseBarSeriesBuilder().withName("oneDaySeries")
+                .withBars(getOneDayBars(numFactory))
+                .build();
+
+        var barBuilder = series.barBuilder();
+        for (var bar : oneDaySeries.getBarData()) {
+            barBuilder.timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .trades(bar.getTrades())
+                    .volume(bar.getVolume())
+                    .amount(bar.getAmount())
+                    .add();
+        }
+
+        var bars = series.getBarData();
 
         // must be 1 bars
         assertEquals(1, bars.size());
 
         // bar 1 must have ohlcv (1, 91, 4, 10, 293)
-        final Bar bar1 = bars.get(0);
-        final Num num1 = bar1.getOpenPrice();
+        final var bar1 = bars.get(0);
+        final var num1 = bar1.getOpenPrice();
         assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
         assertNumEquals(num1.getNumFactory().numOf(91), bar1.getHighPrice());
         assertNumEquals(num1.getNumFactory().numOf(4), bar1.getLowPrice());
@@ -266,73 +345,62 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
     }
 
     /**
-     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not
-     * final bars too
+     * Tests if the bars are upscaled correctly from 1 second to 2 seconds even if 1
+     * second bary has gaps.
      */
     @Test
-    public void upscaledTo10DayBarsNotOnlyFinalBars() {
-        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), false);
-        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+    public void upscaleTo2MinutesBarsWithGaps() {
+        var oneSecondSeries = getOneSecondSeriesWithGaps(numFactory);
 
-        // must be 2 bars
-        assertEquals(2, bars.size());
+        var series = new BaseBarSeriesBuilder()
+                .withBarBuilderFactory(new DurationBarBuilderFactory(Duration.ofMinutes(2)))
+                .withNumFactory(numFactory)
+                .build();
+
+        var barBuilder = series.barBuilder();
+        for (var bar : oneSecondSeries.getBarData()) {
+            barBuilder.timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .trades(bar.getTrades())
+                    .volume(bar.getVolume())
+                    .amount(bar.getAmount())
+                    .add();
+        }
+
+        // always aggregate every 2 minutes, regardless of any time gaps
+        assertEquals(1, series.getBarCount());
+        assertNumEquals(3, series.getBar(0).getClosePrice());
+        assertNumEquals(2, series.getBar(0).getVolume());
     }
 
     @Test
-    public void testWithGapsInSeries() {
-        Instant now = Instant.now();
-        BarSeries barSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+    public void upscaleTo4MinutesBarsWithGaps() {
+        var oneSecondSeries = getOneSecondSeriesWithGaps(numFactory);
 
-        barSeries.barBuilder()
-                .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(1)))
-                .openPrice(1)
-                .highPrice(1)
-                .closePrice(2)
-                .lowPrice(1)
-                .volume(1)
-                .add();
+        var series = new BaseBarSeriesBuilder()
+                .withBarBuilderFactory(new DurationBarBuilderFactory(Duration.ofMinutes(4)))
+                .withNumFactory(numFactory)
+                .build();
 
-        barSeries.barBuilder()
-                .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(2)))
-                .openPrice(1)
-                .highPrice(1)
-                .closePrice(3)
-                .lowPrice(1)
-                .volume(1)
-                .add();
+        var barBuilder = series.barBuilder();
+        for (var bar : oneSecondSeries.getBarData()) {
+            barBuilder.timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .trades(bar.getTrades())
+                    .volume(bar.getVolume())
+                    .amount(bar.getAmount())
+                    .add();
+        }
 
-        barSeries.barBuilder()
-                .timePeriod(Duration.ofMinutes(1))
-                .endTime(now.plus(Duration.ofMinutes(60)))
-                .openPrice(1)
-                .highPrice(1)
-                .closePrice(1)
-                .lowPrice(1)
-                .volume(1)
-                .add();
-
-        BarSeries aggregated2MinSeries = new BaseBarSeriesAggregator(
-                new DurationBarAggregator(Duration.ofMinutes(2), false)).aggregate(barSeries, "");
-        BarSeries aggregated4MinSeries = new BaseBarSeriesAggregator(
-                new DurationBarAggregator(Duration.ofMinutes(4), false)).aggregate(barSeries, "");
-
-        assertEquals(2, aggregated2MinSeries.getBarCount());
-        assertEquals(2, aggregated4MinSeries.getBarCount());
-
-        assertNumEquals(3, aggregated2MinSeries.getBar(0).getClosePrice());
-        assertNumEquals(3, aggregated4MinSeries.getBar(0).getClosePrice());
-
-        assertNumEquals(2, aggregated2MinSeries.getBar(0).getVolume());
-        assertNumEquals(2, aggregated4MinSeries.getBar(0).getVolume());
-
-        assertNumEquals(1, aggregated2MinSeries.getBar(1).getClosePrice());
-        assertNumEquals(1, aggregated4MinSeries.getBar(1).getClosePrice());
-
-        assertNumEquals(1, aggregated2MinSeries.getBar(1).getVolume());
-        assertNumEquals(1, aggregated4MinSeries.getBar(1).getVolume());
-
+        // always aggregate every 4 minutes, regardless of any time gaps
+        assertEquals(0, series.getBarCount());
     }
-
 }
