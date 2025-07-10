@@ -55,6 +55,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Moved `indicators/WMAIndicator` to `indicators/averages`-package
 - Moved `indicators/ZLEMAIndicator` to `indicators/averages`-package
 - Implemented sharing of `MathContext` in `DecimalNum`. For creating numbers, `NumFactory` implementations are the preferred way.
+- Removed  `utils`-package and moved `BarSeriesUtils.java` to root folder
 
 ### Fixed
 - Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null

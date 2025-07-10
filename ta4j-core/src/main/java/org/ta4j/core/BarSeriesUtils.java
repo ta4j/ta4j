@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.utils;
+package org.ta4j.core;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,9 +30,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
