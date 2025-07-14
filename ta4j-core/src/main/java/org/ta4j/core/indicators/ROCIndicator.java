@@ -30,7 +30,10 @@ import org.ta4j.core.num.Num;
  * Rate of change (ROCIndicator) indicator (also called "Momentum").
  *
  * <p>
- * The ROCIndicator calculation compares the current value with the value "n"
+ * The ROCIndicator calculation compares the current {@link #indicator}-value
+ * with the {@link #indicator}-value "n" periods ago. If a
+ * {@link #previousIndicator} is given, it compares the current
+ * {@link #indicator}-value with the {@link #previousIndicator}-value "n"
  * periods ago.
  *
  * @see <a href=
@@ -39,6 +42,7 @@ import org.ta4j.core.num.Num;
 public class ROCIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
+    private final Indicator<Num> previousIndicator;
     private final int barCount;
 
     /**
@@ -48,15 +52,28 @@ public class ROCIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
+        this(indicator, null, barCount);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator         the indicator
+     * @param previousIndicator the previous indicator (optional)
+     * @param barCount          the time frame
+     */
+    public ROCIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
+        this.previousIndicator = previousIndicator;
         this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
         int nIndex = Math.max(index - barCount, 0);
-        Num nPeriodsAgoValue = indicator.getValue(nIndex);
+        Num nPeriodsAgoValue = previousIndicator == null ? indicator.getValue(nIndex)
+                : previousIndicator.getValue(nIndex);
         Num currentValue = indicator.getValue(index);
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)

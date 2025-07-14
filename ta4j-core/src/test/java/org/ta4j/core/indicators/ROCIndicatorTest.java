@@ -25,10 +25,14 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
+import java.time.Duration;
+import java.time.Instant;
+
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -39,20 +43,14 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             10520.32, 10380.43, 10785.14, 10748.26, 10896.91, 10782.95, 10620.16, 10625.83, 10510.95, 10444.37,
             10068.01, 10193.39, 10066.57, 10043.75 };
 
-    private ClosePriceIndicator closePrice;
-
     public ROCIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    @Before
-    public void setUp() {
-        closePrice = new ClosePriceIndicator(
-                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closePriceValues).build());
-    }
-
     @Test
     public void getValueWhenBarCountIs12() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closePriceValues).build();
+        var closePrice = new ClosePriceIndicator(series);
         var roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame
@@ -66,5 +64,73 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (int i = 0; i < results13to20.length; i++) {
             assertNumEquals(results13to20[i], roc.getValue(i + 12));
         }
+    }
+
+    @Test
+    public void getValueWhenBarCountIs1WithOtherPreviousIndicator() {
+        var endTime = Instant.now();
+        var duration = Duration.ofSeconds(1);
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(2.8)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(2.9)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(1))
+                .openPrice(2.5)
+                .highPrice(2)
+                .lowPrice(2)
+                .closePrice(2.4)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(2))
+                .openPrice(2.0)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(3.0)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(3))
+                .openPrice(3)
+                .highPrice(3)
+                .lowPrice(3)
+                .closePrice(3.2)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(4))
+                .openPrice(4)
+                .highPrice(4)
+                .lowPrice(4)
+                .closePrice(3.5)
+                .add();
+
+        var openPrice = new OpenPriceIndicator(series);
+        var closePrice = new ClosePriceIndicator(series);
+        var roc = new ROCIndicator(openPrice, closePrice, 1);
+
+        // index: 0: currentOpenPrice = 2.8, previousClosePrice (from same bar) = 2.9
+        assertNumEquals(-3.448275862068969, roc.getValue(0));
+
+        // index: 1: currentOpenPrice = 2.5, previousClosePrice = 2.9
+        assertNumEquals(-13.79310344827586, roc.getValue(1));
+
+        // index: 2: currentOpenPrice = 2.0, previousClosePrice = 2.4
+        assertNumEquals(-16.666666666666666666666666666667, roc.getValue(2));
+
+        // index: 3: currentOpenPrice = 3.0, previousClosePrice = 3.0
+        assertNumEquals(0, roc.getValue(3));
+
+        // index: 4: currentOpenPrice = 4.0, previousClosePrice = 3.2
+        assertNumEquals(24.999999999999993, roc.getValue(4));
+
     }
 }
