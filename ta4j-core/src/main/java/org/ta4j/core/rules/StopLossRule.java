@@ -33,6 +33,9 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Satisfied when the close price reaches the loss threshold.
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class StopLossRule extends AbstractRule {
 
