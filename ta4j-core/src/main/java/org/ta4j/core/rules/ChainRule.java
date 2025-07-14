@@ -31,24 +31,56 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.rules.helper.ChainLink;
 
 /**
- * A {@code ChainRule} has an initial rule that has to be satisfied before a
- * list of {@link ChainLink chain links} are evaluated. If the initial rule is
- * satisfied, each rule in {@link ChainRule#rulesInChain chain links} has to be
- * satisfied within a specified "number of bars (= threshold)".
+ * A {@code ChainRule} consists of:
+ *
+ * <ul>
+ * <li>The list of {@link ChainLink chain links}: Each rule in
+ * {@link ChainRule#rulesInChain chain links} has to be satisfied within a
+ * specified "number of bars (= {@code threshold})".
+ * <li>The (optional) {@link #initialRule}: If defined, it must be satisfied
+ * <b>before</b> {@link ChainLink chain links} are evaluated, i.e. the tested
+ * index is the number of the maximum {@code threshold} from
+ * {@link #rulesInChain}.
+ * <li>The (optional) {@link #currentRule}: If defined, it must be satisfied
+ * <b>at the current {@code index}</b> .
  */
 public class ChainRule extends AbstractRule {
 
     private final Rule initialRule;
+    private final Rule currentRule;
     private LinkedList<ChainLink> rulesInChain = new LinkedList<>();
+
+    /**
+     * Constructor.
+     *
+     * @param chainLinks {@link ChainLink} that has to be satisfied within their
+     *                   thresholds (= "number of bars")
+     */
+    public ChainRule(ChainLink... chainLinks) {
+        this(null, null, chainLinks);
+    }
 
     /**
      * @param initialRule the first rule that has to be satisfied before
      *                    {@link ChainLink} are evaluated
-     * @param chainLinks  {@link ChainLink} that has to be satisfied after the
-     *                    initial rule within their thresholds
+     * @param chainLinks  {@link ChainLink} that has to be satisfied within their
+     *                    thresholds (= "number of bars")
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
+        this(initialRule, null, chainLinks);
+    }
+
+    /**
+     * @param initialRule the first rule that has to be satisfied before
+     *                    {@link ChainLink} are evaluated
+     * @param currentRule the current rule that has to be satisfied at the current
+     *                    {@code index}
+     * @param chainLinks  {@link ChainLink} that has to be satisfied within their
+     *                    thresholds (= "number of bars")
+     */
+    public ChainRule(Rule initialRule, Rule currentRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;
+        this.currentRule = currentRule;
         this.rulesInChain.addAll(Arrays.asList(chainLinks));
     }
 
@@ -57,12 +89,27 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (!initialRule.isSatisfied(index, tradingRecord)) {
+        // 1. check the initialRule
+        if (initialRule != null) {
+            // We need at least a required minimum number of bars ( = initialRuleIndex) to
+            // determine whether the initialRule is satisfied. As long as we do not have the
+            // required minimum number of bars, the rule cannot be satisfied.
+            int initialRuleIndex = index - rulesInChain.stream().mapToInt(ChainLink::getThreshold).max().orElse(0);
+            if (initialRuleIndex < 0 || !initialRule.isSatisfied(initialRuleIndex, tradingRecord)) {
+                traceIsSatisfied(initialRuleIndex, false);
+                return false;
+            }
+        }
+
+        // 2. check the currentRule
+        if (currentRule != null && !currentRule.isSatisfied(index, tradingRecord)) {
             traceIsSatisfied(index, false);
             return false;
         }
+
         traceIsSatisfied(index, true);
 
+        // 3. check the rulesInChain
         for (ChainLink link : rulesInChain) {
             boolean satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
@@ -76,7 +123,12 @@ public class ChainRule extends AbstractRule {
 
                 satisfiedWithinThreshold = link.getRule().isSatisfied(resultingIndex, tradingRecord);
 
-                if (satisfiedWithinThreshold) {
+                // Stop further checks if the rule was not satisfied at resultingIndex.
+                if (!satisfiedWithinThreshold) {
+                    // To speed up the execution of the ChainRule, we could "return false"
+                    // instead of a "break." However, since we want to "trace" each rule, we need to
+                    // check the next rule from "rulesInChain", even though it's already clear that
+                    // the ChainRule rule isn't satisfied.
                     break;
                 }
 

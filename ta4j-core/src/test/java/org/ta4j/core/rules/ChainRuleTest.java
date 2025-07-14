@@ -26,32 +26,162 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.indicators.helpers.FixedNumIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.helper.ChainLink;
 
 public class ChainRuleTest {
 
-    private ChainRule chainRule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        var series = new MockBarSeriesBuilder().build();
-        var indicator = new FixedNumIndicator(series, 6, 5, 8, 5, 1, 10, 2, 30);
-        var underIndicatorRule = new UnderIndicatorRule(indicator, series.numFactory().numOf(5));
-        var overIndicatorRule = new OverIndicatorRule(indicator, 7);
-        var isEqualRule = new IsEqualRule(indicator, 5);
-        chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3),
-                new ChainLink(isEqualRule, 2));
+        series = new BaseBarSeriesBuilder().withName(ChainRule.class.getSimpleName()).build();
+
+        var endTime = Instant.now();
+        var duration = Duration.ofSeconds(1);
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(2.9)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(1))
+                .openPrice(2)
+                .highPrice(2)
+                .lowPrice(2)
+                .closePrice(4.3)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(2))
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(3.0)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(3))
+                .openPrice(3)
+                .highPrice(3)
+                .lowPrice(3)
+                .closePrice(3.2)
+                .add();
+        series.barBuilder()
+                .timePeriod(duration)
+                .endTime(endTime.plusSeconds(4))
+                .openPrice(4)
+                .highPrice(4)
+                .lowPrice(4)
+                .closePrice(3.5)
+                .add();
     }
 
     @Test
-    public void isSatisfied() {
-        assertFalse(chainRule.isSatisfied(0));
-        assertTrue(chainRule.isSatisfied(4));
-        assertTrue(chainRule.isSatisfied(6));
-        assertFalse(chainRule.isSatisfied(7));
+    public void testOnlyChainRules() {
+
+        var closePriceIndicator = new ClosePriceIndicator(series);
+        var overIndicatorRule = new OverIndicatorRule(closePriceIndicator, 2.9);
+
+        // remain above the value for a number of bars
+        var rule = new ChainRule(new ChainLink(overIndicatorRule, 2));
+
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(0));
+
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(1));
+
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(2));
+
+        // OverIndicator (index:3) satisfied: first 3.2, second = 2.9
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        assertTrue(rule.isSatisfied(3));
+
+        // OverIndicator (index:4) satisfied: first 3.5, second = 3.0
+        // OverIndicator (index:3) satisfied: first 3.2, second = 3.0
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        assertTrue(rule.isSatisfied(4));
     }
+
+    @Test
+    public void testInitialRule() {
+
+        var closePriceIndicator = new ClosePriceIndicator(series);
+        var crossUpIndicatorRule = new CrossedUpIndicatorRule(closePriceIndicator, 3);
+        var overIndicatorRule = new OverIndicatorRule(closePriceIndicator, 2.8);
+
+        // cross up a value and then remain above the value for a number of bars
+        var rule = new ChainRule(crossUpIndicatorRule, new ChainLink(overIndicatorRule, 2));
+
+        // we need at least 2 bars to test the crossUpRule
+        assertFalse(rule.isSatisfied(0));
+
+        // we need at least 2 bars to test the crossUpRule
+        assertFalse(rule.isSatisfied(1));
+
+        // CrossedUpIndicator (index:0): low 2.9, up = 3, crossed = false
+        assertFalse(rule.isSatisfied(2));
+
+        // CrossedUpIndicator (index:1): low 4.3, up = 3, crossed = true
+        // OverIndicator (index:3) satsfied: first 3.2, second = 2.8
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.8
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.8
+        assertTrue(rule.isSatisfied(3));
+
+        // CrossedUpIndicator (index:2) not satisfied: low 3.0, up = 3, crossed = false
+        assertFalse(rule.isSatisfied(4));
+    }
+
+    @Test
+    public void testInitialAndCurrrentRule() {
+
+        var closePriceIndicator = new ClosePriceIndicator(series);
+        var overIndicatorRule = new OverIndicatorRule(closePriceIndicator, 2.9);
+        var underIndicatorRule = new UnderIndicatorRule(closePriceIndicator, 3.5);
+
+        // remain above the value for a number of bars but the current index should be
+        // below a value
+        var rule = new ChainRule(null, underIndicatorRule, new ChainLink(overIndicatorRule, 2));
+
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(0));
+
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(1));
+
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        // OverIndicator (index:0) not satisfied: first 2.9, second = 2.9
+        assertFalse(rule.isSatisfied(2));
+
+        // OverIndicator (index:3) satisfied: first 3.2, second = 2.9
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        // OverIndicator (index:1) satisfied: first 4.3, second = 2.9
+        assertTrue(rule.isSatisfied(3));
+
+        // UnderIndicator (index:4) not satisfied: first 3.5, second = 3.5
+        // OverIndicator (index:4) satisfied: first 3.5, second = 3.0
+        // OverIndicator (index:3) satisfied: first 3.2, second = 3.0
+        // OverIndicator (index:2) satisfied: first 3.0, second = 2.9
+        assertFalse(rule.isSatisfied(4));
+    }
+
 }

@@ -16,16 +16,23 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
+- Fixed `ChainRule` logic:
+    - now it breaks the loop if `satisfiedWithinThreshold` is `false` 
+    - now the `initialRule` must be satisfied before `chainRules` are evaluated and not at the current index
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
+- Improved `ChainRule` logic:
+    - Now `InitialRule` is optional
+    - Added optional `CurrentRule` (to test a rule at the current index)
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
+
 
 
 ## 0.18 (released May 15, 2025)
