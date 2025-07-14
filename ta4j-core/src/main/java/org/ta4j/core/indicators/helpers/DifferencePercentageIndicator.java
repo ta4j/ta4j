@@ -32,45 +32,71 @@ import org.ta4j.core.num.Num;
  * Difference Percentage Indicator.
  *
  * <p>
- * Returns the percentage difference from the last time the
- * {@link #percentageThreshold threshold} was reached. If the threshold is
- * {@code 0} or not specified, only the percentage difference from the previous
- * value is returned.
+ * Returns the percentage difference of the {@link #indicator}-value from the
+ * last time the {@link #percentageThreshold threshold} was reached. If the
+ * threshold is {@code 0} or not specified, only either the percentage
+ * difference between the current {@link #indicator}-value and its previous
+ * {@link #indicator} value or, if {@link #previousIndicator} is specified, the
+ * percentage difference between the current {@link #indicator}-value and the
+ * previous {@link #previousIndicator} value is returned.
  */
 public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
+    private final Indicator<Num> previousIndicator;
     private final Num percentageThreshold;
     private Num lastNotification;
 
     /**
      * Constructor to get the percentage difference from the previous value.
      *
-     * @param indicator the {@link Indicator}
+     * @param indicator the {@link #Indicator}
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
-        this(indicator, indicator.getBarSeries().numFactory().zero());
+        this(indicator, null, indicator.getBarSeries().numFactory().zero());
+    }
+
+    /**
+     * Constructor to get the percentage difference from the previous value.
+     *
+     * @param indicator         the {@link #Indicator}
+     * @param previousIndicator the {@link #previousIndicator}
+     */
+    public DifferencePercentageIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator) {
+        this(indicator, previousIndicator, indicator.getBarSeries().numFactory().zero());
     }
 
     /**
      * Constructor.
      *
-     * @param indicator           the {@link Indicator}
+     * @param indicator           the {@link #Indicator}
      * @param percentageThreshold the threshold percentage
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
+        this(indicator, null, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
     }
 
     /**
      * Constructor.
      *
-     * @param indicator           the {@link Indicator}
+     * @param indicator           the {@link #Indicator}
      * @param percentageThreshold the threshold percentage
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Num percentageThreshold) {
+        this(indicator, null, percentageThreshold);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator           the {@link #Indicator}
+     * @param percentageThreshold the threshold percentage
+     */
+    public DifferencePercentageIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
+            Num percentageThreshold) {
         super(indicator);
         this.indicator = indicator;
+        this.previousIndicator = previousIndicator;
         this.percentageThreshold = percentageThreshold;
     }
 
@@ -88,7 +114,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
         // calculate all the previous values to get the correct
         // last notification value for this index
-        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+        for (int i = beginIndex; i < index; i++) {
             setLastNotification(i);
         }
 
@@ -101,7 +127,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     public void setLastNotification(int index) {
-        Num value = indicator.getValue((index));
+        Num value = previousIndicator == null ? indicator.getValue(index) : previousIndicator.getValue(index);
         if (value.isNaN() || value.isZero()) {
             return;
         }

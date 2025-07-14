@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
+- enhanced `DifferencePercentageIndicator` with  `previousIndicator` to set the type of the previous indicator
 
 
 ## 0.18 (released May 15, 2025)
