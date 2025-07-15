@@ -76,8 +76,8 @@ public class JMAIndicator extends CachedIndicator<Num> {
                 .dividedBy(numFactory.numOf(0.45).multipliedBy(numFactory.numOf(barCount - 1)).plus(numFactory.two()));
 
         phaseRatio = this.phase.isLessThan(numFactory.numOf(-100)) ? numFactory.numOf(0.5)
-                : (this.phase.isGreaterThan(numFactory.numOf(100)) ? numFactory.numOf(2.5)
-                        : this.phase.dividedBy(numFactory.numOf(100)).plus(numFactory.numOf(1.5)));
+                : (this.phase.isGreaterThan(numFactory.hundred()) ? numFactory.numOf(2.5)
+                        : this.phase.dividedBy(numFactory.hundred()).plus(numFactory.numOf(1.5)));
 
         alpha = beta.pow(this.power);
 

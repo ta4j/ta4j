@@ -65,7 +65,7 @@ public class HeikinAshiBarBuilder extends TimeBarBuilder {
                     .plus(closePrice)
                     .dividedBy(numFactory.numOf(4));
             var heikinAshiOpen = previousHeikinAshiOpenPrice.plus(previousHeikinAshiClosePrice)
-                    .dividedBy(numFactory.numOf(2));
+                    .dividedBy(numFactory.two());
             var heikinAshiHigh = highPrice.max(heikinAshiOpen).max(heikinAshiClose);
             var heikinAshiLow = lowPrice.min(heikinAshiOpen).min(heikinAshiClose);
             return new BaseBar(timePeriod, beginTime, endTime, heikinAshiOpen, heikinAshiHigh, heikinAshiLow,

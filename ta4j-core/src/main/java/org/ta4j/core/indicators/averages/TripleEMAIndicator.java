@@ -64,7 +64,7 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         // trix = 3 * ( ema - emaEma ) + emaEmaEma
         final var numFactory = getBarSeries().numFactory();
-        return numFactory.numOf(3)
+        return numFactory.three()
                 .multipliedBy(ema.getValue(index).minus(emaEma.getValue(index)))
                 .plus(emaEmaEma.getValue(index));
     }

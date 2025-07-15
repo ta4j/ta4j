@@ -151,7 +151,7 @@ public class Returns implements Indicator<Num> {
      */
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
-        Num minusOne = barSeries.numFactory().numOf(-1);
+        Num minusOne = barSeries.numFactory().minusOne();
         int endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
