@@ -42,14 +42,6 @@ public class DoubleNum implements Num {
 
     private static final long serialVersionUID = 1L;
 
-    public static final DoubleNum MINUS_ONE = DoubleNum.valueOf(-1);
-    public static final DoubleNum ZERO = DoubleNum.valueOf(0);
-    public static final DoubleNum ONE = DoubleNum.valueOf(1);
-    public static final DoubleNum TWO = DoubleNum.valueOf(2);
-    public static final DoubleNum THREE = DoubleNum.valueOf(3);
-    public static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
-    public static final DoubleNum THOUSAND = DoubleNum.valueOf(1000);
-
     private final static double EPS = 0.00001; // precision
     private final double delegate;
 
