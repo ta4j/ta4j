@@ -24,56 +24,50 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.averages.MMAIndicator;
-import org.ta4j.core.indicators.helpers.GainIndicator;
-import org.ta4j.core.indicators.helpers.LossIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Relative strength index energy indicator.
- *
+ * <p>
  * 7
  */
-public class RSIEnergyIndicator extends CachedIndicator<Num> {
+public class BalanceOfEnergyIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator averageGainIndicator;
-    private final MMAIndicator averageLossIndicator;
-    private final int barCount;
+    private final RunningTotalIndicator runningTotalIndicator;
+    private final Indicator<Num> oscillatingIndicator;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param oscillatingIndicator the {@link Indicator}
+     * @param timeFrame            the time frame to calculate over (-N bars to present)
      */
-    public RSIEnergyIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
-        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
-        this.barCount = barCount;
+    public BalanceOfEnergyIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, int neutralPivotValue) {
+        super(oscillatingIndicator);
+        this.oscillatingIndicator = oscillatingIndicator;
+
+        var smoothedSignalIndicator = new KalmanFilterIndicator(oscillatingIndicator);
+        BinaryOperationIndicator deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedSignalIndicator, neutralPivotValue);
+
+        this.runningTotalIndicator = new RunningTotalIndicator(deltaFromNeutralIndicator, timeFrame);
+    }
+
+    /**
+     *
+     */
+    public BalanceOfEnergyIndicator(RSIIndicator rsiIndicator, int timeFrame) {
+        this(rsiIndicator, timeFrame, 50);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
-        // compute relative strength
-        Num averageGain = averageGainIndicator.getValue(index);
-        Num averageLoss = averageLossIndicator.getValue(index);
-        final var numFactory = getBarSeries().numFactory();
-        if (averageLoss.isZero()) {
-            return averageGain.isZero() ? numFactory.zero() : numFactory.hundred();
-        }
-        Num relativeStrength = averageGain.dividedBy(averageLoss);
-        // compute relative strength index
-        return numFactory.hundred().minus(numFactory.hundred().dividedBy(numFactory.one().plus(relativeStrength)));
+        return this.runningTotalIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return this.oscillatingIndicator.getCountOfUnstableBars();
     }
 }

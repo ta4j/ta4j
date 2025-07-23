@@ -28,7 +28,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -72,7 +72,7 @@ public class AverageTrueRangeStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.stopLossThreshold = BinaryOperation.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+        this.stopLossThreshold = BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
         this.referencePrice = referencePrice;
     }
 

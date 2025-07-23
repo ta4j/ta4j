@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -51,7 +51,7 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private final BinaryOperation indicatorMinusPreviousSMAIndicator;
+    private final BinaryOperationIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;
 
     /**
@@ -75,7 +75,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
         final int timeFrame = barCount / 2 + 1;
         final var simpleMovingAverage = new SMAIndicator(price, barCount);
         final var previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage, timeFrame);
-        this.indicatorMinusPreviousSMAIndicator = BinaryOperation.difference(price, previousSimpleMovingAverage);
+        this.indicatorMinusPreviousSMAIndicator = BinaryOperationIndicator.difference(price, previousSimpleMovingAverage);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }
 

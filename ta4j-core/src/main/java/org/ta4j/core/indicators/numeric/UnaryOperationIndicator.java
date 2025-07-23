@@ -35,12 +35,12 @@ import java.util.function.UnaryOperator;
  * <p>
  * There may be other unary operations on Num that could be added here.
  */
-public class UnaryOperation implements Indicator<Num> {
+public class UnaryOperationIndicator implements Indicator<Num> {
 
     private final UnaryOperator<Num> operator;
     private final Indicator<Num> operand;
 
-    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
+    private UnaryOperationIndicator(UnaryOperator<Num> operator, Indicator<Num> operand) {
         this.operator = operator;
         this.operand = operand;
     }
@@ -52,8 +52,8 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code √(operand)}
      * @see Num#sqrt
      */
-    public static UnaryOperation sqrt(Indicator<Num> operand) {
-        return new UnaryOperation(Num::sqrt, operand);
+    public static UnaryOperationIndicator sqrt(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(Num::sqrt, operand);
     }
 
     /**
@@ -64,8 +64,8 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code abs(operand)}
      * @see Num#abs
      */
-    public static UnaryOperation abs(Indicator<Num> operand) {
-        return new UnaryOperation(Num::abs, operand);
+    public static UnaryOperationIndicator abs(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(Num::abs, operand);
     }
 
     /**
@@ -76,9 +76,9 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code operand^exponent}
      * @see Num#pow
      */
-    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
+    public static UnaryOperationIndicator pow(Indicator<Num> operand, Number exponent) {
         final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
-        return new UnaryOperation(val -> val.pow(numExponent), operand);
+        return new UnaryOperationIndicator(val -> val.pow(numExponent), operand);
     }
 
     /**
@@ -89,8 +89,8 @@ public class UnaryOperation implements Indicator<Num> {
      * @apiNote precision may be lost, because this implementation is using the
      * underlying doubleValue method
      */
-    public static UnaryOperation log(Indicator<Num> operand) {
-        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
+    public static UnaryOperationIndicator log(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
     /***
@@ -100,9 +100,9 @@ public class UnaryOperation implements Indicator<Num> {
      * @param replacementValue
      * @return
      */
-    public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
-                                            final Num replacementValue) {
-        return new UnaryOperation(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
+    public static UnaryOperationIndicator substitute(final Indicator<Num> operand, final Num valueToReplace,
+                                                     final Num replacementValue) {
+        return new UnaryOperationIndicator(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
                 operand);
     }
 
