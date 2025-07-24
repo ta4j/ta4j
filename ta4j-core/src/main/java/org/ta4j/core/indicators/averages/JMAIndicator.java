@@ -66,7 +66,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
         this.numFactory = indicator.getBarSeries().numFactory();
         this.indicator = indicator;
         this.barCount = barCount;
-        this.phase = numFactory.numOf(Math.min(Math.max(phase, -100), 100)); // Clamp phase between -100 and 100
+        this.phase = numFactory.numOf(Math.clamp(phase, -100, 100)); // Clamp phase between -100 and 100
         this.power = numFactory.numOf(Math.max(1, power)); // Ensure power is at least 1
         this.jmaDataMap = new HashMap<>();
 
@@ -76,8 +76,8 @@ public class JMAIndicator extends CachedIndicator<Num> {
                 .dividedBy(numFactory.numOf(0.45).multipliedBy(numFactory.numOf(barCount - 1)).plus(numFactory.two()));
 
         phaseRatio = this.phase.isLessThan(numFactory.numOf(-100)) ? numFactory.numOf(0.5)
-                : (this.phase.isGreaterThan(numFactory.numOf(100)) ? numFactory.numOf(2.5)
-                        : this.phase.dividedBy(numFactory.numOf(100)).plus(numFactory.numOf(1.5)));
+                : (this.phase.isGreaterThan(numFactory.hundred()) ? numFactory.numOf(2.5)
+                        : this.phase.dividedBy(numFactory.hundred()).plus(numFactory.numOf(1.5)));
 
         alpha = beta.pow(this.power);
 
@@ -106,9 +106,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
         Num jma = previousJMA.jma.plus(e2);
 
-        if (!jmaDataMap.containsKey(index)) {
-            jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
-        }
+        jmaDataMap.computeIfAbsent(index, k -> new JmaData(e0, e1, e2, jma));
 
         return jma;
     }

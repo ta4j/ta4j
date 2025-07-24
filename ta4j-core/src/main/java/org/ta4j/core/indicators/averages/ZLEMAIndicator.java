@@ -52,7 +52,7 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.two = getBarSeries().numFactory().numOf(2);
+        this.two = getBarSeries().numFactory().two();
         this.k = two.dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
         this.lag = (barCount - 1) / 2;
     }
