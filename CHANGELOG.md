@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Improved `ChainRule` logic:
     - Now `InitialRule` is optional
     - Added optional `CurrentRule` (to test a rule at the current index)
+- Changed snapshot distribution to Maven Central after OSSRH end-of-life
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
