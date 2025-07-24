@@ -133,27 +133,6 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public BaseBarSeries getSubSeries(final int startIndex, final int endIndex) {
-        if (startIndex < 0) {
-            throw new IllegalArgumentException(String.format("the startIndex: %s must not be negative", startIndex));
-        }
-        if (startIndex >= endIndex) {
-            throw new IllegalArgumentException(
-                    String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
-        }
-        if (!this.bars.isEmpty()) {
-            final int start = startIndex - getRemovedBarsCount();
-            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeriesBuilder().withName(getName())
-                    .withBars(cut(this.bars, start, end))
-                    .withNumFactory(this.numFactory)
-                    .build();
-        }
-        return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
-
-    }
-
-    @Override
     public NumFactory numFactory() {
         return this.numFactory;
     }
@@ -273,6 +252,22 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
+    public void addLastBar(final Bar bar, final boolean replace) {
+        var isEmpty = isEmpty() || getBarData().isEmpty();
+        var lastBar = isEmpty ? null : getLastBar();
+        var endTime = bar.getEndTime();
+        var isEndTimePast = endTime.isBefore(Instant.now());
+
+        if ((isEmpty || endTime.isAfter(lastBar.getEndTime())) && isEndTimePast) {
+            addBar(bar);
+        } else if (!isEmpty && !isEndTimePast && !replace) {
+            lastBar.addTrade(bar.getVolume(), bar.getClosePrice());
+        } else if (!isEmpty && replace) {
+            addBar(bar, true);
+        }
+    }
+
+    @Override
     public void addTrade(final Number tradeVolume, final Number tradePrice) {
         addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
     }
@@ -285,6 +280,39 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addPrice(final Num price) {
         getLastBar().addPrice(price);
+    }
+
+    @Override
+    public BarSeries copy(final String name, final int maximumBarCount) {
+        var copy = new BaseBarSeriesBuilder().withNumFactory(this.numFactory)
+                .withName(getName())
+                .withBars(new ArrayList<Bar>(getBarData()))
+                .build();
+        if (maximumBarCount > 0) {
+            copy.setMaximumBarCount(maximumBarCount);
+        }
+        return copy;
+    }
+
+    @Override
+    public BaseBarSeries getSubSeries(final int startIndex, final int endIndex) {
+        if (startIndex < 0) {
+            throw new IllegalArgumentException(String.format("the startIndex: %s must not be negative", startIndex));
+        }
+        if (startIndex >= endIndex) {
+            throw new IllegalArgumentException(
+                    String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
+        }
+        if (!this.bars.isEmpty()) {
+            final int start = startIndex - getRemovedBarsCount();
+            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
+            return new BaseBarSeriesBuilder().withName(getName())
+                    .withBars(cut(this.bars, start, end))
+                    .withNumFactory(this.numFactory)
+                    .build();
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
+
     }
 
     /**
