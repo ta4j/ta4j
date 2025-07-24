@@ -30,15 +30,17 @@ import org.ta4j.core.Rule;
 
 /**
  * A {@code ChainLink} is part of a {@link org.ta4j.core.rules.ChainRule
- * ChainRule}. Every Chainlink has a {@link Rule} and a {@code threshold}.
- * ChainLinks are evaluated in the trade they are added to the ChainRule and the
- * rule has to be satisfied within a specified "number of bars (= threshold)".
+ * ChainRule}. Every {@code ChainLink} has a {@link Rule} and a
+ * {@code threshold}. ChainLinks are evaluated in the trade they are added to
+ * the ChainRule and the rule has to be satisfied within a specified "number of
+ * bars (= threshold)", i.e. the threshold is the number of bars the provided
+ * rule has to be satisfied <b>after</b> the preceding rule.
  */
 public class ChainLink implements Serializable {
 
     private static final long serialVersionUID = -436033401669929601L;
 
-    /** The {@link Rule}, which must be satisfied within the threshold. */
+    /** The {@link Rule} that must be satisfied within the threshold. */
     private Rule rule;
 
     /**
@@ -48,12 +50,21 @@ public class ChainLink implements Serializable {
     private int threshold = 0;
 
     /**
-     * Threshold is the number of bars the provided rule has to be satisfied after
-     * the preceding rule.
+     * Constructor with {@link #threshold} = {@code 0} (i.e. the rule only needs to
+     * be satisfied for the current index).
      *
-     * @param rule      the {@link Rule}, which must be satisfied within the
-     *                  threshold
-     * @param threshold the number of bars in which the rule must be satisfied. The
+     * @param rule the {@link rule} that must be satisfied
+     */
+    public ChainLink(Rule rule) {
+        this.rule = rule;
+        this.threshold = 0;
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param rule      the {@link rule} that must be satisfied within the threshold
+     * @param threshold the number of bars in which the rule must be satisfied; the
      *                  current index is included.
      */
     public ChainLink(Rule rule, int threshold) {
@@ -90,22 +101,22 @@ public class ChainLink implements Serializable {
     }
 
     @Override
+    public String toString() {
+        return "ChainLink{" + "rule=" + rule + ", threshold=" + threshold + '}';
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o)
             return true;
         if (!(o instanceof ChainLink))
             return false;
-        ChainLink chainLink = (ChainLink) o;
-        return getThreshold() == chainLink.getThreshold() && Objects.equals(getRule(), chainLink.getRule());
+        final ChainLink other = (ChainLink) o;
+        return Objects.equals(rule, other.rule) && threshold == other.threshold;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getRule(), getThreshold());
-    }
-
-    @Override
-    public String toString() {
-        return "ChainLink{" + "rule=" + rule + ", threshold=" + threshold + '}';
+        return Objects.hash(rule, threshold);
     }
 }
