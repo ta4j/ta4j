@@ -28,6 +28,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -68,7 +69,6 @@ public class NumericIndicator implements Indicator<Num> {
      * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
      *
      * @param delegate an indicator
-     *
      * @return a fluent NumericIndicator wrapped around the argument
      */
     public static NumericIndicator of(Indicator<Num> delegate) {
@@ -76,21 +76,33 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     /**
+     * Creates a fluent version of the OpenPriceIndicator.
+     *
+     * @param series
+     * @return a NumericIndicator wrapped around an OpenPriceIndicator
+     */
+    public static NumericIndicator openPrice(BarSeries series) {
+        return of(new OpenPriceIndicator(series));
+    }
+
+    /**
      * Creates a fluent version of the ClosePriceIndicator.
      *
+     * @param series
      * @return a NumericIndicator wrapped around a ClosePriceIndicator
      */
-    public static NumericIndicator closePrice(BarSeries bs) {
-        return of(new ClosePriceIndicator(bs));
+    public static NumericIndicator closePrice(BarSeries series) {
+        return of(new ClosePriceIndicator(series));
     }
 
     /**
      * Creates a fluent version of the VolumeIndicator.
      *
+     * @param series
      * @return a NumericIndicator wrapped around a VolumeIndicator
      */
-    public static NumericIndicator volume(BarSeries bs) {
-        return of(new VolumeIndicator(bs));
+    public static NumericIndicator volume(BarSeries series) {
+        return of(new VolumeIndicator(series));
     }
 
     protected final Indicator<Num> delegate;
