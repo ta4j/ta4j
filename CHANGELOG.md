@@ -20,6 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
+- Changed snapshot distribution to Maven Central after OSSRH end-of-life
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
