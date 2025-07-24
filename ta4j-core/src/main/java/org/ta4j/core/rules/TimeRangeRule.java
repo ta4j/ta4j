@@ -40,6 +40,9 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  * the week. However, this rule converts a UTC to a ZonedDateTime in the
  * system's default time zone and then to a LocalTime to get the local time in
  * that time zone.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class TimeRangeRule extends AbstractRule {
 

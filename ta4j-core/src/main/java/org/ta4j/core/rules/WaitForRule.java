@@ -34,6 +34,9 @@ import org.ta4j.core.TradingRecord;
  *
  * <p>
  * Satisfied after a fixed number of bars have passed since the last trade.
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class WaitForRule extends AbstractRule {
 
