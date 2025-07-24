@@ -30,14 +30,15 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 
 public class AmountBarBuilderTest {
 
-    @Test(expected = IllegalArgumentException.class)
-    @SuppressWarnings("unused")
+    @Test
     public void createBarsWithSetAmountByVolume() {
+
         // setAmountByVolume = true:
         // => AmountBar.amount can only be built from closePrice*volume
         final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new AmountBarBuilderFactory(12, true))
@@ -48,7 +49,11 @@ public class AmountBarBuilderTest {
         // add bar 1:
         // aggregated volume = 1
         // aggregated amount = 1 * 1 = 1
-        series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).amount(1).trades(3).add();
+        final var bar = series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).trades(3);
+
+        // should throw an exception as the amount cannot be explicitly set due to
+        // "setAmountByVolume = true"
+        Assertions.assertThrows(IllegalArgumentException.class, () -> bar.amount(1));
     }
 
     @Test

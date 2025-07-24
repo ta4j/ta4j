@@ -245,7 +245,7 @@ public class AmountBarBuilder implements BarBuilder {
     public void add() {
 
         if (setAmountByVolume) {
-            var calculatedAmount = closePrice.multipliedBy(distinctVolume);
+            final var calculatedAmount = closePrice.multipliedBy(distinctVolume);
             amount = amount == null ? calculatedAmount : amount.plus(calculatedAmount);
         }
 
