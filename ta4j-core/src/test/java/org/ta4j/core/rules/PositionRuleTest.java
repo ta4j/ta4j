@@ -28,17 +28,17 @@ import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.rules.PositionRule.PositionAggregationType;
 import org.ta4j.core.rules.PositionRule.PositionFilter;
 
-public class PositionRuleTest {
+class PositionRuleTest {
 
     @Test
-    public void testEmptyTradingRecord() {
+    void testEmptyTradingRecord() {
 
         var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         var rule = new PositionRule(PositionFilter.ALL, PositionAggregationType.NUMBER_OF_POSITIONS, BigDecimal.ZERO,
@@ -58,7 +58,7 @@ public class PositionRuleTest {
     }
 
     @Test
-    public void testPositionFilter() {
+    void testPositionFilter() {
         var series = new MockBarSeriesBuilder().build();
         var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         var numFactory = series.numFactory();
@@ -102,7 +102,7 @@ public class PositionRuleTest {
     }
 
     @Test
-    public void testPositionAggregationType() {
+    void testPositionAggregationType() {
         var series = new MockBarSeriesBuilder().build();
         var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         var numFactory = series.numFactory();
