@@ -29,15 +29,15 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.Instant;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 
-public class AmountBarBuilderTest {
+class AmountBarBuilderTest {
 
     @Test
-    public void createBarsWithSetAmountByVolume() {
+    void createBarsWithSetAmountByVolume() {
 
         // setAmountByVolume = true:
         // => AmountBar.amount can only be built from closePrice*volume
@@ -57,7 +57,7 @@ public class AmountBarBuilderTest {
     }
 
     @Test
-    public void addWithSetAmountByVolume() {
+    void addWithSetAmountByVolume() {
         // setAmountByVolume = true
         // => amount is added by "volume*closePrice"
         final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new AmountBarBuilderFactory(12, true))
@@ -153,7 +153,7 @@ public class AmountBarBuilderTest {
     }
 
     @Test
-    public void addWithoutSetAmountByVolume() {
+    void addWithoutSetAmountByVolume() {
         // setAmountByVolume = false:
         // => amount is added by provided "amount"-field
         final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new AmountBarBuilderFactory(12, false))
