@@ -31,8 +31,10 @@ import org.ta4j.core.num.Num;
  * Standard deviation indicator.
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
+ *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/standard-deviation-volatility">Standard
+ *      Deviation (Volatility)</a>
+ * @see <a href="https://en.wikipedia.org/wiki/Standard_deviation">Standard
+ *      deviation on wikipedia</a>
  */
 public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
@@ -41,17 +43,27 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator  the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population
      */
-    public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
+    public StandardDeviationIndicator(final Indicator<Num> indicator, final int barCount, final SampleType sampleType) {
         super(indicator);
-        this.variance = new VarianceIndicator(indicator, barCount);
+        this.variance = sampleType.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
+                : VarianceIndicator.ofPopulation(indicator, barCount);
+    }
+
+    public static StandardDeviationIndicator ofSample(final Indicator<Num> indicator, final int barCount) {
+        return new StandardDeviationIndicator(indicator, barCount, SampleType.SAMPLE);
+    }
+
+    public static StandardDeviationIndicator ofPopulation(final Indicator<Num> indicator, final int barCount) {
+        return new StandardDeviationIndicator(indicator, barCount, SampleType.POPULATION);
     }
 
     @Override
-    protected Num calculate(int index) {
-        return variance.getValue(index).sqrt();
+    protected Num calculate(final int index) {
+        return this.variance.getValue(index).sqrt();
     }
 
     @Override
