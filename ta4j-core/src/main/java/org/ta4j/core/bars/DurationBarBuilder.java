@@ -36,12 +36,13 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * A tick bar is sampled after a fixed number of ticks.
+ * A duration bar is sampled after a fixed duration.
  */
-public class TickBarBuilder implements BarBuilder {
+public class DurationBarBuilder implements BarBuilder {
 
-    private final int tickCount;
-    private int passedTicksCount;
+    private final Duration duration;
+    private Duration passedDuration;
+    private Num firstOpenPrice;
 
     private final NumFactory numFactory;
     private BarSeries barSeries;
@@ -59,27 +60,27 @@ public class TickBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param tickCount the number of ticks at which a new bar should be created
+     * @param duration the time period at which a new bar should be created
      */
-    public TickBarBuilder(final int tickCount) {
-        this(DoubleNumFactory.getInstance(), tickCount);
+    public DurationBarBuilder(final Duration duration) {
+        this(DoubleNumFactory.getInstance(), duration);
     }
 
     /**
      * A builder to build a new {@link BaseBar}
      *
      * @param numFactory
-     * @param tickCount  the number of ticks at which a new bar should be created
+     * @param duration   the time period at which a new bar should be created
      */
-    public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
+    public DurationBarBuilder(final NumFactory numFactory, final Duration duration) {
         this.numFactory = numFactory;
-        this.tickCount = tickCount;
+        this.duration = duration;
         reset();
     }
 
     @Override
     public BarBuilder timePeriod(final Duration timePeriod) {
-        this.timePeriod = this.timePeriod == null ? timePeriod : this.timePeriod.plus(timePeriod);
+        this.timePeriod = timePeriod;
         return this;
     }
 
@@ -97,59 +98,58 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder openPrice(final Num openPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        if (firstOpenPrice == null) {
+            firstOpenPrice = openPrice;
+        }
+        this.openPrice = firstOpenPrice;
+        return this;
     }
 
     @Override
     public BarBuilder openPrice(final Number openPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        return openPrice(numFactory.numOf(openPrice));
     }
 
     @Override
     public BarBuilder openPrice(final String openPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
-    }
-
-    @Override
-    public BarBuilder highPrice(final Number highPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
-    }
-
-    @Override
-    public BarBuilder highPrice(final String highPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        return openPrice(numFactory.numOf(openPrice));
     }
 
     @Override
     public BarBuilder highPrice(final Num highPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        this.highPrice = this.highPrice == null ? highPrice : this.highPrice.max(highPrice);
+        return this;
+    }
+
+    @Override
+    public BarBuilder highPrice(final Number highPrice) {
+        return highPrice(numFactory.numOf(highPrice));
+    }
+
+    @Override
+    public BarBuilder highPrice(final String highPrice) {
+        return highPrice(numFactory.numOf(highPrice));
     }
 
     @Override
     public BarBuilder lowPrice(final Num lowPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        this.lowPrice = this.lowPrice == null ? lowPrice : this.lowPrice.min(lowPrice);
+        return this;
     }
 
     @Override
     public BarBuilder lowPrice(final Number lowPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        return lowPrice(numFactory.numOf(lowPrice));
     }
 
     @Override
     public BarBuilder lowPrice(final String lowPrice) {
-        throw new IllegalArgumentException("TickBar can only be built from closePrice");
+        return lowPrice(numFactory.numOf(lowPrice));
     }
 
     @Override
-    public BarBuilder closePrice(final Num tickPrice) {
-        closePrice = tickPrice;
-        if (openPrice == null) {
-            openPrice = tickPrice;
-        }
-
-        highPrice = highPrice.max(tickPrice);
-        lowPrice = lowPrice.min(tickPrice);
-
+    public BarBuilder closePrice(final Num closePrice) {
+        this.closePrice = closePrice;
         return this;
     }
 
@@ -165,7 +165,7 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder volume(final Num volume) {
-        this.volume = this.volume.plus(volume);
+        this.volume = this.volume == null ? volume : this.volume.plus(volume);
         return this;
     }
 
@@ -212,7 +212,7 @@ public class TickBarBuilder implements BarBuilder {
     }
 
     @Override
-    public TickBarBuilder bindTo(final BarSeries barSeries) {
+    public DurationBarBuilder bindTo(final BarSeries barSeries) {
         this.barSeries = Objects.requireNonNull(barSeries);
         return this;
     }
@@ -230,9 +230,37 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public void add() {
-        if (++passedTicksCount % tickCount == 0) {
+
+        // set timePeriod of this bar
+        if (timePeriod == null) {
+            Objects.requireNonNull(beginTime);
+            Objects.requireNonNull(endTime);
+            timePeriod = Duration.between(beginTime, endTime);
+        }
+
+        // check if timePeriod is valid for aggregation
+        final boolean isMultiplication = duration.getSeconds() % timePeriod.getSeconds() == 0;
+        if (!isMultiplication) {
+            throw new IllegalArgumentException(
+                    "Cannot aggregate bars: bar.timePeriod must be a multiplication of the given duration.");
+        }
+
+        // remember the accumulated duration
+        passedDuration = passedDuration.plus(timePeriod);
+
+        if (passedDuration.compareTo(duration) == 0) {
+            // each aggregated bar has the same (upscaled) duration
+            this.timePeriod = duration;
+
             if (amount == null && volume != null) {
                 amount = closePrice.multipliedBy(volume);
+            }
+
+            if (endTime != null) {
+                beginTime = endTime.minus(duration);
+            } else {
+                Objects.requireNonNull(beginTime);
+                endTime = beginTime.plus(duration);
             }
 
             barSeries.addBar(build());
@@ -241,15 +269,19 @@ public class TickBarBuilder implements BarBuilder {
     }
 
     private void reset() {
-        final var zero = numFactory.zero();
+        passedDuration = Duration.ZERO;
+        firstOpenPrice = null;
 
         timePeriod = null;
+        beginTime = null;
+        endTime = null;
         openPrice = null;
-        highPrice = zero;
-        lowPrice = numFactory.numOf(Integer.MAX_VALUE);
+        highPrice = null;
+        lowPrice = null;
         closePrice = null;
-        volume = zero;
+        volume = null;
         amount = null;
         trades = 0;
     }
+
 }
