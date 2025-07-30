@@ -50,7 +50,6 @@ import org.ta4j.core.num.Num;
 public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
-    private final Num three;
 
     /**
      * Constructor.
@@ -83,7 +82,6 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
     public PivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
         super(series);
         this.timeLevel = timeLevel;
-        this.three = series.numFactory().numOf(3);
     }
 
     @Override
@@ -108,7 +106,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             high = iBar.getHighPrice().max(high);
             low = iBar.getLowPrice().min(low);
         }
-        return (high.plus(low).plus(close)).dividedBy(three);
+        return (high.plus(low).plus(close)).dividedBy(getBarSeries().numFactory().three());
     }
 
     /**

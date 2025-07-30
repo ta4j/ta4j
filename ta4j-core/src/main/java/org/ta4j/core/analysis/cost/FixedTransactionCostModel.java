@@ -61,7 +61,7 @@ public class FixedTransactionCostModel implements CostModel {
         final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
         Num multiplier = numFactory.one();
         if (position.isClosed()) {
-            multiplier = numFactory.numOf(2);
+            multiplier = numFactory.two();
         }
         return numFactory.numOf(feePerTrade).multipliedBy(multiplier);
     }
