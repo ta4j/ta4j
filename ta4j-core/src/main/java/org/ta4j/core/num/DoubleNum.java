@@ -70,11 +70,11 @@ public class DoubleNum implements Num {
     /**
      * Returns a {@code Num} version of the given {@code Number}.
      *
-     * @param i the number
+     * @param val the number
      * @return the {@code Num}
      */
-    public static DoubleNum valueOf(final Number i) {
-        return new DoubleNum(i.doubleValue());
+    public static DoubleNum valueOf(final Number val) {
+        return new DoubleNum(val.doubleValue());
     }
 
     /**
@@ -219,6 +219,14 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public Num log() {
+        if (this.delegate <= 0) {
+            return NaN;
+        }
+        return new DoubleNum(Math.log(this.delegate));
+    }
+
+    @Override
     public Num abs() {
         return new DoubleNum(Math.abs(this.delegate));
     }
@@ -259,14 +267,6 @@ public class DoubleNum implements Num {
     }
 
     @Override
-    public Num log() {
-        if (this.delegate <= 0) {
-            return NaN;
-        }
-        return new DoubleNum(Math.log(this.delegate));
-    }
-
-    @Override
     public boolean isGreaterThan(final Num other) {
         return !other.isNaN() && compareTo(other) > 0;
     }
@@ -302,11 +302,6 @@ public class DoubleNum implements Num {
     }
 
     @Override
-    public String toString() {
-        return Double.toString(this.delegate);
-    }
-
-    @Override
     public boolean equals(final Object obj) {
         if (!(obj instanceof final DoubleNum doubleNumObj)) {
             return false;
@@ -322,5 +317,10 @@ public class DoubleNum implements Num {
         }
         final DoubleNum doubleNumO = (DoubleNum) o;
         return Double.compare(this.delegate, doubleNumO.delegate);
+    }
+
+    @Override
+    public String toString() {
+        return Double.toString(this.delegate);
     }
 }
