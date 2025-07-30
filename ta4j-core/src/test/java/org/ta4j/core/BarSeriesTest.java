@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
@@ -170,6 +171,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void getSeriesPeriodTest() {
+
+        // Default series
+        assertEquals(17l, defaultSeries.getSeriesPeriod(ChronoUnit.DAYS));
+        assertEquals(408L, defaultSeries.getSeriesPeriod(ChronoUnit.HOURS));
+
+        // Constrained series
+        var subSeries = defaultSeries.getSubSeries(2, 4);
+        assertEquals(5l, subSeries.getSeriesPeriod(ChronoUnit.DAYS));
+        assertEquals(120L, subSeries.getSeriesPeriod(ChronoUnit.HOURS));
+    }
+
+    @Test
     public void getSeriesPeriodDescriptionTest() {
         var formatter = DateTimeFormatter.ISO_INSTANT;
 
@@ -288,6 +302,27 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void copySeriesTest() {
+        var copy1 = defaultSeries.copy("Copy of default series", 0);
+        assertEquals(6, copy1.getBarCount());
+        assertEquals(0, copy1.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), copy1.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy1.getEndIndex());
+
+        var copy2 = defaultSeries.copy("Copy of default series", 10);
+        assertEquals(6, copy2.getBarCount());
+        assertEquals(0, copy2.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), copy2.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy2.getEndIndex());
+
+        var copy3 = defaultSeries.copy("Copy of default series", 3);
+        assertEquals(3, copy3.getBarCount());
+        assertEquals(3, copy3.getBeginIndex());
+        assertNotEquals(defaultSeries.getBarCount(), copy3.getBarCount());
+        assertEquals(defaultSeries.getEndIndex(), copy3.getEndIndex());
+    }
+
+    @Test
     public void maximumBarCountOnConstrainedSeriesShouldNotThrowExceptionTest() {
         try {
             subSeries.setMaximumBarCount(10);
@@ -350,6 +385,42 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
+    }
+
+    @Test
+    public void addLastBarTest() {
+        defaultSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .build();
+
+        var bar1 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-13T00:00:00Z")).closePrice(1d).build();
+        var bar2 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(2d).build();
+        var bar3 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-14T00:00:00Z")).closePrice(5d).build();
+
+        defaultSeries.addBar(bar1);
+        defaultSeries.addBar(bar2);
+        defaultSeries.addLastBar(bar3, false);
+
+        // last bar is not added but updated
+        assertEquals(2, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(1, defaultSeries.getEndIndex());
+
+        var bar4 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-15T00:00:00Z")).closePrice(4d).build();
+        defaultSeries.addLastBar(bar4, false);
+
+        // last bar is added to the end of the series
+        assertEquals(3, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(2, defaultSeries.getEndIndex());
+
+        var bar5 = defaultSeries.barBuilder().endTime(Instant.parse("2014-06-15T00:00:00Z")).closePrice(2d).build();
+        defaultSeries.addLastBar(bar5, true);
+
+        // last bar is replaced by bar5
+        assertEquals(3, defaultSeries.getBarCount());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(2, defaultSeries.getEndIndex());
     }
 
     @Test
