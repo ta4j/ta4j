@@ -38,6 +38,9 @@ import org.ta4j.core.num.Num;
  * Satisfied when the difference of the value of the {@link Indicator indicator}
  * and its previous (n-th) value is between the values of {@code maxSlope}
  * or/and {@code minSlope}. It can test both, positive and negative slope.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class InSlopeRule extends AbstractRule {
 

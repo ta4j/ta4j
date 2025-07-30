@@ -30,6 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Satisfied when the values of the {@link Indicator indicator} increase within
  * the {@code barCount}.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class IsRisingRule extends AbstractRule {
 

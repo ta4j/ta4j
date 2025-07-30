@@ -30,6 +30,9 @@ import org.ta4j.core.TradingRecord;
 /**
  * Satisfied when any of the specified {@code indexes} match the current bar
  * index.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class FixedRule extends AbstractRule {
 

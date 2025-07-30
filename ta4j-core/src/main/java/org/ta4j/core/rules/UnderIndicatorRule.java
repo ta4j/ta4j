@@ -34,6 +34,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Satisfied when the value of the first {@link Indicator indicator} is strictly
  * less than the value of the second one.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class UnderIndicatorRule extends AbstractRule {
 
