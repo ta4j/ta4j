@@ -144,19 +144,22 @@ public interface BarBuilder {
     BarBuilder volume(String volume);
 
     /**
-     * @param amount the total traded amount of the bar period
+     * @param amount the total traded amount of the bar period (if {@code null},
+     *               then it is calculated by {@code closePrice * volume})
      * @return {@code this}
      */
     BarBuilder amount(Num amount);
 
     /**
-     * @param amount the total traded amount of the bar period
+     * @param amount the total traded amount of the bar period (if {@code null},
+     *               then it is calculated by {@code closePrice * volume})
      * @return {@code this}
      */
     BarBuilder amount(Number amount);
 
     /**
-     * @param amount the total traded amount of the bar period
+     * @param amount the total traded amount of the bar period (if {@code null},
+     *               then it is calculated by {@code closePrice * volume})
      * @return {@code this}
      */
     BarBuilder amount(String amount);
