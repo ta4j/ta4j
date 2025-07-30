@@ -32,6 +32,11 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     private final int volumeThreshold;
     private VolumeBarBuilder barBuilder;
 
+    /**
+     * Constructor.
+     *
+     * @param volumeThreshold the threshold at which a new bar should be created
+     */
     public VolumeBarBuilderFactory(final int volumeThreshold) {
         this.volumeThreshold = volumeThreshold;
     }

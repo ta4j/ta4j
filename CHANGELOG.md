@@ -28,8 +28,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
 - Added `NumericIndicator#openPrice`
-- enhanced `ROCIndicator` with  `previousIndicator` to set the type of the previous indicator
-
+- Enhanced `ROCIndicator` with  `previousIndicator` to set the type of the previous indicator
+- Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
 
 ## 0.18 (released May 15, 2025)
 
