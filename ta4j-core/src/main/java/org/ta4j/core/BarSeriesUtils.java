@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.utils;
+package org.ta4j.core;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,9 +30,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
@@ -97,6 +94,24 @@ public final class BarSeriesUtils {
                 return bars.set(i, newBar);
         }
         return null;
+    }
+
+    /**
+     * @param barSeries the barSeries with potential stale bars
+     * @param newBars   the bars which has precedence over the same existing bar
+     * @return the previous bars replaced by newBars, or an empty list if there was
+     *         no replacement.
+     * @see BarSeriesUtils#replaceBarIfChanged(BarSeries, Bar)
+     */
+    public static List<Bar> replaceBarsIfChanged(BarSeries barSeries, List<Bar> newBars) {
+        var replacedBars = new ArrayList<Bar>();
+        for (var bar : newBars) {
+            var replacedBar = BarSeriesUtils.replaceBarIfChanged(barSeries, bar);
+            if (replacedBar != null) {
+                replacedBars.add(replacedBar);
+            }
+        }
+        return replacedBars;
     }
 
     /**
