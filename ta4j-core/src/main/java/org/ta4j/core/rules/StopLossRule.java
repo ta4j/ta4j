@@ -36,9 +36,6 @@ import org.ta4j.core.num.Num;
  */
 public class StopLossRule extends AbstractRule {
 
-    /** The constant value for 100. */
-    private final Num HUNDRED;
-
     /** The reference price indicator. */
     private final Indicator<Num> priceIndicator;
 
@@ -64,20 +61,19 @@ public class StopLossRule extends AbstractRule {
     public StopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
         this.priceIndicator = priceIndicator;
         this.lossPercentage = lossPercentage;
-        HUNDRED = priceIndicator.getBarSeries().numFactory().hundred();
     }
 
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
+        var satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
+            var currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
 
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
+                var entryPrice = currentPosition.getEntry().getNetPrice();
+                var currentPrice = priceIndicator.getValue(index);
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
@@ -91,14 +87,16 @@ public class StopLossRule extends AbstractRule {
     }
 
     private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(lossPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        final var hundred = priceIndicator.getBarSeries().numFactory().hundred();
+        var lossRatioThreshold = hundred.minus(lossPercentage).dividedBy(hundred);
+        var threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 
     private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.plus(lossPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        final var hundred = priceIndicator.getBarSeries().numFactory().hundred();
+        var lossRatioThreshold = hundred.plus(lossPercentage).dividedBy(hundred);
+        var threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
     }
 }
