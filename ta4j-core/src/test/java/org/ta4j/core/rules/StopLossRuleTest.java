@@ -108,17 +108,17 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void worksWithDifferentPriceIndicator() {
-        BarSeries series = new MockBarSeriesBuilder().withDefaultData().build();
-        HighPriceIndicator highPrice = new HighPriceIndicator(series);
-        StopLossRule rule = new StopLossRule(highPrice, numOf(10));
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        var highPrice = new HighPriceIndicator(series);
+        var rule = new StopLossRule(highPrice, numOf(10));
 
-        BaseTradingRecord buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
-        Num amount = numOf(1);
+        var buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        var amount = numOf(1);
         buyRecord.enter(3, highPrice.getValue(3), amount);
         assertFalse(rule.isSatisfied(3, buyRecord));
         assertTrue(rule.isSatisfied(2, buyRecord));
 
-        BaseTradingRecord sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        var sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
         sellRecord.enter(1, highPrice.getValue(1), amount);
         assertFalse(rule.isSatisfied(1, sellRecord));
         assertTrue(rule.isSatisfied(2, sellRecord));
