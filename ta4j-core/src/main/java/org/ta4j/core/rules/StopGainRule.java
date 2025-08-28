@@ -23,24 +23,24 @@
  */
 package org.ta4j.core.rules;
 
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * A stop-gain rule.
  *
  * <p>
- * Satisfied when the close price reaches the gain threshold.
+ * Satisfied when a reference price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {
 
     /** The constant value for 100. */
     private final Num HUNDRED;
 
-    /** The close price indicator. */
-    private final ClosePriceIndicator closePrice;
+    /** The reference price indicator. */
+    private final Indicator<Num> priceIndicator;
 
     /** The gain percentage. */
     private final Num gainPercentage;
@@ -48,23 +48,23 @@ public class StopGainRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param closePrice     the close price indicator
+     * @param priceIndicator the price indicator
      * @param gainPercentage the gain percentage
      */
-    public StopGainRule(ClosePriceIndicator closePrice, Number gainPercentage) {
-        this(closePrice, closePrice.getBarSeries().numFactory().numOf(gainPercentage));
+    public StopGainRule(Indicator<Num> priceIndicator, Number gainPercentage) {
+        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(gainPercentage));
     }
 
     /**
      * Constructor.
      *
-     * @param closePrice     the close price indicator
+     * @param priceIndicator the price indicator
      * @param gainPercentage the gain percentage
      */
-    public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
-        this.closePrice = closePrice;
+    public StopGainRule(Indicator<Num> priceIndicator, Num gainPercentage) {
+        this.priceIndicator = priceIndicator;
         this.gainPercentage = gainPercentage;
-        HUNDRED = closePrice.getBarSeries().numFactory().hundred();
+        HUNDRED = priceIndicator.getBarSeries().numFactory().hundred();
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -77,7 +77,7 @@ public class StopGainRule extends AbstractRule {
             if (currentPosition.isOpened()) {
 
                 Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = closePrice.getValue(index);
+                Num currentPrice = priceIndicator.getValue(index);
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
