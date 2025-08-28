@@ -36,6 +36,9 @@ import org.ta4j.core.num.Num;
  */
 public class StopGainRule extends AbstractRule {
 
+    /** The constant value for 100. */
+    private final Num HUNDRED;
+
     /** The reference price indicator. */
     private final Indicator<Num> priceIndicator;
 
@@ -61,6 +64,7 @@ public class StopGainRule extends AbstractRule {
     public StopGainRule(Indicator<Num> priceIndicator, Num gainPercentage) {
         this.priceIndicator = priceIndicator;
         this.gainPercentage = gainPercentage;
+        HUNDRED = priceIndicator.getBarSeries().numFactory().hundred();
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -69,11 +73,11 @@ public class StopGainRule extends AbstractRule {
         boolean satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            var currentPosition = tradingRecord.getCurrentPosition();
+            Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
 
-                var entryPrice = currentPosition.getEntry().getNetPrice();
-                var currentPrice = priceIndicator.getValue(index);
+                Num entryPrice = currentPosition.getEntry().getNetPrice();
+                Num currentPrice = priceIndicator.getValue(index);
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
@@ -87,16 +91,14 @@ public class StopGainRule extends AbstractRule {
     }
 
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        var hundred = priceIndicator.getBarSeries().numFactory().hundred();
-        var lossRatioThreshold = hundred.plus(gainPercentage).dividedBy(hundred);
-        var threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
     }
 
     private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        var hundred = priceIndicator.getBarSeries().numFactory().hundred();
-        var lossRatioThreshold = hundred.minus(gainPercentage).dividedBy(hundred);
-        var threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 }
