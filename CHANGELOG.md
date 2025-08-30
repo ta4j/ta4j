@@ -23,7 +23,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
-
+- Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaxDrawdownBarLengthCriterion` to calculate its length
+- 
 
 ## 0.18 (released May 15, 2025)
 

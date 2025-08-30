@@ -30,17 +30,9 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
 
 /**
- * Maximum drawdown criterion, returned in decimal format.
- *
- * <p>
- * The maximum drawdown measures the largest loss. Its value can be within the
- * range of [0,1], e.g. a maximum drawdown of {@code +1} (= +100%) means a total
- * loss, a maximum drawdown of {@code 0} (= 0%) means no loss at all.
- *
- * @see <a href=
- *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
+ * Calculates the barr length of the maximum drawdown.
  */
-public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
+public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -48,62 +40,49 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
         var cashFlow = new CashFlow(series, position);
-        return calculateMaximumDrawdown(series, null, cashFlow);
+        return calculateMaximumDrawdownLength(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdown(series, tradingRecord, cashFlow);
+        return calculateMaximumDrawdownLength(series, tradingRecord, cashFlow);
     }
 
-    /** The lower the criterion value, the better. */
+    /**
+     * The lower the criterion value, the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);
     }
 
-    /**
-     * Calculates the maximum drawdown from a cash flow over a series.
-     *
-     * The formula is as follows:
-     *
-     * <pre>
-     * MDD = (LP - PV) / PV
-     * with MDD: Maximum drawdown, in percent.
-     * with LP: Lowest point (lowest value after peak value).
-     * with PV: Peak value (highest value within the observation).
-     * </pre>
-     *
-     * @param series        the bar series
-     * @param tradingRecord the trading record (optional)
-     * @param cashFlow      the cash flow
-     * @return the maximum drawdown from a cash flow over a series
-     */
-    private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
-        var zero = series.numFactory().zero();
+    private Num calculateMaximumDrawdownLength(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
+        var numFactory = series.numFactory();
+        var zero = numFactory.zero();
         var maxPeak = zero;
+        var peakIndex = series.getBeginIndex();
         var maximumDrawdown = zero;
+        var maximumLength = 0;
 
         var beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
         var endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
 
         if (!series.isEmpty()) {
             for (var i = beginIndex; i <= endIndex; i++) {
-
                 var value = cashFlow.getValue(i);
                 if (value.isGreaterThan(maxPeak)) {
                     maxPeak = value;
+                    peakIndex = i;
                 }
-
                 var drawdown = maxPeak.minus(value).dividedBy(maxPeak);
                 if (drawdown.isGreaterThan(maximumDrawdown)) {
                     maximumDrawdown = drawdown;
+                    maximumLength = i - peakIndex;
                 }
             }
         }
-
-        return maximumDrawdown;
+        return numFactory.numOf(maximumLength);
     }
 
 }
