@@ -31,6 +31,7 @@ import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 
 public class VolumeBarBuilderTest {
 
@@ -41,13 +42,19 @@ public class VolumeBarBuilderTest {
         final var oneDay = Duration.ofDays(1);
 
         // add bar 1: aggregated volume = 1
-        series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).add();
+        series.barBuilder().timePeriod(oneDay).endTime(now).closePrice(1).volume(1).trades(3).add();
 
         // add bar 2: aggregated volume = 1 + 1 = 2
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(1))).closePrice(2).volume(1).add();
 
         // add bar 3: aggregated volume = 1 + 1 + 1 = 3
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(2))).closePrice(5).volume(1).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(2)))
+                .closePrice(5)
+                .volume(1)
+                .trades(7)
+                .add();
 
         // add bar 4: aggregated volume = 1 + 1 + 1 + 2= 5
         series.barBuilder()
@@ -69,12 +76,27 @@ public class VolumeBarBuilderTest {
         final var endTime4 = now.plus(Duration.ofDays(3));
         assertEquals(beginTime0, bar1.getBeginTime());
         assertEquals(endTime4, bar1.getEndTime());
+        final var numFactory = DecimalNumFactory.getInstance();
+        assertEquals(numFactory.numOf(16), bar1.getAmount()); // 1 * 1 + 1 * 2 + 1 * 5 + 2 * 4 = 16
+        assertEquals(10, bar1.getTrades());
 
         // add bar 5: aggregated volume = 1 + 1= 2
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(4))).closePrice(2).volume(1).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(4)))
+                .closePrice(2)
+                .volume(1)
+                .amount(12)
+                .add();
 
         // add bar 6: aggregated volume = 1 + 1 + 1= 3
-        series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(5))).closePrice(3).volume(1).add();
+        series.barBuilder()
+                .timePeriod(oneDay)
+                .endTime(now.plus(Duration.ofDays(5)))
+                .closePrice(3)
+                .volume(1)
+                .trades(5)
+                .add();
 
         // add bar 7: aggregated volume = 1 + 1 + 1+ 1 = 4
         series.barBuilder().timePeriod(oneDay).endTime(now.plus(Duration.ofDays(6))).closePrice(6).volume(1).add();
@@ -91,5 +113,7 @@ public class VolumeBarBuilderTest {
         final var endTime7 = now.plus(Duration.ofDays(6));
         assertEquals(beginTime5, bar2.getBeginTime());
         assertEquals(endTime7, bar2.getEndTime());
+        assertEquals(numFactory.numOf(12), bar2.getAmount());
+        assertEquals(5, bar2.getTrades());
     }
 }

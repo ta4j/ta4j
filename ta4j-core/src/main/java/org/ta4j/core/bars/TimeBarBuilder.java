@@ -219,6 +219,10 @@ public class TimeBarBuilder implements BarBuilder {
 
     @Override
     public void add() {
+        if (amount == null && closePrice != null && volume != null) {
+            amount = closePrice.multipliedBy(volume);
+        }
+
         this.baseBarSeries.addBar(build());
     }
 
