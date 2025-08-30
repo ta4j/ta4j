@@ -30,7 +30,14 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the barr length of the maximum drawdown.
+ * Criterion that calculates the maximum drawdown length of a trading strategy,
+ * expressed as the number of bars between a peak in the equity curve and the
+ * lowest point of the subsequent drawdown.
+ * <p>
+ * Unlike {@code MaximumDrawdownCriterion}, which measures the depth of the
+ * drawdown, this criterion measures the <b>duration</b> of the longest drawdown
+ * period.
+ * </p>
  */
 public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion {
 
@@ -49,9 +56,6 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion
         return calculateMaximumDrawdownLength(series, tradingRecord, cashFlow);
     }
 
-    /**
-     * The lower the criterion value, the better.
-     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);

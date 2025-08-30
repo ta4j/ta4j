@@ -26,7 +26,6 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -34,6 +33,17 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
+/**
+ * An {@link Indicator} implementation that computes the cumulative profit and
+ * loss (PnL) series of one or more trading positions over a given
+ * {@link BarSeries}.
+ * <p>
+ * The cumulative PnL is calculated incrementally from the start of the
+ * {@code BarSeries}, taking into account realized and unrealized gains/losses,
+ * trading costs, and position direction (long or short). Each index in the
+ * series represents the total PnL up to that bar.
+ * </p>
+ */
 public final class CumulativePnL implements Indicator<Num> {
 
     private final BarSeries barSeries;

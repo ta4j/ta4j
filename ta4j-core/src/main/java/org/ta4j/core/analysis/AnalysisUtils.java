@@ -26,6 +26,14 @@ package org.ta4j.core.analysis;
 import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
+/**
+ * Utility functions to support performance and risk analysis in ta4j.
+ * <p>
+ * These methods are used internally by indicators and criteria such as
+ * cumulative PnL or drawdown calculations, ensuring consistent handling of
+ * position boundaries and transaction costs.
+ * </p>
+ */
 public class AnalysisUtils {
 
     /**

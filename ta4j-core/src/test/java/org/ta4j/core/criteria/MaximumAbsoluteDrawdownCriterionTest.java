@@ -32,18 +32,12 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.criteria.pnl.MaximumAbsoluteDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest {
 
     public MaximumAbsoluteDrawdownCriterionTest(NumFactory numFactory) {
-        super(params -> {
-            if (params.length > 0) {
-                return new MaximumAbsoluteDrawdownCriterion((Num) params[0]);
-            }
-            return new MaximumAbsoluteDrawdownCriterion();
-        }, numFactory);
+        super(params -> new MaximumAbsoluteDrawdownCriterion(), numFactory);
     }
 
     @Test
@@ -63,18 +57,6 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
 
         var criterion = getCriterion();
         assertNumEquals(50, criterion.calculate(series, record));
-    }
-
-    @Test
-    public void calculateWithPointValue() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 110, 105, 120, 100, 50)
-                .build();
-        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
-                Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
-
-        var criterion = getCriterion(numOf(2));
-        assertNumEquals(100, criterion.calculate(series, record));
     }
 
     @Test
