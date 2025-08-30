@@ -132,28 +132,29 @@ public class CashFlow implements Indicator<Num> {
      * @param finalIndex index up until cash flow of open positions is considered
      */
     private void calculate(Position position, int finalIndex) {
-        boolean isLongTrade = position.getEntry().isBuy();
-        int endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-        final int entryIndex = position.getEntry().getIndex();
-        int begin = entryIndex + 1;
+        var numFactory = barSeries.numFactory();
+        var isLongTrade = position.getEntry().isBuy();
+        var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        var entryIndex = position.getEntry().getIndex();
+        var begin = entryIndex + 1;
         if (begin > values.size()) {
-            Num lastValue = values.getLast();
+            var lastValue = values.getLast();
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
         // Trade is not valid if net balance at the entryIndex is negative
-        if (values.getLast().isGreaterThan(values.getFirst().getNumFactory().numOf(0))) {
-            int startingIndex = Math.max(begin, 1);
-
-            int nPeriods = endIndex - entryIndex;
-            Num holdingCost = position.getHoldingCost(endIndex);
-            Num avgCost = holdingCost.dividedBy(holdingCost.getNumFactory().numOf(nPeriods));
+        var zero = numFactory.zero();
+        if (values.getLast().isGreaterThan(zero)) {
+            var startingIndex = Math.max(begin, 1);
+            var nPeriods = endIndex - entryIndex;
+            var holdingCost = position.getHoldingCost(endIndex);
+            var avgCost = holdingCost.dividedBy(numFactory.numOf(nPeriods));
 
             // Add intermediate cash flows during position
-            Num netEntryPrice = position.getEntry().getNetPrice();
-            for (int i = startingIndex; i < endIndex; i++) {
-                Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+            var netEntryPrice = position.getEntry().getNetPrice();
+            for (var i = startingIndex; i < endIndex; i++) {
+                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
                         isLongTrade);
-                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
 
@@ -164,8 +165,8 @@ public class CashFlow implements Indicator<Num> {
             } else {
                 exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
-            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice,
-                    AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade));
+            var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
+            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }
     }
@@ -222,7 +223,7 @@ public class CashFlow implements Indicator<Num> {
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
-            Num lastValue = values.getLast();
+            var lastValue = values.getLast();
             values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, lastValue));
         }
     }
