@@ -65,9 +65,9 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractAnalysisCrit
      * walks through the equity curve, recording peaks and computing the largest
      * decline to a trough thereafter.
      *
-     * @param series the bar series
+     * @param series        the bar series
      * @param tradingRecord the trading record (optional, may be null)
-     * @param pnl    the cumulative profit-and-loss curve
+     * @param pnl           the cumulative profit-and-loss curve
      * @return the maximum drawdown
      */
     private Num scan(BarSeries series, TradingRecord tradingRecord, CumulativePnL pnl) {
