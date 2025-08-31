@@ -168,7 +168,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 Num minL = periodLow.getValue(index);
                 Num maxH = periodHigh.getValue(index);
                 Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numFactory.numOf(ZERO_DOT_FIVE));
-                Num term2 = alpha.multipliedBy(numFactory.numOf(2)).multipliedBy(term1);
+                Num term2 = alpha.multipliedBy(numFactory.two()).multipliedBy(term1);
                 Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
                 return term3.dividedBy(FisherIndicator.this.densityFactor);
             }

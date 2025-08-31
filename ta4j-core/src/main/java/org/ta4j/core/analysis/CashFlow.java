@@ -141,7 +141,7 @@ public class CashFlow implements Indicator<Num> {
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
         // Trade is not valid if net balance at the entryIndex is negative
-        if (values.get(values.size() - 1).isGreaterThan(values.get(0).getNumFactory().numOf(0))) {
+        if (values.get(values.size() - 1).isGreaterThan(values.get(0).getNumFactory().zero())) {
             int startingIndex = Math.max(begin, 1);
 
             int nPeriods = endIndex - entryIndex;
@@ -180,7 +180,7 @@ public class CashFlow implements Indicator<Num> {
         if (isLongTrade) {
             ratio = exitPrice.dividedBy(entryPrice);
         } else {
-            ratio = entryPrice.getNumFactory().numOf(2).minus(exitPrice.dividedBy(entryPrice));
+            ratio = entryPrice.getNumFactory().two().minus(exitPrice.dividedBy(entryPrice));
         }
 
         return ratio;
