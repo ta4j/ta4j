@@ -70,6 +70,16 @@ See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduc
 &nbsp;
 &nbsp;
 
+### Powered by
+
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSource)
+
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
+
