@@ -28,11 +28,11 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.AverageReturnPerBarCriterion;
 import org.ta4j.core.criteria.EnterAndHoldCriterion;
 import org.ta4j.core.criteria.LinearTransactionCostCriterion;
-import org.ta4j.core.criteria.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
-import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 
