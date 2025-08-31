@@ -42,36 +42,36 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
     @Test
     public void calculateWithNoTrades() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 80, 150).build();
-        var mddl = getCriterion();
-        assertNumEquals(0, mddl.calculate(series, new BaseTradingRecord()));
+        var maximumDrawdownLength = getCriterion();
+        assertNumEquals(0, maximumDrawdownLength.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOnlyGains() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 140, 160).build();
-        var mddl = getCriterion();
+        var maximumDrawdownLength = getCriterion();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(3, series));
-        assertNumEquals(0, mddl.calculate(series, tradingRecord));
+        assertNumEquals(0, maximumDrawdownLength.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithGainsAndLosses() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 80, 150).build();
-        var mddl = getCriterion();
+        var maximumDrawdownLength = getCriterion();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(4, series));
-        assertNumEquals(2, mddl.calculate(series, tradingRecord));
+        assertNumEquals(2, maximumDrawdownLength.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNullSeriesSizeShouldReturn0() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData().build();
-        var mddl = getCriterion();
-        assertNumEquals(0, mddl.calculate(series, new BaseTradingRecord()));
+        var maximumDrawdownLength = getCriterion();
+        assertNumEquals(0, maximumDrawdownLength.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(1), numOf(2)));
         assertFalse(criterion.betterThan(numOf(3), numOf(2)));
     }

@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.criteria.helpers.Drawdown;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,48 +46,21 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
+        } else {
+            var cashFlow = new CashFlow(series, position);
+            return Drawdown.length(series, null, cashFlow);
         }
-        var cashFlow = new CashFlow(series, position);
-        return calculateMaximumDrawdownLength(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdownLength(series, tradingRecord, cashFlow);
+        return Drawdown.length(series, tradingRecord, cashFlow);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);
-    }
-
-    private Num calculateMaximumDrawdownLength(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
-        var maxPeak = zero;
-        var peakIndex = series.getBeginIndex();
-        var maximumDrawdown = zero;
-        var maximumLength = 0;
-
-        var beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
-        var endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
-
-        if (!series.isEmpty()) {
-            for (var i = beginIndex; i <= endIndex; i++) {
-                var value = cashFlow.getValue(i);
-                if (value.isGreaterThan(maxPeak)) {
-                    maxPeak = value;
-                    peakIndex = i;
-                }
-                var drawdown = maxPeak.minus(value).dividedBy(maxPeak);
-                if (drawdown.isGreaterThan(maximumDrawdown)) {
-                    maximumDrawdown = drawdown;
-                    maximumLength = i - peakIndex;
-                }
-            }
-        }
-        return numFactory.numOf(maximumLength);
     }
 
 }

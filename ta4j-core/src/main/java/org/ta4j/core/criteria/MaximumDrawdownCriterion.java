@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.criteria.helpers.Drawdown;
 import org.ta4j.core.num.Num;
 
 /**
@@ -48,62 +49,21 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
         var cashFlow = new CashFlow(series, position);
-        return calculateMaximumDrawdown(series, null, cashFlow);
+        return Drawdown.amount(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdown(series, tradingRecord, cashFlow);
-    }
-
-    /** The lower the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 
     /**
-     * Calculates the maximum drawdown from a cash flow over a series.
-     *
-     * The formula is as follows:
-     *
-     * <pre>
-     * MDD = (LP - PV) / PV
-     * with MDD: Maximum drawdown, in percent.
-     * with LP: Lowest point (lowest value after peak value).
-     * with PV: Peak value (highest value within the observation).
-     * </pre>
-     *
-     * @param series        the bar series
-     * @param tradingRecord the trading record (optional)
-     * @param cashFlow      the cash flow
-     * @return the maximum drawdown from a cash flow over a series
+     * The lower the criterion value, the better.
      */
-    private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
-        var zero = series.numFactory().zero();
-        var maxPeak = zero;
-        var maximumDrawdown = zero;
-
-        var beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
-        var endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
-
-        if (!series.isEmpty()) {
-            for (var i = beginIndex; i <= endIndex; i++) {
-
-                var value = cashFlow.getValue(i);
-                if (value.isGreaterThan(maxPeak)) {
-                    maxPeak = value;
-                }
-
-                var drawdown = maxPeak.minus(value).dividedBy(maxPeak);
-                if (drawdown.isGreaterThan(maximumDrawdown)) {
-                    maximumDrawdown = drawdown;
-                }
-            }
-        }
-
-        return maximumDrawdown;
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isLessThan(criterionValue2);
     }
 
 }
