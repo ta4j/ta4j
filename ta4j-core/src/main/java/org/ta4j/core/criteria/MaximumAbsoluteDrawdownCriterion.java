@@ -21,13 +21,12 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CumulativePnL;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -67,14 +66,14 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractAnalysisCrit
      * decline to a trough thereafter.
      *
      * @param series the bar series
-     * @param record the trading record (optional, may be null)
+     * @param tradingRecord the trading record (optional, may be null)
      * @param pnl    the cumulative profit-and-loss curve
      * @return the maximum drawdown
      */
-    private Num scan(BarSeries series, TradingRecord record, CumulativePnL pnl) {
+    private Num scan(BarSeries series, TradingRecord tradingRecord, CumulativePnL pnl) {
         var numFactory = series.numFactory();
-        var begin = (record == null) ? series.getBeginIndex() : record.getStartIndex(series);
-        var end = (record == null) ? series.getEndIndex() : record.getEndIndex(series);
+        var begin = (tradingRecord == null) ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
+        var end = (tradingRecord == null) ? series.getEndIndex() : tradingRecord.getEndIndex(series);
 
         var peak = numFactory.zero();
         var maxDrawDown = numFactory.zero();
