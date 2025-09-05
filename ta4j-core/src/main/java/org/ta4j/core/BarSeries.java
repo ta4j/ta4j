@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.ta4j.core.num.Num;
@@ -129,6 +130,20 @@ public interface BarSeries extends Serializable {
     int getEndIndex();
 
     /**
+     * @param unit the unit of the period
+     * @return the duration between the endTime of {@link #getFirstBar()} and the
+     *         endTime of {@link #getLastBar()}
+     */
+    default long getSeriesPeriod(final ChronoUnit unit) {
+        if (!getBarData().isEmpty()) {
+            var start = getFirstBar().getEndTime();
+            var end = getLastBar().getEndTime();
+            return unit.between(start, end);
+        }
+        return 0l;
+    }
+
+    /**
      * @return the description of the series period (e.g. "from 2014-01-21T12:00:00Z
      *         to 2014-01-21T12:15:00Z"); times are in UTC.
      */
@@ -214,6 +229,25 @@ public interface BarSeries extends Serializable {
     void addBar(Bar bar, boolean replace);
 
     /**
+     * Changes the latest bar by using one of the following methods:
+     *
+     * <ul>
+     * <li>If {@link #getBarData()} is empty or the end time of the {@code bar} is
+     * after the end time of {@link #getLastBar()}, the {@code bar} is added to the
+     * end of the series.
+     * <li>If the end time of the {@code bar} is in the future and {@code replace}
+     * is {@code false}, {@link #getLastBar()} is updated by
+     * {@link #addTrade(Num, Num)}
+     * <li>If {@code replace} is {@code true}, {@link #getLastBar()} is replaced by
+     * the given {@code bar}.
+     * </ul>
+     *
+     * @param bar     the last bar
+     * @param replace true to replace the latest bar
+     */
+    void addLastBar(Bar bar, boolean replace);
+
+    /**
      * Adds a trade and updates the close price of the last bar.
      *
      * @param tradeVolume the traded volume
@@ -252,6 +286,20 @@ public interface BarSeries extends Serializable {
     default void addPrice(Number price) {
         addPrice(numFactory().numOf(price));
     }
+
+    /**
+     * Returns a new {@link BarSeries} instance that is a copy of this {@code this}
+     * BarSeries instance. It contains all {@link Bar bars} from this {@code this}
+     * instance (i.e. the bars are not deeply copied, but only added to a new list).
+     * If {@code maximumBarCount} is {@code >0}, bars in the copied series are
+     * automatically removed to ensure the maximum number of bars is not exceeded.
+     *
+     * @param name            the name of the series
+     * @param maximumBarCount the maximum number of bars; set to {@code >0} to
+     *                        {@link #setMaximumBarCount(int)}
+     * @return a copy of {@code this} instance
+     */
+    BarSeries copy(String name, int maximumBarCount);
 
     /**
      * Returns a new {@link BarSeries} instance (= "subseries") that is a subset of
