@@ -28,6 +28,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
+- Added `NumericIndicator#openPrice`
+- Enhanced `ROCIndicator` with  `previousIndicator` to set the type of the previous indicator
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
 
 ## 0.18 (released May 15, 2025)
@@ -108,7 +110,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
 - Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
 - Added `VWMAIndicator` to `indicators.averages`-package: Volume Weighted Moving Average (VWMA) indicator
-- added `AverageIndicator`
 
 ## 0.17 (released September 9, 2024)
 
