@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -40,11 +42,15 @@ import org.ta4j.core.num.Num;
  * <p>
  * The criterion value is taken from the distribution of simulated drawdowns (by
  * default, the 95th percentile).
+ *
+ * @since 0.19
  */
 public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Defines which summary value to return from the simulated drawdowns.
+     *
+     * @since 0.19
      */
     public enum Statistic {
         MEDIAN, P95, P99, MEAN, MIN, MAX
@@ -52,14 +58,16 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
 
     private final int iterations;
     private final Integer pathBlocks;
-    private final long seed;
+    private final Supplier<RandomGenerator> randomSupplier;
     private final Statistic statistic;
 
     /**
      * Default constructor returning the 95th percentile.
+     *
+     * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion() {
-        this(10_000, null, 42L, Statistic.P95);
+        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95);
     }
 
     /**
@@ -71,14 +79,38 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @param seed       random seed for reproducibility
      * @param statistic  which summary statistic of the simulated drawdowns to
      *                   return
+     *
+     * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistic statistic) {
+        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic);
+    }
+
+    /**
+     * Constructor allowing to supply a custom random number generator.
+     *
+     * @param iterations     number of random simulations to run
+     * @param pathBlocks     number of trades to include in each simulated path
+     *                       ({@code null} = use the number of trades in the sample)
+     * @param randomSupplier supplier of the random generator used for simulations
+     * @param statistic      which summary statistic of the simulated drawdowns to
+     *                       return
+     *
+     * @since 0.19
+     */
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks,
+            Supplier<RandomGenerator> randomSupplier, Statistic statistic) {
         this.iterations = iterations;
         this.pathBlocks = pathBlocks;
-        this.seed = seed;
+        this.randomSupplier = randomSupplier;
         this.statistic = statistic;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || !position.isClosed()) {
@@ -87,6 +119,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
         return new MaximumDrawdownCriterion().calculate(series, position);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var blocks = buildBlocks(series, tradingRecord);
@@ -94,7 +131,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
             return new MaximumDrawdownCriterion().calculate(series, tradingRecord);
         }
         var blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
-        var random = new SplittableRandom(seed);
+        var random = randomSupplier.get();
         var maxDrawdowns = new double[iterations];
         var numFactory = series.numFactory();
         var one = numFactory.one();
@@ -169,8 +206,14 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
         return blocks;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);
     }
+
 }

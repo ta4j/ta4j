@@ -37,6 +37,8 @@ import org.ta4j.core.num.Num;
  * The scan walks through the curve, tracking peak values and the maximum
  * decline that follows. Optionally the drawdown can be expressed relative to
  * the peak or in absolute terms.
+ *
+ * @since 0.19
  */
 public final class Drawdown {
 
@@ -51,6 +53,8 @@ public final class Drawdown {
      * @param tradingRecord the trading record (optional, may be {@code null})
      * @param curve         the equity curve to scan
      * @return the maximum drawdown amount relative to the peak
+     *
+     * @since 0.19
      */
     public static Num amount(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve) {
         return amount(series, tradingRecord, curve, true);
@@ -64,6 +68,8 @@ public final class Drawdown {
      * @param tradingRecord the trading record (optional, may be {@code null})
      * @param curve         the equity curve to scan
      * @return the number of bars of the maximum drawdown
+     *
+     * @since 0.19
      */
     public static Num length(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve) {
         return length(series, tradingRecord, curve, true);
@@ -78,6 +84,8 @@ public final class Drawdown {
      * @param relative      {@code true} to express drawdown relative to the peak,
      *                      {@code false} for absolute terms
      * @return the maximum drawdown amount
+     *
+     * @since 0.19
      */
     public static Num amount(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve, boolean relative) {
         return scan(series, tradingRecord, curve, relative).amount();
@@ -93,6 +101,8 @@ public final class Drawdown {
      * @param relative      {@code true} to express drawdown relative to the peak,
      *                      {@code false} for absolute terms
      * @return the number of bars of the maximum drawdown
+     *
+     * @since 0.19
      */
     public static Num length(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve, boolean relative) {
         var numFactory = series.numFactory();

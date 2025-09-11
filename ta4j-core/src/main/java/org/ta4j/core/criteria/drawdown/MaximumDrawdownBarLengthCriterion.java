@@ -39,9 +39,16 @@ import org.ta4j.core.num.Num;
  * drawdown, this criterion measures the <b>duration</b> of the longest drawdown
  * period.
  * </p>
+ *
+ * @since 0.19
  */
 public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
@@ -52,12 +59,22 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var cashFlow = new CashFlow(series, tradingRecord);
         return Drawdown.length(series, tradingRecord, cashFlow);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);

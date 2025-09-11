@@ -33,6 +33,8 @@ import org.ta4j.core.num.Num;
  * cumulative PnL or drawdown calculations, ensuring consistent handling of
  * position boundaries and transaction costs.
  * </p>
+ *
+ * @since 0.19
  */
 public class AnalysisUtils {
 

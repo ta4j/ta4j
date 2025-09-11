@@ -43,12 +43,22 @@ import org.ta4j.core.num.Num;
  * trading costs, and position direction (long or short). Each index in the
  * series represents the total PnL up to that bar.
  * </p>
+ *
+ * @since 0.19
  */
 public final class CumulativePnL implements Indicator<Num> {
 
     private final BarSeries barSeries;
     private final List<Num> values;
 
+    /**
+     * Constructor for a single closed position.
+     *
+     * @param barSeries the bar series
+     * @param position  the closed position
+     *
+     * @since 0.19
+     */
     public CumulativePnL(BarSeries barSeries, Position position) {
         if (position.isOpened()) {
             throw new IllegalArgumentException("Position is not closed. Provide a final index if open.");
@@ -59,10 +69,27 @@ public final class CumulativePnL implements Indicator<Num> {
         fillToTheEnd(barSeries.getEndIndex());
     }
 
+    /**
+     * Constructor for a trading record.
+     *
+     * @param barSeries     the bar series
+     * @param tradingRecord the trading record
+     *
+     * @since 0.19
+     */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord) {
         this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries));
     }
 
+    /**
+     * Constructor for a trading record with a specified final index.
+     *
+     * @param barSeries     the bar series
+     * @param tradingRecord the trading record
+     * @param finalIndex    the final index to calculate up to
+     *
+     * @since 0.19
+     */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
         this.values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().zero()));
@@ -78,21 +105,43 @@ public final class CumulativePnL implements Indicator<Num> {
         fillToTheEnd(finalIndex);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num getValue(int index) {
         return values.get(index);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public int getCountOfUnstableBars() {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public BarSeries getBarSeries() {
         return barSeries;
     }
 
+    /**
+     * Returns the number of bars in the underlying series.
+     *
+     * @return the bar count
+     *
+     * @since 0.19
+     */
     public int getSize() {
         return barSeries.getBarCount();
     }

@@ -38,15 +38,27 @@ import org.ta4j.core.num.Num;
  * cumulative profit peak to a subsequent trough, expressed in absolute terms
  * rather than relative percentage. It is a measure of downside risk and capital
  * exposure during a trading period.
+ *
+ * @since 0.19
  */
 public final class MaximumAbsoluteDrawdownCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var pnl = new CumulativePnL(series, tradingRecord);
         return Drawdown.amount(series, tradingRecord, pnl, false);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
@@ -57,6 +69,11 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractAnalysisCrit
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
     @Override
     public boolean betterThan(Num first, Num second) {
         return first.isLessThan(second);

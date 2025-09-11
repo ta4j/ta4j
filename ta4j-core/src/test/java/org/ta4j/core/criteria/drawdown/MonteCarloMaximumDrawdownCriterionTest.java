@@ -23,7 +23,10 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.random.RandomGenerator;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -89,4 +92,43 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var expected = new MaximumDrawdownCriterion().calculate(series, record);
         assertNumEquals(expected, result);
     }
+
+    @Test
+    public void usesInjectedRandomGenerator() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
+        var counter = new AtomicInteger();
+        class CountingRandom implements RandomGenerator {
+            @Override
+            public int nextInt() {
+                counter.incrementAndGet();
+                return 0;
+            }
+
+            @Override
+            public long nextLong() {
+                return 0L;
+            }
+
+            @Override
+            public boolean nextBoolean() {
+                return false;
+            }
+
+            @Override
+            public float nextFloat() {
+                return 0f;
+            }
+
+            @Override
+            public double nextDouble() {
+                return 0d;
+            }
+        }
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, 2, CountingRandom::new, Statistic.P95);
+        criterion.calculate(series, record);
+        assertEquals(2, counter.get());
+    }
+
 }
