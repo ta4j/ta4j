@@ -34,6 +34,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -104,5 +105,23 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertTrue(rule.isSatisfied(1, tradingRecord));
         assertTrue(rule.isSatisfied(10, tradingRecord));
+    }
+
+    @Test
+    public void worksWithDifferentPriceIndicator() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        var highPrice = new HighPriceIndicator(series);
+        var rule = new StopGainRule(highPrice, numOf(10));
+
+        var buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        var amount = numOf(1);
+        buyRecord.enter(1, highPrice.getValue(1), amount);
+        assertFalse(rule.isSatisfied(1, buyRecord));
+        assertTrue(rule.isSatisfied(2, buyRecord));
+
+        var sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        sellRecord.enter(3, highPrice.getValue(3), amount);
+        assertFalse(rule.isSatisfied(3, sellRecord));
+        assertTrue(rule.isSatisfied(2, sellRecord));
     }
 }
