@@ -5,6 +5,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 - Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion` and `ProfitLossPercentageCriterion` criteria into their net and gross concrete classes
 - [#1266](https://github.com/ta4j/ta4j/issues/1266) Consolidated BinaryOperation, UnaryOperation, TransformIndicator and CombineIndicator
+- Moved `criteria/MaximumDrawdownCriterion.java` and `criteria/ReturnOverMaxDrawdownCriterion.java` to `criteria/drawdown/` sub-package
 
 ### Fixed
 - Updated Github test workflow to cache dependencies for quicker builds
@@ -21,6 +22,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
+- `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
@@ -28,7 +30,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
 - Added `DurationBarBuilder` to aggregate Bars after a fixed duration.
+- Added tests for `DoubleNumFactory` and `DecimalNumFactory`
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
+- Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaximumDrawdownBarLengthCriterion` to calculate its length
+- Added `MonteCarloMaximumDrawdownCriterion` to estimate drawdown risk distribution by simulating different trade orders
 
 ## 0.18 (released May 15, 2025)
 
