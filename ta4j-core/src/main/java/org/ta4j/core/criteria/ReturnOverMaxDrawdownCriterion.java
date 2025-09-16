@@ -23,55 +23,10 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.NetReturnCriterion;
-import org.ta4j.core.num.Num;
-
 /**
- * Reward risk ratio criterion (also known as "RoMaD"), returned in decimal
- * format.
- *
- * <pre>
- * RoMaD = {@link NetReturnCriterion net return (without base)} / {@link MaximumDrawdownCriterion maximum drawdown}
- * </pre>
+ * @deprecated This class was moved to
+ *             {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion}.
  */
-public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
-
-    private final AnalysisCriterion netReturnCriterion = new NetReturnCriterion(false);
-    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
-
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        if (position.isOpened()) {
-            return series.numFactory().zero();
-        }
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        var netReturn = netReturnCriterion.calculate(series, position);
-        if (maxDrawdown.isZero()) {
-            return netReturn;
-        }
-        return netReturn.dividedBy(maxDrawdown);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if (tradingRecord.getPositions().isEmpty()) {
-            return series.numFactory().zero(); // penalise no-trade strategies
-        }
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        var netReturn = netReturnCriterion.calculate(series, tradingRecord);
-        if (maxDrawdown.isZero()) {
-            return netReturn; // perfect equity curve
-        }
-        return netReturn.dividedBy(maxDrawdown); // regular RoMaD
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
+@Deprecated(since = "0.19", forRemoval = true)
+public class ReturnOverMaxDrawdownCriterion extends org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion {
 }

@@ -21,32 +21,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.bars;
+package org.ta4j.core.num;
 
-import org.ta4j.core.BarBuilder;
-import org.ta4j.core.BarBuilderFactory;
-import org.ta4j.core.BarSeries;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class TickBarBuilderFactory implements BarBuilderFactory {
+import org.junit.jupiter.api.Test;
 
-    private final int tickCount;
-    private TickBarBuilder barBuilder;
+class DecimalNumFactoryTest {
 
-    /**
-     * Constructor.
-     *
-     * @param tickCount the number of ticks at which a new bar should be created
-     */
-    public TickBarBuilderFactory(final int tickCount) {
-        this.tickCount = tickCount;
+    private static final NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+    @Test
+    final void testDefaultNum() {
+        assertNumEquals(-1, decimalFactory.minusOne());
+
+        assertNumEquals(-0, decimalFactory.zero());
+        assertNumEquals(0, decimalFactory.zero());
+        assertNumEquals(+0, decimalFactory.zero());
+
+        assertNumEquals(1, decimalFactory.one());
+        assertNumEquals(2, decimalFactory.two());
+        assertNumEquals(3, decimalFactory.three());
+        assertNumEquals(100, decimalFactory.hundred());
+        assertNumEquals(1000, decimalFactory.thousand());
     }
 
-    @Override
-    public BarBuilder createBarBuilder(final BarSeries series) {
-        if (this.barBuilder == null) {
-            this.barBuilder = new TickBarBuilder(series.numFactory(), this.tickCount).bindTo(series);
-        }
+    @Test
+    final void testProduces() {
+        var doubleFactory = DoubleNumFactory.getInstance();
 
-        return this.barBuilder;
+        assertTrue(decimalFactory.produces(null));
+        assertTrue(decimalFactory.produces(NaN.NaN));
+        assertTrue(decimalFactory.produces(decimalFactory.one()));
+        assertFalse(decimalFactory.produces(doubleFactory.one()));
     }
+
 }
