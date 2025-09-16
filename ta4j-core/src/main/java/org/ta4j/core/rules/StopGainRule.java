@@ -32,7 +32,10 @@ import org.ta4j.core.num.Num;
  * A stop-gain rule.
  *
  * <p>
- * Satisfied when a reference price reaches the gain threshold.
+ * Satisfied when the close price reaches the gain threshold.
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class StopGainRule extends AbstractRule {
 

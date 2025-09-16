@@ -31,6 +31,9 @@ import org.ta4j.core.num.Num;
 /**
  * Satisfied when the value of the {@link Indicator indicator} is the highest
  * within the {@code barCount}.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class IsHighestRule extends AbstractRule {
 
