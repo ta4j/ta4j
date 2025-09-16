@@ -27,7 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
-- Added new 'RSIEnergyIndicator' indicator class
+- Added new 'NetMomentumIndicator' indicator class
 - Added `substitute` static helper to `UnaryOperator` to replace a specific indicator value with another
 
 
