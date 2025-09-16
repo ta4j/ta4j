@@ -49,11 +49,55 @@ import org.ta4j.core.num.Num;
  * </ol>
  *
  * <p>
+ * Why use this over the raw oscillator? The raw oscillator shows the
+ * instantaneous state, while the Net Momentum integrates both the magnitude and
+ * the duration spent above/below the neutral pivot (e.g., RSI 50). This
+ * distinguishes persistent pressure from fleeting spikes and provides a more
+ * stable signal for regime detection.
+ * <ul>
+ * <li>Two periods can end with the same oscillator value, but the one that
+ * accumulated more time and distance above the pivot will have higher net
+ * momentum.</li>
+ * <li>Kalman smoothing reduces whipsaw before accumulation, improving the
+ * usefulness of the running total for decision-making.</li>
+ * </ul>
+ *
+ * <p>
+ * Practical scenarios where Net Momentum adds insight beyond the oscillator:
+ * <ul>
+ * <li><b>Regime filter</b>: Sustained positive readings indicate a bullish
+ * environment; sustained negative readings a bearish one. The zero line can act
+ * as a trend filter for enabling/disabling strategies.</li>
+ * <li><b>Breakout readiness</b>: A steady rise from negative to positive while
+ * price is still range-bound can foreshadow directional breaks.</li>
+ * <li><b>Continuation vs. exhaustion</b>: New price highs with flattening/falling
+ * net momentum warn of waning fuel; rising net momentum confirms trend
+ * continuation.</li>
+ * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative values versus
+ * a rolling history highlight stretched conditions that often mean-revert.</li>
+ * <li><b>Noise reduction in ranges</b>: Oscillators often whipsaw around the
+ * pivot in ranges; net momentum tends to hover near zero, reducing false
+ * signals.</li>
+ * </ul>
+ *
+ * <p>
+ * RSI-specific intuition (pivot at 50):
+ * <ul>
+ * <li>Brief RSI readings just above 50 produce small net momentum; RSI between
+ * 55–70 for many bars produces large positive net momentum (persistent buying
+ * pressure).</li>
+ * <li>Two series can end at RSI = 60; the one that spent more time and distance
+ * above 50 will show higher net momentum.</li>
+ * <li>Zero-line crosses and slope changes in net momentum can be used as robust
+ * filters or timing aids compared to single RSI threshold checks.</li>
+ * </ul>
+ *
+ * <p>
  * Common usage with RSI:
  *
  * <pre>{@code
  * RSIIndicator rsi = new RSIIndicator(closePrice, 14);
- * NetMomentumIndicator boe = new NetMomentumIndicator(rsi, 20);
+ * NetMomentumIndicator netMomentum = new NetMomentumIndicator(rsi, 20);
  * }</pre>
  *
  * @see RSIIndicator
