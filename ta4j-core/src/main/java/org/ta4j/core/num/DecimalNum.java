@@ -98,11 +98,6 @@ public final class DecimalNum implements Num {
         this.delegate = new BigDecimal(val, mathContext);
     }
 
-    private DecimalNum(final short val, final MathContext mathContext) {
-        this.mathContext = mathContext;
-        this.delegate = new BigDecimal(val, mathContext);
-    }
-
     private DecimalNum(final int val, final MathContext mathContext) {
         this.mathContext = mathContext;
         this.delegate = BigDecimal.valueOf(val);
@@ -111,6 +106,11 @@ public final class DecimalNum implements Num {
     private DecimalNum(final long val, final MathContext mathContext) {
         this.mathContext = mathContext;
         this.delegate = BigDecimal.valueOf(val);
+    }
+
+    private DecimalNum(final short val, final MathContext mathContext) {
+        this.mathContext = mathContext;
+        this.delegate = new BigDecimal(val, mathContext);
     }
 
     private DecimalNum(final float val, final MathContext mathContext) {
@@ -638,11 +638,6 @@ public final class DecimalNum implements Num {
         return !other.isNaN() && this.delegate.compareTo(((DecimalNum) other).delegate) < 1;
     }
 
-    @Override
-    public int compareTo(final Num other) {
-        return other.isNaN() ? 0 : this.delegate.compareTo(((DecimalNum) other).delegate);
-    }
-
     /**
      * @return the {@code Num} whose value is the smaller of this {@code Num} and
      *         {@code other}. If they are equal, as defined by the
@@ -682,6 +677,11 @@ public final class DecimalNum implements Num {
             return false;
         }
         return this.delegate.compareTo(((DecimalNum) obj).delegate) == 0;
+    }
+
+    @Override
+    public int compareTo(final Num other) {
+        return other.isNaN() ? 0 : this.delegate.compareTo(((DecimalNum) other).delegate);
     }
 
     @Override
