@@ -152,7 +152,7 @@ public class Returns implements Indicator<Num> {
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
         Num minusOne = barSeries.numFactory().numOf(-1);
-        int endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        int endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
@@ -168,7 +168,7 @@ public class Returns implements Indicator<Num> {
         // accordingly
         Num lastPrice = position.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
-            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
             Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
@@ -191,7 +191,7 @@ public class Returns implements Indicator<Num> {
         }
 
         Num strategyReturn;
-        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        Num assetReturn = type.calculate(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
         if (position.getEntry().isBuy()) {
             strategyReturn = assetReturn;
         } else {
