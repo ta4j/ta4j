@@ -72,7 +72,8 @@ public class AverageTrueRangeStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.stopLossThreshold = BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+        this.stopLossThreshold = BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount),
+                atrCoefficient);
         this.referencePrice = referencePrice;
     }
 

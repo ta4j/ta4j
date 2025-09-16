@@ -76,8 +76,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
         NetMomentumIndicator boe = new NetMomentumIndicator(rsi, 5);
 
-        // Do not evaluate values because RSI has NaN early which is incompatible with DecimalNum.
-        // Instead, validate unstable bar propagation behavior without invoking calculations.
+        // Do not evaluate values because RSI has NaN early which is incompatible with
+        // DecimalNum.
+        // Instead, validate unstable bar propagation behavior without invoking
+        // calculations.
         assertTrue(boe.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
     }
 
@@ -254,7 +256,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testTimeframeOneNeutralZero() {
-        // Oscillator constantly equals pivot (50). With timeframe=1, balance should be zero.
+        // Oscillator constantly equals pivot (50). With timeframe=1, balance should be
+        // zero.
         CachedIndicator<Num> constant50 = new CachedIndicator<Num>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {

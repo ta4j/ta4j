@@ -163,7 +163,8 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
         Num valueToReplace = NaN.NaN;
         Num replacementValue = numOf(0);
 
-        UnaryOperationIndicator subject = UnaryOperationIndicator.substitute(indicator, valueToReplace, replacementValue);
+        UnaryOperationIndicator subject = UnaryOperationIndicator.substitute(indicator, valueToReplace,
+                replacementValue);
 
         assertNumEquals(numFactory.one(), subject.getValue(0));
         assertNumEquals(numFactory.zero(), subject.getValue(1));

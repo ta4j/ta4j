@@ -70,11 +70,12 @@ import org.ta4j.core.num.Num;
  * as a trend filter for enabling/disabling strategies.</li>
  * <li><b>Breakout readiness</b>: A steady rise from negative to positive while
  * price is still range-bound can foreshadow directional breaks.</li>
- * <li><b>Continuation vs. exhaustion</b>: New price highs with flattening/falling
- * net momentum warn of waning fuel; rising net momentum confirms trend
- * continuation.</li>
- * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative values versus
- * a rolling history highlight stretched conditions that often mean-revert.</li>
+ * <li><b>Continuation vs. exhaustion</b>: New price highs with
+ * flattening/falling net momentum warn of waning fuel; rising net momentum
+ * confirms trend continuation.</li>
+ * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative values
+ * versus a rolling history highlight stretched conditions that often
+ * mean-revert.</li>
  * <li><b>Noise reduction in ranges</b>: Oscillators often whipsaw around the
  * pivot in ranges; net momentum tends to hover near zero, reducing false
  * signals.</li>

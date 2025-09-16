@@ -87,10 +87,11 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @param operand the operand indicator
      * @return {@code log(operand)}
      * @apiNote precision may be lost, because this implementation is using the
-     * underlying doubleValue method
+     *          underlying doubleValue method
      */
     public static UnaryOperationIndicator log(Indicator<Num> operand) {
-        return new UnaryOperationIndicator(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
+        return new UnaryOperationIndicator(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())),
+                operand);
     }
 
     /***
@@ -101,9 +102,9 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @return
      */
     public static UnaryOperationIndicator substitute(final Indicator<Num> operand, final Num valueToReplace,
-                                                     final Num replacementValue) {
-        return new UnaryOperationIndicator(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
-                operand);
+            final Num replacementValue) {
+        return new UnaryOperationIndicator(
+                operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue, operand);
     }
 
     @Override
