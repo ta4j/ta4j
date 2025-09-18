@@ -51,16 +51,16 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
         var costModel = new FixedTransactionCostModel(1.5);
         var amount = numFactory.one();
 
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
-        Position position = new Position(entry, exit);
+        var entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
+        var exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
+        var position = new Position(entry, exit);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, position);
+        var result = criterion.calculate(series, position);
 
-        Num gross = position.getGrossProfit().abs();
-        Num commission = position.getPositionCost().abs();
-        Num expected = commission.dividedBy(gross).multipliedBy(numFactory.hundred());
+        var gross = position.getGrossProfit().abs();
+        var commission = position.getPositionCost().abs();
+        var expected = commission.dividedBy(gross).multipliedBy(numFactory.hundred());
 
         assertNumEquals(expected, result);
     }
@@ -71,9 +71,9 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
         var costModel = new FixedTransactionCostModel(2.0);
         var amount = numFactory.one();
 
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
-        Position position = new Position(entry, exit);
+        var entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
+        var exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
+        var position = new Position(entry, exit);
 
         var criterion = getCriterion();
         assertNumEquals(numFactory.zero(), criterion.calculate(series, position));
@@ -95,21 +95,21 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
         record.enter(4, series.getBar(4).getClosePrice(), amount);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, record);
+        var result = criterion.calculate(series, record);
 
         var zero = numFactory.zero();
-        Num totalGross = record.getPositions()
+        var totalGross = record.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(Position::getGrossProfit)
                 .reduce(zero, Num::plus)
                 .abs();
-        Num totalCommission = record.getPositions()
+        var totalCommission = record.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(p -> record.getTransactionCostModel().calculate(p).abs())
                 .reduce(zero, Num::plus);
-        Num expected = totalGross.isZero() ? zero
+        var expected = totalGross.isZero() ? zero
                 : totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
 
         assertNumEquals(expected, result);

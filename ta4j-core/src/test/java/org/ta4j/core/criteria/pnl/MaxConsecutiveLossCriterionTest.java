@@ -45,8 +45,8 @@ public class MaxConsecutiveLossCriterionTest extends AbstractCriterionTest {
     public void calculateReturnsLossForLosingPosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90).build();
         var amount = numFactory.one();
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
+        var entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
+        var exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
         var position = new Position(entry, exit);
 
         var criterion = getCriterion();
@@ -57,8 +57,8 @@ public class MaxConsecutiveLossCriterionTest extends AbstractCriterionTest {
     public void calculateReturnsZeroForWinningOrOpenPosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build();
         var amount = numFactory.one();
-        Trade winEntry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
-        Trade winExit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
+        var winEntry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
+        var winExit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
         var winningPosition = new Position(winEntry, winExit);
 
         var record = new BaseTradingRecord();

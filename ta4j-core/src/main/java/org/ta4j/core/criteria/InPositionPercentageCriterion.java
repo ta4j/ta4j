@@ -112,6 +112,9 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
     }
 
     private static long positionDuration(BarSeries series, Position position) {
+        if (position == null || position.isNew() || position.getEntry() == null) {
+            return 0L;
+        }
         var entryStart = series.getBar(position.getEntry().getIndex()).getBeginTime();
         var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
         var exitEnd = series.getBar(exitIndex).getEndTime();

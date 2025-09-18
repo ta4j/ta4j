@@ -127,7 +127,7 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
 
     private BarSeries buildSeries(int barCount, Duration barDuration) {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < barCount; i++) {
+        for (var i = 0; i < barCount; i++) {
             series.barBuilder()
                     .timePeriod(barDuration)
                     .closePrice(numFactory.zero())

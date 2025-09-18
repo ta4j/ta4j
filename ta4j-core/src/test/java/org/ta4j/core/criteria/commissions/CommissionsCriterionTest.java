@@ -65,12 +65,12 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
         var costModel = new FixedTransactionCostModel(2.0);
         var amount = numFactory.one();
 
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
-        Position position = new Position(entry, exit);
+        var entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
+        var exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
+        var position = new Position(entry, exit);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, position);
+        var result = criterion.calculate(series, position);
 
         assertNumEquals(costModel.calculate(position), result);
     }
@@ -91,9 +91,9 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
         record.enter(4, series.getBar(4).getClosePrice(), amount);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, record);
+        var result = criterion.calculate(series, record);
 
-        Num expected = record.getPositions()
+        var expected = record.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(p -> record.getTransactionCostModel().calculate(p))

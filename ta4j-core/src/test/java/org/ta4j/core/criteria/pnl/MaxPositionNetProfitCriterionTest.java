@@ -45,8 +45,8 @@ public class MaxPositionNetProfitCriterionTest extends AbstractCriterionTest {
     public void calculateReturnsNetProfitOfPosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 130).build();
         var amount = numFactory.one();
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
+        var entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount);
+        var exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount);
         var position = new Position(entry, exit);
 
         var criterion = getCriterion();

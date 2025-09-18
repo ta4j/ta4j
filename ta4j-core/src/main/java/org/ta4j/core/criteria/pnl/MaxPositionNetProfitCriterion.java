@@ -48,9 +48,12 @@ public final class MaxPositionNetProfitCriterion extends AbstractAnalysisCriteri
      * @param p the evaluated position
      * @return the net profit of the position
      * @since 0.19
-     */
+    */
     @Override
     public Num calculate(BarSeries s, Position p) {
+        if (p.isNew() || p.getEntry() == null) {
+            return s.numFactory().zero();
+        }
         return p.getProfit();
     }
 
