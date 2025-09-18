@@ -48,7 +48,7 @@ public final class MaxPositionNetLossCriterion extends AbstractAnalysisCriterion
      * @param position  the evaluated position
      * @return the net profit, which will be negative for a loss
      * @since 0.19
-    */
+     */
     @Override
     public Num calculate(BarSeries barSeries, Position position) {
         if (position.isNew() || position.getEntry() == null) {

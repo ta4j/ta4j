@@ -72,9 +72,7 @@ public class MaxConsecutiveProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateReturnsZeroForRecordWithOnlyLosses() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 95, 90, 85)
-                .build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 90, 85).build();
         var amount = numFactory.one();
         var record = new BaseTradingRecord();
 

@@ -49,7 +49,7 @@ public class MaxConsecutiveProfitCriterion extends AbstractAnalysisCriterion {
      * @param position the evaluated position
      * @return the profit of the position or zero when it is not profitable
      * @since 0.19
-    */
+     */
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isNew() || position.getEntry() == null) {

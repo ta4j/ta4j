@@ -151,7 +151,11 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
                 .reduce(numFactory.zero(), Num::plus);
         var expected = totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
 
-        assertTrue(record.getPositions().stream().map(Position::getGrossProfit).reduce(numFactory.zero(), Num::plus).isNegative());
+        assertTrue(record.getPositions()
+                .stream()
+                .map(Position::getGrossProfit)
+                .reduce(numFactory.zero(), Num::plus)
+                .isNegative());
         assertNumEquals(expected, result);
     }
 
