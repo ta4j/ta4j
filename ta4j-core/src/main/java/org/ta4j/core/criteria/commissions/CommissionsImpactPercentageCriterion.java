@@ -58,14 +58,16 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
     public Num calculate(BarSeries s, Position p) {
         var numFactory = s.numFactory();
         var zero = numFactory.zero();
+        var entry = p.getEntry();
+        if (entry == null) {
+            return zero;
+        }
         var gross = p.getGrossProfit().abs();
         var comm = zero;
-        if (p.getEntry() != null) {
-            var model = p.getEntry().getCostModel();
-            var transactionCost = model.calculate(p);
-            if (transactionCost != null) {
-                comm = transactionCost.abs();
-            }
+        var model = entry.getCostModel();
+        var transactionCost = model.calculate(p);
+        if (transactionCost != null) {
+            comm = transactionCost.abs();
         }
         return gross.isZero() ? zero : comm.dividedBy(gross).multipliedBy(numFactory.hundred());
     }

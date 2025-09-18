@@ -71,6 +71,27 @@ public class MaxConsecutiveLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateReturnsZeroForRecordWithoutLosses() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 120, 130, 140, 150)
+                .build();
+        var amount = numFactory.one();
+        var record = new BaseTradingRecord();
+
+        record.enter(0, numFactory.numOf(100), amount);
+        record.exit(1, numFactory.numOf(110), amount); // +10
+
+        record.enter(2, numFactory.numOf(115), amount);
+        record.exit(3, numFactory.numOf(125), amount); // +10
+
+        record.enter(4, numFactory.numOf(140), amount);
+        record.exit(5, numFactory.numOf(140), amount); // 0
+
+        var criterion = getCriterion();
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, record));
+    }
+
+    @Test
     public void calculateIdentifiesWorstConsecutiveLoss() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)

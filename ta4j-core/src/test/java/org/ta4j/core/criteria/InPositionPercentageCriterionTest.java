@@ -119,6 +119,15 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateReturnsZeroWhenSeriesIsEmpty() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var criterion = getCriterion();
+
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, new Position()));
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
     public void betterThanPrefersSmallerPercentage() {
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.numOf(20), numFactory.numOf(40)));

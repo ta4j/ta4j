@@ -71,6 +71,24 @@ public class MaxConsecutiveProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateReturnsZeroForRecordWithOnlyLosses() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 95, 90, 85)
+                .build();
+        var amount = numFactory.one();
+        var record = new BaseTradingRecord();
+
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount); // -5
+
+        record.enter(2, series.getBar(2).getClosePrice(), amount);
+        record.exit(3, series.getBar(3).getClosePrice(), amount); // -5
+
+        var criterion = getCriterion();
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, record));
+    }
+
+    @Test
     public void calculateIdentifiesBestConsecutiveProfit() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)

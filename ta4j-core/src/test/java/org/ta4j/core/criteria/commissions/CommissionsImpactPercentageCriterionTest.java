@@ -80,6 +80,13 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
     }
 
     @Test
+    public void calculateReturnsZeroForNewPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        var criterion = getCriterion();
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, new Position()));
+    }
+
+    @Test
     public void calculateUsesAggregatedProfitAndCommissionFromRecord() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 90, 80, 70).build();
         var costModel = new FixedTransactionCostModel(1.0);
@@ -112,6 +119,39 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
         var expected = totalGross.isZero() ? zero
                 : totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
 
+        assertNumEquals(expected, result);
+    }
+
+    @Test
+    public void calculateReturnsPercentageWhenAggregatedGrossIsNegative() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 90).build();
+        var costModel = new FixedTransactionCostModel(0.75);
+        var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
+        var amount = numFactory.one();
+
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
+
+        record.enter(2, series.getBar(2).getClosePrice(), amount);
+        record.exit(3, series.getBar(3).getClosePrice(), amount);
+
+        var criterion = getCriterion();
+        var result = criterion.calculate(series, record);
+
+        var totalGross = record.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(Position::getGrossProfit)
+                .reduce(numFactory.zero(), Num::plus)
+                .abs();
+        var totalCommission = record.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(p -> record.getTransactionCostModel().calculate(p).abs())
+                .reduce(numFactory.zero(), Num::plus);
+        var expected = totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
+
+        assertTrue(record.getPositions().stream().map(Position::getGrossProfit).reduce(numFactory.zero(), Num::plus).isNegative());
         assertNumEquals(expected, result);
     }
 
