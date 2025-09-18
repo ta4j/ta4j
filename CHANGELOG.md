@@ -36,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `CommissionsCriterion` to total the commissions paid across closed positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
 - Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
 - Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
+
 ## 0.18 (released May 15, 2025)
 
 ### Breaking
