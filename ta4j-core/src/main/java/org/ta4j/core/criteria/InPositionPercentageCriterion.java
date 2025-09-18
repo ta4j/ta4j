@@ -4,7 +4,6 @@ import java.time.temporal.ChronoUnit;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -28,14 +27,18 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var numFactory = DecimalNumFactory.getInstance();
+        var numFactory = series.numFactory();
+        if (series.isEmpty()) {
+            return numFactory.zero();
+        }
         var totalDuration = totalTradingDuration(series);
-        if (series.isEmpty() || totalDuration == 0) {
+        if (totalDuration == 0) {
             return numFactory.zero();
         }
         var positionDuration = positionDuration(series, position);
-        var percentage = (double) positionDuration / totalDuration * 100;
-        return numFactory.numOf(percentage);
+        return numFactory.numOf(positionDuration)
+                .dividedBy(numFactory.numOf(totalDuration))
+                .multipliedBy(numFactory.hundred());
     }
 
     /**
@@ -52,15 +55,19 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var numFactory = series.numFactory();
+        if (series.isEmpty()) {
+            return numFactory.zero();
+        }
         var totalDuration = totalTradingDuration(series);
-        if (series.isEmpty() || totalDuration == 0 || tradingRecord.getPositionCount() == 0) {
+        if (totalDuration == 0 || tradingRecord.getPositionCount() == 0) {
             return numFactory.zero();
         }
         var positionDuration = tradingRecord.getPositions().stream()
                 .mapToLong(p -> positionDuration(series, p))
                 .sum();
-        var percentage = (double) positionDuration / totalDuration * 100;
-        return numFactory.numOf(percentage);
+        return numFactory.numOf(positionDuration)
+                .dividedBy(numFactory.numOf(totalDuration))
+                .multipliedBy(numFactory.hundred());
     }
 
     /**
