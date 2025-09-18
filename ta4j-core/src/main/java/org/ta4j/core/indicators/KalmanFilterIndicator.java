@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.commons.math3.filter.DefaultMeasurementModel;
 import org.apache.commons.math3.filter.DefaultProcessModel;
 import org.apache.commons.math3.filter.KalmanFilter;
@@ -46,7 +49,11 @@ import org.ta4j.core.num.Num;
  */
 public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
-    private final KalmanFilter filter;
+    private final double processNoise;
+    private final double measurementNoise;
+    private KalmanFilter filter;
+    private final List<Num> stateEstimates;
+    private int lastProcessedIndex;
 
     /**
      * Constructs a KalmanFilterIndicator with the given indicator and default noise
@@ -72,26 +79,10 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     public KalmanFilterIndicator(Indicator<Num> indicator, double processNoise, double measurementNoise) {
         super(indicator);
         this.indicator = indicator;
-
-        double[] stateTransition = { 1 };
-        double[] controlInput = { 0 };
-        double[] measurementMatrix = { 1 };
-        RealMatrix A = new Array2DRowRealMatrix(stateTransition);
-        RealMatrix B = new Array2DRowRealMatrix(controlInput);
-        RealMatrix H = new Array2DRowRealMatrix(measurementMatrix);
-        RealVector x;
-
-        if (indicator.getBarSeries().getBarCount() > 0) {
-            x = new ArrayRealVector(new double[] { indicator.getValue(0).doubleValue() });
-        } else {
-            x = new ArrayRealVector(new double[] { 0.0 });
-        }
-
-        RealMatrix Q = new Array2DRowRealMatrix(new double[] { processNoise });
-        RealMatrix P = new Array2DRowRealMatrix(new double[] { 1 }); // Initial covariance estimate
-        RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
-
-        this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
+        this.processNoise = processNoise;
+        this.measurementNoise = measurementNoise;
+        this.stateEstimates = new ArrayList<>();
+        this.lastProcessedIndex = -1;
     }
 
     /**
@@ -108,14 +99,9 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        for (int i = Math.max(index, this.filter.getStateDimension()); i <= index; i++) {
-            this.filter.predict();
-            this.filter.correct(new double[] { this.indicator.getValue(i).doubleValue() });
-        }
+        ensureProcessedUpTo(index);
 
-        double kalmanValue = this.filter.getStateEstimation()[0];
-
-        return getBarSeries().numFactory().numOf(kalmanValue);
+        return stateEstimates.get(index);
     }
 
     /**
@@ -127,5 +113,56 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return 0;
+    }
+
+    private void ensureProcessedUpTo(int index) {
+        if (filter == null || lastProcessedIndex < 0) {
+            initializeFilter();
+        }
+
+        if (index <= lastProcessedIndex && index < stateEstimates.size() && stateEstimates.get(index) != null) {
+            return;
+        }
+
+        final var numFactory = getBarSeries().numFactory();
+        for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
+            filter.predict();
+            double measurement = this.indicator.getValue(i).doubleValue();
+            filter.correct(new double[] { measurement });
+
+            double kalmanValue = filter.getStateEstimation()[0];
+            Num value = numFactory.numOf(kalmanValue);
+            ensureCapacity(i);
+            stateEstimates.set(i, value);
+            lastProcessedIndex = i;
+        }
+    }
+
+    private void ensureCapacity(int index) {
+        while (stateEstimates.size() <= index) {
+            stateEstimates.add(null);
+        }
+    }
+
+    private void initializeFilter() {
+        double initialEstimate = 0.0;
+        if (indicator.getBarSeries().getBarCount() > 0) {
+            initialEstimate = indicator.getValue(0).doubleValue();
+            if (Double.isNaN(initialEstimate) || Double.isInfinite(initialEstimate)) {
+                initialEstimate = 0.0;
+            }
+        }
+
+        RealMatrix A = new Array2DRowRealMatrix(new double[] { 1 });
+        RealMatrix B = new Array2DRowRealMatrix(new double[] { 0 });
+        RealMatrix H = new Array2DRowRealMatrix(new double[] { 1 });
+        RealVector x = new ArrayRealVector(new double[] { initialEstimate });
+        RealMatrix Q = new Array2DRowRealMatrix(new double[] { processNoise });
+        RealMatrix P = new Array2DRowRealMatrix(new double[] { 1 });
+        RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
+
+        this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
+        stateEstimates.clear();
+        lastProcessedIndex = -1;
     }
 }

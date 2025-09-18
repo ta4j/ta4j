@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
@@ -107,7 +109,7 @@ import org.ta4j.core.num.Num;
  */
 public class NetMomentumIndicator extends CachedIndicator<Num> {
 
-    private static final int DEFAULT_RSI_NEUTRAL_PIVOT = 50;
+    private static final double DEFAULT_RSI_NEUTRAL_PIVOT = 50.0;
 
     private final RunningTotalIndicator runningTotalIndicator;
     private final KalmanFilterIndicator smoothedIndicator;
@@ -120,12 +122,16 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      *                             Stochastic)
      * @param timeFrame            the period for the running total calculation
      *                             (must be > 0)
-     * @param neutralPivotValue    the neutral/equilibrium value of the oscillator
-     * @throws IllegalArgumentException if timeFrame <= 0 or oscillatingIndicator is
-     *                                  null
+     * @param neutralPivotValue    the neutral/equilibrium value of the oscillator;
+     *                             fractional pivots are supported
+     * @throws IllegalArgumentException if timeFrame <= 0
+     * @throws NullPointerException     if oscillatingIndicator or neutralPivotValue
+     *                                  is null
      */
-    public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, int neutralPivotValue) {
-        super(oscillatingIndicator);
+    public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue) {
+        super(Objects.requireNonNull(oscillatingIndicator, "Oscillating indicator must not be null"));
+
+        Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
 
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");
@@ -145,7 +151,8 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      * @param rsiIndicator the RSI indicator
      * @param timeFrame    the period for the running total calculation (must be >
      *                     0)
-     * @throws IllegalArgumentException if timeFrame <= 0 or rsiIndicator is null
+     * @throws IllegalArgumentException if timeFrame <= 0
+     * @throws NullPointerException     if rsiIndicator is null
      */
     public NetMomentumIndicator(RSIIndicator rsiIndicator, int timeFrame) {
         this(rsiIndicator, timeFrame, DEFAULT_RSI_NEUTRAL_PIVOT);
@@ -158,6 +165,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(oscillatingIndicator.getCountOfUnstableBars(), smoothedIndicator.getCountOfUnstableBars());
+        return Math.max(runningTotalIndicator.getCountOfUnstableBars(),
+                Math.max(oscillatingIndicator.getCountOfUnstableBars(), smoothedIndicator.getCountOfUnstableBars()));
     }
 }

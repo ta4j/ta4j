@@ -243,6 +243,12 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             fail("Expected NullPointerException when indicator is null");
         } catch (NullPointerException expected) {
         }
+
+        try {
+            new NetMomentumIndicator(closePrice, 5, null);
+            fail("Expected NullPointerException when neutral pivot is null");
+        } catch (NullPointerException expected) {
+        }
     }
 
     @Test
@@ -331,6 +337,75 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         };
 
         NetMomentumIndicator boe = new NetMomentumIndicator(osc, 5, 50);
-        assertEquals(0, boe.getCountOfUnstableBars());
+        assertEquals(5, boe.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void testFractionalNeutralPivotProducesExpectedValues() {
+        CachedIndicator<Num> constant = new CachedIndicator<Num>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(51.25);
+            }
+        };
+
+        int timeFrame = 4;
+        double pivot = 50.5;
+        NetMomentumIndicator indicator = new NetMomentumIndicator(constant, timeFrame, pivot);
+
+        for (int i = 0; i < series.getBarCount(); i++) {
+            Num actual = indicator.getValue(i);
+            int window = Math.min(i + 1, timeFrame);
+            Num expected = numOf(window * (51.25 - pivot));
+            assertTrue("Unexpected value at index " + i, actual.isEqual(expected));
+        }
+    }
+
+    @Test
+    public void testOrderIndependenceOfAccessPattern() {
+        CachedIndicator<Num> oscillatorSequential = buildOscillator();
+        CachedIndicator<Num> oscillatorReverse = buildOscillator();
+
+        int timeFrame = 6;
+        NetMomentumIndicator sequential = new NetMomentumIndicator(oscillatorSequential, timeFrame, 50);
+        NetMomentumIndicator reverse = new NetMomentumIndicator(oscillatorReverse, timeFrame, 50);
+
+        int maxIndex = series.getBarCount() - 1;
+        Num[] forwardValues = new Num[maxIndex + 1];
+        for (int i = 0; i <= maxIndex; i++) {
+            forwardValues[i] = sequential.getValue(i);
+        }
+
+        Num[] reverseValues = new Num[maxIndex + 1];
+        for (int i = maxIndex; i >= 0; i--) {
+            reverseValues[i] = reverse.getValue(i);
+        }
+
+        Num tolerance = numOf(1e-9);
+        for (int i = 0; i <= maxIndex; i++) {
+            Num delta = forwardValues[i].minus(reverseValues[i]).abs();
+            assertTrue("Access-order dependent mismatch at index " + i + " (delta=" + delta + ")",
+                    delta.isLessThan(tolerance));
+        }
+    }
+
+    private CachedIndicator<Num> buildOscillator() {
+        return new CachedIndicator<Num>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                // Smooth oscillation between 35 and 65
+                return numOf(50 + 15 * Math.sin(index * 0.35));
+            }
+        };
     }
 }
