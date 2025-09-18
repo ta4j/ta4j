@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.commission;
+package org.ta4j.core.criteria.commissions;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -39,16 +39,30 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class CommissionImpactPercentageCriterionTest extends AbstractCriterionTest {
+public class CommissionsCriterionTest extends AbstractCriterionTest {
 
-    public CommissionImpactPercentageCriterionTest(NumFactory numFactory) {
-        super(params -> new CommissionImpactPercentageCriterion(), numFactory);
+    public CommissionsCriterionTest(NumFactory numFactory) {
+        super(params -> new CommissionsCriterion(), numFactory);
     }
 
     @Test
-    public void calculateReturnsPercentageForPosition() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+    public void calculateReturnsZeroForOpenPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build();
         var costModel = new FixedTransactionCostModel(1.5);
+        var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
+        var amount = numFactory.one();
+
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        var openPosition = record.getCurrentPosition();
+
+        var criterion = getCriterion();
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, openPosition));
+    }
+
+    @Test
+    public void calculateReturnsCommissionForClosedPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        var costModel = new FixedTransactionCostModel(2.0);
         var amount = numFactory.one();
 
         Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
@@ -58,30 +72,12 @@ public class CommissionImpactPercentageCriterionTest extends AbstractCriterionTe
         var criterion = getCriterion();
         Num result = criterion.calculate(series, position);
 
-        Num gross = position.getGrossProfit().abs();
-        Num commission = position.getPositionCost().abs();
-        Num expected = commission.dividedBy(gross).multipliedBy(numFactory.hundred());
-
-        assertNumEquals(expected, result);
+        assertNumEquals(costModel.calculate(position), result);
     }
 
     @Test
-    public void calculateReturnsZeroWhenGrossIsZero() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100).build();
-        var costModel = new FixedTransactionCostModel(2.0);
-        var amount = numFactory.one();
-
-        Trade entry = Trade.buyAt(0, series.getBar(0).getClosePrice(), amount, costModel);
-        Trade exit = Trade.sellAt(1, series.getBar(1).getClosePrice(), amount, costModel);
-        Position position = new Position(entry, exit);
-
-        var criterion = getCriterion();
-        assertNumEquals(numFactory.zero(), criterion.calculate(series, position));
-    }
-
-    @Test
-    public void calculateUsesAggregatedProfitAndCommissionFromRecord() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 90, 80, 70).build();
+    public void calculateSumsClosedPositionsFromRecord() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 140).build();
         var costModel = new FixedTransactionCostModel(1.0);
         var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
         var amount = numFactory.one();
@@ -97,40 +93,17 @@ public class CommissionImpactPercentageCriterionTest extends AbstractCriterionTe
         var criterion = getCriterion();
         Num result = criterion.calculate(series, record);
 
-        var zero = numFactory.zero();
-        Num totalGross = record.getPositions().stream()
+        Num expected = record.getPositions()
+                .stream()
                 .filter(Position::isClosed)
-                .map(Position::getGrossProfit)
-                .reduce(zero, Num::plus)
-                .abs();
-        Num totalCommission = record.getPositions().stream()
-                .filter(Position::isClosed)
-                .map(p -> record.getTransactionCostModel().calculate(p).abs())
-                .reduce(zero, Num::plus);
-        Num expected = totalGross.isZero() ? zero : totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
+                .map(p -> record.getTransactionCostModel().calculate(p))
+                .reduce(numFactory.zero(), Num::plus);
 
         assertNumEquals(expected, result);
     }
 
     @Test
-    public void calculateReturnsZeroWhenRecordGrossIsZero() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 130, 110).build();
-        var costModel = new FixedTransactionCostModel(0.5);
-        var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
-        var amount = numFactory.one();
-
-        record.enter(0, series.getBar(0).getClosePrice(), amount);
-        record.exit(1, series.getBar(1).getClosePrice(), amount);
-
-        record.enter(2, series.getBar(2).getClosePrice(), amount);
-        record.exit(3, series.getBar(3).getClosePrice(), amount);
-
-        var criterion = getCriterion();
-        assertNumEquals(numFactory.zero(), criterion.calculate(series, record));
-    }
-
-    @Test
-    public void betterThanPrefersLowerImpact() {
+    public void betterThanPrefersLowerCommission() {
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.one(), numFactory.two()));
         assertFalse(criterion.betterThan(numFactory.two(), numFactory.one()));

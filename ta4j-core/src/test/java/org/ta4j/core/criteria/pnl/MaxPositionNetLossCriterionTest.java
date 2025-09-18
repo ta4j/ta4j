@@ -55,9 +55,7 @@ public class MaxPositionNetLossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateFindsMostNegativeClosedPosition() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 5, 6)
-                .build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         var amount = numFactory.one();
         var record = new BaseTradingRecord();
 

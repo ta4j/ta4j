@@ -50,17 +50,17 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
     public void calculateReturnsPercentageForClosedPosition() {
         var series = buildSeries(5, Duration.ofHours(1));
         var amount = numFactory.one();
-        Trade entry = Trade.buyAt(1, series.getBar(1).getClosePrice(), amount);
-        Trade exit = Trade.sellAt(3, series.getBar(3).getClosePrice(), amount);
-        Position position = new Position(entry, exit);
+        var entry = Trade.buyAt(1, series.getBar(1).getClosePrice(), amount);
+        var exit = Trade.sellAt(3, series.getBar(3).getClosePrice(), amount);
+        var position = new Position(entry, exit);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, position);
+        var result = criterion.calculate(series, position);
 
-        long totalDuration = totalDuration(series);
-        long positionDuration = positionDuration(series, entry.getIndex(), exit.getIndex());
-        double expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
-        var expected = DecimalNumFactory.getInstance().numOf(expectedPercentage);
+        var totalDuration = totalDuration(series);
+        var positionDuration = positionDuration(series, entry.getIndex(), exit.getIndex());
+        var expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
+        var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
     }
@@ -71,15 +71,15 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
         var amount = numFactory.one();
         var record = new BaseTradingRecord();
         record.enter(3, series.getBar(3).getClosePrice(), amount);
-        Position openPosition = record.getCurrentPosition();
+        var openPosition = record.getCurrentPosition();
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, openPosition);
+        var result = criterion.calculate(series, openPosition);
 
-        long totalDuration = totalDuration(series);
-        long positionDuration = positionDuration(series, openPosition.getEntry().getIndex(), series.getEndIndex());
-        double expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
-        var expected = DecimalNumFactory.getInstance().numOf(expectedPercentage);
+        var totalDuration = totalDuration(series);
+        var positionDuration = positionDuration(series, openPosition.getEntry().getIndex(), series.getEndIndex());
+        var expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
+        var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
     }
@@ -97,14 +97,15 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
         record.exit(4, series.getBar(4).getClosePrice(), amount);
 
         var criterion = getCriterion();
-        Num result = criterion.calculate(series, record);
+        var result = criterion.calculate(series, record);
 
-        long totalDuration = totalDuration(series);
-        long accumulatedDuration = record.getPositions().stream()
-                .mapToLong(p -> positionDuration(series, p.getEntry().getIndex(), p.isClosed() ? p.getExit().getIndex()
-                        : series.getEndIndex()))
+        var totalDuration = totalDuration(series);
+        var accumulatedDuration = record.getPositions()
+                .stream()
+                .mapToLong(p -> positionDuration(series, p.getEntry().getIndex(),
+                        p.isClosed() ? p.getExit().getIndex() : series.getEndIndex()))
                 .sum();
-        double expectedPercentage = totalDuration == 0 ? 0 : (double) accumulatedDuration / totalDuration * 100;
+        var expectedPercentage = totalDuration == 0 ? 0 : (double) accumulatedDuration / totalDuration * 100;
         var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
@@ -125,7 +126,7 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildSeries(int barCount, Duration barDuration) {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < barCount; i++) {
             series.barBuilder()
                     .timePeriod(barDuration)
