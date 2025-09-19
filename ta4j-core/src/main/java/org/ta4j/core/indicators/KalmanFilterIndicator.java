@@ -46,6 +46,8 @@ import org.ta4j.core.num.Num;
  * This indicator is particularly useful for reducing noise and improving the
  * signal-to-noise ratio of an indicator, which can be beneficial for various
  * trading strategies and analysis.
+ *
+ * @since 0.17
  */
 public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;

@@ -106,6 +106,8 @@ import org.ta4j.core.num.Num;
  * @see RSIIndicator
  * @see KalmanFilterIndicator
  * @see RunningTotalIndicator
+ *
+ * @since 0.19
  */
 public class NetMomentumIndicator extends CachedIndicator<Num> {
 
