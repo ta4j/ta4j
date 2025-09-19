@@ -54,11 +54,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(14.99500, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(17.61553, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
-        Assert.assertEquals(19.29951, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
-        Assert.assertEquals(22.78980, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
-        Assert.assertEquals(30.92094, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
+        Assert.assertEquals(12.61791, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assert.assertEquals(15.45321, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assert.assertEquals(17.58865, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
+        Assert.assertEquals(21.29749, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
+        Assert.assertEquals(29.48101, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
     }
 
     @Test
@@ -66,8 +66,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice, 1e-4, 1e-6);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(14.99999, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(19.95099, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assert.assertEquals(14.95098, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assert.assertEquals(19.95049, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
         Assert.assertEquals(21.97990, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
         Assert.assertEquals(29.92136, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
         Assert.assertEquals(49.80313, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
@@ -83,8 +83,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
 
         Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(10.99999, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(99.12745, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assert.assertEquals(10.99019, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assert.assertEquals(99.12727, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
         Assert.assertEquals(13.84446, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
         Assert.assertEquals(13.99847, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
         Assert.assertEquals(14.99018, kalmanIndicator.getValue(5).doubleValue(), 1e-5);

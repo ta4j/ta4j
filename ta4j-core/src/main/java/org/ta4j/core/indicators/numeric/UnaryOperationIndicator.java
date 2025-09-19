@@ -23,19 +23,27 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.UnaryOperator;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
+import java.util.function.UnaryOperator;
+
 /**
  * Objects of this class defer the evaluation of a unary operator, like sqrt().
- *
+ * <p>
  * There may be other unary operations on Num that could be added here.
  */
-public class UnaryOperation implements Indicator<Num> {
+public class UnaryOperationIndicator implements Indicator<Num> {
+
+    private final UnaryOperator<Num> operator;
+    private final Indicator<Num> operand;
+
+    private UnaryOperationIndicator(UnaryOperator<Num> operator, Indicator<Num> operand) {
+        this.operator = operator;
+        this.operand = operand;
+    }
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
@@ -44,8 +52,8 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code √(operand)}
      * @see Num#sqrt
      */
-    public static UnaryOperation sqrt(Indicator<Num> operand) {
-        return new UnaryOperation(Num::sqrt, operand);
+    public static UnaryOperationIndicator sqrt(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(Num::sqrt, operand);
     }
 
     /**
@@ -56,8 +64,8 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code abs(operand)}
      * @see Num#abs
      */
-    public static UnaryOperation abs(Indicator<Num> operand) {
-        return new UnaryOperation(Num::abs, operand);
+    public static UnaryOperationIndicator abs(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(Num::abs, operand);
     }
 
     /**
@@ -68,9 +76,9 @@ public class UnaryOperation implements Indicator<Num> {
      * @return {@code operand^exponent}
      * @see Num#pow
      */
-    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
+    public static UnaryOperationIndicator pow(Indicator<Num> operand, Number exponent) {
         final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
-        return new UnaryOperation(val -> val.pow(numExponent), operand);
+        return new UnaryOperationIndicator(val -> val.pow(numExponent), operand);
     }
 
     /**
@@ -81,16 +89,22 @@ public class UnaryOperation implements Indicator<Num> {
      * @apiNote precision may be lost, because this implementation is using the
      *          underlying doubleValue method
      */
-    public static UnaryOperation log(Indicator<Num> operand) {
-        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
+    public static UnaryOperationIndicator log(Indicator<Num> operand) {
+        return new UnaryOperationIndicator(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())),
+                operand);
     }
 
-    private final UnaryOperator<Num> operator;
-    private final Indicator<Num> operand;
-
-    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
-        this.operator = operator;
-        this.operand = operand;
+    /***
+     *
+     * @param operand
+     * @param valueToReplace
+     * @param replacementValue
+     * @return
+     */
+    public static UnaryOperationIndicator substitute(final Indicator<Num> operand, final Num valueToReplace,
+            final Num replacementValue) {
+        return new UnaryOperationIndicator(
+                operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue, operand);
     }
 
     @Override

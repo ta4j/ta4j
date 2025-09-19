@@ -27,15 +27,19 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Num> {
+public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOperationIndicator, Num> {
 
-    public UnaryOperationTest(final NumFactory numFactory) {
+    public UnaryOperationIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -44,7 +48,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 4, 9, 16, 25).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.sqrt(indicator);
+        final var result = UnaryOperationIndicator.sqrt(indicator);
 
         assertNumEquals(1, result.getValue(0));
         assertNumEquals(2, result.getValue(1));
@@ -58,7 +62,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(-5, -2, 0, 3, -7).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.abs(indicator);
+        final var result = UnaryOperationIndicator.abs(indicator);
 
         assertNumEquals(5, result.getValue(0));
         assertNumEquals(2, result.getValue(1));
@@ -72,7 +76,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.pow(indicator, 2);
+        final var result = UnaryOperationIndicator.pow(indicator, 2);
 
         assertNumEquals(4, result.getValue(0));
         assertNumEquals(9, result.getValue(1));
@@ -86,7 +90,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(4, 9, 16, 25, 36).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.pow(indicator, 0.5);
+        final var result = UnaryOperationIndicator.pow(indicator, 0.5);
 
         assertNumEquals(2, result.getValue(0));
         assertNumEquals(3, result.getValue(1));
@@ -100,7 +104,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.pow(indicator, 0);
+        final var result = UnaryOperationIndicator.pow(indicator, 0);
 
         assertNumEquals(1, result.getValue(0));
         assertNumEquals(1, result.getValue(1));
@@ -114,7 +118,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.pow(indicator, 1);
+        final var result = UnaryOperationIndicator.pow(indicator, 1);
 
         assertNumEquals(2, result.getValue(0));
         assertNumEquals(3, result.getValue(1));
@@ -130,7 +134,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
                 .build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.log(indicator);
+        final var result = UnaryOperationIndicator.log(indicator);
 
         assertNumEquals(0, result.getValue(0));
         assertNumEquals(1, result.getValue(1));
@@ -144,7 +148,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0.1, 0.01, 0.001).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.log(indicator);
+        final var result = UnaryOperationIndicator.log(indicator);
 
         assertNumEquals(Math.log(0.1), result.getValue(0));
         assertNumEquals(Math.log(0.01), result.getValue(1));
@@ -152,11 +156,29 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
     }
 
     @Test
+    public void testSubstitute_ReplacesNaNWithCorrectValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Indicator<Num> indicator = new FixedIndicator<>(series, numOf(1), NaN.NaN, numOf(3), NaN.NaN, numOf(5));
+
+        Num valueToReplace = NaN.NaN;
+        Num replacementValue = numOf(0);
+
+        UnaryOperationIndicator subject = UnaryOperationIndicator.substitute(indicator, valueToReplace,
+                replacementValue);
+
+        assertNumEquals(numFactory.one(), subject.getValue(0));
+        assertNumEquals(numFactory.zero(), subject.getValue(1));
+        assertNumEquals(numOf(3), subject.getValue(2));
+        assertNumEquals(numOf(0), subject.getValue(3));
+        assertNumEquals(numOf(5), subject.getValue(4));
+    }
+
+    @Test
     public void testGetCountOfUnstableBars() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.sqrt(indicator);
+        final var result = UnaryOperationIndicator.sqrt(indicator);
 
         assertEquals(0, result.getCountOfUnstableBars());
     }
@@ -166,7 +188,7 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         final var indicator = new ClosePriceIndicator(series);
 
-        final var result = UnaryOperation.sqrt(indicator);
+        final var result = UnaryOperationIndicator.sqrt(indicator);
 
         assertEquals(series, result.getBarSeries());
     }
