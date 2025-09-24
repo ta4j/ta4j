@@ -53,12 +53,12 @@ public class BollingerBandFacade {
      * @param barCount  the number of periods used for the indicators
      * @param k         the multiplier used to calculate the upper and lower bands
      */
-    public BollingerBandFacade(BarSeries barSeries, int barCount, Number k) {
-        this.price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
-        this.middle = NumericIndicator.of(price.sma(barCount));
+    public BollingerBandFacade(final BarSeries barSeries, final int barCount, final Number k) {
+        price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
+        middle = NumericIndicator.of(price.sma(barCount));
         final NumericIndicator stdev = price.stddev(barCount);
-        this.upper = middle.plus(stdev.multipliedBy(k));
-        this.lower = middle.minus(stdev.multipliedBy(k));
+        upper = middle.plus(stdev.multipliedBy(k));
+        lower = middle.minus(stdev.multipliedBy(k));
     }
 
     /**
@@ -68,12 +68,12 @@ public class BollingerBandFacade {
      * @param barCount  the number of periods used for the indicators
      * @param k         the multiplier used to calculate the upper and lower bands
      */
-    public BollingerBandFacade(Indicator<Num> indicator, int barCount, Number k) {
-        this.price = NumericIndicator.of(indicator);
-        this.middle = NumericIndicator.of(price.sma(barCount));
+    public BollingerBandFacade(final Indicator<Num> indicator, final int barCount, final Number k) {
+        price = NumericIndicator.of(indicator);
+        middle = NumericIndicator.of(price.sma(barCount));
         final NumericIndicator stdev = price.stddev(barCount);
-        this.upper = middle.plus(stdev.multipliedBy(k));
-        this.lower = middle.minus(stdev.multipliedBy(k));
+        upper = middle.plus(stdev.multipliedBy(k));
+        lower = middle.minus(stdev.multipliedBy(k));
     }
 
     /**
