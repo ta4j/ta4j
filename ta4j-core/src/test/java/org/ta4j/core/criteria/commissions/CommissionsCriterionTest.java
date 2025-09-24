@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.criteria.commissions;
 
+import java.util.stream.Stream;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -46,17 +47,18 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateReturnsZeroForOpenPosition() {
+    public void calculateForOpenPosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build();
-        var costModel = new FixedTransactionCostModel(1.5);
+        var commission = 1.5;
+        var costModel = new FixedTransactionCostModel(commission);
         var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
         var amount = numFactory.one();
 
-        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.enter(0, series.getFirstBar().getClosePrice(), amount);
         var openPosition = record.getCurrentPosition();
 
         var criterion = getCriterion();
-        assertNumEquals(numFactory.zero(), criterion.calculate(series, openPosition));
+        assertNumEquals(numFactory.numOf(commission), criterion.calculate(series, openPosition));
     }
 
     @Test
@@ -76,7 +78,7 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateSumsClosedPositionsFromRecord() {
+    public void calculateSumsPositionsFromRecord() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 140).build();
         var costModel = new FixedTransactionCostModel(1.0);
         var record = new BaseTradingRecord(TradeType.BUY, costModel, new ZeroCostModel());
@@ -93,9 +95,7 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
         var criterion = getCriterion();
         var result = criterion.calculate(series, record);
 
-        var expected = record.getPositions()
-                .stream()
-                .filter(Position::isClosed)
+        var expected = Stream.concat(record.getPositions().stream(), Stream.of(record.getCurrentPosition()))
                 .map(p -> record.getTransactionCostModel().calculate(p))
                 .reduce(numFactory.zero(), Num::plus);
 

@@ -52,7 +52,6 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
      * @param p the evaluated position
      * @return the percentage of commission relative to gross profit or zero when
      *         there is no gross profit
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries s, Position p) {
@@ -69,7 +68,7 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
         if (transactionCost != null) {
             comm = transactionCost.abs();
         }
-        return gross.isZero() ? zero : comm.dividedBy(gross).multipliedBy(numFactory.hundred());
+        return gross.isZero() ? zero : comm.dividedBy(gross);
     }
 
     /**
@@ -80,16 +79,13 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
      * @param r the trading record containing the positions to evaluate
      * @return the percentage of commission relative to the record gross profit or
      *         zero when there is no gross profit
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries s, TradingRecord r) {
         var gross = GROSS_PROFIT_LOSS_CRITERION.calculate(s, r).abs();
         var comm = COMMISSION_CRITERION.calculate(s, r).abs();
         var numFactory = s.numFactory();
-        var zero = numFactory.zero();
-        var hundred = numFactory.hundred();
-        return gross.isZero() ? zero : comm.dividedBy(gross).multipliedBy(hundred);
+        return gross.isZero() ? numFactory.zero() : comm.dividedBy(gross);
     }
 
     /**

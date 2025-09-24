@@ -47,7 +47,6 @@ public final class MaxPositionNetProfitCriterion extends AbstractAnalysisCriteri
      * @param s the bar series used for number creation
      * @param p the evaluated position
      * @return the net profit of the position
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries s, Position p) {
@@ -64,7 +63,6 @@ public final class MaxPositionNetProfitCriterion extends AbstractAnalysisCriteri
      * @param barSeries     the bar series used for number creation
      * @param tradingRecord the trading record containing the positions to scan
      * @return the highest profit value or zero when no position ends in profit
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries barSeries, TradingRecord tradingRecord) {
@@ -83,7 +81,6 @@ public final class MaxPositionNetProfitCriterion extends AbstractAnalysisCriteri
      * @param a the first value to compare
      * @param b the second value to compare
      * @return {@code true} when the first value is higher
-     * @since 0.19
      */
     @Override
     public boolean betterThan(Num a, Num b) {

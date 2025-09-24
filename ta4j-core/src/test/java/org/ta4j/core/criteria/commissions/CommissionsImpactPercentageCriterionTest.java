@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.criteria.commissions;
 
+import java.util.stream.Stream;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -60,7 +61,7 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
 
         var gross = position.getGrossProfit().abs();
         var commission = position.getPositionCost().abs();
-        var expected = commission.dividedBy(gross).multipliedBy(numFactory.hundred());
+        var expected = commission.dividedBy(gross);
 
         assertNumEquals(expected, result);
     }
@@ -111,13 +112,10 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
                 .map(Position::getGrossProfit)
                 .reduce(zero, Num::plus)
                 .abs();
-        var totalCommission = record.getPositions()
-                .stream()
-                .filter(Position::isClosed)
+        var totalCommission = Stream.concat(record.getPositions().stream(), Stream.of(record.getCurrentPosition()))
                 .map(p -> record.getTransactionCostModel().calculate(p).abs())
                 .reduce(zero, Num::plus);
-        var expected = totalGross.isZero() ? zero
-                : totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
+        var expected = totalGross.isZero() ? zero : totalCommission.dividedBy(totalGross);
 
         assertNumEquals(expected, result);
     }
@@ -149,7 +147,7 @@ public class CommissionsImpactPercentageCriterionTest extends AbstractCriterionT
                 .filter(Position::isClosed)
                 .map(p -> record.getTransactionCostModel().calculate(p).abs())
                 .reduce(numFactory.zero(), Num::plus);
-        var expected = totalCommission.dividedBy(totalGross).multipliedBy(numFactory.hundred());
+        var expected = totalCommission.dividedBy(totalGross);
 
         assertTrue(record.getPositions()
                 .stream()

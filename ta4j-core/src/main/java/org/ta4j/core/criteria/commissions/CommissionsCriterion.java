@@ -46,35 +46,44 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
      *
      * @param series   the bar series used for number creation
      * @param position the evaluated position
-     * @return the commission paid for the provided position or zero when it is open
-     * @since 0.19
+     * @return the commission paid for the provided position
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (!position.isClosed()) {
-            return series.numFactory().zero();
+        if (position.isClosed()) {
+            var model = position.getEntry().getCostModel();
+            return model.calculate(position);
         }
-        var model = position.getEntry().getCostModel();
-        return model.calculate(position);
+        if (position.isOpened()) {
+            var model = position.getEntry().getCostModel();
+            var finalIndex = series.getEndIndex();
+            return model.calculate(position, finalIndex);
+        }
+        return series.numFactory().zero();
     }
 
     /**
-     * Calculates the total commission paid for every closed position in a trading
-     * record.
+     * Calculates the total commission paid for every position in a trading record.
      *
-     * @param series the bar series used for number creation
-     * @param record the trading record containing the positions to evaluate
+     * @param series        the bar series used for number creation
+     * @param tradingRecord the trading record containing the positions to evaluate
      * @return the sum of commissions paid for the record
-     * @since 0.19
      */
     @Override
-    public Num calculate(BarSeries series, TradingRecord record) {
-        var model = record.getTransactionCostModel();
-        return record.getPositions()
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        var model = tradingRecord.getTransactionCostModel();
+        var closedPositionsCommissions = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(model::calculate)
                 .reduce(series.numFactory().zero(), Num::plus);
+
+        var current = tradingRecord.getCurrentPosition();
+        if (current.isOpened()) {
+            var openPositionCommissions = model.calculate(current, tradingRecord.getEndIndex(series));
+            return closedPositionsCommissions.plus(openPositionCommissions);
+        }
+        return closedPositionsCommissions;
     }
 
     /**
@@ -83,7 +92,6 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
      * @param v1 the first value to compare
      * @param v2 the second value to compare
      * @return {@code true} when the first value is lower
-     * @since 0.19
      */
     @Override
     public boolean betterThan(Num v1, Num v2) {

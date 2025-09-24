@@ -23,21 +23,17 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
@@ -59,7 +55,7 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
 
         var totalDuration = totalDuration(series);
         var positionDuration = positionDuration(series, entry.getIndex(), exit.getIndex());
-        var expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
+        var expectedPercentage = getExpectedPercentage(totalDuration, positionDuration);
         var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
@@ -78,7 +74,7 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
 
         var totalDuration = totalDuration(series);
         var positionDuration = positionDuration(series, openPosition.getEntry().getIndex(), series.getEndIndex());
-        var expectedPercentage = totalDuration == 0 ? 0 : (double) positionDuration / totalDuration * 100;
+        var expectedPercentage = getExpectedPercentage(totalDuration, positionDuration);
         var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
@@ -105,7 +101,7 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
                 .mapToLong(p -> positionDuration(series, p.getEntry().getIndex(),
                         p.isClosed() ? p.getExit().getIndex() : series.getEndIndex()))
                 .sum();
-        var expectedPercentage = totalDuration == 0 ? 0 : (double) accumulatedDuration / totalDuration * 100;
+        var expectedPercentage = getExpectedPercentage(totalDuration, accumulatedDuration);
         var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
@@ -158,5 +154,9 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
         var entryStart = series.getBar(entryIndex).getBeginTime();
         var exitEnd = series.getBar(exitIndex).getEndTime();
         return ChronoUnit.NANOS.between(entryStart, exitEnd);
+    }
+
+    private static double getExpectedPercentage(long totalDuration, double positionDuration) {
+        return totalDuration == 0 ? 0 : positionDuration / totalDuration;
     }
 }

@@ -48,7 +48,6 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
      * @param series   the bar series providing the trading period
      * @param position the position to evaluate
      * @return the percentage of the series duration covered by the position
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -61,9 +60,7 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
             return numFactory.zero();
         }
         var positionDuration = positionDuration(series, position);
-        return numFactory.numOf(positionDuration)
-                .dividedBy(numFactory.numOf(totalDuration))
-                .multipliedBy(numFactory.hundred());
+        return numFactory.numOf(positionDuration).dividedBy(numFactory.numOf(totalDuration));
     }
 
     /**
@@ -74,7 +71,6 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
      * @param tradingRecord the trading record containing the positions to evaluate
      * @return the percentage of the series duration covered by the record's
      *         positions
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -87,9 +83,7 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
             return numFactory.zero();
         }
         var positionDuration = tradingRecord.getPositions().stream().mapToLong(p -> positionDuration(series, p)).sum();
-        return numFactory.numOf(positionDuration)
-                .dividedBy(numFactory.numOf(totalDuration))
-                .multipliedBy(numFactory.hundred());
+        return numFactory.numOf(positionDuration).dividedBy(numFactory.numOf(totalDuration));
     }
 
     /**
@@ -98,7 +92,6 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
      * @param criterionValue1 the first value to compare
      * @param criterionValue2 the second value to compare
      * @return {@code true} when the first value is lower (less time in the market)
-     * @since 0.19
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {

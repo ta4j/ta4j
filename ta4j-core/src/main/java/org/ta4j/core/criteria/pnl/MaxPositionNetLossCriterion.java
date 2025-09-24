@@ -47,7 +47,6 @@ public final class MaxPositionNetLossCriterion extends AbstractAnalysisCriterion
      * @param barSeries the bar series used for number creation
      * @param position  the evaluated position
      * @return the net profit, which will be negative for a loss
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries barSeries, Position position) {
@@ -64,7 +63,6 @@ public final class MaxPositionNetLossCriterion extends AbstractAnalysisCriterion
      * @param tradingRecord the trading record containing the positions to scan
      * @return the most negative profit value or zero when every position is
      *         profitable or break-even
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries barSeries, TradingRecord tradingRecord) {
@@ -83,7 +81,6 @@ public final class MaxPositionNetLossCriterion extends AbstractAnalysisCriterion
      * @param a the first value to compare
      * @param b the second value to compare
      * @return {@code true} when the first value is higher (a smaller loss)
-     * @since 0.19
      */
     @Override
     public boolean betterThan(Num a, Num b) {
