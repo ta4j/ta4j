@@ -37,7 +37,8 @@ import org.ta4j.core.num.Num;
 public class SMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private RunningTotalIndicator previousSum;
+    private final Indicator<Num> indicator;
+    private final RunningTotalIndicator previousSum;
 
     /**
      * Constructor.
@@ -48,6 +49,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.previousSum = new RunningTotalIndicator(indicator, barCount);
+        this.indicator = indicator;
         this.barCount = barCount;
     }
 
@@ -65,7 +67,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount;
     }
 
     @Override
