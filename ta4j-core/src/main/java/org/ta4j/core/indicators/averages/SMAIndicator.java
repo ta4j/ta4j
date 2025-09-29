@@ -67,7 +67,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars() + barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override
