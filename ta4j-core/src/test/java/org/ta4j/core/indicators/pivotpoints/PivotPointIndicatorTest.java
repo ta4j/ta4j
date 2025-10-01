@@ -1348,43 +1348,50 @@ public class PivotPointIndicatorTest {
                 pp.getValue(series5Minutes.getEndIndex() - 80));
 
         // last bar
-        assertNumEquals(Double.parseDouble("170.07666666666666666666666666667"), pp.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("170.07666666666666666666666666667"),
+                pp.getValue(series5Minutes.getEndIndex()));
 
         // s1
         assertEquals(NaN, s1.getValue(0));
         assertNumEquals(Double.parseDouble("167.74333333333333333333333333334"),
                 s1.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("168.84333333333333333333333333334"), s1.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("168.84333333333333333333333333334"),
+                s1.getValue(series5Minutes.getEndIndex()));
 
         // s2
         assertEquals(NaN, s2.getValue(0));
         assertNumEquals(Double.parseDouble("166.82666666666666666666666666667"),
                 s2.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("167.36666666666666666666666666667"), s2.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("167.36666666666666666666666666667"),
+                s2.getValue(series5Minutes.getEndIndex()));
 
         // s3
         assertEquals(NaN, s3.getValue(0));
         assertNumEquals(Double.parseDouble("165.36333333333333333333333333334"),
                 s3.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("166.13333333333333333333333333334"), s3.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("166.13333333333333333333333333334"),
+                s3.getValue(series5Minutes.getEndIndex()));
 
         // r1
         assertEquals(NaN, r1.getValue(0));
         assertNumEquals(Double.parseDouble("170.12333333333333333333333333334"),
                 r1.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("171.55333333333333333333333333334"), r1.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("171.55333333333333333333333333334"),
+                r1.getValue(series5Minutes.getEndIndex()));
 
         // r2
         assertEquals(NaN, r2.getValue(0));
         assertNumEquals(Double.parseDouble("171.58666666666666666666666666667"),
                 r2.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("172.78666666666666666666666666667"), r2.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("172.78666666666666666666666666667"),
+                r2.getValue(series5Minutes.getEndIndex()));
 
         // r3
         assertEquals(NaN, r3.getValue(0));
         assertNumEquals(Double.parseDouble("172.50333333333333333333333333334"),
                 r3.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.parseDouble("174.26333333333333333333333333334"), r3.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("174.26333333333333333333333333334"),
+                r3.getValue(series5Minutes.getEndIndex()));
 
         var deMarkpp = new DeMarkPivotPointIndicator(series5Minutes, DAY);
         var deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
