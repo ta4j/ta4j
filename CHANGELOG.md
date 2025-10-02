@@ -30,6 +30,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Bars can now be built by `beginTime` instead of `endTime`
+- Added `DurationBarBuilder` to aggregate Bars after a fixed duration.
 - Added tests for `DoubleNumFactory` and `DecimalNumFactory`
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
 - Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaximumDrawdownBarLengthCriterion` to calculate its length
