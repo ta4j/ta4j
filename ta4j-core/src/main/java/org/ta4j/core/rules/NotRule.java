@@ -46,6 +46,7 @@ public class NotRule extends AbstractRule {
      */
     public NotRule(Rule ruleToNegate) {
         this.ruleToNegate = ruleToNegate;
+        setName(createCompositeName(getClass().getSimpleName(), ruleToNegate.getName()));
     }
 
     @Override

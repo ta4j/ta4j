@@ -38,6 +38,9 @@ public abstract class AbstractRule implements Rule {
     /** The class name */
     private final String className = getClass().getSimpleName();
 
+    /** Configurable display name */
+    private String name;
+
     /**
      * Traces the {@code isSatisfied()} method calls.
      *
@@ -48,5 +51,111 @@ public abstract class AbstractRule implements Rule {
         if (log.isTraceEnabled()) {
             log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
         }
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = name == null || name.isBlank() ? null : name;
+    }
+
+    @Override
+    public String getName() {
+        return name != null ? name : createDefaultName();
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
+
+    /**
+     * Creates the default JSON representation for the rule name. Sub-classes can
+     * override to provide richer metadata.
+     *
+     * @return JSON payload describing the rule
+     */
+    protected String createDefaultName() {
+        return createTypeOnlyName(className);
+    }
+
+    /**
+     * Builds a JSON object containing only the rule type field.
+     *
+     * @param type rule type label
+     * @return JSON string
+     */
+    protected String createTypeOnlyName(String type) {
+        return new StringBuilder().append('{').append("\"type\":\"").append(escapeJson(type)).append("\"}").toString();
+    }
+
+    /**
+     * Builds a JSON object containing the type plus an optional array of child rule
+     * names.
+     *
+     * @param type       rule type label
+     * @param childNames child rule display names
+     * @return JSON string
+     */
+    protected String createCompositeName(String type, String... childNames) {
+        StringBuilder builder = new StringBuilder();
+        builder.append('{').append("\"type\":\"").append(escapeJson(type)).append('\"');
+        if (childNames != null && childNames.length > 0) {
+            builder.append(",\"rules\":[");
+            for (int i = 0; i < childNames.length; i++) {
+                if (i > 0) {
+                    builder.append(',');
+                }
+                String child = childNames[i];
+                if (child == null) {
+                    builder.append("null");
+                } else {
+                    builder.append('\"').append(escapeJson(child)).append('\"');
+                }
+            }
+            builder.append(']');
+        }
+        builder.append('}');
+        return builder.toString();
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuilder escaped = new StringBuilder(value.length() + 8);
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+            case '\\':
+                escaped.append("\\\\");
+                break;
+            case '"':
+                escaped.append("\\\"");
+                break;
+            case '\b':
+                escaped.append("\\b");
+                break;
+            case '\f':
+                escaped.append("\\f");
+                break;
+            case '\n':
+                escaped.append("\\n");
+                break;
+            case '\r':
+                escaped.append("\\r");
+                break;
+            case '\t':
+                escaped.append("\\t");
+                break;
+            default:
+                if (ch < 0x20) {
+                    escaped.append(String.format("\\u%04x", (int) ch));
+                } else {
+                    escaped.append(ch);
+                }
+                break;
+            }
+        }
+        return escaped.toString();
     }
 }
