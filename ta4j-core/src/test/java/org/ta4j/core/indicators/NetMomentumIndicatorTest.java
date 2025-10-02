@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -213,42 +214,18 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testConstructorRejectsNonPositiveTimeframe() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        try {
-            new NetMomentumIndicator(rsi, 0);
-            fail("Expected IllegalArgumentException for timeframe=0");
-        } catch (IllegalArgumentException expected) {
-        }
-        try {
-            new NetMomentumIndicator(rsi, -5);
-            fail("Expected IllegalArgumentException for timeframe<0");
-        } catch (IllegalArgumentException expected) {
-        }
-        try {
-            new NetMomentumIndicator(rsi, 0, 50);
-            fail("Expected IllegalArgumentException for timeframe=0 (general ctor)");
-        } catch (IllegalArgumentException expected) {
-        }
-        try {
-            new NetMomentumIndicator(rsi, -1, 50);
-            fail("Expected IllegalArgumentException for timeframe<0 (general ctor)");
-        } catch (IllegalArgumentException expected) {
-        }
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, -5));
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, 0, 50));
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, -1, 50));
     }
 
     @Test
     public void testConstructorNullIndicator() {
         // Current implementation will throw a NullPointerException when passing null
-        try {
-            new NetMomentumIndicator((Indicator<Num>) null, 5, 50);
-            fail("Expected NullPointerException when indicator is null");
-        } catch (NullPointerException expected) {
-        }
+        assertThrows(NullPointerException.class, () -> new NetMomentumIndicator((Indicator<Num>) null, 5, 50));
 
-        try {
-            new NetMomentumIndicator(closePrice, 5, null);
-            fail("Expected NullPointerException when neutral pivot is null");
-        } catch (NullPointerException expected) {
-        }
+        assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(closePrice, 5, null));
     }
 
     @Test
