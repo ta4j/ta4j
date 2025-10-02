@@ -38,8 +38,9 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 import org.junit.Before;
@@ -606,11 +607,13 @@ public class PivotPointIndicatorTest {
                 2017-10-06,22:00:00,172.24,172.37,172.16,172.23,1062537,0
                 """;
 
-        var dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z");
+        var dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s");
+        var zone = ZoneId.of("America/Los_Angeles");
         series5Minutes = new MockBarSeriesBuilder().withName("FB_5_minutes").build();
         rawData5Minutes.lines().forEach(aDataLine -> {
             var barData = aDataLine.split(",");
-            var date = ZonedDateTime.parse(barData[0] + " " + barData[1] + " PST", dtf).toInstant();
+            var local = LocalDateTime.parse(barData[0] + " " + barData[1], dtf);
+            var date = local.atZone(zone).toInstant();
             var open = Double.parseDouble(barData[2]);
             var high = Double.parseDouble(barData[3]);
             var low = Double.parseDouble(barData[4]);
@@ -807,11 +810,13 @@ public class PivotPointIndicatorTest {
                 2017-10-06,22:00:00,171.67,172.37,171.55,172.23,2317180,0
                 """;
 
-        var dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z");
+        var dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s");
+        var zone = ZoneId.of("America/Los_Angeles");
         series1Hours = new MockBarSeriesBuilder().withName("FB_1_hours").build();
         rawData1Hours.lines().forEach(aDataLine -> {
             var barData = aDataLine.split(",");
-            var date = ZonedDateTime.parse(barData[0] + " " + barData[1] + " PST", dtf).toInstant();
+            var local = LocalDateTime.parse(barData[0] + " " + barData[1], dtf);
+            var date = local.atZone(zone).toInstant();
             double open = Double.parseDouble(barData[2]);
             double high = Double.parseDouble(barData[3]);
             double low = Double.parseDouble(barData[4]);
@@ -1333,53 +1338,60 @@ public class PivotPointIndicatorTest {
         var r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         // pp
-        assertEquals(pp.getValue(0), NaN);// first bar no data for calculation
+        assertEquals(NaN, pp.getValue(0));// first bar no data for calculation
         // result of calculation for 7-27 bar is not adequate because the previous day
-        // is incomplete..
-        assertNumEquals(Double.valueOf("170.91666666666666"), pp.getValue(170));
+        // is incomplete.
+        assertNumEquals(Double.parseDouble("170.91666666666666"), pp.getValue(170));
 
         // prev last bar
-        assertNumEquals(Double.valueOf("169.20666666666666666666666666667"),
+        assertNumEquals(Double.parseDouble("169.20666666666666666666666666667"),
                 pp.getValue(series5Minutes.getEndIndex() - 80));
 
         // last bar
-        assertNumEquals(Double.valueOf("170.07666666666666666666666666667"), pp.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("170.07666666666666666666666666667"),
+                pp.getValue(series5Minutes.getEndIndex()));
 
         // s1
-        assertEquals(s1.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("167.74333333333333333333333333334"),
+        assertEquals(NaN, s1.getValue(0));
+        assertNumEquals(Double.parseDouble("167.74333333333333333333333333334"),
                 s1.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("168.84333333333333333333333333334"), s1.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("168.84333333333333333333333333334"),
+                s1.getValue(series5Minutes.getEndIndex()));
 
         // s2
-        assertEquals(s2.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("166.82666666666666666666666666667"),
+        assertEquals(NaN, s2.getValue(0));
+        assertNumEquals(Double.parseDouble("166.82666666666666666666666666667"),
                 s2.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("167.36666666666666666666666666667"), s2.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("167.36666666666666666666666666667"),
+                s2.getValue(series5Minutes.getEndIndex()));
 
         // s3
-        assertEquals(s3.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("165.36333333333333333333333333334"),
+        assertEquals(NaN, s3.getValue(0));
+        assertNumEquals(Double.parseDouble("165.36333333333333333333333333334"),
                 s3.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("166.13333333333333333333333333334"), s3.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("166.13333333333333333333333333334"),
+                s3.getValue(series5Minutes.getEndIndex()));
 
         // r1
-        assertEquals(r1.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("170.12333333333333333333333333334"),
+        assertEquals(NaN, r1.getValue(0));
+        assertNumEquals(Double.parseDouble("170.12333333333333333333333333334"),
                 r1.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("171.55333333333333333333333333334"), r1.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("171.55333333333333333333333333334"),
+                r1.getValue(series5Minutes.getEndIndex()));
 
         // r2
-        assertEquals(r2.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("171.58666666666666666666666666667"),
+        assertEquals(NaN, r2.getValue(0));
+        assertNumEquals(Double.parseDouble("171.58666666666666666666666666667"),
                 r2.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("172.78666666666666666666666666667"), r2.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("172.78666666666666666666666666667"),
+                r2.getValue(series5Minutes.getEndIndex()));
 
         // r3
-        assertEquals(r3.getValue(0), NaN);
-        assertNumEquals(Double.valueOf("172.50333333333333333333333333334"),
+        assertEquals(NaN, r3.getValue(0));
+        assertNumEquals(Double.parseDouble("172.50333333333333333333333333334"),
                 r3.getValue(series5Minutes.getEndIndex() - 80));
-        assertNumEquals(Double.valueOf("174.26333333333333333333333333334"), r3.getValue(series5Minutes.getEndIndex()));
+        assertNumEquals(Double.parseDouble("174.26333333333333333333333333334"),
+                r3.getValue(series5Minutes.getEndIndex()));
 
         var deMarkpp = new DeMarkPivotPointIndicator(series5Minutes, DAY);
         var deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
@@ -1399,14 +1411,14 @@ public class PivotPointIndicatorTest {
     public void PivotPointTestWeeklyBarCount() {
         var pp = new PivotPointIndicator(series1Hours, TimeLevel.WEEK);
 
-        assertEquals(pp.getValue(0), NaN);// first bar no data for
-        assertEquals(pp.getValue(1), NaN);// first bar no data for calculation
-        assertEquals(pp.getValue(6), NaN);// first bar no data for calculation
+        assertEquals(NaN, pp.getValue(0));// first bar no data for
+        assertEquals(NaN, pp.getValue(1));// first bar no data for calculation
+        assertEquals(NaN, pp.getValue(6));// first bar no data for calculation
         // result of calculation for second bar is not adequate because the previous day
         // is incomplete
-        assertNumEquals(Double.valueOf("172.08166"), pp.getValue(28));
-        assertNumEquals(Double.valueOf("170.93666"), pp.getValue(series1Hours.getEndIndex() - 36)); // prev last bar
-        assertNumEquals(Double.valueOf("168.0100"), pp.getValue(series1Hours.getEndIndex())); // last bar
+        assertNumEquals(Double.parseDouble("172.08166"), pp.getValue(28));
+        assertNumEquals(Double.parseDouble("170.93666"), pp.getValue(series1Hours.getEndIndex() - 36)); // prev last bar
+        assertNumEquals(Double.parseDouble("168.0100"), pp.getValue(series1Hours.getEndIndex())); // last bar
 
         var fibR3 = new FibonacciReversalIndicator(pp, 1, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
         var fibR2 = new FibonacciReversalIndicator(pp, 0.618, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
@@ -1415,12 +1427,12 @@ public class PivotPointIndicatorTest {
         var fibS2 = new FibonacciReversalIndicator(pp, 0.618, FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
         var fibS3 = new FibonacciReversalIndicator(pp, 1, FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
 
-        assertEquals(fibR3.getValue(series1Hours.getBeginIndex()), NaN);
-        assertEquals(fibR2.getValue(1), NaN);
-        assertEquals(fibR1.getValue(2), NaN);
-        assertEquals(fibS1.getValue(6), NaN);
-        assertEquals(fibS2.getValue(series1Hours.getBeginIndex()), NaN);
-        assertEquals(fibS3.getValue(6), NaN);
+        assertEquals(NaN, fibR3.getValue(series1Hours.getBeginIndex()));
+        assertEquals(NaN, fibR2.getValue(1));
+        assertEquals(NaN, fibR1.getValue(2));
+        assertEquals(NaN, fibS1.getValue(6));
+        assertEquals(NaN, fibS2.getValue(series1Hours.getBeginIndex()));
+        assertEquals(NaN, fibS3.getValue(6));
 
         assertEquals(fibR3.getValue(series1Hours.getEndIndex()),
                 pp.getValue(series1Hours.getEndIndex())
@@ -1474,7 +1486,7 @@ public class PivotPointIndicatorTest {
         assertNumEquals(170.5075, deMarkpp.getValue(series1Hours.getEndIndex() - 50));
         assertNumEquals(171.795, deMarkR1.getValue(series1Hours.getEndIndex() - 50));
         assertNumEquals(167.965, deMarkS1.getValue(series1Hours.getEndIndex() - 50));
-        assertNumEquals(168.9225, deMarkpp.getValue(series1Hours.getEndIndex())); // June 61th 2017
+        assertNumEquals(168.9225, deMarkpp.getValue(series1Hours.getEndIndex()));
         assertNumEquals(176.285, deMarkR1.getValue(series1Hours.getEndIndex()));
         assertNumEquals(166.185, deMarkS1.getValue(series1Hours.getEndIndex()));
     }
@@ -1490,48 +1502,48 @@ public class PivotPointIndicatorTest {
         var r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         // pp
-        assertEquals(pp.getValue(0), NaN);
-        assertEquals(pp.getValue(19), NaN); // no previous month for calculation
-        assertNumEquals(Double.valueOf("126.32333"), pp.getValue(20));
-        assertNumEquals(Double.valueOf("134.3415333"), pp.getValue(39));
-        assertNumEquals(Double.valueOf("150.67999"), pp.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("164.18000"), pp.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, pp.getValue(0));
+        assertEquals(NaN, pp.getValue(19)); // no previous month for calculation
+        assertNumEquals(Double.parseDouble("126.32333"), pp.getValue(20));
+        assertNumEquals(Double.parseDouble("134.3415333"), pp.getValue(39));
+        assertNumEquals(Double.parseDouble("150.67999"), pp.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("164.18000"), pp.getValue(series1Days.getEndIndex()));
 
         // s1
-        assertEquals(s1.getValue(0), NaN);
-        assertEquals(s1.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("144.8599999"), s1.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("152.87"), s1.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, s1.getValue(0));
+        assertEquals(NaN, s1.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("144.8599999"), s1.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("152.87"), s1.getValue(series1Days.getEndIndex()));
 
         // s2
-        assertEquals(s2.getValue(0), NaN);
-        assertEquals(s2.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("138.73999999"), s2.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("136.49000"), s2.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, s2.getValue(0));
+        assertEquals(NaN, s2.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("138.73999999"), s2.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("136.49000"), s2.getValue(series1Days.getEndIndex()));
 
         // s3
-        assertEquals(s3.getValue(0), NaN);
-        assertEquals(s3.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("132.92"), s3.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("125.18"), s3.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, s3.getValue(0));
+        assertEquals(NaN, s3.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("132.92"), s3.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("125.18"), s3.getValue(series1Days.getEndIndex()));
 
         // r1
-        assertEquals(r1.getValue(0), NaN);
-        assertEquals(r1.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("156.79999"), r1.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("180.56000"), r1.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, r1.getValue(0));
+        assertEquals(NaN, r1.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("156.79999"), r1.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("180.56000"), r1.getValue(series1Days.getEndIndex()));
 
         // r2
-        assertEquals(r2.getValue(0), NaN);
-        assertEquals(r2.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("162.61999"), r2.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("191.87000"), r2.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, r2.getValue(0));
+        assertEquals(NaN, r2.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("162.61999"), r2.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("191.87000"), r2.getValue(series1Days.getEndIndex()));
 
         // r3
-        assertEquals(r3.getValue(0), NaN);
-        assertEquals(r3.getValue(19), NaN); // no previous month
-        assertNumEquals(Double.valueOf("168.74"), r3.getValue(series1Days.getEndIndex() - 19));
-        assertNumEquals(Double.valueOf("208.25000"), r3.getValue(series1Days.getEndIndex()));
+        assertEquals(NaN, r3.getValue(0));
+        assertEquals(NaN, r3.getValue(19)); // no previous month
+        assertNumEquals(Double.parseDouble("168.74"), r3.getValue(series1Days.getEndIndex() - 19));
+        assertNumEquals(Double.parseDouble("208.25000"), r3.getValue(series1Days.getEndIndex()));
     }
 
     @Test
@@ -1545,52 +1557,52 @@ public class PivotPointIndicatorTest {
         var r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         // pp
-        assertEquals(pp.getValue(0), NaN);
-        assertEquals(pp.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("70.823331"), pp.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("95.77000"), pp.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("112.6400"), pp.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, pp.getValue(0));
+        assertEquals(NaN, pp.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("70.823331"), pp.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("95.77000"), pp.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("112.6400"), pp.getValue(series1Weeks.getEndIndex()));
 
         // s1
-        assertEquals(s1.getValue(0), NaN);
-        assertEquals(s1.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("59.4766"), s1.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("80.89000"), s1.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("91.7800"), s1.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, s1.getValue(0));
+        assertEquals(NaN, s1.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("59.4766"), s1.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("80.89000"), s1.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("91.7800"), s1.getValue(series1Weeks.getEndIndex()));
 
         // s2
-        assertEquals(s2.getValue(0), NaN);
-        assertEquals(s2.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("40.5033309"), s2.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("57.11999999"), s2.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("68.510004"), s2.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, s2.getValue(0));
+        assertEquals(NaN, s2.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("40.5033309"), s2.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("57.11999999"), s2.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("68.510004"), s2.getValue(series1Weeks.getEndIndex()));
 
         // s3
-        assertEquals(s3.getValue(0), NaN);
-        assertEquals(s3.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("29.1566639"), s3.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("42.239999"), s3.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("47.65000"), s3.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, s3.getValue(0));
+        assertEquals(NaN, s3.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("29.1566639"), s3.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("42.239999"), s3.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("47.65000"), s3.getValue(series1Weeks.getEndIndex()));
 
         // r1
-        assertEquals(r1.getValue(0), NaN);
-        assertEquals(r1.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("89.7966640"), r1.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("119.5400"), r1.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("135.91000"), r1.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, r1.getValue(0));
+        assertEquals(NaN, r1.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("89.7966640"), r1.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("119.5400"), r1.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("135.91000"), r1.getValue(series1Weeks.getEndIndex()));
 
         // r2
-        assertEquals(r2.getValue(0), NaN);
-        assertEquals(r2.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("101.1433310"), r2.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("134.42000"), r2.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("156.76999"), r2.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, r2.getValue(0));
+        assertEquals(NaN, r2.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("101.1433310"), r2.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("134.42000"), r2.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("156.76999"), r2.getValue(series1Weeks.getEndIndex()));
 
         // r3
-        assertEquals(r3.getValue(0), NaN);
-        assertEquals(r3.getValue(33), NaN); // no previous year
-        assertNumEquals(Double.valueOf("120.116664"), r3.getValue(series1Weeks.getEndIndex() - 100));
-        assertNumEquals(Double.valueOf("158.19000"), r3.getValue(series1Weeks.getEndIndex() - 40));
-        assertNumEquals(Double.valueOf("180.03999"), r3.getValue(series1Weeks.getEndIndex()));
+        assertEquals(NaN, r3.getValue(0));
+        assertEquals(NaN, r3.getValue(33)); // no previous year
+        assertNumEquals(Double.parseDouble("120.116664"), r3.getValue(series1Weeks.getEndIndex() - 100));
+        assertNumEquals(Double.parseDouble("158.19000"), r3.getValue(series1Weeks.getEndIndex() - 40));
+        assertNumEquals(Double.parseDouble("180.03999"), r3.getValue(series1Weeks.getEndIndex()));
     }
 }

@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
+- `PivotPointIndicatorTest` fixed to work also in java 25
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
@@ -33,6 +34,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
 - Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaximumDrawdownBarLengthCriterion` to calculate its length
 - Added `MonteCarloMaximumDrawdownCriterion` to estimate drawdown risk distribution by simulating different trade orders
+- Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
+- Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
+- Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
 - Added new 'NetMomentumIndicator' indicator class
 
 ## 0.18 (released May 15, 2025)

@@ -38,6 +38,9 @@ import org.ta4j.core.num.Num;
  * This rule is satisfied when the reference price reaches the loss threshold as
  * determined by a given multiple of the prevailing average true range. It can
  * be used for both long and short positions.
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class AverageTrueRangeStopLossRule extends AbstractRule {
 
@@ -86,6 +89,9 @@ public class AverageTrueRangeStopLossRule extends AbstractRule {
      * threshold. For short positions: satisfied when the reference price is greater
      * than the current trade's entry price (net of fees) plus the ATR-based stop
      * loss threshold.
+     *
+     * <p>
+     * This rule uses the {@code tradingRecord}.
      *
      * @param index         the current bar index
      * @param tradingRecord the trading record
