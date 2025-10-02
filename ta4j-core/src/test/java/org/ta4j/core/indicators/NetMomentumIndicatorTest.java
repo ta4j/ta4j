@@ -74,13 +74,13 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testWithRSIIndicator() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator boe = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
 
         // Do not evaluate values because RSI has NaN early which is incompatible with
         // DecimalNum.
         // Instead, validate unstable bar propagation behavior without invoking
         // calculations.
-        assertTrue(boe.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
+        assertTrue(subject.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
     }
 
     @Test
@@ -99,9 +99,9 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe = new NetMomentumIndicator(oscillator, 10, 50);
+        NetMomentumIndicator subject = new NetMomentumIndicator(oscillator, 10, 50);
 
-        assertNotNull(boe.getValue(10));
+        assertNotNull(subject.getValue(10));
     }
 
     @Test
@@ -119,20 +119,20 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe = new NetMomentumIndicator(alternatingIndicator, 3, 50);
+        NetMomentumIndicator subject = new NetMomentumIndicator(alternatingIndicator, 3, 50);
 
         // At index 2: [60, 40, 60] - after smoothing and differencing, should have
         // mixed balance
-        Num value = boe.getValue(2);
+        Num value = subject.getValue(2);
         assertNotNull(value);
     }
 
     @Test
     public void testGetCountOfUnstableBars() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator boe = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
 
-        int unstableBars = boe.getCountOfUnstableBars();
+        int unstableBars = subject.getCountOfUnstableBars();
         assertTrue(unstableBars >= 5); // At least the timeframe
         assertTrue(unstableBars >= rsi.getCountOfUnstableBars()); // At least the RSI unstable bars
     }
@@ -151,11 +151,11 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 return numOf(50 + 10 * Math.sin(index));
             }
         };
-        NetMomentumIndicator boe = new NetMomentumIndicator(oscillator, 5, 50);
+        NetMomentumIndicator subject = new NetMomentumIndicator(oscillator, 5, 50);
 
         // Get value twice - should be cached
-        Num firstCall = boe.getValue(15);
-        Num secondCall = boe.getValue(15);
+        Num firstCall = subject.getValue(15);
+        Num secondCall = subject.getValue(15);
 
         assertSame(firstCall, secondCall); // Should be the same object due to caching
     }
@@ -175,10 +175,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe = new NetMomentumIndicator(trendingUp, 5, 50);
+        NetMomentumIndicator subject = new NetMomentumIndicator(trendingUp, 5, 50);
 
         // After several bars, balance should be positive
-        Num balance = boe.getValue(10);
+        Num balance = subject.getValue(10);
         assertTrue(balance.isPositive());
     }
 
@@ -197,14 +197,14 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe30 = new NetMomentumIndicator(oscillator, 5, 30);
-        NetMomentumIndicator boe50 = new NetMomentumIndicator(oscillator, 5, 50);
-        NetMomentumIndicator boe70 = new NetMomentumIndicator(oscillator, 5, 70);
+        NetMomentumIndicator subject30 = new NetMomentumIndicator(oscillator, 5, 30);
+        NetMomentumIndicator subject50 = new NetMomentumIndicator(oscillator, 5, 50);
+        NetMomentumIndicator subject70 = new NetMomentumIndicator(oscillator, 5, 70);
 
         // Different pivot values should produce different results
-        Num value30 = boe30.getValue(19);
-        Num value50 = boe50.getValue(19);
-        Num value70 = boe70.getValue(19);
+        Num value30 = subject30.getValue(19);
+        Num value50 = subject50.getValue(19);
+        Num value70 = subject70.getValue(19);
 
         assertNotEquals(value30, value50);
         assertNotEquals(value50, value70);
@@ -254,10 +254,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testUnstableBarsCountWithRSI() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator boe = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
 
         // Validate count relationship without evaluating values
-        assertTrue(boe.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
+        assertTrue(subject.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
     }
 
     @Test
@@ -276,11 +276,11 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe = new NetMomentumIndicator(constant50, 1, 50);
+        NetMomentumIndicator subject = new NetMomentumIndicator(constant50, 1, 50);
 
         // Check a few indices
         for (int i = 0; i < series.getBarCount(); i++) {
-            assertTrue("Expected zero at index " + i, boe.getValue(i).isZero());
+            assertTrue("Expected zero at index " + i, subject.getValue(i).isZero());
         }
     }
 
@@ -336,8 +336,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
         };
 
-        NetMomentumIndicator boe = new NetMomentumIndicator(osc, 5, 50);
-        assertEquals(5, boe.getCountOfUnstableBars());
+        NetMomentumIndicator subject = new NetMomentumIndicator(osc, 5, 50);
+        assertEquals(5, subject.getCountOfUnstableBars());
     }
 
     @Test
