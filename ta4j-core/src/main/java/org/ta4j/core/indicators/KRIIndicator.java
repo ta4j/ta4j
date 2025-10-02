@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -48,9 +48,9 @@ public class KRIIndicator extends AbstractIndicator<Num> {
         super(indicator.getBarSeries());
 
         final var smaIndicator = new SMAIndicator(indicator, barCount);
-        final var difference = BinaryOperationIndicator.difference(indicator, smaIndicator);
-        final var quotient = BinaryOperationIndicator.quotient(difference, smaIndicator);
-        this.kriIndicator = BinaryOperationIndicator.product(quotient, 100);
+        final var difference = BinaryOperation.difference(indicator, smaIndicator);
+        final var quotient = BinaryOperation.quotient(difference, smaIndicator);
+        this.kriIndicator = BinaryOperation.product(quotient, 100);
         this.barCount = barCount;
     }
 

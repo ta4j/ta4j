@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -107,7 +107,7 @@ public class CompareNumTypes {
         final var macdIndicator = new MACDIndicator(rsi);
         final var ema = new EMAIndicator(rsi, 12);
         final var emaLong = new EMAIndicator(rsi, 26);
-        final var macdIndicator2 = BinaryOperationIndicator.difference(ema, emaLong);
+        final var macdIndicator2 = BinaryOperation.difference(ema, emaLong);
 
         final var entry = new IsEqualRule(macdIndicator, macdIndicator2);
         final var exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));

@@ -27,7 +27,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -142,7 +142,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         this.oscillatingIndicator = oscillatingIndicator;
 
         this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        BinaryOperationIndicator deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator,
+        BinaryOperation deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator,
                 neutralPivotValue);
         this.runningTotalIndicator = new RunningTotalIndicator(deltaFromNeutralIndicator, timeFrame);
     }

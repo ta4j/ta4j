@@ -28,7 +28,7 @@ import static org.ta4j.core.num.NaN.NaN;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.candles.RealBodyIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
@@ -60,8 +60,8 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
         final var realBody = new RealBodyIndicator(series);
 
         // Transform the real body into close-open and open-close differences
-        final var closeOpenDiff = BinaryOperationIndicator.max(realBody, 0);
-        final var openCloseDiff = UnaryOperationIndicator.abs(BinaryOperationIndicator.min(realBody, 0));
+        final var closeOpenDiff = BinaryOperation.max(realBody, 0);
+        final var openCloseDiff = UnaryOperationIndicator.abs(BinaryOperation.min(realBody, 0));
 
         // Calculate the SMA of the differences
         this.averageCloseOpenDiff = new SMAIndicator(closeOpenDiff, barCount);
