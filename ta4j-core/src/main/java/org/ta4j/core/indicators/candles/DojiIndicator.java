@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.UnaryOperation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -62,7 +62,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
-        this.bodyHeightInd = UnaryOperationIndicator.abs(new RealBodyIndicator(series));
+        this.bodyHeightInd = UnaryOperation.abs(new RealBodyIndicator(series));
         this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
         this.factor = getBarSeries().numFactory().numOf(bodyFactor);
     }

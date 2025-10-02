@@ -209,7 +209,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code abs(this)}
      */
     public NumericIndicator abs() {
-        return NumericIndicator.of(UnaryOperationIndicator.abs(this));
+        return NumericIndicator.of(UnaryOperation.abs(this));
     }
 
     /**
@@ -218,7 +218,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code √(this)}
      */
     public NumericIndicator sqrt() {
-        return NumericIndicator.of(UnaryOperationIndicator.sqrt(this));
+        return NumericIndicator.of(UnaryOperation.sqrt(this));
     }
 
     /**
