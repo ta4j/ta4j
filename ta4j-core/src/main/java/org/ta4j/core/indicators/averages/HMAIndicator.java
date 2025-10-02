@@ -52,8 +52,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
         final var halfWma = new WMAIndicator(indicator, barCount / 2);
         final var origWma = new WMAIndicator(indicator, barCount);
 
-        final var indicatorForSqrtWma = BinaryOperation
-                .difference(BinaryOperation.product(halfWma, 2), origWma);
+        final var indicatorForSqrtWma = BinaryOperation.difference(BinaryOperation.product(halfWma, 2), origWma);
         this.sqrtWma = new WMAIndicator(indicatorForSqrtWma,
                 getBarSeries().numFactory().numOf(barCount).sqrt().intValue());
     }

@@ -90,8 +90,7 @@ public class UnaryOperation implements Indicator<Num> {
      *          underlying doubleValue method
      */
     public static UnaryOperation log(Indicator<Num> operand) {
-        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())),
-                operand);
+        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
     /***
@@ -102,9 +101,9 @@ public class UnaryOperation implements Indicator<Num> {
      * @return
      */
     public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
-                                            final Num replacementValue) {
-        return new UnaryOperation(
-                operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue, operand);
+            final Num replacementValue) {
+        return new UnaryOperation(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
+                operand);
     }
 
     @Override

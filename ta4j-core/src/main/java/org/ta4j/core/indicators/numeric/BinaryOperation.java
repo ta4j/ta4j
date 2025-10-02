@@ -207,8 +207,7 @@ public class BinaryOperation implements Indicator<Num> {
     private final Indicator<Num> left;
     private final Indicator<Num> right;
 
-    private BinaryOperation(final BinaryOperator<Num> operator, final Indicator<Num> left,
-                            final Indicator<Num> right) {
+    private BinaryOperation(final BinaryOperator<Num> operator, final Indicator<Num> left, final Indicator<Num> right) {
         this.operator = operator;
         this.left = left;
         this.right = right;

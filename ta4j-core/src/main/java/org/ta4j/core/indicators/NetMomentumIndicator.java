@@ -142,8 +142,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         this.oscillatingIndicator = oscillatingIndicator;
 
         this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        BinaryOperation deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator,
-                neutralPivotValue);
+        BinaryOperation deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator, neutralPivotValue);
         this.runningTotalIndicator = new RunningTotalIndicator(deltaFromNeutralIndicator, timeFrame);
     }
 
