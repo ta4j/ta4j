@@ -21,48 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.rules;
+package org.ta4j.core.criteria.pnl;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the {@code barCount}.
+ * Analysis criterion that finds the most profitable streak of consecutive
+ * positions.
  *
  * <p>
- * This rule does not use the {@code tradingRecord}.
+ * The criterion sums profits across positive positions and returns the highest
+ * value reached.
+ * </p>
+ *
+ * @since 0.19
  */
-public class IsHighestRule extends AbstractRule {
+public class MaxConsecutiveProfitCriterion extends AbstractConsecutivePnlCriterion {
 
-    /** The actual indicator. */
-    private final Indicator<Num> ref;
-
-    /** The barCount. */
-    private final int barCount;
-
-    /**
-     * Constructor.
-     *
-     * @param ref      the indicator
-     * @param barCount the time frame
-     */
-    public IsHighestRule(Indicator<Num> ref, int barCount) {
-        this.ref = ref;
-        this.barCount = barCount;
+    @Override
+    protected boolean accepts(Num profit) {
+        return profit.isPositive();
     }
 
-    /** This rule does not use the {@code tradingRecord}. */
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
-        Num highestVal = highest.getValue(index);
-        Num refVal = ref.getValue(index);
+    protected boolean preferForStreak(Num candidate, Num best) {
+        return candidate.isGreaterThan(best);
+    }
 
-        final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+    /**
+     * Indicates whether the first profit streak is preferable to the second.
+     *
+     * @param a the first value to compare
+     * @param b the second value to compare
+     * @return {@code true} when the first value is higher (a larger gain)
+     */
+    @Override
+    public boolean betterThan(Num a, Num b) {
+        return a.isGreaterThan(b);
     }
 }

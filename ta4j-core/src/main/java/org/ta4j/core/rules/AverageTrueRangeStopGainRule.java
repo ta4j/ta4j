@@ -38,6 +38,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Satisfied when a reference price (by default the close price) reaches the
  * gain threshold defined by a multiple of the Average True Range (ATR).
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class AverageTrueRangeStopGainRule extends AbstractRule {
 
