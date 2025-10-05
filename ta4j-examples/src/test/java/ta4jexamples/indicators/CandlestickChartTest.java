@@ -23,12 +23,17 @@
  */
 package ta4jexamples.indicators;
 
+import java.awt.GraphicsEnvironment;
+
+import org.junit.Assume;
 import org.junit.Test;
 
 public class CandlestickChartTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse("Graphics environment required", GraphicsEnvironment.isHeadless());
+
         CandlestickChart.main(null);
     }
 }
