@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,39 +23,40 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.Function;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.EMAIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator, Num> {
 
-    private final BarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1,
-            0, -1, -2);
+    private final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+            .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2)
+            .build();
     private final ClosePriceIndicator cp1 = new ClosePriceIndicator(series);
     private final EMAIndicator ema = new EMAIndicator(cp1, 3);
 
-    public NumericIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public NumericIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
@@ -220,11 +221,4 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
         final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
         assertEquals(cp1.getBarSeries(), numericIndicator.getBarSeries());
     }
-
-    @Test
-    public void numOf() {
-        final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
-        assertNumEquals(cp1.numOf(0), numericIndicator.numOf(0));
-    }
-
 }

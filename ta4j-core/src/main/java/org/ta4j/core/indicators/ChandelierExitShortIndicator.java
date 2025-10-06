@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
-public class ChandelierExitShortIndicator extends AbstractIndicator<Num> {
+public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     private final LowestValueIndicator low;
     private final ATRIndicator atr;
@@ -43,7 +43,7 @@ public class ChandelierExitShortIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code barCount} = 22
      * <li>{@code k} = 3
@@ -66,7 +66,7 @@ public class ChandelierExitShortIndicator extends AbstractIndicator<Num> {
         super(series);
         this.low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
         this.atr = new ATRIndicator(series, barCount);
-        this.k = numOf(k);
+        this.k = getBarSeries().numFactory().numOf(k);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class ChandelierExitShortIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,15 @@
  */
 package org.ta4j.core;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
 import java.math.BigDecimal;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 /**
  * Utility class for {@code Num} tests.
@@ -53,7 +54,7 @@ public class TestUtils {
      *                        {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertEquals(actual.getNumFactory().numOf(new BigDecimal(expected)), actual);
     }
 
     /**
@@ -73,7 +74,7 @@ public class TestUtils {
      * Verifies that the actual {@code Num} value is equal to the given {@code int}
      * representation.
      *
-     * 
+     *
      * @param expected the given {@code int} representation to compare the actual
      *                 value to
      * @param actual   the actual {@code Num} value
@@ -84,7 +85,7 @@ public class TestUtils {
         if (actual.isNaN()) {
             throw new AssertionError("Expected: " + expected + " Actual: " + actual);
         }
-        assertEquals(actual.numOf(expected), actual);
+        assertEquals(actual.getNumFactory().numOf(expected), actual);
     }
 
     /**
@@ -112,12 +113,12 @@ public class TestUtils {
      *                        representation
      */
     public static void assertNumNotEquals(int unexpected, Num actual) {
-        assertNotEquals(actual.numOf(unexpected), actual);
+        assertNotEquals(actual.getNumFactory().numOf(unexpected), actual);
     }
 
     /**
      * Verifies that two indicators have the same size and values to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -133,7 +134,7 @@ public class TestUtils {
     /**
      * Verifies that two indicators have either different size or different values
      * to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -158,7 +159,7 @@ public class TestUtils {
      *                        {@code String} representation
      */
     public static void assertNumNotEquals(String expected, Num actual) {
-        assertNotEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertNotEquals(actual.getNumFactory().numOf(new BigDecimal(expected)), actual);
     }
 
     /**
@@ -191,7 +192,7 @@ public class TestUtils {
 
     /**
      * Verifies that two indicators have the same size and values
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      */
@@ -199,10 +200,21 @@ public class TestUtils {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            if (expectedValue.isNaN() || actualValue.isNaN()) {
+                if (expectedValue.isNaN() && actualValue.isNaN()) {
+                    continue;
+                }
+                throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s", i,
+                        expectedValue, actualValue));
+            }
+
             // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expectedValue.toString());
+            Num act = DecimalNum.valueOf(actualValue.toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 log.debug("{} expected does not match", exp);
@@ -224,7 +236,7 @@ public class TestUtils {
     /**
      * Verifies that two indicators have either different size or different values
      * to an offset
-     * 
+     *
      * @param expected indicator of expected values
      * @param actual   indicator of actual values
      * @param delta    num offset to which the indicators must be different
@@ -234,8 +246,19 @@ public class TestUtils {
             return;
         }
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            // Handle potential NaN values in double representations
+            if (expectedValue.isNaN() || actualValue.isNaN()) {
+                if (!expectedValue.isNaN() || !actualValue.isNaN()) {
+                    return; // Found a NaN mismatch - test passes
+                }
+                continue; // Both NaNs, continue checking other values
+            }
+
+            Num exp = DecimalNum.valueOf(expectedValue.toString());
+            Num act = DecimalNum.valueOf(actualValue.toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 return;

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,8 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,21 +37,21 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/p/pvi.asp">
  *      http://www.investopedia.com/terms/p/pvi.asp</a>
  */
-public class PVIIndicator extends AbstractIndicator<Num> {
+public class PVIIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public PVIIndicator(BarSeries series) {
-        super(series, new NativeRecursiveIndicatorValueCache<>(series));
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(1000);
+            return getBarSeries().numFactory().thousand();
         }
 
         Bar currentBar = getBarSeries().getBar(index);
@@ -69,7 +68,7 @@ public class PVIIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

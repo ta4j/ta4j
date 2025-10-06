@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,45 +23,79 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
-import java.util.function.Function;
-import org.junit.Test;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
-public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+import java.time.Duration;
+import java.time.Instant;
 
-    public SeriesBuilderTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
+import org.junit.Test;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 
-    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction);
+public class SeriesBuilderTest {
+
+    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder()
+            .withNumFactory(DecimalNumFactory.getInstance());
 
     @Test
     public void testBuilder() {
-        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
-        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
-                                                                                 // BigDecimal as delegate
+
+        // build a new empty unnamed bar series
+        BarSeries defaultSeries = seriesBuilder.build();
+
+        // build a new empty bar series using BigDecimal as delegate
+        BarSeries defaultSeriesName = seriesBuilder.withName("default").build();
+
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumTypeOf(DoubleNum.class)
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .withName("useDoubleNum")
                 .build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
-                .withNumTypeOf(DecimalNum.class)
+                .withNumFactory(DecimalNumFactory.getInstance())
                 .withName("usePrecisionNum")
                 .build();
 
+        var now = Instant.now();
         for (int i = 1000; i >= 0; i--) {
-            defaultSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            defaultSeriesName.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            doubleSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
-            precisionSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
+            defaultSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(now.minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            defaultSeriesName.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(now.minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            doubleSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(now.minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
+            precisionSeries.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(now.minusSeconds(i))
+                    .openPrice(i)
+                    .closePrice(i)
+                    .highPrice(i)
+                    .lowPrice(i)
+                    .volume(i)
+                    .add();
         }
 
         assertNumEquals(0, defaultSeries.getBar(1000).getClosePrice());
@@ -73,16 +107,13 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testNumFunctions() {
-        BarSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
-        assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
-
-        BarSeries seriesB = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
-        assertNumEquals(seriesB.numOf(12), DecimalNum.valueOf(12));
+        BarSeries series = seriesBuilder.withNumFactory(DoubleNumFactory.getInstance()).build();
+        assertNumEquals(series.numFactory().numOf(12), DoubleNum.valueOf(12));
     }
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
-        assertNumNotEquals(series.numOf(12), DoubleNum.valueOf(12));
+        BarSeries series = seriesBuilder.withNumFactory(DecimalNumFactory.getInstance()).build();
+        assertNumEquals(series.numFactory().numOf(12), DecimalNum.valueOf(12));
     }
 }

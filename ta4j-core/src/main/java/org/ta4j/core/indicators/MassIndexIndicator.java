@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,10 +24,10 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.CombineIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index</a>
  */
-public class MassIndexIndicator extends AbstractIndicator<Num> {
+public class MassIndexIndicator extends CachedIndicator<Num> {
 
     private final EMAIndicator singleEma;
     private final EMAIndicator doubleEma;
@@ -52,7 +52,7 @@ public class MassIndexIndicator extends AbstractIndicator<Num> {
      */
     public MassIndexIndicator(BarSeries series, int emaBarCount, int barCount) {
         super(series);
-        Indicator<Num> highLowDifferential = CombineIndicator.minus(new HighPriceIndicator(series),
+        final var highLowDifferential = BinaryOperation.difference(new HighPriceIndicator(series),
                 new LowPriceIndicator(series));
         this.singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
         this.doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
@@ -62,7 +62,7 @@ public class MassIndexIndicator extends AbstractIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
-        Num massIndex = zero();
+        Num massIndex = getBarSeries().numFactory().zero();
         for (int i = startIndex; i <= index; i++) {
             Num emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));
             massIndex = massIndex.plus(emaRatio);
@@ -71,7 +71,7 @@ public class MassIndexIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

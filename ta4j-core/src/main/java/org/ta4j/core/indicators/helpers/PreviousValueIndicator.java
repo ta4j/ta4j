@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * If the (n-th) previous index is below the first index from the bar series,
  * then {@link NaN#NaN} is returned.
  */
-public class PreviousValueIndicator extends AbstractIndicator<Num> {
+public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     private final int n;
     private final Indicator<Num> indicator;
@@ -71,7 +71,7 @@ public class PreviousValueIndicator extends AbstractIndicator<Num> {
 
     /** @return {@link #n} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return n;
     }
 

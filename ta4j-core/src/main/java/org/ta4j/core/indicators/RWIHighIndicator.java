@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source
  *      of formular</a>
  */
-public class RWIHighIndicator extends AbstractIndicator<Num> {
+public class RWIHighIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
 
@@ -55,7 +55,7 @@ public class RWIHighIndicator extends AbstractIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num maxRWIH = numOf(0);
+        Num maxRWIH = getBarSeries().numFactory().zero();
         for (int n = 2; n <= barCount; n++) {
             maxRWIH = maxRWIH.max(calcRWIHFor(index, n));
         }
@@ -64,7 +64,7 @@ public class RWIHighIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
@@ -73,7 +73,7 @@ public class RWIHighIndicator extends AbstractIndicator<Num> {
         Num high = series.getBar(index).getHighPrice();
         Num lowN = series.getBar(index + 1 - n).getLowPrice();
         Num atrN = new ATRIndicator(series, n).getValue(index);
-        Num sqrtN = numOf(n).sqrt();
+        Num sqrtN = getBarSeries().numFactory().numOf(n).sqrt();
 
         return high.minus(lowN).dividedBy(atrN.multipliedBy(sqrtN));
     }

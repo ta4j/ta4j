@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.num.Num;
@@ -35,7 +35,7 @@ import org.ta4j.core.rules.IsRisingRule;
 /**
  * Convergence-Divergence indicator.
  */
-public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
+public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Select the type of convergence or divergence.
@@ -165,14 +165,14 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type, double minStrength, double minSlope) {
-        super(ref.getBarSeries());
+        super(ref);
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;
         this.type = type;
         this.strictType = null;
-        this.minStrength = numOf(Math.min(1, Math.abs(minStrength)));
-        this.minSlope = numOf(minSlope);
+        this.minStrength = getBarSeries().numFactory().numOf(Math.min(1, Math.abs(minStrength)));
+        this.minSlope = getBarSeries().numFactory().numOf(minSlope);
     }
 
     /**
@@ -185,14 +185,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type) {
-        super(ref.getBarSeries());
-        this.ref = ref;
-        this.other = other;
-        this.barCount = barCount;
-        this.type = type;
-        this.strictType = null;
-        this.minStrength = numOf(0.8).abs();
-        this.minSlope = numOf(0.3);
+        this(ref, other, barCount, type, 0.8, 0.3);
     }
 
     /**
@@ -205,7 +198,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceStrictType strictType) {
-        super(ref.getBarSeries());
+        super(ref);
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;
@@ -257,7 +250,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
 
     /** @return {@link #barCount} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
@@ -267,7 +260,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     private Boolean calculatePositiveConvergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsRising.and(otherIsRising)).isSatisfied(index);
     }
@@ -278,7 +271,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     private Boolean calculateNegativeConvergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
     }
@@ -289,7 +282,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     private Boolean calculatePositiveDivergenceStrict(int index) {
         Rule refIsRising = new IsRisingRule(ref, barCount);
-        Rule otherIsFalling = new IsFallingRule(ref, barCount);
+        Rule otherIsFalling = new IsFallingRule(other, barCount);
 
         return (refIsRising.and(otherIsFalling)).isSatisfied(index);
     }
@@ -300,7 +293,7 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergenceStrict(int index) {
         Rule refIsFalling = new IsFallingRule(ref, barCount);
-        Rule otherIsRising = new IsRisingRule(ref, barCount);
+        Rule otherIsRising = new IsRisingRule(other, barCount);
 
         return (refIsFalling.and(otherIsRising)).isSatisfied(index);
     }
@@ -328,7 +321,8 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
-        boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
+        boolean isNegative = slope
+                .isLessThanOrEqual(minSlope.abs().multipliedBy(getBarSeries().numFactory().minusOne()));
 
         return isConvergent && isNegative;
     }
@@ -340,7 +334,8 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
     private Boolean calculatePositiveDivergence(int index) {
 
         CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
+        boolean isDivergent = cc.getValue(index)
+                .isLessThanOrEqual(minStrength.multipliedBy(getBarSeries().numFactory().minusOne()));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
@@ -357,13 +352,14 @@ public class ConvergenceDivergenceIndicator extends AbstractIndicator<Boolean> {
      */
     private Boolean calculateNegativeDivergence(int index) {
 
+        Num minusOne = getBarSeries().numFactory().minusOne();
         CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
+        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(minusOne));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
             Num slope = calculateSlopeRel(index);
-            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
+            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(minusOne));
         }
 
         return false;

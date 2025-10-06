@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,14 +26,14 @@ package org.ta4j.core.indicators.supertrend;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * The upper band of the SuperTrend indicator.
  */
-public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
+public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
     private final Num multiplier;
@@ -41,7 +41,7 @@ public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor with {@code multiplier} = 3.
-     * 
+     *
      * @param barSeries the bar series
      */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
@@ -50,7 +50,7 @@ public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries    the bar series
      * @param atrIndicator the {@link #ATRIndicator}
      * @param multiplier   the multiplier
@@ -59,7 +59,7 @@ public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
             final Double multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
-        this.multiplier = numOf(multiplier);
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);
     }
 
@@ -67,8 +67,9 @@ public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
     protected Num calculate(int index) {
         Num currentBasic = medianPriceIndicator.getValue(index)
                 .plus(multiplier.multipliedBy(atrIndicator.getValue(index)));
-        if (index == 0)
+        if (index == 0) {
             return currentBasic;
+        }
 
         Bar bar = getBarSeries().getBar(index - 1);
         Num previousValue = this.getValue(index - 1);
@@ -78,7 +79,7 @@ public class SuperTrendUpperBandIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

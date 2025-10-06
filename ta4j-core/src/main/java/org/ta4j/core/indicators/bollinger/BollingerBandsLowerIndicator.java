@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,18 +24,18 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Buy - Occurs when the price line crosses from below to above the Lower
  * Bollinger Band.
- * 
+ *
  * <p>
  * Sell - Occurs when the price line crosses from above to below the Upper
  * Bollinger Band.
  */
-public class BollingerBandsLowerIndicator extends AbstractIndicator<Num> {
+public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
     private final BollingerBandsMiddleIndicator bbm;
     private final Indicator<Num> indicator;
@@ -50,7 +50,7 @@ public class BollingerBandsLowerIndicator extends AbstractIndicator<Num> {
      *                  Typically a {@code StandardDeviationIndicator} is used.
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
-        this(bbm, indicator, bbm.getBarSeries().numOf(2));
+        this(bbm, indicator, bbm.getBarSeries().numFactory().numOf(2));
     }
 
     /**
@@ -76,7 +76,7 @@ public class BollingerBandsLowerIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

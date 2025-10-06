@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,29 +23,29 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.function.Function;
+import static junit.framework.TestCase.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static junit.framework.TestCase.assertEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class OpenPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private OpenPriceIndicator openPriceIndicator;
 
     BarSeries barSeries;
 
-    public OpenPriceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public OpenPriceIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
+        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         openPriceIndicator = new OpenPriceIndicator(barSeries);
     }
 

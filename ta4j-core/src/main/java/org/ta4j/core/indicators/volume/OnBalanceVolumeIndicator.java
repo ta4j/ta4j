@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,9 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.IndicatorValueCacheConfig;
-import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,22 +33,21 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://www.investopedia.com/terms/o/onbalancevolume.asp">
  *      https://www.investopedia.com/terms/o/onbalancevolume.asp</a>
  */
-public class OnBalanceVolumeIndicator extends AbstractIndicator<Num> {
+public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public OnBalanceVolumeIndicator(BarSeries series) {
-        super(series,
-                new NativeRecursiveIndicatorValueCache<>(new IndicatorValueCacheConfig(series.getMaximumBarCount())));
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
         final Num currentClose = getBarSeries().getBar(index).getClosePrice();
@@ -66,7 +63,7 @@ public class OnBalanceVolumeIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

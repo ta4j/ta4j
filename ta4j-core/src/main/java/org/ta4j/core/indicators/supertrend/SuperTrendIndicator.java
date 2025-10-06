@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,22 +26,20 @@ package org.ta4j.core.indicators.supertrend;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * The SuperTrend indicator.
  */
-public class SuperTrendIndicator extends AbstractIndicator<Num> {
+public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final Num ZERO = zero();
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
     /**
      * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
-     * 
+     *
      * @param series the bar series
      */
     public SuperTrendIndicator(final BarSeries series) {
@@ -50,7 +48,7 @@ public class SuperTrendIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series     the bar series
      * @param barCount   the time frame for the {@code ATRIndicator}
      * @param multiplier the multiplier for the
@@ -58,7 +56,7 @@ public class SuperTrendIndicator extends AbstractIndicator<Num> {
      *                   {@link #superTrendLowerBandIndicator}
      */
     public SuperTrendIndicator(final BarSeries series, int barCount, final Double multiplier) {
-        super(series, new NativeRecursiveIndicatorValueCache<>(series));
+        super(series);
         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
         this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
         this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
@@ -66,9 +64,10 @@ public class SuperTrendIndicator extends AbstractIndicator<Num> {
 
     @Override
     protected Num calculate(int i) {
-        Num value = ZERO;
-        if (i == 0)
+        Num value = getBarSeries().numFactory().zero();
+        if (i == 0) {
             return value;
+        }
 
         Bar bar = getBarSeries().getBar(i);
         Num closePrice = bar.getClosePrice();
@@ -96,7 +95,7 @@ public class SuperTrendIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

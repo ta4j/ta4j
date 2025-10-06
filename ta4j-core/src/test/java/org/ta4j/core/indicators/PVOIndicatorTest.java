@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,44 +23,39 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class PVOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries barSeries;
 
-    public PVOIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public PVOIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 10, numFunction));
-        bars.add(new MockBar(0, 11, numFunction));
-        bars.add(new MockBar(0, 12, numFunction));
-        bars.add(new MockBar(0, 13, numFunction));
-        bars.add(new MockBar(0, 150, numFunction));
-        bars.add(new MockBar(0, 155, numFunction));
-        bars.add(new MockBar(0, 160, numFunction));
-        barSeries = new MockBarSeries(bars);
+        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.barBuilder().closePrice(0).volume(10).add();
+        barSeries.barBuilder().closePrice(0).volume(11).add();
+        barSeries.barBuilder().closePrice(0).volume(12).add();
+        barSeries.barBuilder().closePrice(0).volume(13).add();
+        barSeries.barBuilder().closePrice(0).volume(150).add();
+        barSeries.barBuilder().closePrice(0).volume(155).add();
+        barSeries.barBuilder().closePrice(0).volume(160).add();
     }
 
     @Test
     public void createPvoIndicator() {
-        PVOIndicator pvo = new PVOIndicator(barSeries);
+        var pvo = new PVOIndicator(barSeries);
         assertNumEquals(0.791855204, pvo.getValue(1));
         assertNumEquals(2.164434756, pvo.getValue(2));
         assertNumEquals(3.925400464, pvo.getValue(3));

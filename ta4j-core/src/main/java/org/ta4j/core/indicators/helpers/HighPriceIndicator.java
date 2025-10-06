@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,12 +25,11 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
  * The high price indicator.
- * 
+ *
  * <p>
  * Returns the high price of a bar.
  */
@@ -38,21 +37,21 @@ public class HighPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public HighPriceIndicator(BarSeries series) {
-        super(series, new NoIndicatorValueCache<>());
+        super(series);
     }
 
     @Override
-    public Num calculate(int index) {
+    public Num getValue(int index) {
         return getBarSeries().getBar(index).getHighPrice();
     }
 
     /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

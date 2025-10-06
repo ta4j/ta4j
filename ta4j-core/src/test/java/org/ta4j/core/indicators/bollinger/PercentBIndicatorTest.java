@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,38 +23,38 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import java.util.function.Function;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public PercentBIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public PercentBIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9,
-                10, 9, 10);
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9, 10, 9, 10)
+                .build();
         closePrice = new ClosePriceIndicator(data);
     }
 
     @Test
     public void percentBUsingSMAAndStandardDeviation() {
 
-        PercentBIndicator pcb = new PercentBIndicator(closePrice, 5, 2);
+        var pcb = new PercentBIndicator(closePrice, 5, 2);
 
         assertTrue(pcb.getValue(0).isNaN());
         assertNumEquals(0.75, pcb.getValue(1));

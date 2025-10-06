@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,7 +45,7 @@ public class ChainRule extends AbstractRule {
      * @param initialRule the first rule that has to be satisfied before
      *                    {@link ChainLink} are evaluated
      * @param chainLinks  {@link ChainLink} that has to be satisfied after the
-     *                    inital rule within their thresholds
+     *                    initial rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;

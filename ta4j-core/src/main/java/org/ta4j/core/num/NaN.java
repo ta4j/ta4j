@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,15 @@
  */
 package org.ta4j.core.num;
 
-import java.util.function.Function;
+import java.math.BigDecimal;
+import java.math.MathContext;
 
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)
- * 
+ *
  * <p>
  * Special behavior in methods such as:
- * 
+ *
  * <ul>
  * <li>{@link NaN#plus(Num)} => NaN</li>
  * <li>{@link NaN#isEqual(Num)} => true</li>
@@ -44,6 +45,8 @@ import java.util.function.Function;
  * </ul>
  */
 public class NaN implements Num {
+
+    private static final long serialVersionUID = 1L;
 
     /** A static Not-a-Number instance. */
     public static final Num NaN = new NaN();
@@ -71,12 +74,12 @@ public class NaN implements Num {
 
     @Override
     public int intValue() {
-        throw new UnsupportedOperationException("No NaN represantation for int");
+        throw new UnsupportedOperationException("No NaN representation for int");
     }
 
     @Override
     public long longValue() {
-        throw new UnsupportedOperationException("No NaN represantation for long");
+        throw new UnsupportedOperationException("No NaN representation for long");
     }
 
     @Override
@@ -90,8 +93,63 @@ public class NaN implements Num {
     }
 
     @Override
+    public BigDecimal bigDecimalValue() {
+        return null;
+    }
+
+    @Override
     public Number getDelegate() {
         return null;
+    }
+
+    @Override
+    public NumFactory getNumFactory() {
+        return new NumFactory() {
+            @Override
+            public Num minusOne() {
+                return NaN;
+            }
+
+            @Override
+            public Num zero() {
+                return NaN;
+            }
+
+            @Override
+            public Num one() {
+                return NaN;
+            }
+
+            @Override
+            public Num two() {
+                return NaN;
+            }
+
+            @Override
+            public Num three() {
+                return NaN;
+            }
+
+            @Override
+            public Num hundred() {
+                return NaN;
+            }
+
+            @Override
+            public Num thousand() {
+                return NaN;
+            }
+
+            @Override
+            public Num numOf(final Number number) {
+                return NaN;
+            }
+
+            @Override
+            public Num numOf(final String number) {
+                return NaN;
+            }
+        };
     }
 
     @Override
@@ -160,7 +218,7 @@ public class NaN implements Num {
     }
 
     @Override
-    public Num sqrt(int precision) {
+    public Num sqrt(final MathContext mathContext) {
         return this;
     }
 
@@ -239,11 +297,6 @@ public class NaN implements Num {
     @Override
     public Num max(Num other) {
         return this;
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return number -> NaN;
     }
 
     @Override

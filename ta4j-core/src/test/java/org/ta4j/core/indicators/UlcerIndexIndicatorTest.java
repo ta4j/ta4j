@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,36 +23,38 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class UlcerIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries ibmData;
 
-    public UlcerIndexIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public UlcerIndexIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        ibmData = new MockBarSeries(numFunction, 194.75, 195.00, 195.10, 194.46, 190.60, 188.86, 185.47, 184.46, 182.31,
-                185.22, 184.00, 182.87, 187.45, 194.51, 191.63, 190.02, 189.53, 190.27, 193.13, 195.55, 195.84, 195.15,
-                194.35, 193.62, 197.68, 197.91, 199.08, 199.03, 198.42, 199.29, 199.01, 198.29, 198.40, 200.84, 201.22,
-                200.50, 198.65, 197.25, 195.70, 197.77, 195.69, 194.87, 195.08);
+        ibmData = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(194.75, 195.00, 195.10, 194.46, 190.60, 188.86, 185.47, 184.46, 182.31, 185.22, 184.00,
+                        182.87, 187.45, 194.51, 191.63, 190.02, 189.53, 190.27, 193.13, 195.55, 195.84, 195.15, 194.35,
+                        193.62, 197.68, 197.91, 199.08, 199.03, 198.42, 199.29, 199.01, 198.29, 198.40, 200.84, 201.22,
+                        200.50, 198.65, 197.25, 195.70, 197.77, 195.69, 194.87, 195.08)
+                .build();
     }
 
     @Test
     public void ulcerIndexUsingBarCount14UsingIBMData() {
-        UlcerIndexIndicator ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
+        var ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
 
         assertNumEquals(0, ulcer.getValue(0));
 

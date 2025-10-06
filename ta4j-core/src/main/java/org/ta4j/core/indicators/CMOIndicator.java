@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,12 +38,11 @@ import org.ta4j.core.num.Num;
  *      "http://www.investopedia.com/terms/c/chandemomentumoscillator.asp">
  *      href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp"</a>
  */
-public class CMOIndicator extends AbstractIndicator<Num> {
+public class CMOIndicator extends CachedIndicator<Num> {
 
     private final GainIndicator gainIndicator;
     private final LossIndicator lossIndicator;
     private final int barCount;
-    private final Num hundred;
 
     /**
      * Constructor.
@@ -56,23 +55,23 @@ public class CMOIndicator extends AbstractIndicator<Num> {
         this.gainIndicator = new GainIndicator(indicator);
         this.lossIndicator = new LossIndicator(indicator);
         this.barCount = barCount;
-        this.hundred = hundred();
     }
 
     @Override
     protected Num calculate(int index) {
-        Num sumOfGains = zero();
-        Num sumOfLosses = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sumOfGains = numFactory.zero();
+        Num sumOfLosses = numFactory.zero();
         for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
             sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
 
-        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(hundred);
+        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(numFactory.hundred());
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 }

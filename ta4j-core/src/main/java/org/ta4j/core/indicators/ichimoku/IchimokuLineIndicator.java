@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuLineIndicator extends AbstractIndicator<Num> {
+public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
     /** The period high. */
     private final Indicator<Num> periodHigh;
@@ -48,7 +48,7 @@ public class IchimokuLineIndicator extends AbstractIndicator<Num> {
     private final Indicator<Num> periodLow;
 
     /**
-     * Contructor.
+     * Constructor.
      *
      * @param series   the bar series
      * @param barCount the time frame
@@ -61,11 +61,13 @@ public class IchimokuLineIndicator extends AbstractIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
+        return periodHigh.getValue(index)
+                .plus(periodLow.getValue(index))
+                .dividedBy(getBarSeries().numFactory().numOf(2));
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

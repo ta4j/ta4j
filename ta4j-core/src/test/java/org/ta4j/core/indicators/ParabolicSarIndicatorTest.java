@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,46 +23,79 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.time.Instant;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public ParabolicSarIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public ParabolicSarIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void growingBarSeriesTest() {
-        ZonedDateTime now = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(now, 74.5, 75.1, 75.11, 74.06, 0, 0, 0, numFunction));
+        var now = Instant.now();
+        var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        mockBarSeries.barBuilder()
+                .endTime(now)
+                .openPrice(74.5)
+                .closePrice(75.1)
+                .highPrice(75.11)
+                .lowPrice(74.06)
+                .build();
 
-        MockBarSeries mockBarSeries = new MockBarSeries(bars);
         mockBarSeries.setMaximumBarCount(3);
 
-        mockBarSeries.addBar(new MockBar(now.plusMinutes(1), 75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusMinutes(2), 79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusMinutes(3), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusMinutes(4), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusMinutes(5), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(1))
+                .openPrice(75.09)
+                .closePrice(75.9)
+                .highPrice(76.030000)
+                .lowPrice(74.640000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(2))
+                .openPrice(79.99)
+                .closePrice(75.24)
+                .highPrice(76.269900)
+                .lowPrice(75.060000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(3))
+                .openPrice(75.30)
+                .closePrice(75.17)
+                .highPrice(75.280000)
+                .lowPrice(74.500000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(4))
+                .openPrice(75.16)
+                .closePrice(74.6)
+                .highPrice(75.310000)
+                .lowPrice(74.540000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(5))
+                .openPrice(74.58)
+                .closePrice(74.1)
+                .highPrice(75.467000)
+                .lowPrice(74.010000)
+                .add();
 
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
+        var sar = new ParabolicSarIndicator(mockBarSeries);
 
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getBeginIndex()));
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getRemovedBarsCount()));
@@ -73,53 +106,184 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startUpAndDownTrendTest() {
-        ZonedDateTime now = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
+        var now = Instant.now();
+        var mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
         // values of removable bars are much higher to be sure that they will not affect
         // the result.
-        bars.add(new MockBar(now.plusSeconds(1), 165.5, 175.1, 180.10, 170.1, 0, 0, 0, numFunction));
-        bars.add(new MockBar(now.plusSeconds(2), 175.1, 185.1, 190.20, 180.2, 0, 0, 0, numFunction));
-        bars.add(new MockBar(now.plusSeconds(3), 185.1, 195.1, 200.30, 190.3, 0, 0, 0, numFunction));
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(1))
+                .openPrice(165.5)
+                .closePrice(175.1)
+                .highPrice(180.10)
+                .lowPrice(170.1)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(2))
+                .openPrice(175.1)
+                .closePrice(185.1)
+                .highPrice(190.20)
+                .lowPrice(180.2)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(3))
+                .openPrice(185.1)
+                .closePrice(195.1)
+                .highPrice(200.30)
+                .lowPrice(190.3)
+                .add();
 
-        MockBarSeries mockBarSeries = new MockBarSeries(bars);
         mockBarSeries.setMaximumBarCount(21);
 
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(4), 74.5, 75.1, 75.11, 74.06, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(5), 75.09, 75.9, 76.030000, 74.640000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(6), 79.99, 75.24, 76.269900, 75.060000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(7), 75.30, 75.17, 75.280000, 74.500000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(8), 75.16, 74.6, 75.310000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(9), 74.58, 74.1, 75.467000, 74.010000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(10), 74.01, 73.740000, 74.700000, 73.546000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(11), 73.71, 73.390000, 73.830000, 72.720000, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(12), 73.35, 73.25, 73.890000, 72.86, 0, 0, 0, numFunction));
-        mockBarSeries.addBar(new MockBar(now.plusSeconds(13), 73.24, 74.36, 74.410000, 73, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(14), 74.36, 76.510000, 76.830000, 74.820000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(15), 76.5, 75.590000, 76.850000, 74.540000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(16), 75.60, 75.910000, 76.960000, 75.510000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(17), 75.82, 74.610000, 77.070000, 74.560000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(18), 74.75, 75.330000, 75.530000, 74.010000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(19), 75.33, 75.010000, 75.500000, 74.510000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(20), 75.0, 75.620000, 76.210000, 75.250000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(21), 75.63, 76.040000, 76.460000, 75.092800, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(22), 76.0, 76.450000, 76.450000, 75.435000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(23), 76.45, 76.260000, 76.470000, 75.840000, 0, 0, 0, numFunction));
-        mockBarSeries
-                .addBar(new MockBar(now.plusSeconds(24), 76.30, 76.850000, 77.000000, 76.190000, 0, 0, 0, numFunction));
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(4))
+                .openPrice(74.5)
+                .closePrice(75.1)
+                .highPrice(75.11)
+                .lowPrice(74.06)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(5))
+                .openPrice(75.09)
+                .closePrice(75.9)
+                .highPrice(76.030000)
+                .lowPrice(74.640000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(6))
+                .openPrice(79.99)
+                .closePrice(75.24)
+                .highPrice(76.269900)
+                .lowPrice(75.060000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(7))
+                .openPrice(75.30)
+                .closePrice(75.17)
+                .highPrice(75.280000)
+                .lowPrice(74.500000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(8))
+                .openPrice(75.16)
+                .closePrice(74.6)
+                .highPrice(75.310000)
+                .lowPrice(74.540000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(9))
+                .openPrice(74.58)
+                .closePrice(74.1)
+                .highPrice(75.467000)
+                .lowPrice(74.010000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(10))
+                .openPrice(74.01)
+                .closePrice(73.740000)
+                .highPrice(74.700000)
+                .lowPrice(73.546000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(11))
+                .openPrice(73.71)
+                .closePrice(73.390000)
+                .highPrice(73.830000)
+                .lowPrice(72.720000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(12))
+                .openPrice(73.35)
+                .closePrice(73.25)
+                .highPrice(73.890000)
+                .lowPrice(72.86)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(13))
+                .openPrice(73.24)
+                .closePrice(74.36)
+                .highPrice(74.410000)
+                .lowPrice(73)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(14))
+                .openPrice(74.36)
+                .closePrice(76.510000)
+                .highPrice(76.830000)
+                .lowPrice(74.820000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(15))
+                .openPrice(76.5)
+                .closePrice(75.590000)
+                .highPrice(76.850000)
+                .lowPrice(74.540000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(16))
+                .openPrice(75.60)
+                .closePrice(75.910000)
+                .highPrice(76.960000)
+                .lowPrice(75.510000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(17))
+                .openPrice(75.82)
+                .closePrice(74.610000)
+                .highPrice(77.070000)
+                .lowPrice(74.560000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(18))
+                .openPrice(74.75)
+                .closePrice(75.330000)
+                .highPrice(75.530000)
+                .lowPrice(74.010000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(19))
+                .openPrice(75.33)
+                .closePrice(75.010000)
+                .highPrice(75.500000)
+                .lowPrice(74.510000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(20))
+                .openPrice(75.0)
+                .closePrice(75.620000)
+                .highPrice(76.210000)
+                .lowPrice(75.250000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(21))
+                .openPrice(75.63)
+                .closePrice(76.040000)
+                .highPrice(76.460000)
+                .lowPrice(75.092800)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(22))
+                .openPrice(76.0)
+                .closePrice(76.450000)
+                .highPrice(76.450000)
+                .lowPrice(75.435000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(23))
+                .openPrice(76.45)
+                .closePrice(76.260000)
+                .highPrice(76.470000)
+                .lowPrice(75.840000)
+                .add();
+        mockBarSeries.barBuilder()
+                .endTime(now.plusSeconds(24))
+                .openPrice(76.30)
+                .closePrice(76.850000)
+                .highPrice(77.000000)
+                .lowPrice(76.190000)
+                .add();
 
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(mockBarSeries);
+        var sar = new ParabolicSarIndicator(mockBarSeries);
 
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getRemovedBarsCount())); // first bar in series
         assertNumEquals(74.06, sar.getValue(mockBarSeries.getRemovedBarsCount() + 1));
@@ -146,21 +310,25 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startWithDownAndUpTrendTest() {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction)); // The first daily candle of BTCUSDT in
-        // the Binance cryptocurrency exchange.
-        // 17 Aug 2017
-        bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction)); // starting with down trend
-        bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction)); // hold trend...
-        bars.add(new MockBar(4120.98, 4086.29, 4211.08, 4032.62, numFunction));
-        bars.add(new MockBar(4069.13, 4016.00, 4119.62, 3911.79, numFunction));
-        bars.add(new MockBar(4016.00, 4040.00, 4104.82, 3400.00, numFunction));
-        bars.add(new MockBar(4040.00, 4114.01, 4265.80, 4013.89, numFunction));
-        bars.add(new MockBar(4147.00, 4316.01, 4371.68, 4085.01, numFunction)); // switch to up trend
-        bars.add(new MockBar(4316.01, 4280.68, 4453.91, 4247.48, numFunction)); // hold trend
-        bars.add(new MockBar(4280.71, 4337.44, 4367.00, 4212.41, numFunction));
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        // The first daily candle of BTCUSDT in the Binance cryptocurrency exchange. 17
+        // Aug 2017..
+        series.barBuilder().openPrice(4261.48).closePrice(4285.08).highPrice(4485.39).lowPrice(4200.74).add();
+        // starting with down trend..
+        series.barBuilder().openPrice(4285.08).closePrice(4108.37).highPrice(4371.52).lowPrice(3938.77).add();
+        // hold trend...
+        series.barBuilder().openPrice(4108.37).closePrice(4139.98).highPrice(4184.69).lowPrice(3850.00).add();
+        series.barBuilder().openPrice(4120.98).closePrice(4086.29).highPrice(4211.08).lowPrice(4032.62).add();
+        series.barBuilder().openPrice(4069.13).closePrice(4016.00).highPrice(4119.62).lowPrice(3911.79).add();
+        series.barBuilder().openPrice(4016.00).closePrice(4040.00).highPrice(4104.82).lowPrice(3400.00).add();
+        series.barBuilder().openPrice(4040.00).closePrice(4114.01).highPrice(4265.80).lowPrice(4013.89).add();
+        // switch to up trend
+        series.barBuilder().openPrice(4147.00).closePrice(4316.01).highPrice(4371.68).lowPrice(4085.01).add();
+        // hold trend
+        series.barBuilder().openPrice(4316.01).closePrice(4280.68).highPrice(4453.91).lowPrice(4247.48).add();
+        series.barBuilder().openPrice(4280.71).closePrice(4337.44).highPrice(4367.00).lowPrice(4212.41).add();
 
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));
+        var sar = new ParabolicSarIndicator(series);
 
         assertEquals(NaN.NaN, sar.getValue(0));
         assertNumEquals(4485.39000000, sar.getValue(1));
@@ -176,21 +344,21 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testSameValueForSameIndex() {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction));
-        bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction));
-        bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction));
-        bars.add(new MockBar(4120.98, 4086.29, 4211.08, 4032.62, numFunction));
-        bars.add(new MockBar(4069.13, 4016.00, 4119.62, 3911.79, numFunction));
-        bars.add(new MockBar(4016.00, 4040.00, 4104.82, 3400.00, numFunction));
-        bars.add(new MockBar(4040.00, 4114.01, 4265.80, 4013.89, numFunction));
-        bars.add(new MockBar(4147.00, 4316.01, 4371.68, 4085.01, numFunction));
-        bars.add(new MockBar(4316.01, 4280.68, 4453.91, 4247.48, numFunction));
-        bars.add(new MockBar(4280.71, 4337.44, 4367.00, 4212.41, numFunction));
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(4261.48).closePrice(4285.08).highPrice(4485.39).lowPrice(4200.74).add();
+        series.barBuilder().openPrice(4285.08).closePrice(4108.37).highPrice(4371.52).lowPrice(3938.77).add();
+        series.barBuilder().openPrice(4108.37).closePrice(4139.98).highPrice(4184.69).lowPrice(3850.00).add();
+        series.barBuilder().openPrice(4120.98).closePrice(4086.29).highPrice(4211.08).lowPrice(4032.62).add();
+        series.barBuilder().openPrice(4069.13).closePrice(4016.00).highPrice(4119.62).lowPrice(3911.79).add();
+        series.barBuilder().openPrice(4016.00).closePrice(4040.00).highPrice(4104.82).lowPrice(3400.00).add();
+        series.barBuilder().openPrice(4040.00).closePrice(4114.01).highPrice(4265.80).lowPrice(4013.89).add();
+        series.barBuilder().openPrice(4147.00).closePrice(4316.01).highPrice(4371.68).lowPrice(4085.01).add();
+        series.barBuilder().openPrice(4316.01).closePrice(4280.68).highPrice(4453.91).lowPrice(4247.48).add();
+        series.barBuilder().openPrice(4280.71).closePrice(4337.44).highPrice(4367.00).lowPrice(4212.41).add();
 
-        final ParabolicSarIndicator parabolicSarIndicator = new ParabolicSarIndicator(new MockBarSeries(bars));
+        final ParabolicSarIndicator parabolicSarIndicator = new ParabolicSarIndicator(series);
 
-        final List<Num> values = IntStream.range(0, bars.size())
+        final List<Num> values = IntStream.range(0, series.getBarCount())
                 .mapToObj(parabolicSarIndicator::getValue)
                 .collect(Collectors.toList());
 

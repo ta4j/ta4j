@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,9 +39,10 @@ import org.ta4j.core.num.Num;
  * y = slope * x + intercept
  * </pre>
  *
- * @see http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
+ * see <a href=
+ * "http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html">LinearRegression</a>
  */
-public class SimpleLinearRegressionIndicator extends AbstractIndicator<Num> {
+public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * The type for the outcome of the {@link SimpleLinearRegressionIndicator}.
@@ -97,11 +98,11 @@ public class SimpleLinearRegressionIndicator extends AbstractIndicator<Num> {
             return intercept;
         }
 
-        return slope.multipliedBy(numOf(index)).plus(intercept);
+        return slope.multipliedBy(getBarSeries().numFactory().numOf(index)).plus(intercept);
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 
@@ -112,15 +113,16 @@ public class SimpleLinearRegressionIndicator extends AbstractIndicator<Num> {
      * @param endIndex   the end index (inclusive) in the bar series
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
-        Num zero = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num zero = numFactory.zero();
         // First pass: compute xBar and yBar
         Num sumX = zero;
         Num sumY = zero;
         for (int i = startIndex; i <= endIndex; i++) {
-            sumX = sumX.plus(numOf(i));
+            sumX = sumX.plus(numFactory.numOf(i));
             sumY = sumY.plus(indicator.getValue(i));
         }
-        Num nbObservations = numOf(endIndex - startIndex + 1);
+        Num nbObservations = numFactory.numOf(endIndex - startIndex + 1);
         Num xBar = sumX.dividedBy(nbObservations);
         Num yBar = sumY.dividedBy(nbObservations);
 
@@ -128,7 +130,7 @@ public class SimpleLinearRegressionIndicator extends AbstractIndicator<Num> {
         Num xxBar = zero;
         Num xyBar = zero;
         for (int i = startIndex; i <= endIndex; i++) {
-            Num dX = numOf(i).minus(xBar);
+            Num dX = numFactory.numOf(i).minus(xBar);
             Num dY = indicator.getValue(i).minus(yBar);
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));

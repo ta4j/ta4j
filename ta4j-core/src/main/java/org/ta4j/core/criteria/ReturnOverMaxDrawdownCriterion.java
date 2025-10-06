@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,52 +23,10 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-
 /**
- * Reward risk ratio criterion (also known as "RoMaD"), returned in decimal
- * format.
- * 
- * <pre>
- * RoMaD = {@link ReturnCriterion gross return (with base)} / {@link MaximumDrawdownCriterion maximum drawdown}
- * </pre>
+ * @deprecated This class was moved to
+ *             {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion}.
  */
-public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
-
-    private final AnalysisCriterion grossReturnCriterion = new ReturnCriterion();
-    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
-
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        if (maxDrawdown.isZero()) {
-            return NaN.NaN;
-        } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, position);
-            return totalProfit.dividedBy(maxDrawdown);
-        }
-    }
-
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        if (maxDrawdown.isZero()) {
-            return NaN.NaN;
-        } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
-            return totalProfit.dividedBy(maxDrawdown);
-        }
-    }
-
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
+@Deprecated(since = "0.19", forRemoval = true)
+public class ReturnOverMaxDrawdownCriterion extends org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion {
 }

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,18 +24,18 @@
 package ta4jexamples.loaders;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
@@ -59,12 +59,9 @@ public class CsvBarsLoader {
 
     public static BarSeries loadCsvSeries(String filename) {
 
-        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
+        var stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
-        BarSeries series = new BaseBarSeries("apple_bars");
-
-        // new CSVReader(, ',', '"',
-        // 1)
+        var series = new BaseBarSeriesBuilder().withName("apple_bars").build();
 
         try {
             assert stream != null;
@@ -74,14 +71,23 @@ public class CsvBarsLoader {
                     .build()) {
                 String[] line;
                 while ((line = csvReader.readNext()) != null) {
-                    ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
+                    Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
                     double open = Double.parseDouble(line[1]);
                     double high = Double.parseDouble(line[2]);
                     double low = Double.parseDouble(line[3]);
                     double close = Double.parseDouble(line[4]);
                     double volume = Double.parseDouble(line[5]);
 
-                    series.addBar(date, open, high, low, close, volume);
+                    series.barBuilder()
+                            .timePeriod(Duration.ofDays(1))
+                            .endTime(date)
+                            .openPrice(open)
+                            .closePrice(close)
+                            .highPrice(high)
+                            .lowPrice(low)
+                            .volume(volume)
+                            .amount(0)
+                            .add();
                 }
             } catch (CsvValidationException e) {
                 Logger.getLogger(CsvBarsLoader.class.getName())

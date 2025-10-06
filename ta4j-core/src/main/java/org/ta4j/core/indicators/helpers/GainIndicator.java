@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,24 +24,24 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Gain indicator.
- * 
+ *
  * <p>
  * Returns the difference of the indicator value of a bar and its previous bar
  * if the indicator value of the current bar is greater than the indicator value
  * of the previous bar (otherwise, {@link Num#zero()} is returned).
  */
-public class GainIndicator extends AbstractIndicator<Num> {
+public class GainIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      */
     public GainIndicator(Indicator<Num> indicator) {
@@ -52,16 +52,17 @@ public class GainIndicator extends AbstractIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
         Num actualValue = indicator.getValue(index);
         Num previousValue = indicator.getValue(index - 1);
-        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue) : zero();
+        return actualValue.isGreaterThan(previousValue) ? actualValue.minus(previousValue)
+                : getBarSeries().numFactory().zero();
     }
 
     /** @return {@code 1} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 1;
     }
 }

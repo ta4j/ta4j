@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,28 +25,27 @@ package ta4jexamples;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
-import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
-import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
-
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Quickstart for ta4j.
- *
+ * <p>
  * Global example.
  */
 public class Quickstart {
@@ -88,8 +87,8 @@ public class Quickstart {
         // - or if the price loses more than 3%
         // - or if the price earns more than 2%
         Rule sellingRule = new CrossedDownIndicatorRule(shortSma, longSma)
-                .or(new StopLossRule(closePrice, series.numOf(3)))
-                .or(new StopGainRule(closePrice, series.numOf(2)));
+                .or(new StopLossRule(closePrice, series.numFactory().numOf(3)))
+                .or(new StopGainRule(closePrice, series.numFactory().numOf(2)));
 
         // Running our juicy trading strategy...
         BarSeriesManager seriesManager = new BarSeriesManager(series);
@@ -105,9 +104,10 @@ public class Quickstart {
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
-        // Total return of our strategy vs total return of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusEnterAndHoldCriterion(new ReturnCriterion());
-        System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
+        // Net return of our strategy vs net return of a buy-and-hold strategy
+        AnalysisCriterion versusEnterAndHoldCriterion = new VersusEnterAndHoldCriterion(new NetReturnCriterion());
+        Num versusEnterAndHold = versusEnterAndHoldCriterion.calculate(series, tradingRecord);
+        System.out.println("Our net return vs buy-and-hold net return: " + versusEnterAndHold);
 
         // Your turn!
     }

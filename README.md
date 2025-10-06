@@ -1,4 +1,4 @@
-# ta4j  ![Build Status develop](https://github.com/ta4j/ta4j/workflows/Test/badge.svg?branch=develop) ![Build Status master](https://github.com/ta4j/ta4j/workflows/Test/badge.svg?branch=master) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/org.ta4j/ta4j-parent?label=Snapshot&server=https%3A%2F%2Foss.sonatype.org%2F)
+# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/org.ta4j/ta4j-parent?label=Snapshot&server=https%3A%2F%2Foss.sonatype.org%2F)
 
 
 ***Technical Analysis For Java***
@@ -27,7 +27,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.15</version>
+  <version>0.18</version>
 </dependency>
 ```
 
@@ -38,12 +38,12 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current ***snapshot version*** is `0.16-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current ***snapshot version*** is `0.19-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.16-SNAPSHOT</version>
+  <version>0.19-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -52,7 +52,7 @@ You can also download ***example code*** from the maven central repository by ad
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.15</version>
+  <version>0.18</version>
 </dependency>
 ```
 ### Getting Help
@@ -70,6 +70,16 @@ See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduc
 &nbsp;
 &nbsp;
 
+### Powered by
+
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSource)
+
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
+

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Money Flow Index (MFI) indicator.
@@ -41,7 +41,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * "https://school.stockcharts.com/doku.php?id=technical_indicators:money_flow_index_mfi"></a>
  * </p>
  */
-public class MoneyFlowIndexIndicator extends AbstractIndicator<Num> {
+public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
     private final PreviousValueIndicator previousTypicalPrice;
     private final TypicalPriceIndicator typicalPrice;
@@ -67,12 +67,13 @@ public class MoneyFlowIndexIndicator extends AbstractIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // Return NaN for unstable bars
-        if (index < this.getUnstableBars()) {
+        if (index < this.getCountOfUnstableBars()) {
             return NaN;
         }
 
-        Num sumOfPositiveMoneyFlowVolume = zero();
-        Num sumOfNegativeMoneyFlowVolume = zero();
+        final var numFactory = getBarSeries().numFactory();
+        Num sumOfPositiveMoneyFlowVolume = numFactory.zero();
+        Num sumOfNegativeMoneyFlowVolume = numFactory.zero();
 
         // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
@@ -94,14 +95,15 @@ public class MoneyFlowIndexIndicator extends AbstractIndicator<Num> {
         }
 
         // Calculate money flow ratio and index
-        Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(one()).dividedBy(sumOfNegativeMoneyFlowVolume.max(one()));
+        Num moneyFlowRatio = sumOfPositiveMoneyFlowVolume.max(numFactory.one())
+                .dividedBy(sumOfNegativeMoneyFlowVolume.max(numFactory.one()));
 
         // Calculate MFI. max function is used to prevent division by zero.
-        return hundred().minus((hundred().dividedBy((one().plus(moneyFlowRatio)))));
+        return numFactory.hundred().minus((numFactory.hundred().dividedBy((numFactory.one().plus(moneyFlowRatio)))));
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,29 +23,29 @@
  */
 package org.ta4j.core.rules;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+
 public class CrossedUpIndicatorRuleTest {
 
-    private CrossedUpIndicatorRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(new BaseBarSeries(), 8d, 9d, 10d, 12d, 9d, 11d,
-                12d, 13d);
-        rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+        series = new MockBarSeriesBuilder().build();
     }
 
     @Test
     public void isSatisfied() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 8, 9, 10, 12, 9, 11, 12, 13);
+        var rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));
@@ -54,5 +54,31 @@ public class CrossedUpIndicatorRuleTest {
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
         assertFalse(rule.isSatisfied(7));
+    }
+
+    @Test
+    public void onlyThresholdBetweenFirstBarAndLastBar() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 9, 10, 10, 10, 11);
+        var rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertTrue(rule.isSatisfied(4));
+    }
+
+    @Test
+    public void repeatedlyHittingThresholdAfterCrossUp() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 9, 10, 11, 10, 11, 10, 11);
+        var rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertTrue("first cross up", rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
     }
 }

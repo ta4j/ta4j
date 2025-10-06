@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,22 +31,22 @@ import org.ta4j.core.num.Num;
 /**
  * Stochastic oscillator K.
  */
-public class StochasticOscillatorKIndicator extends AbstractIndicator<Num> {
+public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
+    private final Indicator<Num> highPriceIndicator;
+    private final Indicator<Num> lowPriceIndicator;
     private final int barCount;
-    private final HighPriceIndicator highPriceIndicator;
-    private final LowPriceIndicator lowPriceIndicator;
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code indicator} = {@link ClosePriceIndicator}
      * <li>{@code highPriceIndicator} = {@link HighPriceIndicator}
      * <li>{@code lowPriceIndicator} = {@link LowPriceIndicator}
      * </ul>
-     * 
+     *
      * @param barSeries the bar series
      * @param barCount  the time frame
      */
@@ -57,14 +57,14 @@ public class StochasticOscillatorKIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator          the {@link Indicator}
      * @param barCount           the time frame
-     * @param highPriceIndicator the {@link HighPriceIndicator}
-     * @param lowPriceIndicator  the {@link LowPriceIndicator}
+     * @param highPriceIndicator the {@link Indicator}
+     * @param lowPriceIndicator  the {@link Indicator}
      */
-    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,
-            LowPriceIndicator lowPriceIndicator) {
+    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, Indicator<Num> highPriceIndicator,
+            Indicator<Num> lowPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
@@ -83,11 +83,11 @@ public class StochasticOscillatorKIndicator extends AbstractIndicator<Num> {
         return indicator.getValue(index)
                 .minus(lowestLowPrice)
                 .dividedBy(highestHighPrice.minus(lowestLowPrice))
-                .multipliedBy(hundred());
+                .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,7 +27,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
@@ -38,12 +38,11 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
-public class AroonUpIndicator extends AbstractIndicator<Num> {
+public class AroonUpIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
     private final HighestValueIndicator highestHighPriceIndicator;
     private final Indicator<Num> highPriceIndicator;
-    private final Num hundred;
     private final Num barCountNum;
 
     /**
@@ -57,8 +56,7 @@ public class AroonUpIndicator extends AbstractIndicator<Num> {
         super(highPriceIndicator);
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
-        this.hundred = hundred();
-        this.barCountNum = numOf(barCount);
+        this.barCountNum = getBarSeries().numFactory().numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
     }
@@ -89,11 +87,12 @@ public class AroonUpIndicator extends AbstractIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(hundred);
+        final var numFactory = getBarSeries().numFactory();
+        return numFactory.numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(numFactory.hundred());
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

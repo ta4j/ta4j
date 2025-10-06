@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,18 @@
  */
 package org.ta4j.core.indicators;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Abstract test class to extend BarSeries, Indicator an other test cases. The
@@ -53,42 +52,42 @@ import org.ta4j.core.num.Num;
 @RunWith(Parameterized.class)
 public abstract class AbstractIndicatorTest<D, I> {
 
-    public final Function<Number, Num> numFunction;
+    public final NumFactory numFactory;
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
-    public static List<Function<Number, Num>> function() {
-        return Arrays.asList(DoubleNum::valueOf, DecimalNum::valueOf);
+    public static List<NumFactory> function() {
+        return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }
 
     private final IndicatorFactory<D, I> factory;
 
     /**
      * Constructor.
-     * 
-     * @param factory     IndicatorFactory for building an Indicator given data and
-     *                    parameters.
-     * @param numFunction the function to convert a Number into a Num implementation
-     *                    (automatically inserted by Junit)
+     *
+     * @param factory    IndicatorFactory for building an Indicator given data and
+     *                   parameters.
+     * @param numFactory the factory to convert a Number into a Num implementation
+     *                   (automatically inserted by Junit)
      */
-    public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
-        this.numFunction = numFunction;
+    public AbstractIndicatorTest(IndicatorFactory<D, I> factory, NumFactory numFactory) {
+        this.numFactory = numFactory;
         this.factory = factory;
     }
 
     /**
      * Constructor
      *
-     * @param numFunction the function to convert a Number into a Num implementation
-     *                    (automatically inserted by Junit)
+     * @param numFactory the function to convert a Number into a Num implementation
+     *                   (automatically inserted by Junit)
      */
-    public AbstractIndicatorTest(Function<Number, Num> numFunction) {
-        this.numFunction = numFunction;
+    public AbstractIndicatorTest(NumFactory numFactory) {
+        this.numFactory = numFactory;
         this.factory = null;
     }
 
     /**
      * Generates an Indicator from data and parameters.
-     * 
+     *
      * @param data   indicator data
      * @param params indicator parameters
      * @return Indicator<I> from data given parameters
@@ -99,12 +98,6 @@ public abstract class AbstractIndicatorTest<D, I> {
     }
 
     protected Num numOf(Number n) {
-        return numFunction.apply(n);
+        return numFactory.numOf(n);
     }
-
-    public Num numOf(String string, int precision) {
-        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        return this.numOf(new BigDecimal(string, mathContext));
-    }
-
 }

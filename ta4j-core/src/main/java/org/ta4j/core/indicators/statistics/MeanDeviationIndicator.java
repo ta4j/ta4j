@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,8 +24,8 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *      http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
-public class MeanDeviationIndicator extends AbstractIndicator<Num> {
+public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -56,7 +56,7 @@ public class MeanDeviationIndicator extends AbstractIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = zero();
+        Num absoluteDeviations = getBarSeries().numFactory().zero();
 
         final Num average = sma.getValue(index);
         final int startIndex = Math.max(0, index - barCount + 1);
@@ -66,11 +66,11 @@ public class MeanDeviationIndicator extends AbstractIndicator<Num> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(numOf(nbValues));
+        return absoluteDeviations.dividedBy(getBarSeries().numFactory().numOf(nbValues));
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

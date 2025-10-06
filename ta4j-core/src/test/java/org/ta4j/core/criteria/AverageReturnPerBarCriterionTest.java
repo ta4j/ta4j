@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,26 +23,32 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.function.Function;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
-    private MockBarSeries series;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
-    public AverageReturnPerBarCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new AverageReturnPerBarCriterion(), numFunction);
+public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
+    private BarSeries series;
+
+    public AverageReturnPerBarCriterionTest(NumFactory numFactory) {
+        super(params -> new AverageReturnPerBarCriterion(), numFactory);
     }
 
     @Test
     public void calculateOnlyWithGainPositions() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 105d, 110d, 100d, 95d, 105d)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
@@ -51,7 +57,9 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithASimplePosition() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 105d, 110d, 100d, 95d, 105d)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(110d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
@@ -59,7 +67,7 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossPositions() {
-        series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
@@ -69,7 +77,9 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithLosingAShortPositions() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 105d, 110d, 100d, 95d, 105d)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(90d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
@@ -77,14 +87,14 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoBarsShouldReturn1() {
-        series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1, averageProfit.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOnePosition() {
-        series = new MockBarSeries(numFunction, 100, 105);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105).build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, position));

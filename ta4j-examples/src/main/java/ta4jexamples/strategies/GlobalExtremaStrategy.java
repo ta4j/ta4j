@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,20 +25,17 @@ package ta4jexamples.strategies;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.TransformIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -55,45 +52,46 @@ public class GlobalExtremaStrategy {
      * @param series the bar series
      * @return the global extrema strategy
      */
-    public static Strategy buildStrategy(BarSeries series) {
+    public static Strategy buildStrategy(final BarSeries series) {
         if (series == null) {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-        ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
+        final var closePrices = new ClosePriceIndicator(series);
 
         // Getting the high price over the past week
-        HighPriceIndicator highPrices = new HighPriceIndicator(series);
-        HighestValueIndicator weekHighPrice = new HighestValueIndicator(highPrices, NB_BARS_PER_WEEK);
+        final var highPrices = new HighPriceIndicator(series);
+        final var weekHighPrice = new HighestValueIndicator(highPrices, NB_BARS_PER_WEEK);
         // Getting the low price over the past week
-        LowPriceIndicator lowPrices = new LowPriceIndicator(series);
-        LowestValueIndicator weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
+        final var lowPrices = new LowPriceIndicator(series);
+        final var weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the low price
-        TransformIndicator downWeek = TransformIndicator.multiply(weekLowPrice, 1.004);
-        Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
+        final var downWeek = BinaryOperation.product(weekLowPrice, 1.004);
+        final var buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
         // Going short if the close price goes above the high price
-        TransformIndicator upWeek = TransformIndicator.multiply(weekHighPrice, 0.996);
-        Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
+        final var upWeek = BinaryOperation.product(weekHighPrice, 0.996);
+        final var sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
         return new BaseStrategy(buyingRule, sellingRule);
     }
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
 
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        final var series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
-        Strategy strategy = buildStrategy(series);
+        final var strategy = buildStrategy(series);
 
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord = seriesManager.run(strategy);
+        final var seriesManager = new BarSeriesManager(series);
+        final var tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println("Total return for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
+        final var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
+        System.out.println("Gross return for the strategy: " + grossReturn);
     }
 }
