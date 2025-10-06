@@ -29,10 +29,11 @@ import org.ta4j.core.BarSeries;
  * Bearish Marubozu candlestick pattern indicator.
  *
  * <p>
- * A bearish Marubozu is a long-bodied bearish candle where both shadows are very
- * small compared to the body, signalling strong downward momentum.
+ * A bearish Marubozu is a long-bodied bearish candle where both shadows are
+ * very small compared to the body, signalling strong downward momentum.
  *
- * @see <a href="https://www.investopedia.com/terms/m/marubozo.asp">https://www.investopedia.com/terms/m/marubozo.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/m/marubozo.asp">https://www.investopedia.com/terms/m/marubozo.asp</a>
  */
 public class BearishMarubozuIndicator extends AbstractMarubozuIndicator {
 

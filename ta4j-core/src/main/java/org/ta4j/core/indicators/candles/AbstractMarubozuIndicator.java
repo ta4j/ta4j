@@ -64,9 +64,8 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
                 DEFAULT_UPPER_SHADOW_TO_BODY_RATIO, DEFAULT_LOWER_SHADOW_TO_BODY_RATIO);
     }
 
-    AbstractMarubozuIndicator(final BarSeries series, final int bodyAveragePeriod,
-            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
-            final double lowerShadowToBodyRatio) {
+    AbstractMarubozuIndicator(final BarSeries series, final int bodyAveragePeriod, final double bodyToAverageBodyRatio,
+            final double upperShadowToBodyRatio, final double lowerShadowToBodyRatio) {
         super(Objects.requireNonNull(series, "series must not be null"));
         if (bodyAveragePeriod < 1) {
             throw new IllegalArgumentException("bodyAveragePeriod must be >= 1");

@@ -29,10 +29,11 @@ import org.ta4j.core.BarSeries;
  * Bullish Marubozu candlestick pattern indicator.
  *
  * <p>
- * A bullish Marubozu is a long-bodied bullish candle where both shadows are very
- * small compared to the body, signalling strong upward momentum.
+ * A bullish Marubozu is a long-bodied bullish candle where both shadows are
+ * very small compared to the body, signalling strong upward momentum.
  *
- * @see <a href="https://www.investopedia.com/terms/m/marubozo.asp">https://www.investopedia.com/terms/m/marubozo.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/m/marubozo.asp">https://www.investopedia.com/terms/m/marubozo.asp</a>
  */
 public class BullishMarubozuIndicator extends AbstractMarubozuIndicator {
 
