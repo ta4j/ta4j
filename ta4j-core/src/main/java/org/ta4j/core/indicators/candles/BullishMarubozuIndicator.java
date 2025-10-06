@@ -34,6 +34,7 @@ import org.ta4j.core.BarSeries;
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/m/marubozo.asp">https://www.investopedia.com/terms/m/marubozo.asp</a>
+ * @since 0.19
  */
 public class BullishMarubozuIndicator extends AbstractMarubozuIndicator {
 
@@ -42,6 +43,7 @@ public class BullishMarubozuIndicator extends AbstractMarubozuIndicator {
      * average, body &gt; average, shadows &le; 5% of the body).
      *
      * @param series the bar series
+     * @since 0.19
      */
     public BullishMarubozuIndicator(final BarSeries series) {
         super(series);
@@ -59,6 +61,7 @@ public class BullishMarubozuIndicator extends AbstractMarubozuIndicator {
      *                               and the body height
      * @param lowerShadowToBodyRatio maximum ratio between the lower shadow height
      *                               and the body height
+     * @since 0.19
      */
     public BullishMarubozuIndicator(final BarSeries series, final int bodyAveragePeriod,
             final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,

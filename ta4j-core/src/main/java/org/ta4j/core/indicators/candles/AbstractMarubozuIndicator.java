@@ -40,6 +40,8 @@ import org.ta4j.core.num.NumFactory;
  * A Marubozu candle is characterised by a long real body with very small upper
  * and lower shadows. Concrete subclasses decide whether the body must be
  * bullish (close &gt; open) or bearish (open &gt; close).
+ *
+ * @since 0.19
  */
 abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
 
@@ -136,6 +138,7 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     /**
      * @return {@code true} if the Marubozu requires a bullish candle, {@code false}
      *         if it requires a bearish candle.
+     * @since 0.19
      */
     protected abstract boolean isBullish();
 }
