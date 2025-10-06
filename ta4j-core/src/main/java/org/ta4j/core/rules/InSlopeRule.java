@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,7 +27,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.CombineIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -38,6 +38,9 @@ import org.ta4j.core.num.Num;
  * Satisfied when the difference of the value of the {@link Indicator indicator}
  * and its previous (n-th) value is between the values of {@code maxSlope}
  * or/and {@code minSlope}. It can test both, positive and negative slope.
+ *
+ * <p>
+ * This rule does not use the {@code tradingRecord}.
  */
 public class InSlopeRule extends AbstractRule {
 
@@ -57,7 +60,7 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      *
      * @param ref      the reference indicator
-     * @param minSlope minumum slope between reference and previous indicator
+     * @param minSlope minimum slope between reference and previous indicator
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope) {
         this(ref, 1, minSlope, NaN);
@@ -67,7 +70,7 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      *
      * @param ref      the reference indicator
-     * @param minSlope minumum slope between value of reference and previous
+     * @param minSlope minimum slope between value of reference and previous
      *                 indicator
      * @param maxSlope maximum slope between value of reference and previous
      *                 indicator
@@ -93,7 +96,7 @@ public class InSlopeRule extends AbstractRule {
      *
      * @param ref         the reference indicator
      * @param nthPrevious defines the previous n-th indicator
-     * @param minSlope    minumum slope between value of reference and previous
+     * @param minSlope    minimum slope between value of reference and previous
      *                    indicator
      * @param maxSlope    maximum slope between value of reference and previous
      *                    indicator
@@ -108,11 +111,11 @@ public class InSlopeRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        CombineIndicator diff = CombineIndicator.minus(ref, prev);
-        Num val = diff.getValue(index);
-        boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
-        boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
-        boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
+        final var diff = BinaryOperation.difference(ref, prev);
+        final var val = diff.getValue(index);
+        final boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
+        final boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
+        final boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
         final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
         traceIsSatisfied(index, satisfied);

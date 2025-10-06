@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,46 +23,46 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public BollingerBandWidthIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BollingerBandWidthIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9,
-                10, 9, 10);
+        var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9, 10, 9, 10)
+                .build();
         closePrice = new ClosePriceIndicator(data);
     }
 
     @Test
     public void bollingerBandWidthUsingSMAAndStandardDeviation() {
 
-        SMAIndicator sma = new SMAIndicator(closePrice, 5);
-        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, 5);
+        var sma = new SMAIndicator(closePrice, 5);
+        var standardDeviation = new StandardDeviationIndicator(closePrice, 5);
 
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
-        BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
+        var bbmSMA = new BollingerBandsMiddleIndicator(sma);
+        var bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
+        var bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-        BollingerBandWidthIndicator bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
+        var bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
 
         assertNumEquals(0.0, bandwidth.getValue(0));
         assertNumEquals(36.3636, bandwidth.getValue(1));

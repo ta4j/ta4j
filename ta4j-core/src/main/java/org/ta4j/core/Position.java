@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -57,10 +57,10 @@ public class Position implements Serializable {
     private final TradeType startingType;
 
     /** The cost model for transactions of the asset */
-    private final CostModel transactionCostModel;
+    private final transient CostModel transactionCostModel;
 
     /** The cost model for holding the asset */
-    private final CostModel holdingCostModel;
+    private final transient CostModel holdingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
     public Position() {
@@ -146,8 +146,7 @@ public class Position implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Position) {
-            Position p = (Position) obj;
+        if (obj instanceof Position p) {
             return (entry == null ? p.getEntry() == null : entry.equals(p.getEntry()))
                     && (exit == null ? p.getExit() == null : exit.equals(p.getExit()));
         }
@@ -360,7 +359,7 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
-            Num one = entryPrice.numOf(1);
+            Num one = entryPrice.getNumFactory().one();
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
     }
@@ -420,7 +419,7 @@ public class Position implements Serializable {
      * @return the Num of 0
      */
     private Num zero() {
-        return entry.getNetPrice().zero();
+        return entry.getNetPrice().getNumFactory().zero();
     }
 
     @Override

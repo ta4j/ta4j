@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,47 +23,29 @@
  */
 package org.ta4j.core.num;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.math.RoundingMode;
-import java.util.function.Function;
 
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
  * should be used as base for calculations.
  *
  * @see Num
- * @see Num#function()
  * @see DoubleNum
  * @see DecimalNum
  */
-public interface Num extends Comparable<Num> {
-
-    /**
-     * @return the Num of 0
-     */
-    default Num zero() {
-        return numOf(0);
-    }
-
-    /**
-     * @return the Num of 1
-     */
-    default Num one() {
-        return numOf(1);
-    }
-
-    /**
-     * @return the Num of 100
-     */
-    default Num hundred() {
-        return numOf(100);
-    }
+public interface Num extends Comparable<Num>, Serializable {
 
     /**
      * @return the delegate used from this {@code Num} implementation
      */
     Number getDelegate();
+
+    /**
+     * @return factory that created this instance with defined precision
+     */
+    NumFactory getNumFactory();
 
     /**
      * Returns the name/description of this Num implementation.
@@ -160,10 +142,10 @@ public interface Num extends Comparable<Num> {
     /**
      * Returns a {@code Num} whose value is {@code √(this)}.
      *
-     * @param precision to calculate.
+     * @param mathContext to calculate.
      * @return {@code √(this)}
      */
-    Num sqrt(int precision);
+    Num sqrt(MathContext mathContext);
 
     /**
      * Returns a {@code Num} whose value is the absolute value of this {@code Num}.
@@ -276,54 +258,12 @@ public interface Num extends Comparable<Num> {
     Num max(Num other);
 
     /**
-     * Returns the {@link Function} to convert a number instance into the
-     * corresponding Num instance.
-     *
-     * @return function which converts a number instance into the corresponding Num
-     *         instance
-     */
-    Function<Number, Num> function();
-
-    /**
-     * Transforms a {@link Number} into a new Num instance of this {@code Num}
-     * implementation.
-     *
-     * @param value the Number to transform
-     * @return the corresponding Num implementation of the {@code value}
-     */
-    default Num numOf(Number value) {
-        return function().apply(value);
-    }
-
-    /**
-     * Transforms a {@link String} into a new Num instance of this {@code Num}
-     * implementation with a precision.
-     *
-     * @param value     the String to transform
-     * @param precision the precision
-     * @return the corresponding Num implementation of the {@code value}
-     */
-    default Num numOf(String value, int precision) {
-        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        return this.numOf(new BigDecimal(value, mathContext));
-    }
-
-    /**
      * Returns true only if {@code this} is an instance of {@link NaN}.
      *
      * @return false if this implementation is not {@link NaN}
      */
     default boolean isNaN() {
         return false;
-    }
-
-    /**
-     * Converts this {@code Num} to a {@code double}.
-     *
-     * @return this {@code Num} converted to a {@code double}
-     */
-    default double doubleValue() {
-        return getDelegate().doubleValue();
     }
 
     /**
@@ -352,6 +292,22 @@ public interface Num extends Comparable<Num> {
     default float floatValue() {
         return getDelegate().floatValue();
     }
+
+    /**
+     * Converts this {@code Num} to a {@code double}.
+     *
+     * @return this {@code Num} converted to a {@code double}
+     */
+    default double doubleValue() {
+        return getDelegate().doubleValue();
+    }
+
+    /**
+     * Converts this {@code Num} to a {@code BigDecimal}.
+     *
+     * @return this {@code Num} converted to a {@code BigDecimal}
+     */
+    BigDecimal bigDecimalValue();
 
     @Override
     int hashCode();

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,21 +23,20 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ConstantIndicatorTest {
     private ConstantIndicator<Num> constantIndicator;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
+        var series = new MockBarSeriesBuilder().build();
+        constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(30.33));
     }
 
     @Test

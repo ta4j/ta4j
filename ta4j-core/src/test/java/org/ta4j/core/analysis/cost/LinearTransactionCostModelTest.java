@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,28 +23,32 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.TradingStatement;
-import org.ta4j.core.rules.FixedRule;
-
-import static org.junit.Assert.*;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.FixedRule;
 
 public class LinearTransactionCostModelTest {
 
@@ -131,27 +135,47 @@ public class LinearTransactionCostModelTest {
 
     @Test
     public void testBacktesting() {
-        BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test").build();
-        ZonedDateTime now = ZonedDateTime.now();
-        Num one = series.one();
-        Num two = series.numOf(2);
-        Num three = series.numOf(3);
-        Num four = series.numOf(4);
-        series.addBar(now, one, one, one, one, one);
-        series.addBar(now.plusSeconds(1), two, two, two, two, two);
-        series.addBar(now.plusSeconds(2), three, three, three, three, three);
-        series.addBar(now.plusSeconds(3), four, four, four, four, four);
+        BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test")
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .build();
+        Instant now = Instant.now();
+        Num one = series.numFactory().one();
+        Num two = series.numFactory().numOf(2);
+        Num three = series.numFactory().numOf(3);
+        Num four = series.numFactory().numOf(4);
+        series.barBuilder().endTime(now).openPrice(one).closePrice(one).highPrice(one).lowPrice(one).add();
+        series.barBuilder()
+                .endTime(now.plusSeconds(1))
+                .openPrice(two)
+                .closePrice(two)
+                .highPrice(two)
+                .lowPrice(two)
+                .add();
+        series.barBuilder()
+                .endTime(now.plusSeconds(2))
+                .openPrice(three)
+                .closePrice(three)
+                .highPrice(three)
+                .lowPrice(three)
+                .add();
+        series.barBuilder()
+                .endTime(now.plusSeconds(3))
+                .openPrice(four)
+                .closePrice(four)
+                .highPrice(four)
+                .lowPrice(four)
+                .add();
 
         Rule entryRule = new FixedRule(0, 2);
         Rule exitRule = new FixedRule(1, 3);
         List<Strategy> strategies = new LinkedList<>();
         strategies.add(new BaseStrategy("Cost model test strategy", entryRule, exitRule));
 
-        Num orderFee = series.numOf(new BigDecimal("0.0026"));
+        Num orderFee = series.numFactory().numOf(new BigDecimal("0.0026"));
         BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()),
                 new ZeroCostModel(), new TradeOnCurrentCloseModel());
 
-        Num amount = series.numOf(25);
+        Num amount = series.numFactory().numOf(25);
         TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
 
         Num firstPositionBuy = one.plus(one.multipliedBy(orderFee));

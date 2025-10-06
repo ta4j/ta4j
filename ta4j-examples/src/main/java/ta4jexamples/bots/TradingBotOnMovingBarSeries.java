@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,19 +24,20 @@
 package ta4jexamples.bots;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -119,8 +120,15 @@ public class TradingBotOnMovingBarSeries {
         Num highPrice = openPrice.plus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, highPrice, lowPrice, closePrice,
-                DecimalNum.valueOf(1), DecimalNum.valueOf(1));
+        return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
+                .volume(1)
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.now())
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
+                .closePrice(closePrice)
+                .build();
     }
 
     public static void main(String[] args) throws InterruptedException {

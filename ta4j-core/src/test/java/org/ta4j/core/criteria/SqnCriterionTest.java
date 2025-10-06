@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,29 +23,30 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.function.Function;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NumFactory;
 
 public class SqnCriterionTest extends AbstractCriterionTest {
 
-    public SqnCriterionTest(Function<Number, Num> numFunction) {
-        super(params -> new SqnCriterion(), numFunction);
+    public SqnCriterionTest(NumFactory numFactory) {
+        super(params -> new SqnCriterion(), numFactory);
     }
 
     @Test
     public void calculateWithWinningLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
@@ -54,7 +55,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithLosingLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
@@ -64,8 +65,8 @@ public class SqnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOneWinningAndOneLosingLongPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 195, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 195, 100, 80, 85, 70).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
@@ -74,8 +75,8 @@ public class SqnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithWinningShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 90, 100, 95, 95, 100);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100, 95, 95, 100).build();
+        var tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
@@ -84,7 +85,9 @@ public class SqnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithLosingShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 110, 100, 105, 95, 105);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 100, 105, 95, 105)
+                .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
@@ -101,7 +104,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(), 0);
     }
 
 }

@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.16-SNAPSHOT</version>
+        <version>0.19-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-examples</artifactId>
 
@@ -14,28 +14,32 @@
 
         <!-- Test dependencies -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.ta4j</groupId>
             <artifactId>ta4j-core</artifactId>
-            <version>0.16-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
-            <version>5.7.1</version>
+            <version>5.9</version>
         </dependency>
 
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
-            <version>1.5.3</version>
+            <version>1.5.5</version>
         </dependency>
 
         <dependency>
@@ -46,7 +50,7 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10</version>
+            <version>2.10.1</version>
         </dependency>
     </dependencies>
 

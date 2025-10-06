@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,11 +40,11 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/n/nvi.asp">
  *      http://www.investopedia.com/terms/n/nvi.asp</a>
  */
-public class NVIIndicator extends AbstractIndicator<Num> {
+public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public NVIIndicator(BarSeries series) {
@@ -54,7 +54,7 @@ public class NVIIndicator extends AbstractIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(1000);
+            return getBarSeries().numFactory().thousand();
         }
 
         Bar currentBar = getBarSeries().getBar(index);
@@ -71,7 +71,7 @@ public class NVIIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

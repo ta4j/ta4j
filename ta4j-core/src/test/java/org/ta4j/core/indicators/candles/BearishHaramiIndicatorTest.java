@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,45 +23,39 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.ta4j.core.num.NumFactory;
 
 public class BearishHaramiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
     private BarSeries series;
 
-    public BearishHaramiIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public BearishHaramiIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<Bar>();
-        // open, close, high, low
-        bars.add(new MockBar(10, 18, 20, 10, numFunction));
-        bars.add(new MockBar(15, 18, 19, 14, numFunction));
-        bars.add(new MockBar(17, 16, 19, 15, numFunction));
-        bars.add(new MockBar(15, 11, 15, 8, numFunction));
-        bars.add(new MockBar(11, 12, 12, 10, numFunction));
-        series = new MockBarSeries(bars);
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(10).add();
+        series.barBuilder().openPrice(15).closePrice(18).highPrice(19).lowPrice(14).add();
+        series.barBuilder().openPrice(17).closePrice(16).highPrice(19).lowPrice(15).add();
+        series.barBuilder().openPrice(15).closePrice(11).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).add();
     }
 
     @Test
     public void getValue() {
-        BearishHaramiIndicator bhp = new BearishHaramiIndicator(series);
+        var bhp = new BearishHaramiIndicator(series);
         assertFalse(bhp.getValue(0));
         assertFalse(bhp.getValue(1));
         assertTrue(bhp.getValue(2));

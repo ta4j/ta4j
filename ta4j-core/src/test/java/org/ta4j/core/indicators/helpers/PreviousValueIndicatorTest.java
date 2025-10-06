@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,17 +23,18 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.time.ZonedDateTime;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.time.Instant;
 import java.util.Random;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class PreviousValueIndicatorTest {
 
@@ -50,15 +51,23 @@ public class PreviousValueIndicatorTest {
 
     @Before
     public void setUp() {
-        Random r = new Random();
-        this.series = new BaseBarSeries("test");
+        var r = new Random();
+        var now = Instant.now();
+        this.series = new MockBarSeriesBuilder().withName("test").build();
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
             double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
-            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
-            series.addBar(dateTime, open, close, max, min, i);
+            Instant dateTime = now.minusSeconds(1001 - i);
+            series.barBuilder()
+                    .endTime(dateTime)
+                    .openPrice(open)
+                    .closePrice(close)
+                    .highPrice(max)
+                    .lowPrice(min)
+                    .volume(i)
+                    .add();
         }
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);

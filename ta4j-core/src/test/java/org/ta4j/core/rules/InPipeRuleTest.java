@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,13 @@
  */
 package org.ta4j.core.rules;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class InPipeRuleTest {
 
@@ -40,9 +37,9 @@ public class InPipeRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries("I am empty");
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 50d, 70d, 80d, 90d, 99d, 60d, 30d, 20d, 10d, 0d);
-        rule = new InPipeRule(indicator, series.numOf(80), series.numOf(20));
+        var series = new MockBarSeriesBuilder().withName("I am empty").build();
+        var indicator = new FixedNumIndicator(series, 50d, 70d, 80d, 90d, 99d, 60d, 30d, 20d, 10d, 0d);
+        rule = new InPipeRule(indicator, series.numFactory().numOf(80), series.numFactory().numOf(20));
     }
 
     @Test

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,30 +23,29 @@
  */
 package org.ta4j.core.rules;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+
 public class CrossedDownIndicatorRuleTest {
 
-    private CrossedDownIndicatorRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
-        rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+        series = new BaseBarSeriesBuilder().build();
     }
 
     @Test
     public void isSatisfied() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
+        var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));
@@ -55,5 +54,30 @@ public class CrossedDownIndicatorRuleTest {
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
         assertFalse(rule.isSatisfied(7));
+    }
+
+    @Test
+    public void onlyThresholdBetweenFirstBarAndLastBar() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 11, 10, 10, 9);
+        var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+    }
+
+    @Test
+    public void repeatedlyHittingThresholdAfterCrossDown() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 11, 10, 9, 10, 9, 10, 9);
+        var rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertTrue("first cross down", rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
     }
 }

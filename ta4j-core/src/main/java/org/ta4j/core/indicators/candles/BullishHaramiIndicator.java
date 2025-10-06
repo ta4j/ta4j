@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/b/bullishharami.asp">
  *      http://www.investopedia.com/terms/b/bullishharami.asp</a>
  */
-public class BullishHaramiIndicator extends AbstractIndicator<Boolean> {
+public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
@@ -65,7 +65,7 @@ public class BullishHaramiIndicator extends AbstractIndicator<Boolean> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

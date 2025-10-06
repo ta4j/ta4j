@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,11 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +38,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/w/williamsr.asp">https://www.investopedia.com/terms/w/williamsr.asp</a>
  */
-public class WilliamsRIndicator extends AbstractIndicator<Num> {
+public class WilliamsRIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> closePriceIndicator;
     private final int barCount;
@@ -44,7 +48,7 @@ public class WilliamsRIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param barSeries the bar series
      * @param barCount  the time frame
      */
@@ -55,7 +59,7 @@ public class WilliamsRIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param closePriceIndicator the {@link ClosePriceIndicator}
      * @param barCount            the time frame for {@code highPriceIndicator} and
      *                            {@code lowPriceIndicator}
@@ -69,7 +73,7 @@ public class WilliamsRIndicator extends AbstractIndicator<Num> {
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
-        this.multiplier = numOf(-100);
+        this.multiplier = getBarSeries().numFactory().numOf(-100);
     }
 
     @Override
@@ -85,7 +89,7 @@ public class WilliamsRIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return barCount;
     }
 

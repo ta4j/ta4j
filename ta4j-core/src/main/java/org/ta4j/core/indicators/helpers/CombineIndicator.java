@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,16 +27,16 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Combine indicator.
- * 
+ *
  * <p>
  * Combines two Num indicators by using common math operations.
  */
-public class CombineIndicator extends AbstractIndicator<Num> {
+public class CombineIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicatorLeft;
     private final Indicator<Num> indicatorRight;
@@ -67,7 +67,7 @@ public class CombineIndicator extends AbstractIndicator<Num> {
 
     /** @return {@code 0} */
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 
@@ -114,4 +114,8 @@ public class CombineIndicator extends AbstractIndicator<Num> {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::min);
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,48 +23,43 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private List<Bar> mockBarList;
     private BarSeries mockBarSeries;
 
-    public IntraDayMomentumIndexIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public IntraDayMomentumIndexIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        mockBarList = new ArrayList<>();
-        mockBarList.add(new MockBar(10, 9, 10, 9, numFunction));
-        mockBarList.add(new MockBar(10, 11, 11, 10, 10, numFunction));
-        mockBarList.add(new MockBar(11, 12, 12, 10, 10, numFunction));
-        mockBarList.add(new MockBar(10, 12, 12, 10, 10, numFunction));
-        mockBarList.add(new MockBar(9, 12, 12, 9, 10, numFunction));
-        mockBarList.add(new MockBar(9, 8, 9, 8, 10, numFunction));
-        mockBarList.add(new MockBar(11, 8, 11, 8, 10, numFunction));
-        mockBarList.add(new MockBar(10, 13, 13, 9, 10, numFunction));
-        mockBarList.add(new MockBar(11, 2, 11, 2, 10, numFunction));
-
-        mockBarSeries = new MockBarSeries(mockBarList);
-    }
+        mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        mockBarSeries.barBuilder().openPrice(10).closePrice(9).highPrice(10).lowPrice(9).add();
+        mockBarSeries.barBuilder().openPrice(10).closePrice(11).highPrice(11).lowPrice(10).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(10).closePrice(12).highPrice(12).lowPrice(10).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(9).closePrice(12).highPrice(12).lowPrice(9).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(9).closePrice(8).highPrice(9).lowPrice(8).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(11).closePrice(8).highPrice(11).lowPrice(8).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(10).closePrice(13).highPrice(13).lowPrice(9).volume(10).add();
+        mockBarSeries.barBuilder().openPrice(11).closePrice(2).highPrice(11).lowPrice(2).volume(10).add();
+    };
 
     @Test
     public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        IntraDayMomentumIndexIndicator imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 5);
+        var imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 5);
 
         assertTrue(imi.getValue(0).isNaN());
         assertTrue(imi.getValue(1).isNaN());
@@ -76,7 +71,7 @@ public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<In
 
     @Test
     public void givenBarCountOf1_whenGetValue_thenReturnCorrectValue() {
-        IntraDayMomentumIndexIndicator imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 1);
+        var imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 1);
 
         assertTrue(imi.getValue(0).isNaN());
         assertNumEquals(100, imi.getValue(1));
@@ -89,7 +84,7 @@ public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<In
 
     @Test
     public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        IntraDayMomentumIndexIndicator imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 3);
+        var imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 3);
 
         assertTrue(imi.getValue(0).isNaN());
         assertTrue(imi.getValue(1).isNaN());

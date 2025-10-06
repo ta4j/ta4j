@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,8 +24,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.BaseIndicatorValueCache;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
-public class CorrelationCoefficientIndicator extends AbstractIndicator<Num> {
+public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
     private final VarianceIndicator variance1;
     private final VarianceIndicator variance2;
@@ -49,7 +48,7 @@ public class CorrelationCoefficientIndicator extends AbstractIndicator<Num> {
      * @param barCount   the time frame
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1, new BaseIndicatorValueCache<>(indicator1.getBarSeries()));
+        super(indicator1);
         this.variance1 = new VarianceIndicator(indicator1, barCount);
         this.variance2 = new VarianceIndicator(indicator2, barCount);
         this.covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
@@ -65,7 +64,7 @@ public class CorrelationCoefficientIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

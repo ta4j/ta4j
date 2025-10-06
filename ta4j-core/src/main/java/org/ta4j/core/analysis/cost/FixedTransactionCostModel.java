@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -40,7 +40,7 @@ public class FixedTransactionCostModel implements CostModel {
      * Constructor for a fixed fee trading cost model.
      *
      * <pre>
-     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1) 
+     * Cost of opened {@link Position position}: (fixedFeePerTrade * 1)
      * Cost of closed {@link Position position}: (fixedFeePerTrade * 2)
      * </pre>
      *
@@ -58,12 +58,12 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
-        Num pricePerAsset = position.getEntry().getPricePerAsset();
-        Num multiplier = pricePerAsset.one();
+        final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
+        Num multiplier = numFactory.one();
         if (position.isClosed()) {
-            multiplier = pricePerAsset.numOf(2);
+            multiplier = numFactory.numOf(2);
         }
-        return pricePerAsset.numOf(feePerTrade).multipliedBy(multiplier);
+        return numFactory.numOf(feePerTrade).multipliedBy(multiplier);
     }
 
     /**
@@ -82,7 +82,7 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Num price, Num amount) {
-        return price.numOf(feePerTrade);
+        return price.getNumFactory().numOf(feePerTrade);
     }
 
     @Override

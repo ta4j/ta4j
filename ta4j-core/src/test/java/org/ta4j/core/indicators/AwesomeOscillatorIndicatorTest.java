@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,50 +23,37 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries series;
 
-    /**
-     * Constructor.
-     *
-     * @param function
-     */
-    public AwesomeOscillatorIndicatorTest(Function<Number, Num> function) {
-        super(function);
+    public AwesomeOscillatorIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-
-        List<Bar> bars = new ArrayList<Bar>();
-
-        bars.add(new MockBar(0, 0, 16, 8, numFunction));
-        bars.add(new MockBar(0, 0, 12, 6, numFunction));
-        bars.add(new MockBar(0, 0, 18, 14, numFunction));
-        bars.add(new MockBar(0, 0, 10, 6, numFunction));
-        bars.add(new MockBar(0, 0, 8, 4, numFunction));
-
-        this.series = new MockBarSeries(bars);
+        this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
     }
 
     @Test
     public void calculateWithSma2AndSma3() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 2, 3);
+        var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 2, 3);
 
         assertNumEquals(0, awesome.getValue(0));
         assertNumEquals(0, awesome.getValue(1));
@@ -77,7 +64,7 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Test
     public void withSma1AndSma2() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 1, 2);
+        var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 1, 2);
 
         assertNumEquals(0, awesome.getValue(0));
         assertNumEquals("-1.5", awesome.getValue(1));
@@ -88,7 +75,7 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     @Test
     public void withSmaDefault() {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series));
+        var awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series));
 
         assertNumEquals(0, awesome.getValue(0));
         assertNumEquals(0, awesome.getValue(1));

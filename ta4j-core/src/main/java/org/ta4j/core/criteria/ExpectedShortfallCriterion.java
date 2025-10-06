@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -59,7 +59,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
         return calculateES(returns, confidence);
@@ -81,7 +81,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     private static Num calculateES(Returns returns, double confidence) {
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-        Num zero = returns.zero();
+        Num zero = returns.getBarSeries().numFactory().zero();
         if (returnRates.isEmpty()) {
             return zero;
         }
@@ -97,7 +97,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         for (int i = 0; i < nInTail; i++) {
             sum = sum.plus(tailEvents.get(i));
         }
-        expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
+        expectedShortfall = sum.dividedBy(returns.getBarSeries().numFactory().numOf(nInTail));
 
         // ES is non-positive
         if (expectedShortfall.isGreaterThan(zero)) {

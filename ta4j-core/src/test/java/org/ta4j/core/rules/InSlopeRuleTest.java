@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class InSlopeRuleTest {
 
@@ -41,10 +41,10 @@ public class InSlopeRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
-        rulePositiveSlope = new InSlopeRule(indicator, series.numOf(20), series.numOf(30));
-        ruleNegativeSlope = new InSlopeRule(indicator, series.numOf(-40), series.numOf(-20));
+        BarSeries series = new BaseBarSeriesBuilder().build();
+        Indicator<Num> indicator = new FixedNumIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
+        rulePositiveSlope = new InSlopeRule(indicator, series.numFactory().numOf(20), series.numFactory().numOf(30));
+        ruleNegativeSlope = new InSlopeRule(indicator, series.numFactory().numOf(-40), series.numFactory().numOf(-20));
     }
 
     @Test

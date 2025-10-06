@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -82,7 +82,7 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        return numberOfPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
+        return numberOfPositions.dividedBy(series.numFactory().numOf(tradingRecord.getPositionCount()));
     }
 
     /**

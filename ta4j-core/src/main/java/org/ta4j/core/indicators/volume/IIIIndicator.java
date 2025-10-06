@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -37,17 +37,16 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
  */
-public class IIIIndicator extends AbstractIndicator<Num> {
+public class IIIIndicator extends CachedIndicator<Num> {
 
     private final ClosePriceIndicator closePriceIndicator;
     private final HighPriceIndicator highPriceIndicator;
     private final LowPriceIndicator lowPriceIndicator;
     private final VolumeIndicator volumeIndicator;
-    private final Num two;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public IIIIndicator(BarSeries series) {
@@ -56,15 +55,16 @@ public class IIIIndicator extends AbstractIndicator<Num> {
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.volumeIndicator = new VolumeIndicator(series);
-        this.two = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
         if (index == getBarSeries().getBeginIndex()) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
-        final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
+        final Num doubledClosePrice = getBarSeries().numFactory()
+                .two()
+                .multipliedBy(closePriceIndicator.getValue(index));
         final Num high = highPriceIndicator.getValue(index);
         final Num low = lowPriceIndicator.getValue(index);
         final Num highMinusLow = high.minus(low);
@@ -75,7 +75,7 @@ public class IIIIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

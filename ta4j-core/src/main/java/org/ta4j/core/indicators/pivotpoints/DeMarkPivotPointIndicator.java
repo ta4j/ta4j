@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,17 +31,23 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * DeMark Pivot Point indicator.
  *
+ * <p>
+ * The {@link java.time.Instant UTC} represents a point in time on the
+ * time-line, typically measured in milliseconds. It is independent of time
+ * zones, days of the week, or months. However, this rule converts a UTC to a
+ * ZonedDateTime in UTC to get the day, week and month in that time zone.
+ *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
+ *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+ *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
  */
-public class DeMarkPivotPointIndicator extends AbstractIndicator<Num> {
+public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
     private final Num two;
@@ -81,8 +87,8 @@ public class DeMarkPivotPointIndicator extends AbstractIndicator<Num> {
     public DeMarkPivotPointIndicator(BarSeries series, TimeLevel timeLevelId) {
         super(series);
         this.timeLevel = timeLevelId;
-        this.two = numOf(2);
-        this.four = numOf(4);
+        this.two = getBarSeries().numFactory().two();
+        this.four = getBarSeries().numFactory().numOf(4);
     }
 
     @Override
@@ -91,7 +97,7 @@ public class DeMarkPivotPointIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 
@@ -157,34 +163,36 @@ public class DeMarkPivotPointIndicator extends AbstractIndicator<Num> {
     }
 
     private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
+        var zonedEndTime = bar.getZonedEndTime();
         switch (timeLevel) {
         case DAY: // return previous day
-            int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
+            int prevCalendarDay = zonedEndTime.minusDays(1).getDayOfYear();
             // skip weekend and holidays:
-            while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
-                    && indexOfPreviousBar > 0) {
+            var previousZonedEndTime = getBarSeries().getBar(indexOfPreviousBar).getZonedEndTime();
+            while (previousZonedEndTime.getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0) {
                 prevCalendarDay--;
             }
             return prevCalendarDay;
         case WEEK: // return previous week
-            return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+            return zonedEndTime.minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         case MONTH: // return previous month
-            return bar.getEndTime().minusMonths(1).getMonthValue();
+            return zonedEndTime.minusMonths(1).getMonthValue();
         default: // return previous year
-            return bar.getEndTime().minusYears(1).getYear();
+            return zonedEndTime.minusYears(1).getYear();
         }
     }
 
     private long getPeriod(Bar bar) {
+        var zonedEndTime = bar.getZonedEndTime();
         switch (timeLevel) {
         case DAY: // return previous day
-            return bar.getEndTime().getDayOfYear();
+            return zonedEndTime.getDayOfYear();
         case WEEK: // return previous week
-            return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+            return zonedEndTime.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         case MONTH: // return previous month
-            return bar.getEndTime().getMonthValue();
+            return zonedEndTime.getMonthValue();
         default: // return previous year
-            return bar.getEndTime().getYear();
+            return zonedEndTime.getYear();
         }
     }
 

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,7 +23,9 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.function.Function;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -32,33 +34,33 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.ta4j.core.num.NumFactory;
 
 public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public StopGainRuleTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public StopGainRuleTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(
-                new MockBarSeries(numFunction, 100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104));
+        closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104)
+                .build());
     }
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
-        StopGainRule rule = new StopGainRule(closePrice, numOf(30));
+        var rule = new StopGainRule(closePrice, numOf(30));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -84,7 +86,7 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
-        StopGainRule rule = new StopGainRule(closePrice, numOf(10));
+        var rule = new StopGainRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -103,5 +105,23 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertTrue(rule.isSatisfied(1, tradingRecord));
         assertTrue(rule.isSatisfied(10, tradingRecord));
+    }
+
+    @Test
+    public void worksWithDifferentPriceIndicator() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        var highPrice = new HighPriceIndicator(series);
+        var rule = new StopGainRule(highPrice, numOf(10));
+
+        var buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        var amount = numOf(1);
+        buyRecord.enter(1, highPrice.getValue(1), amount);
+        assertFalse(rule.isSatisfied(1, buyRecord));
+        assertTrue(rule.isSatisfied(2, buyRecord));
+
+        var sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        sellRecord.enter(3, highPrice.getValue(3), amount);
+        assertFalse(rule.isSatisfied(3, sellRecord));
+        assertTrue(rule.isSatisfied(2, sellRecord));
     }
 }

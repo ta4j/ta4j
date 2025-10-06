@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,54 +23,51 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import java.time.ZonedDateTime;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class ChaikinMoneyFlowIndicatorTest {
 
     @Test
     public void getValue() {
 
-        ZonedDateTime now = ZonedDateTime.now();
-        BarSeries series = new BaseBarSeries();
-        int sec = 1000;
-        series.addBar(now.minusSeconds(sec--), "0", "62.34", "61.37", "62.15", "7849.025");
-        series.addBar(now.minusSeconds(sec--), "0", "62.05", "60.69", "60.81", "11692.075");
-        series.addBar(now.minusSeconds(sec--), "0", "62.27", "60.10", "60.45", "10575.307");
-        series.addBar(now.minusSeconds(sec--), "0", "60.79", "58.61", "59.18", "13059.128");
-        series.addBar(now.minusSeconds(sec--), "0", "59.93", "58.71", "59.24", "20733.508");
-        series.addBar(now.minusSeconds(sec--), "0", "61.75", "59.86", "60.20", "29630.096");
-        series.addBar(now.minusSeconds(sec--), "0", "60.00", "57.97", "58.48", "17705.294");
-        series.addBar(now.minusSeconds(sec--), "0", "59.00", "58.02", "58.24", "7259.203");
-        series.addBar(now.minusSeconds(sec--), "0", "59.07", "57.48", "58.69", "10474.629");
-        series.addBar(now.minusSeconds(sec--), "0", "59.22", "58.30", "58.65", "5203.714");
-        series.addBar(now.minusSeconds(sec--), "0", "58.75", "57.83", "58.47", "3422.865");
-        series.addBar(now.minusSeconds(sec--), "0", "58.65", "57.86", "58.02", "3962.150");
-        series.addBar(now.minusSeconds(sec--), "0", "58.47", "57.91", "58.17", "4095.905");
-        series.addBar(now.minusSeconds(sec--), "0", "58.25", "57.83", "58.07", "3766.006");
-        series.addBar(now.minusSeconds(sec--), "0", "58.35", "57.53", "58.13", "4239.335");
-        series.addBar(now.minusSeconds(sec--), "0", "59.86", "58.58", "58.94", "8039.979");
-        series.addBar(now.minusSeconds(sec--), "0", "59.53", "58.30", "59.10", "6956.717");
-        series.addBar(now.minusSeconds(sec--), "0", "62.10", "58.53", "61.92", "18171.552");
-        series.addBar(now.minusSeconds(sec--), "0", "62.16", "59.80", "61.37", "22225.894");
+        BarSeries series = new MockBarSeriesBuilder().build();
+        series.barBuilder().highPrice(62.34).lowPrice(61.37).closePrice(62.15).volume(7849.025).add();
+        series.barBuilder().highPrice(62.05).lowPrice(60.69).closePrice(60.81).volume(11692.075).add();
+        series.barBuilder().highPrice(62.27).lowPrice(60.10).closePrice(60.45).volume(10575.307).add();
+        series.barBuilder().highPrice(60.79).lowPrice(58.61).closePrice(59.18).volume(13059.128).add();
+        series.barBuilder().highPrice(59.93).lowPrice(58.71).closePrice(59.24).volume(20733.508).add();
+        series.barBuilder().highPrice(61.75).lowPrice(59.86).closePrice(60.20).volume(29630.096).add();
+        series.barBuilder().highPrice(60.00).lowPrice(57.97).closePrice(58.48).volume(17705.294).add();
+        series.barBuilder().highPrice(59.00).lowPrice(58.02).closePrice(58.24).volume(7259.203).add();
+        series.barBuilder().highPrice(59.07).lowPrice(57.48).closePrice(58.69).volume(10474.629).add();
+        series.barBuilder().highPrice(59.22).lowPrice(58.30).closePrice(58.65).volume(5203.714).add();
+        series.barBuilder().highPrice(58.75).lowPrice(57.83).closePrice(58.47).volume(3422.865).add();
+        series.barBuilder().highPrice(58.65).lowPrice(57.86).closePrice(58.02).volume(3962.150).add();
+        series.barBuilder().highPrice(58.47).lowPrice(57.91).closePrice(58.17).volume(4095.905).add();
+        series.barBuilder().highPrice(58.25).lowPrice(57.83).closePrice(58.07).volume(3766.006).add();
+        series.barBuilder().highPrice(58.35).lowPrice(57.53).closePrice(58.13).volume(4239.335).add();
+        series.barBuilder().highPrice(59.86).lowPrice(58.58).closePrice(58.94).volume(8039.979).add();
+        series.barBuilder().openPrice(0).highPrice(59.53).lowPrice(58.30).closePrice(59.10).volume(6956.717).add();
+        series.barBuilder().highPrice(62.10).lowPrice(58.53).closePrice(61.92).volume(18171.552).add();
+        series.barBuilder().highPrice(62.16).lowPrice(59.80).closePrice(61.37).volume(22225.894).add();
 
-        series.addBar(now.minusSeconds(sec--), "0", "62.67", "60.93", "61.68", "14613.509");
-        series.addBar(now.minusSeconds(sec--), "0", "62.38", "60.15", "62.09", "12319.763");
-        series.addBar(now.minusSeconds(sec--), "0", "63.73", "62.26", "62.89", "15007.690");
-        series.addBar(now.minusSeconds(sec--), "0", "63.85", "63.00", "63.53", "8879.667");
-        series.addBar(now.minusSeconds(sec--), "0", "66.15", "63.58", "64.01", "22693.812");
-        series.addBar(now.minusSeconds(sec--), "0", "65.34", "64.07", "64.77", "10191.814");
-        series.addBar(now.minusSeconds(sec--), "0", "66.48", "65.20", "65.22", "10074.152");
-        series.addBar(now.minusSeconds(sec--), "0", "65.23", "63.21", "63.28", "9411.620");
-        series.addBar(now.minusSeconds(sec--), "0", "63.40", "61.88", "62.40", "10391.690");
-        series.addBar(now.minusSeconds(sec--), "0", "63.18", "61.11", "61.55", "8926.512");
-        series.addBar(now.minusSeconds(sec--), "0", "62.70", "61.25", "62.69", "7459.575");
+        series.barBuilder().highPrice(62.67).lowPrice(60.93).closePrice(61.68).volume(14613.509).add();
+        series.barBuilder().highPrice(62.38).lowPrice(60.15).closePrice(62.09).volume(12319.763).add();
+        series.barBuilder().highPrice(63.73).lowPrice(62.26).closePrice(62.89).volume(15007.690).add();
+        series.barBuilder().highPrice(63.85).lowPrice(63.00).closePrice(63.53).volume(8879.667).add();
+        series.barBuilder().highPrice(66.15).lowPrice(63.58).closePrice(64.01).volume(22693.812).add();
+        series.barBuilder().openPrice(0).highPrice(65.34).lowPrice(64.07).closePrice(64.77).volume(10191.814).add();
+        series.barBuilder().highPrice(66.48).lowPrice(65.20).closePrice(65.22).volume(10074.152).add();
+        series.barBuilder().highPrice(65.23).lowPrice(63.21).closePrice(63.28).volume(9411.620).add();
+        series.barBuilder().highPrice(63.40).lowPrice(61.88).closePrice(62.40).volume(10391.690).add();
+        series.barBuilder().highPrice(63.18).lowPrice(61.11).closePrice(61.55).volume(8926.512).add();
+        series.barBuilder().highPrice(62.70).lowPrice(61.25).closePrice(62.69).volume(7459.575).add();
 
-        ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
+        var cmf = new ChaikinMoneyFlowIndicator(series, 20);
 
         assertNumEquals(0.6082, cmf.getValue(0));
         assertNumEquals(-0.2484, cmf.getValue(1));

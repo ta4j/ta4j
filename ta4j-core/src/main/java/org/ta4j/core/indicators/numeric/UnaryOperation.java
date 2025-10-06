@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,6 +27,7 @@ import java.util.function.UnaryOperator;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,7 +39,7 @@ public class UnaryOperation implements Indicator<Num> {
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
-     * 
+     *
      * @param operand
      * @return {@code √(operand)}
      * @see Num#sqrt
@@ -50,13 +51,38 @@ public class UnaryOperation implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is the absolute value of
      * {@code operand}.
-     * 
+     *
      * @param operand
      * @return {@code abs(operand)}
      * @see Num#abs
      */
     public static UnaryOperation abs(Indicator<Num> operand) {
         return new UnaryOperation(Num::abs, operand);
+    }
+
+    /**
+     * Returns an {@code Indicator} whose value is {@code operand^exponent}.
+     *
+     * @param operand  the operand indicator
+     * @param exponent the power exponent
+     * @return {@code operand^exponent}
+     * @see Num#pow
+     */
+    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
+        final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
+        return new UnaryOperation(val -> val.pow(numExponent), operand);
+    }
+
+    /**
+     * Returns an {@code Indicator} whose value is {@code log(operand)}.
+     *
+     * @param operand the operand indicator
+     * @return {@code log(operand)}
+     * @apiNote precision may be lost, because this implementation is using the
+     *          underlying doubleValue method
+     */
+    public static UnaryOperation log(Indicator<Num> operand) {
+        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
     private final UnaryOperator<Num> operator;
@@ -74,7 +100,7 @@ public class UnaryOperation implements Indicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

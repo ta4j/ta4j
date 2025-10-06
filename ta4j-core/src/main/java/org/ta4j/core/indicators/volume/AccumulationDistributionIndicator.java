@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,32 +24,31 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.caching.NativeRecursiveIndicatorValueCache;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Accumulation-distribution indicator.
  */
-public class AccumulationDistributionIndicator extends AbstractIndicator<Num> {
+public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
     private final CloseLocationValueIndicator clvIndicator;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the bar series
      */
     public AccumulationDistributionIndicator(BarSeries series) {
-        super(series, new NativeRecursiveIndicatorValueCache<>(series));
+        super(series);
         this.clvIndicator = new CloseLocationValueIndicator(series);
     }
 
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return zero();
+            return getBarSeries().numFactory().zero();
         }
 
         // Calculating the money flow multiplier
@@ -62,7 +61,7 @@ public class AccumulationDistributionIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

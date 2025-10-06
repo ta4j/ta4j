@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,7 +44,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private final double a;
     private final double b;
 
-    private final ReturnCriterion grossReturn;
+    private final GrossReturnCriterion grossReturn;
 
     /**
      * Constructor. (a * x)
@@ -70,18 +70,18 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        grossReturn = new ReturnCriterion();
+        grossReturn = new GrossReturnCriterion();
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return getTradeCost(series, position, series.numOf(initialAmount));
+        return getTradeCost(series, position, series.numFactory().numOf(initialAmount));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num totalCosts = series.zero();
-        Num tradedAmount = series.numOf(initialAmount);
+        Num totalCosts = series.numFactory().zero();
+        Num tradedAmount = series.numFactory().numOf(initialAmount);
 
         for (Position position : tradingRecord.getPositions()) {
             Num tradeCost = getTradeCost(series, position, tradedAmount);
@@ -116,9 +116,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute trade cost
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
-        Num tradeCost = tradedAmount.zero();
+        final var numFactory = tradedAmount.getNumFactory();
+        Num tradeCost = numFactory.zero();
         if (trade != null) {
-            return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
+            return numFactory.numOf(a).multipliedBy(tradedAmount).plus(numFactory.numOf(b));
         }
         return tradeCost;
     }
@@ -130,7 +131,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all trades in the position
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
-        Num totalTradeCost = series.zero();
+        Num totalTradeCost = series.numFactory().zero();
         if (position != null && position.getEntry() != null) {
             totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
             if (position.getExit() != null) {

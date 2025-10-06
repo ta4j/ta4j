@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,32 +23,32 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.function.Function;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private int unstableBars;
     private UnstableIndicator unstableIndicator;
 
-    public UnstableIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public UnstableIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
         unstableBars = 5;
-        unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(new MockBarSeries(numFunction)),
-                unstableBars);
+        unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build()), unstableBars);
     }
 
     @Test

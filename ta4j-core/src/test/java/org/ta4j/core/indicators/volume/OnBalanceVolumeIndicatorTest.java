@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,38 +23,32 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public OnBalanceVolumeIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public OnBalanceVolumeIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void getValue() {
-        ZonedDateTime now = ZonedDateTime.now();
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0, numFunction));
-        bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0, numFunction));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0, numFunction));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 8, 0, numFunction));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0, numFunction));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0, numFunction));
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().closePrice(10).volume(4).add();
+        series.barBuilder().closePrice(5).volume(2).add();
+        series.barBuilder().closePrice(6).volume(3).add();
+        series.barBuilder().closePrice(7).volume(8).add();
+        series.barBuilder().closePrice(7).volume(6).add();
+        series.barBuilder().closePrice(6).volume(10).add();
 
-        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockBarSeries(bars));
+        var obv = new OnBalanceVolumeIndicator(series);
         assertNumEquals(0, obv.getValue(0));
         assertNumEquals(-2, obv.getValue(1));
         assertNumEquals(1, obv.getValue(2));
@@ -64,13 +58,12 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
-    public void stackOverflowError() {
-        List<Bar> bigListOfBars = new ArrayList<Bar>();
+    public void noStackOverflowError() {
+        var bigSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 10000; i++) {
-            bigListOfBars.add(new MockBar(i, numFunction));
+            bigSeries.barBuilder().closePrice(i).volume(0).add();
         }
-        MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
-        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
+        var obv = new OnBalanceVolumeIndicator(bigSeries);
         // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
         assertNumEquals(0, obv.getValue(9999));

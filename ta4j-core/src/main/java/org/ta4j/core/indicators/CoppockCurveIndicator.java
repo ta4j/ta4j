@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.WMAIndicator;
 import org.ta4j.core.indicators.helpers.SumIndicator;
 import org.ta4j.core.num.Num;
 
@@ -34,13 +35,13 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
  */
-public class CoppockCurveIndicator extends AbstractIndicator<Num> {
+public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     private final WMAIndicator wma;
 
     /**
      * Constructor with:
-     * 
+     *
      * <ul>
      * <li>{@code longRoCBarCount} = 14
      * <li>{@code shortRoCBarCount} = 11
@@ -74,7 +75,7 @@ public class CoppockCurveIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

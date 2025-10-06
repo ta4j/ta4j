@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,62 +23,57 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     protected BarSeries data;
 
-    public IchimokuIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public IchimokuIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        final List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
-        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
-        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));
-        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04, numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10, numFunction));
-        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10, numFunction));
-        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07, numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10, numFunction));
-        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14, numFunction));
-        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20, numFunction));
-        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39, numFunction));
-        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, numFunction));
-        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, numFunction));
-        bars.add(new MockBar(45.45, 45.01, 45.55, 44.80, numFunction));
-        bars.add(new MockBar(45.03, 44.23, 45.04, 44.17, numFunction));
-        bars.add(new MockBar(44.23, 43.95, 44.29, 43.81, numFunction));
-        bars.add(new MockBar(43.91, 43.08, 43.99, 43.08, numFunction));
-        bars.add(new MockBar(43.07, 43.55, 43.65, 43.06, numFunction));
-        bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, numFunction));
-        bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, numFunction));
-        data = new MockBarSeries(bars);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        data.barBuilder().openPrice(44.98).closePrice(45.05).highPrice(45.17).lowPrice(44.96).add();
+        data.barBuilder().openPrice(45.05).closePrice(45.10).highPrice(45.15).lowPrice(44.99).add();
+        data.barBuilder().openPrice(45.11).closePrice(45.19).highPrice(45.32).lowPrice(45.11).add();
+        data.barBuilder().openPrice(45.19).closePrice(45.14).highPrice(45.25).lowPrice(45.04).add();
+        data.barBuilder().openPrice(45.12).closePrice(45.15).highPrice(45.20).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.15).closePrice(45.14).highPrice(45.20).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.13).closePrice(45.10).highPrice(45.16).lowPrice(45.07).add();
+        data.barBuilder().openPrice(45.12).closePrice(45.15).highPrice(45.22).lowPrice(45.10).add();
+        data.barBuilder().openPrice(45.15).closePrice(45.22).highPrice(45.27).lowPrice(45.14).add();
+        data.barBuilder().openPrice(45.24).closePrice(45.43).highPrice(45.45).lowPrice(45.20).add();
+        data.barBuilder().openPrice(45.43).closePrice(45.44).highPrice(45.50).lowPrice(45.39).add();
+        data.barBuilder().openPrice(45.43).closePrice(45.55).highPrice(45.60).lowPrice(45.35).add();
+        data.barBuilder().openPrice(45.58).closePrice(45.55).highPrice(45.61).lowPrice(45.39).add();
+        data.barBuilder().openPrice(45.45).closePrice(45.01).highPrice(45.55).lowPrice(44.80).add();
+        data.barBuilder().openPrice(45.03).closePrice(44.23).highPrice(45.04).lowPrice(44.17).add();
+        data.barBuilder().openPrice(44.23).closePrice(43.95).highPrice(44.29).lowPrice(43.81).add();
+        data.barBuilder().openPrice(43.91).closePrice(43.08).highPrice(43.99).lowPrice(43.08).add();
+        data.barBuilder().openPrice(43.07).closePrice(43.55).highPrice(43.65).lowPrice(43.06).add();
+        data.barBuilder().openPrice(43.56).closePrice(43.95).highPrice(43.99).lowPrice(43.53).add();
+        data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).add();
     }
 
     @Test
     public void ichimoku() {
-        IchimokuTenkanSenIndicator tenkanSen = new IchimokuTenkanSenIndicator(data, 3);
-        IchimokuKijunSenIndicator kijunSen = new IchimokuKijunSenIndicator(data, 5);
-        IchimokuSenkouSpanAIndicator senkouSpanA = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen, 5);
-        IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9, 5);
+        var tenkanSen = new IchimokuTenkanSenIndicator(data, 3);
+        var kijunSen = new IchimokuKijunSenIndicator(data, 5);
+        var senkouSpanA = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen, 5);
+        var senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9, 5);
         final int chikouSpanTimeDelay = 5;
         IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, chikouSpanTimeDelay);
 

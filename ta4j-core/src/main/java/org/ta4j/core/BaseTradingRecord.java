@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -73,10 +73,10 @@ public class BaseTradingRecord implements TradingRecord {
     private Position currentPosition;
 
     /** The cost model for transactions of the asset. */
-    private final CostModel transactionCostModel;
+    private final transient CostModel transactionCostModel;
 
     /** The cost model for holding asset (e.g. borrowing). */
-    private final CostModel holdingCostModel;
+    private final transient CostModel holdingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
     public BaseTradingRecord() {
@@ -231,8 +231,23 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    @Override
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
+    }
+
+    @Override
     public List<Position> getPositions() {
         return positions;
+    }
+
+    @Override
+    public List<Trade> getTrades() {
+        return trades;
     }
 
     @Override

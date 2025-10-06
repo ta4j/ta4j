@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * To preserve trend direction, default calculation does not use absolute value.
  */
-public class RAVIIndicator extends AbstractIndicator<Num> {
+public class RAVIIndicator extends CachedIndicator<Num> {
 
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;
@@ -54,11 +55,11 @@ public class RAVIIndicator extends AbstractIndicator<Num> {
     protected Num calculate(int index) {
         Num shortMA = shortSma.getValue(index);
         Num longMA = longSma.getValue(index);
-        return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(hundred());
+        return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(getBarSeries().numFactory().hundred());
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 }

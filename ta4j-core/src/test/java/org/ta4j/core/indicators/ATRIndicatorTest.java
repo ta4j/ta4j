@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,33 +23,82 @@
  */
 package org.ta4j.core.indicators;
 
-import java.time.ZonedDateTime;
-import java.util.function.Function;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+
+import java.time.Instant;
+
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private final ExternalIndicatorTest xls;
 
-    public ATRIndicatorTest(Function<Number, Num> numFunction) throws Exception {
-        super((data, params) -> new ATRIndicator(data, (int) params[0]), numFunction);
-        xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFunction);
+    public ATRIndicatorTest(NumFactory numFactory) {
+        super((data, params) -> new ATRIndicator(data, (int) params[0]), numFactory);
+        xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFactory);
     }
 
     @Test
-    public void testDummy() throws Exception {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
-        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(5), 0, 12, 15, 8, 0, 0, 0, numFunction));
-        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(4), 0, 8, 11, 6, 0, 0, 0, numFunction));
-        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(3), 0, 15, 17, 14, 0, 0, 0, numFunction));
-        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(2), 0, 15, 17, 14, 0, 0, 0, numFunction));
-        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(1), 0, 0, 0, 2, 0, 0, 0, numFunction));
+    public void testDummy() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
+        series.addBar(series.barBuilder()
+                .endTime(now.minusSeconds(5))
+                .openPrice(0)
+                .closePrice(12)
+                .highPrice(15)
+                .lowPrice(8)
+                .amount(0)
+                .volume(0)
+                .build());
+        series.barBuilder()
+                .endTime(now.minusSeconds(4))
+                .openPrice(0)
+                .closePrice(8)
+                .highPrice(11)
+                .lowPrice(6)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .add();
+        series.barBuilder()
+                .endTime(now.minusSeconds(3))
+                .openPrice(0)
+                .closePrice(15)
+                .highPrice(17)
+                .lowPrice(14)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .add();
+        series.barBuilder()
+                .endTime(now.minusSeconds(2))
+                .openPrice(0)
+                .closePrice(15)
+                .highPrice(17)
+                .lowPrice(14)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .add();
+        series.barBuilder()
+                .endTime(now.minusSeconds(1))
+                .openPrice(0)
+                .closePrice(0)
+                .highPrice(0)
+                .lowPrice(2)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .add();
         Indicator<Num> indicator = getIndicator(series, 3);
 
         assertEquals(7d, indicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);

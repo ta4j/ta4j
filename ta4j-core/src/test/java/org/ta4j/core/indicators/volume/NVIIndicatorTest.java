@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,43 +23,36 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class NVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public NVIIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public NVIIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
     public void getValue() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().closePrice(1355.69).volume(2739.55).add();
+        series.barBuilder().closePrice(1325.51).volume(3119.46).add();
+        series.barBuilder().closePrice(1335.02).volume(3466.88).add();
+        series.barBuilder().closePrice(1313.72).volume(2577.12).add();
+        series.barBuilder().closePrice(1319.99).volume(2480.45).add();
+        series.barBuilder().closePrice(1331.85).volume(2329.79).add();
+        series.barBuilder().closePrice(1329.04).volume(2793.07).add();
+        series.barBuilder().closePrice(1362.16).volume(3378.78).add();
+        series.barBuilder().closePrice(1365.51).volume(2417.59).add();
+        series.barBuilder().closePrice(1374.02).volume(1442.81).add();
 
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(1355.69, 2739.55, numFunction));
-        bars.add(new MockBar(1325.51, 3119.46, numFunction));
-        bars.add(new MockBar(1335.02, 3466.88, numFunction));
-        bars.add(new MockBar(1313.72, 2577.12, numFunction));
-        bars.add(new MockBar(1319.99, 2480.45, numFunction));
-        bars.add(new MockBar(1331.85, 2329.79, numFunction));
-        bars.add(new MockBar(1329.04, 2793.07, numFunction));
-        bars.add(new MockBar(1362.16, 3378.78, numFunction));
-        bars.add(new MockBar(1365.51, 2417.59, numFunction));
-        bars.add(new MockBar(1374.02, 1442.81, numFunction));
-        BarSeries series = new MockBarSeries(bars);
-
-        NVIIndicator nvi = new NVIIndicator(series);
+        var nvi = new NVIIndicator(series);
         assertNumEquals(1000, nvi.getValue(0));
         assertNumEquals(1000, nvi.getValue(1));
         assertNumEquals(1000, nvi.getValue(2));

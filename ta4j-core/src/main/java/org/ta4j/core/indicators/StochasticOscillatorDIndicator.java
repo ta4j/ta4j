@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,18 +24,19 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator D.
  */
-public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
+public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
     /**
      * Constructor with {@code indicator} = {@link SMAIndicator SMAIndicator(3)}.
-     * 
+     *
      * @param indicator the indicator for the {@link SMAIndicator}
      */
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
@@ -44,7 +45,7 @@ public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the {@link Indicator}
      */
     public StochasticOscillatorDIndicator(Indicator<Num> indicator) {
@@ -58,7 +59,7 @@ public class StochasticOscillatorDIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public int getUnstableBars() {
+    public int getCountOfUnstableBars() {
         return 0;
     }
 

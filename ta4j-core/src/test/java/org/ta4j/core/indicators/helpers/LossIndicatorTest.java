@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,33 +23,35 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.function.Function;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.NumFactory;
 
 public class LossIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public LossIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public LossIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
+        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2)
+                .build();
     }
 
     @Test
     public void lossUsingClosePrice() {
-        LossIndicator loss = new LossIndicator(new ClosePriceIndicator(data));
+        var loss = new LossIndicator(new ClosePriceIndicator(data));
         assertNumEquals(0, loss.getValue(0));
         assertNumEquals(0, loss.getValue(1));
         assertNumEquals(0, loss.getValue(2));

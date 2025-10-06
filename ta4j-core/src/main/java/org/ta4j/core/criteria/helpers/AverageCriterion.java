@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2023 Ta4j Organization & respective
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -80,7 +80,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.zero();
+            return series.numFactory().zero();
         }
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);
