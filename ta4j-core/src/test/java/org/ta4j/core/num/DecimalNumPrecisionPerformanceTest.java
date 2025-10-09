@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.num;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -32,9 +35,6 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
 /**
  * Performance profiling for {@link DecimalNum} precision trade-offs.
  */
@@ -42,53 +42,11 @@ class DecimalNumPrecisionPerformanceTest {
 
     private static final int SAMPLE_SIZE = 512;
     private static final String[] SAMPLE_VALUES = IntStream.range(0, SAMPLE_SIZE)
-            .mapToObj(DecimalNumPrecisionPerformanceTest::createSampleValue).toArray(String[]::new);
+            .mapToObj(DecimalNumPrecisionPerformanceTest::createSampleValue)
+            .toArray(String[]::new);
     private static final List<Integer> PRECISIONS = List.of(8, 12, 16, 20, 24, 32, 48, 64);
     private static final int ITERATIONS = 200;
     private static final MathContext BASELINE_CONTEXT = new MathContext(64, RoundingMode.HALF_UP);
-
-    @AfterEach
-    void restoreDefaults() {
-        DecimalNum.resetDefaultPrecision();
-    }
-
-    @Test
-    void quantifyPrecisionPerformanceTradeOffs() {
-        final var results = new ArrayList<BenchmarkResult>();
-        for (final var precision : PRECISIONS) {
-            results.add(benchmark(precision));
-        }
-
-        final var baseline = results.stream().filter(result -> result.precision() == BASELINE_CONTEXT.getPrecision())
-                .findFirst().orElseThrow();
-
-        final var report = new StringBuilder();
-        report.append("Precision,DurationMillis,RelativeDuration,MaxAbsoluteError\n");
-        for (final var result : results) {
-            final double millis = nanosToMillis(result.durationNanos());
-            final double relative = millis / nanosToMillis(baseline.durationNanos());
-            final double maxError = result.summary().maxAbsoluteError(baseline.summary()).doubleValue();
-            report.append(String.format(Locale.ROOT, "%d,%.4f,%.3f,%.10f%n", result.precision(), millis, relative, maxError));
-        }
-
-        System.out.println(report);
-    }
-
-    private BenchmarkResult benchmark(final int precision) {
-        DecimalNum.configureDefaultPrecision(precision);
-        try {
-            final var factory = DecimalNumFactory.getInstance();
-            Summary summary = null;
-            final long start = System.nanoTime();
-            for (int i = 0; i < ITERATIONS; i++) {
-                summary = computeSummary(factory);
-            }
-            final long duration = System.nanoTime() - start;
-            return new BenchmarkResult(precision, duration, summary);
-        } finally {
-            DecimalNum.resetDefaultPrecision();
-        }
-    }
 
     private static Summary computeSummary(final NumFactory factory) {
         final var alpha = (DecimalNum) factory.numOf("0.2");
@@ -112,8 +70,7 @@ class DecimalNumPrecisionPerformanceTest {
 
         final var count = (DecimalNum) factory.numOf(Integer.valueOf(SAMPLE_VALUES.length));
         final var mean = (DecimalNum) sum.dividedBy(count);
-        final var variance = (DecimalNum) sumSquared.dividedBy(count)
-                .minus((DecimalNum) mean.multipliedBy(mean));
+        final var variance = (DecimalNum) sumSquared.dividedBy(count).minus((DecimalNum) mean.multipliedBy(mean));
         final var avgVolatility = (DecimalNum) volatility.dividedBy(count);
         return new Summary(ema, mean, variance, avgVolatility);
     }
@@ -128,18 +85,56 @@ class DecimalNumPrecisionPerformanceTest {
         return value.toPlainString();
     }
 
+    @AfterEach
+    void restoreDefaults() {
+        DecimalNum.resetDefaultPrecision();
+    }
+
+    @Test
+    void quantifyPrecisionPerformanceTradeOffs() {
+        final var results = new ArrayList<BenchmarkResult>();
+        for (final var precision : PRECISIONS) {
+            results.add(benchmark(precision));
+        }
+
+        final var baseline = results.stream()
+                .filter(result -> result.precision() == BASELINE_CONTEXT.getPrecision())
+                .findFirst()
+                .orElseThrow();
+
+        final var report = new StringBuilder();
+        report.append("Precision,DurationMillis,RelativeDuration,MaxAbsoluteError\n");
+        for (final var result : results) {
+            final double millis = nanosToMillis(result.durationNanos());
+            final double relative = millis / nanosToMillis(baseline.durationNanos());
+            final double maxError = result.summary().maxAbsoluteError(baseline.summary()).doubleValue();
+            report.append(
+                    String.format(Locale.ROOT, "%d,%.4f,%.3f,%.10f%n", result.precision(), millis, relative, maxError));
+        }
+
+        System.out.println(report);
+    }
+
+    private BenchmarkResult benchmark(final int precision) {
+        DecimalNum.configureDefaultPrecision(precision);
+        try {
+            final var factory = DecimalNumFactory.getInstance();
+            Summary summary = null;
+            final long start = System.nanoTime();
+            for (int i = 0; i < ITERATIONS; i++) {
+                summary = computeSummary(factory);
+            }
+            final long duration = System.nanoTime() - start;
+            return new BenchmarkResult(precision, duration, summary);
+        } finally {
+            DecimalNum.resetDefaultPrecision();
+        }
+    }
+
     private record BenchmarkResult(int precision, long durationNanos, Summary summary) {
     }
 
     private record Summary(DecimalNum ema, DecimalNum mean, DecimalNum variance, DecimalNum avgVolatility) {
-
-        BigDecimal maxAbsoluteError(final Summary baseline) {
-            final var emaDiff = difference(ema, baseline.ema);
-            final var meanDiff = difference(mean, baseline.mean);
-            final var varianceDiff = difference(variance, baseline.variance);
-            final var volatilityDiff = difference(avgVolatility, baseline.avgVolatility);
-            return max(emaDiff, meanDiff, varianceDiff, volatilityDiff);
-        }
 
         private static BigDecimal difference(final DecimalNum first, final DecimalNum second) {
             return first.bigDecimalValue().subtract(second.bigDecimalValue()).abs();
@@ -153,6 +148,14 @@ class DecimalNumPrecisionPerformanceTest {
                 }
             }
             return result;
+        }
+
+        BigDecimal maxAbsoluteError(final Summary baseline) {
+            final var emaDiff = difference(ema, baseline.ema);
+            final var meanDiff = difference(mean, baseline.mean);
+            final var varianceDiff = difference(variance, baseline.variance);
+            final var volatilityDiff = difference(avgVolatility, baseline.avgVolatility);
+            return max(emaDiff, meanDiff, varianceDiff, volatilityDiff);
         }
     }
 }

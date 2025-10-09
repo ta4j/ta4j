@@ -226,7 +226,7 @@ public final class DecimalNum implements Num {
      * @param mathContext new default math context
      * @throws NullPointerException     if {@code mathContext} is {@code null}
      * @throws IllegalArgumentException if {@code mathContext#getPrecision()} is not
-     *                                   positive
+     *                                  positive
      */
     public static void configureDefaultMathContext(final MathContext mathContext) {
         Objects.requireNonNull(mathContext, "mathContext");

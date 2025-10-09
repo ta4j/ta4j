@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.num;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.math.MathContext;
 import java.math.RoundingMode;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DecimalNumPrecisionConfigurationTest {
 
@@ -67,6 +67,20 @@ class DecimalNumPrecisionConfigurationTest {
         final var num = (DecimalNum) factory.numOf("3.14159");
 
         assertEquals(22, num.getMathContext().getPrecision());
+        assertEquals(22, ((DecimalNum) factory.one()).getMathContext().getPrecision());
+        assertEquals(22, ((DecimalNum) factory.hundred()).getMathContext().getPrecision());
+    }
+
+    @Test
+    void factoryWithExplicitContextUsesPrecisionForConstants() {
+        final var customContext = new MathContext(28, RoundingMode.HALF_EVEN);
+        final var factory = DecimalNumFactory.getInstance(customContext);
+
+        final var num = (DecimalNum) factory.numOf("2.718281828");
+
+        assertEquals(customContext, num.getMathContext());
+        assertEquals(customContext, ((DecimalNum) factory.minusOne()).getMathContext());
+        assertEquals(customContext, ((DecimalNum) factory.thousand()).getMathContext());
     }
 
     @Test
