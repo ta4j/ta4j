@@ -72,8 +72,8 @@ public final class DecimalNum implements Num {
      *
      * @param val the string representation of the Num value
      * @deprecated This constructor leaks higher precisions into overall
-     * calculations. Use {@link DecimalNum(String, MathContext)}
-     * instead. {@link DecimalNumFactory#numOf(String)} does.
+     *             calculations. Use {@link DecimalNum(String, MathContext)}
+     *             instead. {@link DecimalNumFactory#numOf(String)} does.
      */
     @Deprecated(since = "0.18", forRemoval = true)
     private DecimalNum(final String val) {
@@ -248,6 +248,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Resets the default precision and rounding mode to the library defaults.
+     *
      * @since 0.19
      */
     public static void resetDefaultPrecision() {
@@ -292,7 +293,7 @@ public final class DecimalNum implements Num {
      *
      * @param val the number
      * @return the {@code Num} whose value is equal to or approximately equal to the
-     * value of {@code val}.
+     *         value of {@code val}.
      * @throws NumberFormatException if {@code val} is {@code Float.NaN}
      */
     public static DecimalNum valueOf(final float val, final MathContext mathContext) {
@@ -310,7 +311,7 @@ public final class DecimalNum implements Num {
      *
      * @param val the number
      * @return the {@code Num} whose value is equal to or approximately equal to the
-     * value of {@code val}.
+     *         value of {@code val}.
      * @throws NumberFormatException if {@code val} is {@code Double.NaN}
      */
     public static DecimalNum valueOf(final double val, final MathContext mathContext) {
@@ -498,10 +499,10 @@ public final class DecimalNum implements Num {
         log.trace("delegate {}", this.delegate);
         final int comparedToZero = this.delegate.compareTo(BigDecimal.ZERO);
         switch (comparedToZero) {
-            case -1:
-                return NaN;
-            case 0:
-                return DecimalNumFactory.getInstance().zero();
+        case -1:
+            return NaN;
+        case 0:
+            return DecimalNumFactory.getInstance().zero();
         }
 
         // Direct implementation of the example in:
@@ -639,7 +640,7 @@ public final class DecimalNum implements Num {
      * @param other     the other value, not null
      * @param precision the int precision
      * @return true if this matches the specified value to a precision, false
-     * otherwise
+     *         otherwise
      */
     public boolean matches(final Num other, final int precision) {
         final Num otherNum = DecimalNum.valueOf(other.toString(), this.mathContext);
@@ -660,7 +661,7 @@ public final class DecimalNum implements Num {
      * @param other the other value, not null
      * @param delta the {@link Num} offset
      * @return true if this matches the specified value within an offset, false
-     * otherwise
+     *         otherwise
      */
     public boolean matches(final Num other, final Num delta) {
         final Num result = this.minus(other);
@@ -696,8 +697,8 @@ public final class DecimalNum implements Num {
 
     /**
      * @return the {@code Num} whose value is the smaller of this {@code Num} and
-     * {@code other}. If they are equal, as defined by the
-     * {@link #compareTo(Num) compareTo} method, {@code this} is returned.
+     *         {@code other}. If they are equal, as defined by the
+     *         {@link #compareTo(Num) compareTo} method, {@code this} is returned.
      */
     @Override
     public Num min(final Num other) {
@@ -706,8 +707,8 @@ public final class DecimalNum implements Num {
 
     /**
      * @return the {@code Num} whose value is the greater of this {@code Num} and
-     * {@code other}. If they are equal, as defined by the
-     * {@link #compareTo(Num) compareTo} method, {@code this} is returned.
+     *         {@code other}. If they are equal, as defined by the
+     *         {@link #compareTo(Num) compareTo} method, {@code this} is returned.
      */
     @Override
     public Num max(final Num other) {
@@ -724,8 +725,8 @@ public final class DecimalNum implements Num {
      * {@code obj} are both {@link NaN#NaN}.
      *
      * @return true if {@code this} object is the same as the {@code obj} argument,
-     * as defined by the {@link #compareTo(Num) compareTo} method; false
-     * otherwise.
+     *         as defined by the {@link #compareTo(Num) compareTo} method; false
+     *         otherwise.
      */
     @Override
     public boolean equals(final Object obj) {
