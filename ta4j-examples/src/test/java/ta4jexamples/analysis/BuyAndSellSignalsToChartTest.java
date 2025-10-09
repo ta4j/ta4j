@@ -31,7 +31,8 @@ import org.junit.Test;
 public class BuyAndSellSignalsToChartTest {
     @Test
     public void test() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Graphics environment required", GraphicsEnvironment.isHeadless());
+
         BuyAndSellSignalsToChart.main(null);
     }
 

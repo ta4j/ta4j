@@ -32,7 +32,8 @@ public class CandlestickChartTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Graphics environment required", GraphicsEnvironment.isHeadless());
+
         CandlestickChart.main(null);
     }
 }
