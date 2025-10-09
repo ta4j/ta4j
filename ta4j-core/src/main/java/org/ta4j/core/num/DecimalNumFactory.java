@@ -23,60 +23,76 @@
  */
 package org.ta4j.core.num;
 
-import static org.ta4j.core.num.DecimalNum.DEFAULT_PRECISION;
-
 import java.math.MathContext;
-import java.math.RoundingMode;
 
 public class DecimalNumFactory implements NumFactory {
 
-    private static final DecimalNum MINUS_ONE = DecimalNum.valueOf(-1, new MathContext(1));
-    private static final DecimalNum ZERO = DecimalNum.valueOf(0, new MathContext(1));
-    private static final DecimalNum ONE = DecimalNum.valueOf(1, new MathContext(1));
-    private static final DecimalNum TWO = DecimalNum.valueOf(2, new MathContext(1));
-    private static final DecimalNum THREE = DecimalNum.valueOf(3, new MathContext(1));
-    private static final DecimalNum HUNDRED = DecimalNum.valueOf(100, new MathContext(3));
-    private static final DecimalNum THOUSAND = DecimalNum.valueOf(1000, new MathContext(4));
-
     private final MathContext mathContext;
+    private final DecimalNum minusOne;
+    private final DecimalNum zero;
+    private final DecimalNum one;
+    private final DecimalNum two;
+    private final DecimalNum three;
+    private final DecimalNum hundred;
+    private final DecimalNum thousand;
 
-    private DecimalNumFactory(final int precision) {
-        this.mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+    private DecimalNumFactory(final MathContext mathContext) {
+        this.mathContext = mathContext;
+        this.minusOne = DecimalNum.valueOf(-1, mathContext);
+        this.zero = DecimalNum.valueOf(0, mathContext);
+        this.one = DecimalNum.valueOf(1, mathContext);
+        this.two = DecimalNum.valueOf(2, mathContext);
+        this.three = DecimalNum.valueOf(3, mathContext);
+        this.hundred = DecimalNum.valueOf(100, mathContext);
+        this.thousand = DecimalNum.valueOf(1000, mathContext);
+    }
+
+    public static NumFactory getInstance() {
+        return getInstance(DecimalNum.getDefaultMathContext());
+    }
+
+    public static NumFactory getInstance(final int precision) {
+        final var roundingMode = DecimalNum.getDefaultMathContext().getRoundingMode();
+        return new DecimalNumFactory(new MathContext(precision, roundingMode));
+    }
+
+    public static NumFactory getInstance(final MathContext mathContext) {
+        return new DecimalNumFactory(mathContext);
     }
 
     @Override
     public Num minusOne() {
-        return MINUS_ONE;
+        return this.minusOne;
     }
 
     @Override
     public Num zero() {
-        return ZERO;
+        return this.zero;
     }
 
     @Override
     public Num one() {
-        return ONE;
+        return this.one;
     }
 
     @Override
     public Num two() {
-        return TWO;
+        return this.two;
     }
 
     @Override
     public Num three() {
-        return THREE;
+        return this.three;
     }
 
     @Override
     public Num hundred() {
-        return HUNDRED;
+        return this.hundred;
     }
 
     @Override
     public Num thousand() {
-        return THOUSAND;
+        return this.thousand;
     }
 
     @Override
@@ -89,11 +105,4 @@ public class DecimalNumFactory implements NumFactory {
         return DecimalNum.valueOf(number, this.mathContext);
     }
 
-    public static NumFactory getInstance() {
-        return getInstance(DEFAULT_PRECISION);
-    }
-
-    public static NumFactory getInstance(final int precision) {
-        return new DecimalNumFactory(precision);
-    }
 }

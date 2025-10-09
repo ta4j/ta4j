@@ -23,7 +23,8 @@
  */
 package org.ta4j.core.num;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -32,9 +33,9 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Representation of arbitrary precision {@link BigDecimal}. A {@code Num}
@@ -51,11 +52,12 @@ import org.slf4j.LoggerFactory;
  */
 public final class DecimalNum implements Num {
 
+    static final int DEFAULT_PRECISION = 16;
     private static final long serialVersionUID = 1L;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
-
-    static final int DEFAULT_PRECISION = 32;
-    private static final MathContext DEFAULT_MATH_CONTEXT = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+    private static final RoundingMode DEFAULT_ROUNDING_MODE = RoundingMode.HALF_UP;
+    private static final AtomicReference<MathContext> DEFAULT_MATH_CONTEXT = new AtomicReference<>(
+            new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
 
     private final MathContext mathContext;
     private final BigDecimal delegate;
@@ -69,7 +71,6 @@ public final class DecimalNum implements Num {
      * only a string parameter can accurately represent a value.
      *
      * @param val the string representation of the Num value
-     *
      * @deprecated This constructor leaks higher precisions into overall
      *             calculations. Use {@link DecimalNum(String, MathContext)}
      *             instead. {@link DecimalNumFactory#numOf(String)} does.
@@ -77,9 +78,11 @@ public final class DecimalNum implements Num {
     @Deprecated(since = "0.18", forRemoval = true)
     private DecimalNum(final String val) {
         this.delegate = new BigDecimal(val);
-        final int precision = Math.max(this.delegate.precision(), DEFAULT_PRECISION);
-        this.mathContext = precision == DEFAULT_PRECISION ? DEFAULT_MATH_CONTEXT
-                : new MathContext(precision, RoundingMode.HALF_UP);
+        final var defaultContext = getDefaultMathContext();
+        final int defaultPrecision = defaultContext.getPrecision();
+        final int precision = Math.max(this.delegate.precision(), defaultPrecision);
+        this.mathContext = precision == defaultPrecision ? defaultContext
+                : new MathContext(precision, defaultContext.getRoundingMode());
     }
 
     /**
@@ -198,6 +201,61 @@ public final class DecimalNum implements Num {
     }
 
     /**
+     * Returns the default {@link MathContext} used when no precision is specified.
+     *
+     * @return default math context
+     */
+    public static MathContext getDefaultMathContext() {
+        return DEFAULT_MATH_CONTEXT.get();
+    }
+
+    /**
+     * Returns the default precision used when no precision is specified.
+     *
+     * @return default precision
+     */
+    public static int getDefaultPrecision() {
+        return getDefaultMathContext().getPrecision();
+    }
+
+    /**
+     * Configures the default {@link MathContext} used by {@link DecimalNum}.
+     *
+     * @param mathContext new default math context
+     * @throws NullPointerException     if {@code mathContext} is {@code null}
+     * @throws IllegalArgumentException if {@code mathContext#getPrecision()} is not
+     *                                  positive
+     * @since 0.19
+     */
+    public static void configureDefaultMathContext(final MathContext mathContext) {
+        Objects.requireNonNull(mathContext, "mathContext");
+        if (mathContext.getPrecision() <= 0) {
+            throw new IllegalArgumentException("Precision must be greater than zero");
+        }
+        DEFAULT_MATH_CONTEXT.set(mathContext);
+    }
+
+    /**
+     * Configures the default precision while preserving the current rounding mode.
+     *
+     * @param precision new default precision (> 0)
+     * @since 0.19
+     */
+    public static void configureDefaultPrecision(final int precision) {
+        final var current = getDefaultMathContext();
+        configureDefaultMathContext(new MathContext(precision, current.getRoundingMode()));
+    }
+
+    /**
+     * Resets the default precision and rounding mode to the library defaults.
+     *
+     * @since 0.19
+     */
+    public static void resetDefaultPrecision() {
+        DEFAULT_MATH_CONTEXT.set(new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
+    }
+
+    /**
      * Returns a {@code Num} version of the given {@code int}.
      *
      * @param val the number
@@ -278,13 +336,12 @@ public final class DecimalNum implements Num {
     /**
      * If there are operations between constant that have precision 0 and other
      * number we need to preserve bigger precision.
-     *
+     * <p>
      * If we do not provide math context that sets upper bound, BigDecimal chooses
      * "infinity" precision, that may be too much.
      *
      * @param first  decimal num
      * @param second decimal num
-     *
      * @return math context with bigger precision
      */
     private static MathContext chooseMathContextWithGreaterPrecision(final DecimalNum first, final DecimalNum second) {
