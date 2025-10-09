@@ -32,8 +32,7 @@ public class IndicatorsToChartTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse("Graphics environment required", GraphicsEnvironment.isHeadless());
-
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         IndicatorsToChart.main(null);
     }
 }

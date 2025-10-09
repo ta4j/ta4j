@@ -1,5 +1,9 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+
+### Changed
+- [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+
 ## 0.19
 
 ### Breaking
