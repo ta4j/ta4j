@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.num;
 
-import static org.ta4j.core.num.DecimalNum.DEFAULT_PRECISION;
-
 import java.math.MathContext;
 import java.math.RoundingMode;
 
@@ -40,8 +38,8 @@ public class DecimalNumFactory implements NumFactory {
 
     private final MathContext mathContext;
 
-    private DecimalNumFactory(final int precision) {
-        this.mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+    private DecimalNumFactory(final MathContext mathContext) {
+        this.mathContext = mathContext;
     }
 
     @Override
@@ -90,10 +88,15 @@ public class DecimalNumFactory implements NumFactory {
     }
 
     public static NumFactory getInstance() {
-        return getInstance(DEFAULT_PRECISION);
+        return getInstance(DecimalNum.getDefaultMathContext());
     }
 
     public static NumFactory getInstance(final int precision) {
-        return new DecimalNumFactory(precision);
+        final var roundingMode = DecimalNum.getDefaultMathContext().getRoundingMode();
+        return new DecimalNumFactory(new MathContext(precision, roundingMode));
+    }
+
+    public static NumFactory getInstance(final MathContext mathContext) {
+        return new DecimalNumFactory(mathContext);
     }
 }
