@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,10 +24,13 @@
 package ta4jexamples.strategies;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
@@ -35,7 +38,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.UnstableIndicator;
 import org.ta4j.core.num.Num;
@@ -45,8 +48,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 public class UnstableIndicatorStrategy {
 
     public static final Duration MINUTE = Duration.ofMinutes(1);
-
-    public static final Instant TIME = Instant.parse("2020-01-01T00:00:00Z");
+    public static final ZonedDateTime TIME = ZonedDateTime.of(2020, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
 
     public static Strategy buildStrategy(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -78,16 +80,10 @@ public class UnstableIndicatorStrategy {
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
-        BarSeries series = new BaseBarSeriesBuilder().build();
-
-        closePrices.forEach(close -> series.barBuilder()
-                .timePeriod(MINUTE)
-                .endTime(TIME)
-                .openPrice(0)
-                .closePrice(close)
-                .highPrice(0)
-                .lowPrice(0)
-                .add());
+        BarSeries series = new BaseBarSeriesBuilder()
+                .withBars(closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0))
+                        .collect(Collectors.toList()))
+                .build();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);

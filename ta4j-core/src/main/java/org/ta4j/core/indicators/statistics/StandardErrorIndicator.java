@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Standard error indicator.
  */
-public class StandardErrorIndicator extends CachedIndicator<Num> {
+public class StandardErrorIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final StandardDeviationIndicator sdev;
@@ -51,11 +51,11 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        return sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
+        return sdev.getValue(index).dividedBy(numOf(numberOfObservations).sqrt());
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 }

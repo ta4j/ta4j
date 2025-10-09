@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.helpers.StandardDeviationCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -52,16 +52,16 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     private final Integer nPositions;
 
     /**
-     * Constructor with {@code criterion} = {@link NetProfitLossCriterion}.
+     * Constructor with {@code criterion} = {@link ProfitLossCriterion}.
      */
     public SqnCriterion() {
-        this(new NetProfitLossCriterion());
+        this(new ProfitLossCriterion());
     }
 
     /**
      * Constructor.
      *
-     * @param criterion the Criterion (e.g. NetProfitLossCriterion or
+     * @param criterion the Criterion (e.g. ProfitLossCriterion or
      *                  ExpectancyCriterion)
      */
     public SqnCriterion(AnalysisCriterion criterion) {
@@ -71,7 +71,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param criterion  the Criterion (e.g. NetProfitLossCriterion or
+     * @param criterion  the Criterion (e.g. ProfitLossCriterion or
      *                   ExpectancyCriterion)
      * @param nPositions the {@link #nPositions} (optional)
      */
@@ -85,7 +85,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         Num stdDevPnl = standardDeviationCriterion.calculate(series, position);
         if (stdDevPnl.isZero()) {
-            return series.numFactory().zero();
+            return series.zero();
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
@@ -97,18 +97,18 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numFactory().zero();
+            return series.zero();
         }
         Num stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);
         if (stdDevPnl.isZero()) {
-            return series.numFactory().zero();
+            return series.zero();
         }
 
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         Num pnl = criterion.calculate(series, tradingRecord);
         Num avgPnl = pnl.dividedBy(numberOfPositions);
-        if (nPositions != null && numberOfPositions.isGreaterThan(series.numFactory().hundred())) {
-            numberOfPositions = series.numFactory().numOf(nPositions);
+        if (nPositions != null && numberOfPositions.isGreaterThan(series.hundred())) {
+            numberOfPositions = series.numOf(nPositions);
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
         return avgPnl.dividedBy(stdDevPnl).multipliedBy(numberOfPositions.sqrt());

@@ -1,162 +1,6 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.19
-
-### Breaking
-- Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion` and `ProfitLossPercentageCriterion` criteria into their net and gross concrete classes
-- [#1266](https://github.com/ta4j/ta4j/issues/1266) Consolidated BinaryOperation, UnaryOperation, TransformIndicator and CombineIndicator
-- Moved `criteria/MaximumDrawdownCriterion.java` and `criteria/ReturnOverMaxDrawdownCriterion.java` to `criteria/drawdown/` sub-package
-
-### Fixed
-- Updated Github test workflow to cache dependencies for quicker builds
-- Updated test status badge on README
-- Fixed EnterAndHoldCriterion to keep track of transaction and hold costs
-- Clarify PnL criterion comments about trading costs
-- Refactor ProfitLossPercentageCriterion to calculate aggregated return
-- Fixed strict rules of `ConvergenceDivergenceIndicator`
-- Fixed calculation of `ReturnOverMaxDrawdownCriterion`
-- swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
-- Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
-- Corrected the calculation of unstable bars of the SMA indicator
-- `PivotPointIndicatorTest` fixed to work also in java 25
-
-### Changed
-- Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
-- `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
-- Changed snapshot distribution to Maven Central after OSSRH end-of-life
-- `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
-
-### Removed/Deprecated
-- TransformIndicator and CombineIndicator
-
-### Added
-- Bars can now be built by `beginTime` instead of `endTime`
-- Added tests for `DoubleNumFactory` and `DecimalNumFactory`
-- Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
-- Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaximumDrawdownBarLengthCriterion` to calculate its length
-- Added `MonteCarloMaximumDrawdownCriterion` to estimate drawdown risk distribution by simulating different trade orders
-- Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
-- Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
-- Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
-
-## 0.18 (released May 15, 2025)
-
-### Breaking
-- Updated project Java JDK from 11 > 21
-- Updated Github workflows to use JDK 21
-- Extracted NumFactory as source of numbers with defined precision
-- Replaced `ZonedDateTime` with `Instant`
-- Renamed `FixedDecimalIndicator` with `FixedNumIndicator`
-- Moved `BaseBarBuilder` and `BaseBarBuilderFactory` to `bars`-package and renamed to `TimeBarBuilder` and `TimeBarBuilderFactory`
-- Renamed `BaseBarConvertibleBuilderTest` to `BaseBarSeriesBuilderTest`
-- Renamed  `Indicator.getUnstableBars` to  `Indicator.getCountOfUnstableBars`
-- Moved `indicators/AbstractEMAIndicator` to `indicators/averages`-package
-- Moved `indicators/DoubleEMAIndicator` to `indicators/averages`-package
-- Moved `indicators/EMAIndicator` to `indicators/averages`-package
-- Moved `indicators/HMAIndicator` to `indicators/averages`-package
-- Moved `indicators/KAMAIndicator` to `indicators/averages`-package
-- Moved `indicators/LWMAIndicator` to `indicators/averages`-package
-- Moved `indicators/MMAIndicator` to `indicators/averages`-package
-- Moved `indicators/SMAIndicator` to `indicators/averages`-package
-- Moved `indicators/TripleEMAIndicator` to `indicators/averages`-package
-- Moved `indicators/WMAIndicator` to `indicators/averages`-package
-- Moved `indicators/ZLEMAIndicator` to `indicators/averages`-package
-- Implemented sharing of `MathContext` in `DecimalNum`. For creating numbers, `NumFactory` implementations are the preferred way.
-
-### Fixed
-- Fixed `BaseBar.toString()` to avoid `NullPointerException` if any of its property is null
-- Fixed `SMAIndicatorTest` to set the endTime of the next bar correctly
-- Fixed `SMAIndicatorMovingSeriesTest` to set the endTime of the next bar correctly
-- Use UTC TimeZone for `AroonOscillatorIndicatorTest`, `PivotPointIndicatorTest`
-- Fixed `MockBarBuilder` to use `Instant.now` for beginTime
-- Fixed `RecentSwingHighIndicatorTest` to create bars consistently
-- Fixed `LSMAIndicator` to fix lsma calculation for incorrect values
-- Fixed `RSIIndicator` getCountOfUnstableBars to return barCount value instead of 0 
-- Fixed `RSIIndicator` calculate to return NaN during unstable period
-
-### Changed
-- Updated **jfreechart** dependency in **ta4j-examples** project from 1.5.3 to 1.5.5 to resolve [CVE-2023-52070](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
-- Updated **logback-classic** 1.4.12 > 1.5.6 to resolve [CVE-2023-6481](https://ossindex.sonatype.org/vulnerability/CVE-2023-6481?component-type=maven&component-name=ch.qos.logback%2Flogback-core)
-- Cleaned code by using new java syntax `text blocks`
-- Faster test execution by using `String.lines()` instead of `String` concatenation
-- Improve Javadoc for `DecimalNum`and `DoubleNum`
-- Allowed JUnit5 for new tests. Old remain as is.
-- Updated `StochasticOscillatorKIndicator` constructor to use generic params
-- Updated `StochasticRSIIndicator` to use `StochasticOscillatorKIndicator` instead of duplicating the logic
-- Updated `TestUtils` assertIndicatorEquals and assertIndicatorNotEquals to handle NaN values
-
-### Removed/Deprecated
-
-
-### Added
-- added `HeikinAshiBarAggregator`: Heikin-Ashi bar aggregator implementation
-- added `HeikinAshiBarBuilder`: Heikin-Ashi bar builder implementation
-- added `Bar.getZonedBeginTime`: the bar's begin time usable as ZonedDateTime
-- added `Bar.getZonedEndTime`: the bar's end time usable as ZonedDateTime
-- added `Bar.getSystemZonedBeginTime`: the bar's begin time converted to system time zone
-- added `Bar.getSystemZonedEndTime`: the bar's end time converted to system time zone
-- added `BarSeries.getSeriesPeriodDescriptionInSystemTimeZone`: with times printed in system's default time zone
-- added `KRIIndicator`
-- Added constructor with `amount` for  `EnterAndHoldCriterion`
-- Added constructor with `amount` for  `VersusEnterAndHoldCriterion`
-- Added `TickBarBuilder` to `bars`-package to aggregate bars after a fixed number of ticks
-- Added `VolumeBarBuilder` to `bars`-package to  aggregate bars after a fixed number of contracts (volume)
-- Added `TickBarBuilder` to `bars`-package
-- Added `VolumeBarBuilder` to `bars`-package
-- Added `Indicator.isStable`: is `true` if the indicator no longer produces incorrect values due to insufficient data
-- Added `WildersMAIndicator` to `indicators.averages`-package: Wilder's moving average indicator
-- Added `DMAIndicator` to `indicators.averages`-package: Displaced Moving Average (DMA) indicator
-- Added `EDMAIndicator` to `indicators.averages`-package: Exponential Displaced Moving Average (EDMA) indicator
-- Added `JMAIndicator` to `indicators.averages`-package: Jurik Moving Average (JMA) indicator
-- Added `TMAIndicator` to `indicators.averages`-package: Trangular Moving Average (TMA) indicator
-- Added `ATMAIndicator` to `indicators.averages`-package: Asymmetric Trangular Moving Average (TMA) indicator
-- Added `MCGinleyMAIndicator` to `indicators.averages`-package: McGinley Moving Average (McGinleyMA) indicator
-- Added `SMMAIndicator` to `indicators.averages`-package: Smoothed Moving Average (SMMA) indicator
-- Added `SGMAIndicator` to `indicators.averages`-package: Savitzky-Golay Moving Average (SGMA) indicator
-- Added `LSMAIndicator` to `indicators.averages`-package: Least Squares Moving Average (LSMA) indicator
-- Added `KiJunV2Indicator` to `indicators.averages`-package: Kihon Moving Average (KiJunV2) indicator
-- Added `VIDYAIndicator` to `indicators.averages`-package: Chande’s Variable Index Dynamic Moving Average (VIDYA) indicator
-- Added `VWMAIndicator` to `indicators.averages`-package: Volume Weighted Moving Average (VWMA) indicator
-- added `AverageIndicator`
-
-## 0.17 (released September 9, 2024)
-
-### Breaking
-- Renamed **SMAIndicatorMovingSerieTest** to **SMAIndicatorMovingSeriesTest**
-
-### Fixed
-- Fixed **ta4jexamples** project still pointing to old (0.16) version of **ta4j-core**
-- Fixed **SMAIndicatorMovingSeriesTest** test flakiness where on fast enough build machines the mock bars are created with the exact same end time
-- Fixed NaN in **DXIndicator, MinusDIIndicator, PlusDIIndicator** if there is no trend
-- Fixed look ahead bias in **RecentSwingHighIndicator** and **RecentSwingLowIndicator**
-
-### Changed
-- Implemented inner cache for **SMAIndicator**
-- **BooleanTransformIndicator** remove enum constraint in favor of more flexible `Predicate`
-- **EnterAndHoldReturnCriterion** replaced by `EnterAndHoldCriterion` to calculate the "enter and hold"-strategy of any criteria.
-- **ATRIndicator** re-use tr by passing it as a constructor param when initializing averageTrueRangeIndicator
-
-### Removed/Deprecated
-
-### Added
-- Added signal line and histogram to **MACDIndicator**
-- Added getTransactionCostModel, getHoldingCostModel, getTrades in **TradingRecord**
-- Added `Num.bigDecimalValue(DoubleNum)` to convert Num to a BigDecimal
-- Added **AverageTrueRangeTrailingStopLossRule**
-- Added **AverageTrueRangeStopLossRule**
-- Added **AverageTrueRangeStopGainRule**
-- Added **SqueezeProIndicator**
-- Added **RecentSwingHighIndicator**
-- Added **RecentSwingLowIndicator**
-- Added **KalmanFilterIndicator**
-- Added **HammerIndicator**
-- Added **InvertedHammerIndicator**
-- Added **HangingManIndicator**
-- Added **ShootingStarIndicator**
-- Added **DownTrendIndicator**
-- Added **UpTrendIndicator**
-
-## 0.16 (released May 15, 2024)
+## 0.16 (unreleased)
 
 ### Breaking
 - **Upgraded to Java 11**
@@ -176,8 +20,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
     - For example:
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, new TradeOnCurrentCloseModel())`
       - `BarSeriesManager manager = new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel)`
-- **BarSeriesManager** and **BacktestExecutor** moved to package **`backtest`**
-- **BarSeries#getBeginIndex()** method returns correct begin index for bar series with max bar count
+- **BarSeriesManager** and **BacktestExecutor** moved to packge **`backtest`**
+- **BarSeries#getBeginIndex()** methode returns correct begin index for bar series with max bar count
 
 ### Fixed
 - **Fixed** **SuperTrendIndicator** fixed calculation when close price is the same as the previous Super Trend indicator value
@@ -190,7 +34,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferencePercentageIndicator** fixed re-calculate instance variable on every iteration
 - **ThreeWhiteSoldiersIndicator** fixed eliminated instance variable holding possible wrong value
 - **ThreeBlackCrowsIndicator** fixed eliminated instance variable holding possible wrong value
-- **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be always the correct (last) value
+- **TrailingStopLossRule** removed instance variable `currentStopLossLimitActivation` because it may not be alway the correct (last) value
 - sets `ClosePriceDifferenceIndicator#getUnstableBars` = `1`
 - sets `ClosePriceRatioIndicator#getUnstableBars` = `1`
 - sets `ConvergenceDivergenceIndicator#getUnstableBars` = `barCount`
@@ -203,7 +47,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PreviousValueIndicator** returns `NaN` if the (n-th) previous value of an indicator does not exist, i.e. if the (n-th) previous is below the first available index. 
 - **EnterAndHoldReturnCriterion** fixes exception thrown when bar series was empty
 - **BaseBarSeries** fixed `UnsupportedOperationException` when creating a bar series that is based on an unmodifiable collection
-- **Num** implements Serializable
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
@@ -614,7 +457,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 
 ### VERY Important note!!!!
 
-with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). You have to reorganize all your references to the new packages!
+with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). You have to reorganize all your refernces to the new packages!
 In eclipse you can do this easily by selecting your sources and run "Organize imports"
 _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 

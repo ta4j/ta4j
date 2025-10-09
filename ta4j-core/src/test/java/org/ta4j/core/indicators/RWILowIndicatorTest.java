@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-
+import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 /**
  * Testing the RWILowIndicator
@@ -42,9 +42,9 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
      */
     private final ExternalIndicatorTest xls;
 
-    public RWILowIndicatorTest(NumFactory numFactory) {
-        super((data, params) -> new RWILowIndicator(data, (int) params[0]), numFactory);
-        xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 9, numFactory);
+    public RWILowIndicatorTest(Function<Number, Num> numFunction) {
+        super((data, params) -> new RWILowIndicator(data, (int) params[0]), numFunction);
+        xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 9, numFunction);
     }
 
     @Test

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,17 +28,17 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.util.List;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Pivot Reversal Indicator.
  *
  * @see <a href=
- *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
- *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
+public class StandardReversalIndicator extends AbstractIndicator<Num> {
 
     private final PivotPointIndicator pivotPointIndicator;
     private final PivotLevel level;
@@ -56,7 +56,7 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
         this.level = level;
-        this.two = pivotPointIndicator.getBarSeries().numFactory().numOf(2);
+        this.two = pivotPointIndicator.numOf(2);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 

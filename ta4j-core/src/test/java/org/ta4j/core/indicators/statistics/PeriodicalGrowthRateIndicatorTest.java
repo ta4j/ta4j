@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,24 +23,21 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.num.NaN.NaN;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -48,31 +45,29 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
 
     private ClosePriceIndicator closePrice;
 
-    public PeriodicalGrowthRateIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public PeriodicalGrowthRateIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        var mockSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60, 28.19, 27.40, 27.20, 27.28, 27.00, 27.59,
-                        26.20, 25.75, 24.75, 23.33, 24.45, 24.25, 25.02, 23.60, 24.20, 24.28, 25.70, 25.46, 25.10,
-                        25.00, 25.00, 25.85)
-                .build();
+        BarSeries mockSeries = new MockBarSeries(numFunction, 29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60, 28.19,
+                27.40, 27.20, 27.28, 27.00, 27.59, 26.20, 25.75, 24.75, 23.33, 24.45, 24.25, 25.02, 23.60, 24.20, 24.28,
+                25.70, 25.46, 25.10, 25.00, 25.00, 25.85);
         seriesManager = new BarSeriesManager(mockSeries);
         closePrice = new ClosePriceIndicator(mockSeries);
     }
 
     @Test
     public void testGetTotalReturn() {
-        var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
+        PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
         Num result = gri.getTotalReturn();
         assertNumEquals(0.9564, result);
     }
 
     @Test
     public void testCalculation() {
-        var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
+        PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
 
         assertEquals(gri.getValue(0), NaN);
         assertEquals(gri.getValue(4), NaN);
@@ -88,7 +83,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void testStrategies() {
 
-        var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
+        PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
 
         // Rules
         Rule buyingRule = new CrossedUpIndicatorRule(gri, 0);

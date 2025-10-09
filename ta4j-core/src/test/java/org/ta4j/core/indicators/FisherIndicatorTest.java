@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,177 +23,77 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.time.Instant;
-
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     protected BarSeries series;
 
-    public FisherIndicatorTest(NumFactory numFactory) {
-        super(null, numFactory);
+    public FisherIndicatorTest(Function<Number, Num> numFunction) {
+        super(null, numFunction);
     }
 
     @Before
     public void setUp() {
 
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();
-        var now = Instant.now();
+        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         int i = 20;
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(44.98)
-                .closePrice(45.05)
-                .highPrice(45.17)
-                .lowPrice(44.96)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.05)
-                .closePrice(45.10)
-                .highPrice(45.15)
-                .lowPrice(44.99)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.11)
-                .closePrice(45.19)
-                .highPrice(45.32)
-                .lowPrice(45.11)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.19)
-                .closePrice(45.14)
-                .highPrice(45.25)
-                .lowPrice(45.04)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.12)
-                .closePrice(45.15)
-                .highPrice(45.20)
-                .lowPrice(45.10)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.15)
-                .closePrice(45.14)
-                .highPrice(45.20)
-                .lowPrice(45.10)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.13)
-                .closePrice(45.10)
-                .highPrice(45.16)
-                .lowPrice(45.07)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.12)
-                .closePrice(45.15)
-                .highPrice(45.22)
-                .lowPrice(45.10)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.15)
-                .closePrice(45.22)
-                .highPrice(45.27)
-                .lowPrice(45.14)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.24)
-                .closePrice(45.43)
-                .highPrice(45.45)
-                .lowPrice(45.20)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.43)
-                .closePrice(45.44)
-                .highPrice(45.50)
-                .lowPrice(45.39)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.43)
-                .closePrice(45.55)
-                .highPrice(45.60)
-                .lowPrice(45.35)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.58)
-                .closePrice(45.55)
-                .highPrice(45.61)
-                .lowPrice(45.39)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.45)
-                .closePrice(45.01)
-                .highPrice(45.55)
-                .lowPrice(44.80)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(45.03)
-                .closePrice(44.23)
-                .highPrice(45.04)
-                .lowPrice(44.17)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(44.23)
-                .closePrice(43.95)
-                .highPrice(44.29)
-                .lowPrice(43.81)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(43.91)
-                .closePrice(43.08)
-                .highPrice(43.99)
-                .lowPrice(43.08)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(43.07)
-                .closePrice(43.55)
-                .highPrice(43.65)
-                .lowPrice(43.06)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i--))
-                .openPrice(43.56)
-                .closePrice(43.95)
-                .highPrice(43.99)
-                .lowPrice(43.53)
-                .add();
-        series.barBuilder()
-                .endTime(now.minusSeconds(i))
-                .openPrice(43.93)
-                .closePrice(44.47)
-                .highPrice(44.58)
-                .lowPrice(43.93)
-                .add();
+        // open, close, max, min
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 44.98, 45.05, 45.17, 44.96, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.05, 45.10, 45.15, 44.99, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.11, 45.19, 45.32, 45.11, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.19, 45.14, 45.25, 45.04, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.12, 45.15, 45.20, 45.10, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.15, 45.14, 45.20, 45.10, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.13, 45.10, 45.16, 45.07, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.12, 45.15, 45.22, 45.10, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.15, 45.22, 45.27, 45.14, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.24, 45.43, 45.45, 45.20, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.43, 45.44, 45.50, 45.39, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.43, 45.55, 45.60, 45.35, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.58, 45.55, 45.61, 45.39, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.45, 45.01, 45.55, 44.80, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 45.03, 44.23, 45.04, 44.17, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 44.23, 43.95, 44.29, 43.81, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 43.91, 43.08, 43.99, 43.08, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 43.07, 43.55, 43.65, 43.06, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i--), 43.56, 43.95, 43.99, 43.53, 0, 1, 0, numFunction));
+        series.addBar(
+                new MockBar(ZonedDateTime.now().minusSeconds(i), 43.93, 44.47, 44.58, 43.93, 0, 1, 0, numFunction));
     }
 
     @Test
     public void fisher() {
-        var fisher = new FisherIndicator(series);
+        FisherIndicator fisher = new FisherIndicator(series);
 
         assertNumEquals(0.6448642008177138, fisher.getValue(10));
         assertNumEquals(0.8361770425706673, fisher.getValue(11));

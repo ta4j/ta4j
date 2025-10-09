@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,13 +23,6 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.num.NaN.NaN;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
@@ -37,10 +30,13 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class PositionTest {
 
@@ -244,18 +240,14 @@ public class PositionTest {
 
     @Test
     public void testGetGrossReturnForLongPositionsUsingBarCloseOnNaN() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(100, 105)
-                .build();
+        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 105);
         Position position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
     @Test
     public void testGetGrossReturnForShortPositionsUsingBarCloseOnNaN() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(100, 95)
-                .build();
+        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95);
         Position position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }

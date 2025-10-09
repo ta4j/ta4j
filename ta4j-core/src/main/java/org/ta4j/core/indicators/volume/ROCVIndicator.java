@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,9 +35,10 @@ import org.ta4j.core.num.Num;
  * The ROCVIndicator calculation compares the current volume with the volume "n"
  * periods ago.
  */
-public class ROCVIndicator extends CachedIndicator<Num> {
+public class ROCVIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
+    private final Num hundred;
 
     /**
      * Constructor.
@@ -48,6 +49,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
+        this.hundred = hundred();
     }
 
     @Override
@@ -55,13 +57,11 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         int nIndex = Math.max(index - barCount, 0);
         Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
         Num currentValue = getBarSeries().getBar(index).getVolume();
-        return currentValue.minus(nPeriodsAgoValue)
-                .dividedBy(nPeriodsAgoValue)
-                .multipliedBy(getBarSeries().numFactory().hundred());
+        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

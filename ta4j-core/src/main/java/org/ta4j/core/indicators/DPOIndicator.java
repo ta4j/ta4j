@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,9 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -49,9 +48,9 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
  */
-public class DPOIndicator extends CachedIndicator<Num> {
+public class DPOIndicator extends AbstractIndicator<Num> {
 
-    private final BinaryOperation indicatorMinusPreviousSMAIndicator;
+    private final CombineIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;
 
     /**
@@ -72,10 +71,11 @@ public class DPOIndicator extends CachedIndicator<Num> {
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
-        final int timeFrame = barCount / 2 + 1;
-        final var simpleMovingAverage = new SMAIndicator(price, barCount);
-        final var previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage, timeFrame);
-        this.indicatorMinusPreviousSMAIndicator = BinaryOperation.difference(price, previousSimpleMovingAverage);
+        int timeFrame = barCount / 2 + 1;
+        final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
+        final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
+                timeFrame);
+        this.indicatorMinusPreviousSMAIndicator = CombineIndicator.minus(price, previousSimpleMovingAverage);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }
 
@@ -85,7 +85,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 

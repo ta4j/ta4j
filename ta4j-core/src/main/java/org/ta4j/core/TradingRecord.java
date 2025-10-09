@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,13 +29,12 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
 
 /**
  * A {@code TradingRecord} holds the full history/record of a trading session
  * when running a {@link Strategy strategy}. It can be used to:
- *
+ * 
  * <ul>
  * <li>analyze the performance of a {@link Strategy strategy}
  * <li>check whether some {@link Rule rules} are satisfied (while running a
@@ -121,16 +120,6 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
-     * @return the transaction cost model
-     */
-    CostModel getTransactionCostModel();
-
-    /**
-     * @return holding cost model
-     */
-    CostModel getHoldingCostModel();
-
-    /**
      * @return the recorded closed positions
      */
     List<Position> getPositions();
@@ -157,11 +146,6 @@ public interface TradingRecord extends Serializable {
         }
         return null;
     }
-
-    /**
-     * @return the trades recorded
-     */
-    List<Trade> getTrades();
 
     /**
      * @return the last trade recorded

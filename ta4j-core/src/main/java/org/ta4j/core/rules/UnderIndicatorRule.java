@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,9 +34,6 @@ import org.ta4j.core.num.Num;
  * <p>
  * Satisfied when the value of the first {@link Indicator indicator} is strictly
  * less than the value of the second one.
- *
- * <p>
- * This rule does not use the {@code tradingRecord}.
  */
 public class UnderIndicatorRule extends AbstractRule {
 
@@ -53,8 +50,7 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param threshold the threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(threshold)));
+        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), indicator.numOf(threshold)));
     }
 
     /**

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,13 +47,13 @@ import org.ta4j.core.num.Num;
  * full year is reached - NaN values for incomplete timeframes, e.g. timeframe
  * is a year and your timeseries contains data for 11,3 years, than no values
  * are calculated for the remaining 0,3 years - the method 'getTotalReturn'
- * calculates the total return over all returns of the corresponding timeframes
+ * calculates the total return over all returns of the coresponding timeframes
  *
  * <p>
  * Further readings:
- *
+ * 
  * <ul>
- * <li>Good summary on 'Rate of Return':
+ * <li>Good sumary on 'Rate of Return':
  * https://en.wikipedia.org/wiki/Rate_of_return Annual return
  * <li>CAGR: http://www.investopedia.com/terms/a/annual-return.asp
  * <li>Annualized Total Return:
@@ -62,7 +62,7 @@ import org.ta4j.core.num.Num;
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
  * </ul>
  */
-public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
+public class PeriodicalGrowthRateIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -79,7 +79,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.one = getBarSeries().numFactory().one();
+        this.one = one();
     }
 
     /**
@@ -107,7 +107,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             }
         }
 
-        return totalProduct.pow(one.dividedBy(getBarSeries().numFactory().numOf(completeTimeFrames)));
+        return totalProduct.pow(one.dividedBy(numOf(completeTimeFrames)));
     }
 
     @Override
@@ -117,13 +117,11 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
         int helpPartialTimeframe = index % barCount;
         // TODO: implement Num.floor()
-        final var numFactory = getBarSeries().numFactory();
-        Num helpFullTimeframes = numFactory.numOf(Math.floor(numFactory.numOf(indicator.getBarSeries().getBarCount())
-                .dividedBy(numFactory.numOf(barCount))
-                .doubleValue()));
-        Num helpIndexTimeframes = numFactory.numOf(index).dividedBy(numFactory.numOf(barCount));
+        Num helpFullTimeframes = numOf(
+                Math.floor(numOf(indicator.getBarSeries().getBarCount()).dividedBy(numOf(barCount)).doubleValue()));
+        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
 
-        Num helpPartialTimeframeHeld = numFactory.numOf(helpPartialTimeframe).dividedBy(numFactory.numOf(barCount));
+        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
         Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
@@ -142,7 +140,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 }

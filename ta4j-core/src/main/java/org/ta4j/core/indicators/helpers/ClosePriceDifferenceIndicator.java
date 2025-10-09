@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,17 +24,17 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Calculates the difference between the current and the previous close price.
- *
+ * 
  * <pre>
  * ClosePriceDifference = currentBarClosePrice - previousBarClosePrice
  * </pre>
  */
-public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
+public class ClosePriceDifferenceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
@@ -66,7 +66,7 @@ public class ClosePriceDifferenceIndicator extends CachedIndicator<Num> {
 
     /** @return {@code 1} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 1;
     }
 }

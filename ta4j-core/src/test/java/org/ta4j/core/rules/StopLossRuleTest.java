@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,43 +23,41 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ClosePriceIndicator closePrice;
 
-    public StopLossRuleTest(NumFactory numFactory) {
-        super(numFactory);
+    public StopLossRuleTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 120, 100, 150, 110, 100)
-                .build());
+        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
     }
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
-        var rule = new StopLossRule(closePrice, numOf(5));
+        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -81,11 +79,11 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForSell() {
-        final var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
-        var rule = new StopLossRule(closePrice, numOf(5));
+        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -104,23 +102,5 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertTrue(rule.isSatisfied(3, tradingRecord));
         assertFalse(rule.isSatisfied(4, tradingRecord));
         assertTrue(rule.isSatisfied(5, tradingRecord));
-    }
-
-    @Test
-    public void worksWithDifferentPriceIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        var highPrice = new HighPriceIndicator(series);
-        var rule = new StopLossRule(highPrice, numOf(10));
-
-        var buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
-        var amount = numOf(1);
-        buyRecord.enter(3, highPrice.getValue(3), amount);
-        assertFalse(rule.isSatisfied(3, buyRecord));
-        assertTrue(rule.isSatisfied(2, buyRecord));
-
-        var sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
-        sellRecord.enter(1, highPrice.getValue(1), amount);
-        assertFalse(rule.isSatisfied(1, sellRecord));
-        assertTrue(rule.isSatisfied(2, sellRecord));
     }
 }

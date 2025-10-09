@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,68 +23,44 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public ChaikinOscillatorIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public ChaikinOscillatorIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void getValue() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder()
-                .openPrice(12.915)
-                .closePrice(13.600)
-                .highPrice(12.890)
-                .lowPrice(13.550)
-                .volume(264266)
-                .add();
-        series.barBuilder()
-                .openPrice(13.550)
-                .closePrice(13.770)
-                .highPrice(13.310)
-                .lowPrice(13.505)
-                .volume(305427)
-                .add();
-        series.barBuilder()
-                .openPrice(13.510)
-                .closePrice(13.590)
-                .highPrice(13.425)
-                .lowPrice(13.490)
-                .volume(104077)
-                .add();
-        series.barBuilder()
-                .openPrice(13.515)
-                .closePrice(13.545)
-                .highPrice(13.400)
-                .lowPrice(13.480)
-                .volume(136135)
-                .add();
-        series.barBuilder().openPrice(13.490).closePrice(13.495).highPrice(13.310).lowPrice(13.345).volume(92090).add();
-        series.barBuilder().openPrice(13.350).closePrice(13.490).highPrice(13.325).lowPrice(13.420).volume(80948).add();
-        series.barBuilder().openPrice(13.415).closePrice(13.460).highPrice(13.290).lowPrice(13.300).volume(82983).add();
-        series.barBuilder()
-                .openPrice(13.320)
-                .closePrice(13.320)
-                .highPrice(13.090)
-                .lowPrice(13.130)
-                .volume(126918)
-                .add();
-        series.barBuilder().openPrice(13.145).closePrice(13.225).highPrice(13.090).lowPrice(13.150).volume(68560).add();
-        series.barBuilder().openPrice(13.150).closePrice(13.250).highPrice(13.110).lowPrice(13.245).volume(41178).add();
-        series.barBuilder().openPrice(13.245).closePrice(13.250).highPrice(13.120).lowPrice(13.210).volume(63606).add();
-        series.barBuilder().openPrice(13.210).closePrice(13.275).highPrice(13.185).lowPrice(13.275).volume(34402).add();
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(12.915, 13.600, 12.890, 13.550, 264266, numFunction));
+        bars.add(new MockBar(13.550, 13.770, 13.310, 13.505, 305427, numFunction));
+        bars.add(new MockBar(13.510, 13.590, 13.425, 13.490, 104077, numFunction));
+        bars.add(new MockBar(13.515, 13.545, 13.400, 13.480, 136135, numFunction));
+        bars.add(new MockBar(13.490, 13.495, 13.310, 13.345, 92090, numFunction));
+        bars.add(new MockBar(13.350, 13.490, 13.325, 13.420, 80948, numFunction));
+        bars.add(new MockBar(13.415, 13.460, 13.290, 13.300, 82983, numFunction));
+        bars.add(new MockBar(13.320, 13.320, 13.090, 13.130, 126918, numFunction));
+        bars.add(new MockBar(13.145, 13.225, 13.090, 13.150, 68560, numFunction));
+        bars.add(new MockBar(13.150, 13.250, 13.110, 13.245, 41178, numFunction));
+        bars.add(new MockBar(13.245, 13.250, 13.120, 13.210, 63606, numFunction));
+        bars.add(new MockBar(13.210, 13.275, 13.185, 13.275, 34402, numFunction));
 
-        var co = new ChaikinOscillatorIndicator(series);
+        BarSeries series = new MockBarSeries(bars);
+        ChaikinOscillatorIndicator co = new ChaikinOscillatorIndicator(series);
 
         assertNumEquals(0.0, co.getValue(0));
         assertNumEquals(-361315.15734265576, co.getValue(1));

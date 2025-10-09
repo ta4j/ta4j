@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,14 +24,14 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Variance indicator.
  */
-public class VarianceIndicator extends CachedIndicator<Num> {
+public class VarianceIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -54,19 +54,18 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
+        Num variance = zero();
         Num average = sma.getValue(index);
         for (int i = startIndex; i <= index; i++) {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
+        variance = variance.dividedBy(numOf(numberOfObservations));
         return variance;
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

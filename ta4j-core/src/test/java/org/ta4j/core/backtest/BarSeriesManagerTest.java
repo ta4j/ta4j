@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,12 +23,11 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -39,10 +38,12 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -54,24 +55,24 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private final Num HUNDRED = numOf(100);
 
-    public BarSeriesManagerTest(NumFactory numFactory) {
-        super(numFactory);
+    public BarSeriesManagerTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-08-01T05:00:00Z")).closePrice(2d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-10-01T05:00:00Z")).closePrice(3d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2013-12-01T05:00:00Z")).closePrice(4d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2014-02-01T05:00:00Z")).closePrice(5d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-01-01T05:00:00Z")).closePrice(6d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-08-01T05:00:00Z")).closePrice(7d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-10-01T05:00:00Z")).closePrice(8d).add();
-        seriesForRun.barBuilder().endTime(Instant.parse("2015-12-01T05:00:00Z")).closePrice(7d).add();
-
+        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        seriesForRun = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
+                new ZonedDateTime[] { ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-12-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2014-02-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-01-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
         manager = new BarSeriesManager(seriesForRun, new TradeOnCurrentCloseModel());
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -80,9 +81,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void runOnWholeSeries() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d)
-                .build();
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         List<Position> allPositions = manager.run(strategy).getPositions();
         assertEquals(2, allPositions.size());
@@ -90,9 +89,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void runOnWholeSeriesWithAmount() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d)
-                .build();
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         List<Position> allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
 
@@ -165,19 +162,12 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     @Test
     public void runOnSeriesSlices() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-
-        series.barBuilder().closePrice(1d).add();
-        series.barBuilder().closePrice(2d).add();
-        series.barBuilder().closePrice(3d).add();
-        series.barBuilder().closePrice(4d).add();
-        series.barBuilder().closePrice(5d).add();
-        series.barBuilder().closePrice(6d).add();
-        series.barBuilder().closePrice(7d).add();
-        series.barBuilder().closePrice(8d).add();
-        series.barBuilder().closePrice(9d).add();
-        series.barBuilder().closePrice(10d).add();
-
+        ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
+        BarSeries series = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d },
+                new ZonedDateTime[] { dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001),
+                        dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
+                        dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
+                        dateTime.withYear(2005) });
         manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));

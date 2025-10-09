@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,13 +23,16 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.indicators.helpers.FixedNumIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IsEqualRuleTest {
 
@@ -37,9 +40,9 @@ public class IsEqualRuleTest {
 
     @Before
     public void setUp() {
-        var series = new MockBarSeriesBuilder().build();
-        var indicator = new FixedNumIndicator(series, 20, 10, 0, -20);
-        rule = new IsEqualRule(indicator, series.numFactory().numOf(20));
+        BarSeries series = new BaseBarSeries();
+        Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
+        rule = new IsEqualRule(indicator, series.numOf(20));
     }
 
     @Test

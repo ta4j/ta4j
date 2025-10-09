@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,37 +23,35 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import static junit.framework.TestCase.assertEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class BollingerBandsMiddleIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
 
-    public BollingerBandsMiddleIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public BollingerBandsMiddleIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
-                .build();
+        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
     public void bollingerBandsMiddleUsingSMA() {
-        var sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        var bbmSMA = new BollingerBandsMiddleIndicator(sma);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
         for (int i = 0; i < data.getBarCount(); i++) {
             assertEquals(sma.getValue(i), bbmSMA.getValue(i));

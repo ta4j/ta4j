@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,31 +23,34 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public TRIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public TRIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void getValue() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
-        series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(2).add();
-
-        var tr = new TRIndicator(series);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 12, 15, 8, numFunction));
+        bars.add(new MockBar(0, 8, 11, 6, numFunction));
+        bars.add(new MockBar(0, 15, 17, 14, numFunction));
+        bars.add(new MockBar(0, 15, 17, 14, numFunction));
+        bars.add(new MockBar(0, 0, 0, 2, numFunction));
+        TRIndicator tr = new TRIndicator(new MockBarSeries(bars));
 
         assertNumEquals(7, tr.getValue(0));
         assertNumEquals(6, tr.getValue(1));

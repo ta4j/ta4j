@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -37,10 +37,11 @@ import org.ta4j.core.num.Num;
  * {@code 0} or not specified, only the percentage difference from the previous
  * value is returned.
  */
-public class DifferencePercentageIndicator extends CachedIndicator<Num> {
+public class DifferencePercentageIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
+    private final Num hundred;
     private Num lastNotification;
 
     /**
@@ -49,7 +50,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
-        this(indicator, indicator.getBarSeries().numFactory().zero());
+        this(indicator, indicator.zero());
     }
 
     /**
@@ -59,12 +60,12 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param percentageThreshold the threshold percentage
      */
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
+        this(indicator, indicator.numOf(percentageThreshold));
     }
 
     /**
      * Constructor.
-     *
+     * 
      * @param indicator           the {@link Indicator}
      * @param percentageThreshold the threshold percentage
      */
@@ -72,6 +73,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
+        this.hundred = hundred();
     }
 
     @Override
@@ -118,12 +120,11 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 1;
     }
 
     private Num fractionToPercentage(Num changeFraction) {
-        final var hundred = getBarSeries().numFactory().hundred();
         return changeFraction.multipliedBy(hundred).minus(hundred);
     }
 }

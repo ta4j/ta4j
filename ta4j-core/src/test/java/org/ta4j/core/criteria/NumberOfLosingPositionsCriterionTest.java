@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,39 +23,32 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.function.Function;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NumFactory;
-
 public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfLosingPositionsCriterionTest(NumFactory numFactory) {
-        super(params -> new NumberOfLosingPositionsCriterion(), numFactory);
+    public NumberOfLosingPositionsCriterionTest(Function<Number, Num> numFunction) {
+        super(params -> new NumberOfLosingPositionsCriterion(), numFunction);
     }
 
     @Test
     public void calculateWithNoPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         assertNumEquals(0, getCriterion().calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithTwoLongPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(3, series),
                 Trade.buyAt(3, series), Trade.sellAt(4, series));
 
@@ -64,9 +57,7 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void calculateWithOneLongPosition() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         Position position = new Position(Trade.buyAt(1, series), Trade.sellAt(3, series));
 
         assertNumEquals(1, getCriterion().calculate(series, position));
@@ -74,9 +65,7 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void calculateWithTwoShortPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(3, series), Trade.buyAt(5, series));
 
@@ -92,6 +81,6 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory, getCriterion(), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

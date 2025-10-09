@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,41 +23,46 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private MedianPriceIndicator average;
 
     BarSeries barSeries;
 
-    public MedianPriceIndicatorTest(NumFactory numFunction) {
+    public MedianPriceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        this.barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        List<Bar> bars = new ArrayList<Bar>();
 
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(32).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(2).lowPrice(2).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(1).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(83).lowPrice(32).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(9).lowPrice(3).add();
+        bars.add(new MockBar(0, 0, 16, 8, numFunction));
+        bars.add(new MockBar(0, 0, 12, 6, numFunction));
+        bars.add(new MockBar(0, 0, 18, 14, numFunction));
+        bars.add(new MockBar(0, 0, 10, 6, numFunction));
+        bars.add(new MockBar(0, 0, 32, 6, numFunction));
+        bars.add(new MockBar(0, 0, 2, 2, numFunction));
+        bars.add(new MockBar(0, 0, 0, 0, numFunction));
+        bars.add(new MockBar(0, 0, 8, 1, numFunction));
+        bars.add(new MockBar(0, 0, 83, 32, numFunction));
+        bars.add(new MockBar(0, 0, 9, 3, numFunction));
 
+        this.barSeries = new MockBarSeries(bars);
         average = new MedianPriceIndicator(barSeries);
     }
 
@@ -68,7 +73,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             result = barSeries.getBar(i)
                     .getHighPrice()
                     .plus(barSeries.getBar(i).getLowPrice())
-                    .dividedBy(numFactory.numOf(2));
+                    .dividedBy(barSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }
     }

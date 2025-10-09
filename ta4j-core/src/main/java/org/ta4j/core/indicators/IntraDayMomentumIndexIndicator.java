@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,12 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.candles.RealBodyIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
-import org.ta4j.core.indicators.numeric.UnaryOperation;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * IntraDay Momentum Index Indicator.
@@ -41,7 +39,7 @@ import org.ta4j.core.num.Num;
  * "https://library.tradingtechnologies.com/trade/chrt-ti-intraday-momentum-index.html"></a>
  * </p>
  */
-public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
+public class IntraDayMomentumIndexIndicator extends AbstractIndicator<Num> {
     private final SMAIndicator averageCloseOpenDiff;
     private final SMAIndicator averageOpenCloseDiff;
 
@@ -53,15 +51,15 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
      * @param series   the bar series
      * @param barCount the time frame
      */
-    public IntraDayMomentumIndexIndicator(final BarSeries series, final int barCount) {
+    public IntraDayMomentumIndexIndicator(BarSeries series, int barCount) {
         super(series);
 
         // Calculate the real body of the bars (close - open)
-        final var realBody = new RealBodyIndicator(series);
+        RealBodyIndicator realBody = new RealBodyIndicator(series);
 
         // Transform the real body into close-open and open-close differences
-        final var closeOpenDiff = BinaryOperation.max(realBody, 0);
-        final var openCloseDiff = UnaryOperation.abs(BinaryOperation.min(realBody, 0));
+        TransformIndicator closeOpenDiff = TransformIndicator.max(realBody, 0);
+        TransformIndicator openCloseDiff = TransformIndicator.abs(TransformIndicator.min(realBody, 0));
 
         // Calculate the SMA of the differences
         this.averageCloseOpenDiff = new SMAIndicator(closeOpenDiff, barCount);
@@ -73,7 +71,7 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // Return NaN for unstable bars
-        if (index < this.getCountOfUnstableBars()) {
+        if (index < this.getUnstableBars()) {
             return NaN;
         }
 
@@ -82,12 +80,11 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
         Num avgOpenCloseValue = this.averageOpenCloseDiff.getValue(index);
 
         // Calculate the momentum index
-        return avgCloseOpenValue.dividedBy((avgCloseOpenValue.plus(avgOpenCloseValue)))
-                .multipliedBy(getBarSeries().numFactory().hundred());
+        return avgCloseOpenValue.dividedBy((avgCloseOpenValue.plus(avgOpenCloseValue))).multipliedBy(hundred());
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return this.barCount;
     }
 }

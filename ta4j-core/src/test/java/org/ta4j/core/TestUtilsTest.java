@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,17 @@
  */
 package org.ta4j.core;
 
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
-import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
-
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.*;
 
 public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -56,8 +54,8 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     private static Indicator<Num> indicator;
     private static Indicator<Num> diffIndicator;
 
-    public TestUtilsTest(NumFactory numFactory) {
-        super(numFactory);
+    public TestUtilsTest(Function<Number, Num> numFunction) {
+        super(numFunction);
         numStringDouble = numOf(bigDecimalDouble);
         diffNumStringDouble = numOf(diffBigDecimalDouble);
         numInt = numOf(aInt);
@@ -71,24 +69,15 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     private BarSeries randomSeries() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-
-        var time = Instant.parse("1970-01-01T01:01:01Z");
+        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder();
+        BarSeries series = builder.withNumTypeOf(numFunction).build();
+        ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {
             random = Math.random();
-            time = time.plus(Duration.ofDays(i));
-            series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
-                    .openPrice(random)
-                    .closePrice(random)
-                    .highPrice(random)
-                    .lowPrice(random)
-                    .amount(random)
-                    .volume(random)
-                    .trades(0)
-                    .add();
+            time = time.plusDays(i);
+            series.addBar(new BaseBar(Duration.ofDays(1), time, random, random, random, random, random, random, 0,
+                    numFunction));
         }
         return series;
     }

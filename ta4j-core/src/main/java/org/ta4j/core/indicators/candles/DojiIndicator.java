@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperation;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
  *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
-public class DojiIndicator extends CachedIndicator<Boolean> {
+public class DojiIndicator extends AbstractIndicator<Boolean> {
 
     /** Body height. */
     private final Indicator<Num> bodyHeightInd;
@@ -62,9 +62,9 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
-        this.bodyHeightInd = UnaryOperation.abs(new RealBodyIndicator(series));
+        this.bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
         this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
-        this.factor = getBarSeries().numFactory().numOf(bodyFactor);
+        this.factor = numOf(bodyFactor);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

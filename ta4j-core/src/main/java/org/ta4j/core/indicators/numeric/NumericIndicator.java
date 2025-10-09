@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,14 +26,9 @@ package org.ta4j.core.indicators.numeric;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.averages.EMAIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
-import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -45,18 +40,18 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * NumericIndicator is a "fluent decorator" for Indicator<Num>. It provides
  * methods to create rules and other "lightweight" indicators, using a
  * (hopefully) natural-looking and expressive series of method calls.
- *
+ * 
  * <p>
  * Methods like plus(), minus() and sqrt() correspond directly to methods in the
  * {@code Num} interface. These methods create "lightweight" (not cached)
  * indicators to add, subtract, etc. Many methods are overloaded to accept
  * either {@code Indicator<Num>} or {@code Number} arguments.
- *
+ * 
  * <p>
  * Methods like sma() and ema() simply create the corresponding indicator
  * objects, (SMAIndicator or EMAIndicator, for example) with "this" as the first
  * argument. These methods usually instantiate cached objects.
- *
+ * 
  * <p>
  * Another set of methods, like crossedOver() and isGreaterThan() create Rule
  * objects. These are also overloaded to accept both {@code Indicator<Num>} and
@@ -205,7 +200,7 @@ public class NumericIndicator implements Indicator<Num> {
 
     /**
      * Returns an Indicator whose values are the absolute values of {@code this}.
-     *
+     * 
      * @return {@code abs(this)}
      */
     public NumericIndicator abs() {
@@ -214,7 +209,7 @@ public class NumericIndicator implements Indicator<Num> {
 
     /**
      * Returns an Indicator whose values are √(this).
-     *
+     * 
      * @return {@code √(this)}
      */
     public NumericIndicator sqrt() {
@@ -223,7 +218,7 @@ public class NumericIndicator implements Indicator<Num> {
 
     /**
      * Returns an Indicator whose values are {@code this * this}.
-     *
+     * 
      * @return {@code this * this}
      */
     public NumericIndicator squared() {
@@ -353,7 +348,7 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     private Indicator<Num> createConstant(Number n) {
-        return new ConstantIndicator<>(getBarSeries(), getBarSeries().numFactory().numOf(n));
+        return new ConstantIndicator<>(getBarSeries(), numOf(n));
     }
 
     @Override
@@ -362,7 +357,7 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 

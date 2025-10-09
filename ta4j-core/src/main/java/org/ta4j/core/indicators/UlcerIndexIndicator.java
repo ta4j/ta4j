@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,7 +35,10 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>
  */
-public class UlcerIndexIndicator extends CachedIndicator<Num> {
+public class UlcerIndexIndicator extends AbstractIndicator<Num> {
+
+    private final Num hundred;
+    private final Num zero;
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -50,31 +53,30 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
+        this.zero = zero();
+        this.hundred = hundred();
     }
 
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
-        Num squaredAverage = numFactory.zero();
+        Num squaredAverage = zero;
         Num highestValue = indicator.getValue(startIndex);
         for (int i = startIndex; i <= index; i++) {
             Num currentValue = indicator.getValue(i);
             if (currentValue.isGreaterThan(highestValue)) {
                 highestValue = currentValue;
             }
-            Num percentageDrawdown = currentValue.minus(highestValue)
-                    .dividedBy(highestValue)
-                    .multipliedBy(numFactory.hundred());
+            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(hundred);
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
-        squaredAverage = squaredAverage.dividedBy(numFactory.numOf(numberOfObservations));
+        squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
         return squaredAverage.sqrt();
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

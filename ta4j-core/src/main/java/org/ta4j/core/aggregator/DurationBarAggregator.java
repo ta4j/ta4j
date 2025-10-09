@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,13 +24,12 @@
 package org.ta4j.core.aggregator;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
-import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -91,10 +90,10 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
+        final Num zero = firstBar.getOpenPrice().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
-            final Instant beginTime = bar.getBeginTime();
+            final ZonedDateTime beginTime = bar.getBeginTime();
             final Num open = bar.getOpenPrice();
             Num high = bar.getHighPrice();
             Num low = bar.getLowPrice();
@@ -135,16 +134,8 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new TimeBarBuilder().timePeriod(timePeriod)
-                        .endTime(beginTime.plus(timePeriod))
-                        .openPrice(open)
-                        .highPrice(high)
-                        .lowPrice(low)
-                        .closePrice(close)
-                        .volume(volume)
-                        .amount(amount)
-                        .trades(trades)
-                        .build();
+                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
+                        volume, amount, trades);
                 aggregated.add(aggregatedBar);
             }
         }
@@ -152,7 +143,7 @@ public class DurationBarAggregator implements BarAggregator {
         return aggregated;
     }
 
-    private boolean beginTimesInDuration(Instant startTime, Instant endTime) {
+    private boolean beginTimesInDuration(ZonedDateTime startTime, ZonedDateTime endTime) {
         return Duration.between(startTime, endTime).compareTo(timePeriod) < 0;
     }
 

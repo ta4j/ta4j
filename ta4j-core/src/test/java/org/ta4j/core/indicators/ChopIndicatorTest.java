@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,17 +22,19 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- *
+ * 
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertTrue;
-
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author jtomkinson
@@ -40,8 +42,11 @@ import org.ta4j.core.num.NumFactory;
  */
 public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public ChopIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    protected BarSeries series;
+    protected final BaseBarSeriesBuilder BarSeriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction);
+
+    public ChopIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     /**
@@ -49,11 +54,12 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
      */
     @Test
     public void testChoppy() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("low volatility series").build();
+        series = BarSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         for (int i = 0; i < 50; i++) {
-            series.barBuilder().openPrice(21.5).highPrice(21.5 + 1).lowPrice(21.5 - 1).closePrice(21.5).add();
+            ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
+            series.addBar(date, 21.5, 21.5 + 1, 21.5 - 1, 21.5);
         }
-        var ci1 = new ChopIndicator(series, 14, 100);
+        ChopIndicator ci1 = new ChopIndicator(series, 14, 100);
         int HIGH_CHOPPINESS_VALUE = 85;
         assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() > HIGH_CHOPPINESS_VALUE);
     }
@@ -64,10 +70,11 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
      */
     @Test
     public void testTradeableTrend() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("low volatility series").build();
+        series = BarSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         float value = 21.5f;
         for (int i = 0; i < 50; i++) {
-            series.barBuilder().openPrice(value).highPrice(value + 1).lowPrice(value - 1).closePrice(value).add();
+            ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
+            series.addBar(date, value, value + 1, value - 1, value);
             value += 2.0f;
         }
         ChopIndicator ci1 = new ChopIndicator(series, 14, 100);

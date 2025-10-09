@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A {@code Trade} is defined by:
- *
+ * 
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
  * executed
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  * <li>a pricePerAsset (optional)
  * <li>a trade amount (optional)
  * </ul>
- *
+ * 
  * A {@link Position position} is a pair of complementary trades.
  */
 public class Trade implements Serializable {
@@ -94,7 +94,7 @@ public class Trade implements Serializable {
     private Num cost;
 
     /** The cost model for trade execution. */
-    private transient CostModel costModel;
+    private CostModel costModel;
 
     /**
      * Constructor.
@@ -104,7 +104,7 @@ public class Trade implements Serializable {
      * @param type   the trade type
      */
     protected Trade(int index, BarSeries series, TradeType type) {
-        this(index, series, type, series.numFactory().one());
+        this(index, series, type, series.one());
     }
 
     /**
@@ -143,7 +143,7 @@ public class Trade implements Serializable {
      * @param pricePerAsset the trade price per asset
      */
     protected Trade(int index, TradeType type, Num pricePerAsset) {
-        this(index, type, pricePerAsset, pricePerAsset.getNumFactory().one());
+        this(index, type, pricePerAsset, pricePerAsset.one());
     }
 
     /**

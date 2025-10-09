@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -71,7 +71,8 @@ public class BuyAndSellSignalsToChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
-            chartTimeSeries.add(new Minute(Date.from(bar.getEndTime())), indicator.getValue(i).doubleValue());
+            chartTimeSeries.add(new Minute(Date.from(bar.getEndTime().toInstant())),
+                    indicator.getValue(i).doubleValue());
         }
         return chartTimeSeries;
     }
@@ -91,15 +92,17 @@ public class BuyAndSellSignalsToChart {
         // Adding markers to plot
         for (Position position : positions) {
             // Buy signal
-            double buySignalBarTime = new Minute(Date.from(series.getBar(position.getEntry().getIndex()).getEndTime()))
-                    .getFirstMillisecond();
+            double buySignalBarTime = new Minute(
+                    Date.from(series.getBar(position.getEntry().getIndex()).getEndTime().toInstant()))
+                            .getFirstMillisecond();
             Marker buyMarker = new ValueMarker(buySignalBarTime);
             buyMarker.setPaint(Color.GREEN);
             buyMarker.setLabel("B");
             plot.addDomainMarker(buyMarker);
             // Sell signal
-            double sellSignalBarTime = new Minute(Date.from(series.getBar(position.getExit().getIndex()).getEndTime()))
-                    .getFirstMillisecond();
+            double sellSignalBarTime = new Minute(
+                    Date.from(series.getBar(position.getExit().getIndex()).getEndTime().toInstant()))
+                            .getFirstMillisecond();
             Marker sellMarker = new ValueMarker(sellSignalBarTime);
             sellMarker.setPaint(Color.RED);
             sellMarker.setLabel("S");

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,39 +23,45 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class BearishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public BearishEngulfingIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public BearishEngulfingIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(10).add();
-        series.barBuilder().openPrice(17).closePrice(20).highPrice(21).lowPrice(17).add();
-        series.barBuilder().openPrice(21).closePrice(15).highPrice(22).lowPrice(14).add();
-        series.barBuilder().openPrice(15).closePrice(11).highPrice(15).lowPrice(8).add();
-        series.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).add();
+        List<Bar> bars = new ArrayList<Bar>();
+        // open, close, high, low
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(21, 15, 22, 14, numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
+        series = new MockBarSeries(bars);
     }
 
     @Test
     public void getValue() {
-        var bep = new BearishEngulfingIndicator(series);
+        BearishEngulfingIndicator bep = new BearishEngulfingIndicator(series);
         assertFalse(bep.getValue(0));
         assertFalse(bep.getValue(1));
         assertTrue(bep.getValue(2));

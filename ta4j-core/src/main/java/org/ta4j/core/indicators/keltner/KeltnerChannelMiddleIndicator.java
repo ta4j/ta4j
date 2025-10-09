@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,8 @@ package org.ta4j.core.indicators.keltner;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -43,7 +44,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param series      the bar series
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
@@ -53,22 +54,22 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param indicator   the {@link Indicator}
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
-        super(indicator.getBarSeries());
+        super(indicator.getBarSeries(), new NoIndicatorValueCache<>());
         this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
     }
 
     @Override
-    public Num getValue(int index) {
+    public Num calculate(int index) {
         return emaIndicator.getValue(index);
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return getBarCount();
     }
 

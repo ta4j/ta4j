@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,21 +24,22 @@
 package org.ta4j.core.utils;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarConvertibleBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Common utilities and helper methods for {@link BarSeries}.
@@ -90,8 +91,8 @@ public final class BarSeriesUtils {
             return null;
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
-            boolean isSameBar = bar.getBeginTime().equals(newBar.getBeginTime())
-                    && bar.getEndTime().equals(newBar.getEndTime())
+            boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
+                    && bar.getEndTime().isEqual(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
             if (isSameBar && !bar.equals(newBar))
                 return bars.set(i, newBar);
@@ -112,12 +113,12 @@ public final class BarSeriesUtils {
      * @param findOnlyNaNBars find only bars with undefined prices
      * @return the list of possibly missing bars
      */
-    public static List<Instant> findMissingBars(BarSeries barSeries, boolean findOnlyNaNBars) {
+    public static List<ZonedDateTime> findMissingBars(BarSeries barSeries, boolean findOnlyNaNBars) {
         List<Bar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return new ArrayList<>();
         Duration duration = bars.iterator().next().getTimePeriod();
-        List<Instant> missingBars = new ArrayList<>();
+        List<ZonedDateTime> missingBars = new ArrayList<>();
         for (int i = 0; i < bars.size(); i++) {
             Bar bar = bars.get(i);
             if (!findOnlyNaNBars) {
@@ -144,22 +145,21 @@ public final class BarSeriesUtils {
      * by conversionFunction. The returned barSeries inherits {@code beginIndex},
      * {@code endIndex} and {@code maximumBarCount} from the provided barSeries.
      *
-     * @param barSeries  the BarSeries
-     * @param numFactory produces numbers used in converted barsŚeries; with this,
-     *                   we can convert a {@link Number} to a {@link Num Num
-     *                   implementation}
+     * @param barSeries the BarSeries
+     * @param num       any instance of Num to determine its Num function; with
+     *                  this, we can convert a {@link Number} to a {@link Num Num
+     *                  implementation}
      * @return new cloned BarSeries with bars converted by the Num function of num
      */
-    public static BarSeries convertBarSeries(BarSeries barSeries, NumFactory numFactory) {
+    public static BarSeries convertBarSeries(BarSeries barSeries, Num num) {
         List<Bar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return barSeries;
-        var convertedBarSeries = new BaseBarSeriesBuilder().withName(barSeries.getName())
-                .withNumFactory(numFactory)
-                .build();
+        List<Bar> convertedBars = new ArrayList<>();
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
-            convertedBarSeries.barBuilder()
+            Function<Number, Num> conversionFunction = num.function();
+            Bar convertedBar = new BaseBarConvertibleBuilder<>(conversionFunction::apply)
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
@@ -169,9 +169,10 @@ public final class BarSeriesUtils {
                     .volume(bar.getVolume().getDelegate())
                     .amount(bar.getAmount().getDelegate())
                     .trades(bar.getTrades())
-                    .add();
+                    .build();
+            convertedBars.add(convertedBar);
         }
-
+        BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, num);
         if (barSeries.getMaximumBarCount() > 0) {
             convertedBarSeries.setMaximumBarCount(barSeries.getMaximumBarCount());
         }
