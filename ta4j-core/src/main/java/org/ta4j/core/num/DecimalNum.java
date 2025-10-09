@@ -23,7 +23,8 @@
  */
 package org.ta4j.core.num;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -34,8 +35,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Representation of arbitrary precision {@link BigDecimal}. A {@code Num}
@@ -52,10 +52,9 @@ import org.slf4j.LoggerFactory;
  */
 public final class DecimalNum implements Num {
 
+    static final int DEFAULT_PRECISION = 16;
     private static final long serialVersionUID = 1L;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
-
-    static final int DEFAULT_PRECISION = 16;
     private static final RoundingMode DEFAULT_ROUNDING_MODE = RoundingMode.HALF_UP;
     private static final AtomicReference<MathContext> DEFAULT_MATH_CONTEXT = new AtomicReference<>(
             new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
@@ -72,10 +71,9 @@ public final class DecimalNum implements Num {
      * only a string parameter can accurately represent a value.
      *
      * @param val the string representation of the Num value
-     *
      * @deprecated This constructor leaks higher precisions into overall
-     *             calculations. Use {@link DecimalNum(String, MathContext)}
-     *             instead. {@link DecimalNumFactory#numOf(String)} does.
+     * calculations. Use {@link DecimalNum(String, MathContext)}
+     * instead. {@link DecimalNumFactory#numOf(String)} does.
      */
     @Deprecated(since = "0.18", forRemoval = true)
     private DecimalNum(final String val) {
@@ -227,6 +225,7 @@ public final class DecimalNum implements Num {
      * @throws NullPointerException     if {@code mathContext} is {@code null}
      * @throws IllegalArgumentException if {@code mathContext#getPrecision()} is not
      *                                  positive
+     * @since 0.19
      */
     public static void configureDefaultMathContext(final MathContext mathContext) {
         Objects.requireNonNull(mathContext, "mathContext");
@@ -240,6 +239,7 @@ public final class DecimalNum implements Num {
      * Configures the default precision while preserving the current rounding mode.
      *
      * @param precision new default precision (> 0)
+     * @since 0.19
      */
     public static void configureDefaultPrecision(final int precision) {
         final var current = getDefaultMathContext();
@@ -248,6 +248,7 @@ public final class DecimalNum implements Num {
 
     /**
      * Resets the default precision and rounding mode to the library defaults.
+     * @since 0.19
      */
     public static void resetDefaultPrecision() {
         DEFAULT_MATH_CONTEXT.set(new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
@@ -291,7 +292,7 @@ public final class DecimalNum implements Num {
      *
      * @param val the number
      * @return the {@code Num} whose value is equal to or approximately equal to the
-     *         value of {@code val}.
+     * value of {@code val}.
      * @throws NumberFormatException if {@code val} is {@code Float.NaN}
      */
     public static DecimalNum valueOf(final float val, final MathContext mathContext) {
@@ -309,7 +310,7 @@ public final class DecimalNum implements Num {
      *
      * @param val the number
      * @return the {@code Num} whose value is equal to or approximately equal to the
-     *         value of {@code val}.
+     * value of {@code val}.
      * @throws NumberFormatException if {@code val} is {@code Double.NaN}
      */
     public static DecimalNum valueOf(final double val, final MathContext mathContext) {
@@ -334,13 +335,12 @@ public final class DecimalNum implements Num {
     /**
      * If there are operations between constant that have precision 0 and other
      * number we need to preserve bigger precision.
-     *
+     * <p>
      * If we do not provide math context that sets upper bound, BigDecimal chooses
      * "infinity" precision, that may be too much.
      *
      * @param first  decimal num
      * @param second decimal num
-     *
      * @return math context with bigger precision
      */
     private static MathContext chooseMathContextWithGreaterPrecision(final DecimalNum first, final DecimalNum second) {
@@ -498,10 +498,10 @@ public final class DecimalNum implements Num {
         log.trace("delegate {}", this.delegate);
         final int comparedToZero = this.delegate.compareTo(BigDecimal.ZERO);
         switch (comparedToZero) {
-        case -1:
-            return NaN;
-        case 0:
-            return DecimalNumFactory.getInstance().zero();
+            case -1:
+                return NaN;
+            case 0:
+                return DecimalNumFactory.getInstance().zero();
         }
 
         // Direct implementation of the example in:
@@ -639,7 +639,7 @@ public final class DecimalNum implements Num {
      * @param other     the other value, not null
      * @param precision the int precision
      * @return true if this matches the specified value to a precision, false
-     *         otherwise
+     * otherwise
      */
     public boolean matches(final Num other, final int precision) {
         final Num otherNum = DecimalNum.valueOf(other.toString(), this.mathContext);
@@ -660,7 +660,7 @@ public final class DecimalNum implements Num {
      * @param other the other value, not null
      * @param delta the {@link Num} offset
      * @return true if this matches the specified value within an offset, false
-     *         otherwise
+     * otherwise
      */
     public boolean matches(final Num other, final Num delta) {
         final Num result = this.minus(other);
@@ -696,8 +696,8 @@ public final class DecimalNum implements Num {
 
     /**
      * @return the {@code Num} whose value is the smaller of this {@code Num} and
-     *         {@code other}. If they are equal, as defined by the
-     *         {@link #compareTo(Num) compareTo} method, {@code this} is returned.
+     * {@code other}. If they are equal, as defined by the
+     * {@link #compareTo(Num) compareTo} method, {@code this} is returned.
      */
     @Override
     public Num min(final Num other) {
@@ -706,8 +706,8 @@ public final class DecimalNum implements Num {
 
     /**
      * @return the {@code Num} whose value is the greater of this {@code Num} and
-     *         {@code other}. If they are equal, as defined by the
-     *         {@link #compareTo(Num) compareTo} method, {@code this} is returned.
+     * {@code other}. If they are equal, as defined by the
+     * {@link #compareTo(Num) compareTo} method, {@code this} is returned.
      */
     @Override
     public Num max(final Num other) {
@@ -724,8 +724,8 @@ public final class DecimalNum implements Num {
      * {@code obj} are both {@link NaN#NaN}.
      *
      * @return true if {@code this} object is the same as the {@code obj} argument,
-     *         as defined by the {@link #compareTo(Num) compareTo} method; false
-     *         otherwise.
+     * as defined by the {@link #compareTo(Num) compareTo} method; false
+     * otherwise.
      */
     @Override
     public boolean equals(final Object obj) {
