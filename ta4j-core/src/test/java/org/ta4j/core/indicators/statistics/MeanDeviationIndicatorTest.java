@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,34 +23,34 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public MeanDeviationIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public MeanDeviationIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9).build();
+        data = new MockBarSeries(numFunction, 1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9);
     }
 
     @Test
     public void meanDeviationUsingBarCount5UsingClosePrice() {
-        var meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
+        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
         assertNumEquals(2.44444444444444, meanDeviation.getValue(2));
         assertNumEquals(2.5, meanDeviation.getValue(3));
@@ -61,13 +61,13 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Test
     public void firstValueShouldBeZero() {
-        var meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
+        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
         assertNumEquals(0, meanDeviation.getValue(0));
     }
 
     @Test
     public void meanDeviationShouldBeZeroWhenBarCountIs1() {
-        var meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
+        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, meanDeviation.getValue(2));
         assertNumEquals(0, meanDeviation.getValue(7));
     }

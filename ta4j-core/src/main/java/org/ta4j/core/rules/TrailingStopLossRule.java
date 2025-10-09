@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,9 +35,6 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Satisfied when the price reaches the trailing loss threshold.
- *
- * <p>
- * This rule uses the {@code tradingRecord}.
  */
 public class TrailingStopLossRule extends AbstractRule {
 
@@ -99,8 +96,7 @@ public class TrailingStopLossRule extends AbstractRule {
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
-        final var hundred = highestCloseNum.getNumFactory().hundred();
-        Num lossRatioThreshold = hundred.minus(lossPercentage).dividedBy(hundred);
+        Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
         Num currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
@@ -109,8 +105,7 @@ public class TrailingStopLossRule extends AbstractRule {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
-        final var hundred = lowestCloseNum.getNumFactory().hundred();
-        Num lossRatioThreshold = hundred.plus(lossPercentage).dividedBy(hundred);
+        Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
         Num currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }

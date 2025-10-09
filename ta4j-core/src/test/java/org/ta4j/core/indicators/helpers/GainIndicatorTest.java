@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,35 +23,33 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class GainIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public GainIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public GainIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2)
-                .build();
+        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
     }
 
     @Test
     public void gainUsingClosePrice() {
-        var gain = new GainIndicator(new ClosePriceIndicator(data));
+        GainIndicator gain = new GainIndicator(new ClosePriceIndicator(data));
         assertNumEquals(0, gain.getValue(0));
         assertNumEquals(1, gain.getValue(1));
         assertNumEquals(1, gain.getValue(2));

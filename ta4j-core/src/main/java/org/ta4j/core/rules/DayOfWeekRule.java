@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,8 +24,7 @@
 package org.ta4j.core.rules;
 
 import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -36,15 +35,6 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 /**
  * Satisfied when the "day of the week" value of the {@link DateTimeIndicator}
  * matches the specified set of {@link DayOfWeek}.
- *
- * <p>
- * The {@link java.time.Instant UTC} represents a point in time on the
- * time-line, typically measured in milliseconds. It is independent of time
- * zones, days of the week, or months. However, this rule converts a UTC to a
- * ZonedDateTime with UTC to get the day, week and month in that time zone.
- *
- * <p>
- * This rule does not use the {@code tradingRecord}.
  */
 public class DayOfWeekRule extends AbstractRule {
 
@@ -53,7 +43,7 @@ public class DayOfWeekRule extends AbstractRule {
 
     /**
      * Constructor.
-     *
+     * 
      * @param timeIndicator the {@link DateTimeIndicator}
      * @param daysOfWeek    the days of the week
      */
@@ -65,8 +55,8 @@ public class DayOfWeekRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        Instant dateTime = timeIndicator.getValue(index);
-        final boolean satisfied = daysOfWeekSet.contains(dateTime.atZone(ZoneOffset.UTC).getDayOfWeek());
+        ZonedDateTime dateTime = timeIndicator.getValue(index);
+        final boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

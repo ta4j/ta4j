@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,14 +24,14 @@
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Covariance indicator.
  */
-public class CovarianceIndicator extends CachedIndicator<Num> {
+public class CovarianceIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
@@ -59,19 +59,19 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num covariance = getBarSeries().numFactory().zero();
+        Num covariance = zero();
         Num average1 = sma1.getValue(index);
         Num average2 = sma2.getValue(index);
         for (int i = startIndex; i <= index; i++) {
             Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
             covariance = covariance.plus(mul);
         }
-        covariance = covariance.dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+        covariance = covariance.dividedBy(numOf(numberOfObservations));
         return covariance;
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

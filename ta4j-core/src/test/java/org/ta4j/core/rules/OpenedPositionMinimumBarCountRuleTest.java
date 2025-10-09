@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,16 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.DecimalNum;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class OpenedPositionMinimumBarCountRuleTest {
 
@@ -46,11 +48,11 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastOneBarRuleForOpenedTrade() {
-        final var rule = new OpenedPositionMinimumBarCountRule(1);
-        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(1, 2, 3, 4)
-                .build();
-        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
+
+        final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
+
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertTrue(rule.isSatisfied(1, tradingRecord));
@@ -60,11 +62,11 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastMoreThanOneBarRuleForOpenedTrade() {
-        final var rule = new OpenedPositionMinimumBarCountRule(2);
-        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(1, 2, 3, 4)
-                .build();
-        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(2);
+
+        final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
+
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -74,11 +76,11 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForClosedTradeShouldAlwaysReturnsFalse() {
-        final var rule = new OpenedPositionMinimumBarCountRule(1);
-        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(1, 2, 3, 4)
-                .build();
-        final var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
+
+        final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
+
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -88,8 +90,9 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForEmptyTradingRecordShouldAlwaysReturnsFalse() {
-        final var rule = new OpenedPositionMinimumBarCountRule(1);
-        final var tradingRecord = new BaseTradingRecord();
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
+
+        final TradingRecord tradingRecord = new BaseTradingRecord();
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));

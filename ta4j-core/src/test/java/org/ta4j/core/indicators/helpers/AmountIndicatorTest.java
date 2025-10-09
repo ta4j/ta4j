@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class AmountIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -40,13 +40,13 @@ public class AmountIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     BarSeries barSeries;
 
-    public AmountIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public AmountIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        barSeries = new MockBarSeries(numFunction);
         amountIndicator = new AmountIndicator(barSeries);
     }
 

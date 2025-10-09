@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,29 +45,28 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
+import static org.junit.Assert.*;
 
 public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
 
-    public TrailingStopLossRuleTest(NumFactory numFactory) {
-        super(numFactory);
+    public TrailingStopLossRuleTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void isSatisfiedForBuy() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 110, 120, 130, 117.00, 130, 116.99)
-                .build());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
@@ -92,9 +91,8 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     @Test
     public void isSatisfiedForBuyForBarCount() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99)
-                .build());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeries(numFunction, 100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99));
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
@@ -121,9 +119,8 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     @Test
     public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 90, 80, 70, 77.00, 120, 132.01)
-                .build());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
@@ -149,9 +146,8 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     @Test
     public void isSatisfiedForSellForBarCount() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01)
-                .build());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeries(numFunction, 100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01));
 
         // 10% trailing-stop-loss and 2 bars back
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);

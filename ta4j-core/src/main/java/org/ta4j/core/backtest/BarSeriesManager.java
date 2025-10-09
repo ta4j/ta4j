@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -64,7 +64,7 @@ public class BarSeriesManager {
 
     /**
      * Constructor.
-     *
+     * 
      * @param barSeries           the bar series to be managed
      * @param tradeExecutionModel the trade execution model to use
      */
@@ -74,7 +74,7 @@ public class BarSeriesManager {
 
     /**
      * Constructor with {@link #tradeExecutionModel} = {@link TradeOnNextOpenModel}.
-     *
+     * 
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding the asset (e.g.
@@ -89,7 +89,7 @@ public class BarSeriesManager {
 
     /**
      * Constructor.
-     *
+     * 
      * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
@@ -147,7 +147,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, TradeType.BUY, barSeries.numFactory().one(), startIndex, finishIndex);
+        return run(strategy, TradeType.BUY, barSeries.one(), startIndex, finishIndex);
     }
 
     /**
@@ -160,7 +160,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType) {
-        return run(strategy, tradeType, barSeries.numFactory().one());
+        return run(strategy, tradeType, barSeries.one());
     }
 
     /**
@@ -176,7 +176,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, int startIndex, int finishIndex) {
-        return run(strategy, tradeType, barSeries.numFactory().one(), startIndex, finishIndex);
+        return run(strategy, tradeType, barSeries.one(), startIndex, finishIndex);
     }
 
     /**

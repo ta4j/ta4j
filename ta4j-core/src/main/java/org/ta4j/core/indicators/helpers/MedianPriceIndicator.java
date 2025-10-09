@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,24 +25,24 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Average high-low indicator.
- *
+ * 
  * <p>
  * Returns the median price of a bar using the following formula:
- *
+ * 
  * <pre>
  * MedianPrice = (highPrice + lowPrice) / 2
  * </pre>
  */
-public class MedianPriceIndicator extends CachedIndicator<Num> {
+public class MedianPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param series the bar series
      */
     public MedianPriceIndicator(BarSeries series) {
@@ -52,12 +52,12 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final Bar bar = getBarSeries().getBar(index);
-        return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(getBarSeries().numFactory().two());
+        return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(numOf(2));
     }
 
     /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

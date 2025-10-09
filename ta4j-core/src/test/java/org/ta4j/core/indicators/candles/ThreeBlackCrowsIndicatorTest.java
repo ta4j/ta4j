@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,42 +23,48 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ThreeBlackCrowsIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
     private BarSeries series;
 
-    public ThreeBlackCrowsIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public ThreeBlackCrowsIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(19).closePrice(19).highPrice(22).lowPrice(15.0).add();
-        series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(8.0).add();
-        series.barBuilder().openPrice(17).closePrice(20).highPrice(21).lowPrice(17.0).add();
-        series.barBuilder().openPrice(19).closePrice(17).highPrice(20).lowPrice(16.9).add();
-        series.barBuilder().openPrice(17.5).closePrice(14).highPrice(18).lowPrice(13.9).add();
-        series.barBuilder().openPrice(15).closePrice(11).highPrice(15).lowPrice(11.0).add();
-        series.barBuilder().openPrice(12).closePrice(14).highPrice(15).lowPrice(8.0).add();
-        series.barBuilder().openPrice(13).closePrice(16).highPrice(16).lowPrice(11.0).add();
+        List<Bar> bars = new ArrayList<Bar>();
+        // open, close, high, low
+        bars.add(new MockBar(19, 19, 22, 15, numFunction));
+        bars.add(new MockBar(10, 18, 20, 8, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(19, 17, 20, 16.9, numFunction));
+        bars.add(new MockBar(17.5, 14, 18, 13.9, numFunction));
+        bars.add(new MockBar(15, 11, 15, 11, numFunction));
+        bars.add(new MockBar(12, 14, 15, 8, numFunction));
+        bars.add(new MockBar(13, 16, 16, 11, numFunction));
+        series = new MockBarSeries(bars);
     }
 
     @Test
     public void getValue() {
-        var tbc = new ThreeBlackCrowsIndicator(series, 3, 0.1);
+        ThreeBlackCrowsIndicator tbc = new ThreeBlackCrowsIndicator(series, 3, 0.1);
         assertFalse(tbc.getValue(0));
         assertFalse(tbc.getValue(1));
         assertFalse(tbc.getValue(2));

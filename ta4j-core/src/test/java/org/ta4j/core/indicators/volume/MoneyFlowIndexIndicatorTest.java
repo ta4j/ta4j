@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,35 +23,46 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import org.junit.Ignore;
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class MoneyFlowIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public MoneyFlowIndexIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public MoneyFlowIndexIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        var series = new MockBarSeriesBuilder().build();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(0).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(9).closePrice(9).highPrice(9).lowPrice(9).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        BarSeries series = new MockBarSeries(bars);
 
-        var mfi = new MoneyFlowIndexIndicator(series, 5);
+        MoneyFlowIndexIndicator mfi = new MoneyFlowIndexIndicator(series, 5);
 
         assertTrue(mfi.getValue(0).isNaN());
         assertTrue(mfi.getValue(1).isNaN());
@@ -63,16 +74,17 @@ public class MoneyFlowIndexIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void givenBarCountOf1_whenGetValue_thenReturnEdgeCaseCorrectedValue() {
-        var series = new MockBarSeriesBuilder().build();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(0).add();
-        series.barBuilder().openPrice(9).closePrice(9).highPrice(9).lowPrice(9).volume(10).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
-        series.barBuilder().openPrice(12).closePrice(12).highPrice(12).lowPrice(12).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        BarSeries series = new MockBarSeries(bars);
 
-        var mfi = new MoneyFlowIndexIndicator(series, 1);
+        MoneyFlowIndexIndicator mfi = new MoneyFlowIndexIndicator(series, 1);
 
         assertTrue(mfi.getValue(0).isNaN());
         assertNumEquals(1.098901098901095, mfi.getValue(1));
@@ -84,17 +96,18 @@ public class MoneyFlowIndexIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        var series = new MockBarSeriesBuilder().build();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(0).add();
-        series.barBuilder().openPrice(9).closePrice(9).highPrice(9).lowPrice(9).volume(10).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
-        series.barBuilder().openPrice(12).closePrice(12).highPrice(12).lowPrice(12).volume(10).add();
-        series.barBuilder().openPrice(11).closePrice(11).highPrice(11).lowPrice(11).volume(10).add();
-        series.barBuilder().openPrice(12).closePrice(12).highPrice(12).lowPrice(12).volume(10).add();
-        series.barBuilder().openPrice(9).closePrice(9).highPrice(9).lowPrice(9).volume(10).add();
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
+        bars.add(new MockBar(10, 10, 10, 10, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
+        bars.add(new MockBar(11, 11, 11, 11, 10, numFunction));
+        bars.add(new MockBar(12, 12, 12, 12, 10, numFunction));
+        bars.add(new MockBar(9, 9, 9, 9, 10, numFunction));
+        BarSeries series = new MockBarSeries(bars);
 
-        var mfi = new MoneyFlowIndexIndicator(series, 3);
+        MoneyFlowIndexIndicator mfi = new MoneyFlowIndexIndicator(series, 3);
 
         assertTrue(mfi.getValue(0).isNaN());
         assertTrue(mfi.getValue(1).isNaN());

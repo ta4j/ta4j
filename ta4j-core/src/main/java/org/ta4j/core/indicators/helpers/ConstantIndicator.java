@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,10 +25,11 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 
 /**
  * Constant indicator.
- *
+ * 
  * <p>
  * Returns a constant value for a bar.
  */
@@ -38,23 +39,23 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param series the bar series
      * @param t      the constant value
      */
     public ConstantIndicator(BarSeries series, T t) {
-        super(series);
+        super(series, new NoIndicatorValueCache<>());
         this.value = t;
     }
 
     @Override
-    public T getValue(int index) {
+    public T calculate(int index) {
         return value;
     }
 
     /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -46,7 +46,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isConsecutive(position) ? series.numFactory().one() : series.numFactory().zero();
+        return isConsecutive(position) ? series.one() : series.zero();
     }
 
     @Override
@@ -69,7 +69,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
             maxConsecutive = consecutives;
         }
 
-        return series.numFactory().numOf(maxConsecutive);
+        return series.numOf(maxConsecutive);
     }
 
     /**

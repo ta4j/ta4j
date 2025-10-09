@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,38 +23,38 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;
 
-    public RAVIIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public RAVIIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
 
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09, 106.03, 108.65,
-                        109.54, 112.26, 114.38, 117.94)
-                .build();
+        data = new MockBarSeries(numFunction, 110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09,
+                106.03, 108.65, 109.54, 112.26, 114.38, 117.94
+
+        );
     }
 
     @Test
     public void ravi() {
-        var closePrice = new ClosePriceIndicator(data);
-        var ravi = new RAVIIndicator(closePrice, 3, 8);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
+        RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
 
         assertNumEquals(0, ravi.getValue(0));
         assertNumEquals(0, ravi.getValue(1));

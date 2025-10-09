@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
+public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
 
     private final ATRIndicator averageTrueRangeIndicator;
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
@@ -42,7 +42,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param middle      the {@link #keltnerMiddleIndicator}
      * @param ratio       the {@link #ratio}
      * @param barCountATR the bar count for the {@link ATRIndicator}
@@ -53,7 +53,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param middle the {@link #keltnerMiddleIndicator}
      * @param atr    the {@link ATRIndicator}
      * @param ratio  the {@link #ratio}
@@ -62,7 +62,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
         super(middle.getBarSeries());
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
-        this.ratio = getBarSeries().numFactory().numOf(ratio);
+        this.ratio = numOf(ratio);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return getBarCount();
     }
 

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,31 +23,26 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.function.Function;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.AnalysisCriterion.PositionFilter;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NumFactory;
-
 public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
-    public PositionsRatioCriterionTest(NumFactory numFactory) {
-        super(params -> new PositionsRatioCriterion((PositionFilter) params[0]), numFactory);
+    public PositionsRatioCriterionTest(Function<Number, Num> numFunction) {
+        super(params -> new PositionsRatioCriterion((PositionFilter) params[0]), numFunction);
     }
 
     @Test
     public void calculate() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100d, 95d, 102d, 105d, 97d, 113d)
-                .build();
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
@@ -63,9 +58,7 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithShortPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100d, 95d, 102d, 105d, 97d, 113d)
-                .build();
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series), Trade.buyAt(4, series));
 
@@ -80,9 +73,7 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnePosition() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100d, 95d, 102d, 105d, 97d, 113d)
-                .build();
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         // 0 winning position
@@ -117,9 +108,9 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory,
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
                 getCriterion(PositionFilter.PROFIT), 0);
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFactory,
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
                 getCriterion(PositionFilter.LOSS), 0);
     }
 

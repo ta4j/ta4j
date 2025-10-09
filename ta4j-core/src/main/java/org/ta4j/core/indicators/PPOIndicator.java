@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,14 +33,14 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/ppo.asp">https://www.investopedia.com/terms/p/ppo.asp</a>
  */
-public class PPOIndicator extends CachedIndicator<Num> {
+public class PPOIndicator extends AbstractIndicator<Num> {
 
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
     /**
      * Constructor with:
-     *
+     * 
      * <ul>
      * <li>{@code shortBarCount} = 12
      * <li>{@code longBarCount} = 26
@@ -73,13 +72,11 @@ public class PPOIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num shortEmaValue = shortTermEma.getValue(index);
         Num longEmaValue = longTermEma.getValue(index);
-        return shortEmaValue.minus(longEmaValue)
-                .dividedBy(longEmaValue)
-                .multipliedBy(getBarSeries().numFactory().hundred());
+        return shortEmaValue.minus(longEmaValue).dividedBy(longEmaValue).multipliedBy(hundred());
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

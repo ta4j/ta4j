@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,97 +24,183 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Predicate;
-
 /**
- * Transforms any indicator to a boolean indicator.
+ * Simple boolean transform indicator.
+ *
+ * <p>
+ * Transforms any decimal indicator to a boolean indicator by using common
+ * logical operators.
  */
-public class BooleanTransformIndicator<T> extends CachedIndicator<Boolean> {
+public class BooleanTransformIndicator extends AbstractIndicator<Boolean> {
 
-    public static BooleanTransformIndicator<Num> equals(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.equals(constant));
+    /**
+     * Select the type for transformation.
+     */
+    public enum BooleanTransformType {
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.equals(coefficient).
+         */
+        equals,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isGreaterThan(coefficient).
+         */
+        isGreaterThan,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isGreaterThanOrEqual(coefficient).
+         */
+        isGreaterThanOrEqual,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isLessThan(coefficient).
+         */
+        isLessThan,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isLessThanOrEqual(coefficient).
+         */
+        isLessThanOrEqual
     }
 
-    public static BooleanTransformIndicator<Num> notEquals(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> !num.equals(constant));
+    /**
+     * Select the type for transformation.
+     */
+    public enum BooleanTransformSimpleType {
+        /**
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNaN().
+         */
+        isNaN,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isNegative().
+         */
+        isNegative,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isNegativeOrZero().
+         */
+        isNegativeOrZero,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isPositive().
+         */
+        isPositive,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isPositiveOrZero().
+         */
+        isPositiveOrZero,
+
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isZero().
+         */
+        isZero
     }
 
-    public static BooleanTransformIndicator<Num> isEqual(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isEqual(constant));
-    }
+    private final Indicator<Num> indicator;
+    private final Num coefficient;
+    private final BooleanTransformType type;
+    private final BooleanTransformSimpleType simpleType;
 
-    public static BooleanTransformIndicator<Num> isNotEqual(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> !num.isEqual(constant));
+    /**
+     * Constructor.
+     *
+     * @param indicator   the indicator
+     * @param coefficient the value for transformation
+     * @param type        the type of the transformation
+     */
+    public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
+        super(indicator.getBarSeries());
+        this.indicator = indicator;
+        this.coefficient = coefficient;
+        this.type = type;
+        this.simpleType = null;
     }
-
-    public static BooleanTransformIndicator<Num> isGreaterThan(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThan(constant));
-    }
-
-    public static BooleanTransformIndicator<Num> isGreaterThanOrEqual(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isGreaterThanOrEqual(constant));
-    }
-
-    public static BooleanTransformIndicator<Num> isLessThan(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThan(constant));
-    }
-
-    public static BooleanTransformIndicator<Num> isLessThanOrEqual(Indicator<Num> indicator, Num constant) {
-        return new BooleanTransformIndicator<>(indicator, num -> num.isLessThanOrEqual(constant));
-    }
-
-    public static BooleanTransformIndicator<Num> isZero(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isZero);
-    }
-
-    public static BooleanTransformIndicator<Num> isNaN(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isNaN);
-    }
-
-    public static BooleanTransformIndicator<Num> isPositive(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isPositive);
-    }
-
-    public static BooleanTransformIndicator<Num> isPositiveOrZero(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isPositiveOrZero);
-    }
-
-    public static BooleanTransformIndicator<Num> isNegative(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isNegative);
-    }
-
-    public static BooleanTransformIndicator<Num> isNegativeOrZero(Indicator<Num> indicator) {
-        return new BooleanTransformIndicator<>(indicator, Num::isNegativeOrZero);
-    }
-
-    private final Indicator<T> indicator;
-    private final Predicate<T> transform;
 
     /**
      * Constructor.
      *
      * @param indicator the indicator
-     * @param transform the transform {@link Predicate} to apply
+     * @param type      the type of the transformation
      */
-    public BooleanTransformIndicator(Indicator<T> indicator, Predicate<T> transform) {
-        super(indicator);
+    public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
+        super(indicator.getBarSeries());
         this.indicator = indicator;
-        this.transform = transform;
+        this.simpleType = type;
+        this.coefficient = null;
+        this.type = null;
     }
 
     @Override
     protected Boolean calculate(int index) {
-        return transform.test(indicator.getValue(index));
+
+        Num val = indicator.getValue(index);
+
+        if (type != null) {
+            switch (type) {
+            case equals:
+                return val.equals(coefficient);
+            case isGreaterThan:
+                return val.isGreaterThan(coefficient);
+            case isGreaterThanOrEqual:
+                return val.isGreaterThanOrEqual(coefficient);
+            case isLessThan:
+                return val.isLessThan(coefficient);
+            case isLessThanOrEqual:
+                return val.isLessThanOrEqual(coefficient);
+            default:
+                break;
+            }
+        }
+
+        else if (simpleType != null) {
+            switch (simpleType) {
+            case isNaN:
+                return val.isNaN();
+            case isNegative:
+                return val.isNegative();
+            case isNegativeOrZero:
+                return val.isNegativeOrZero();
+            case isPositive:
+                return val.isPositive();
+            case isPositiveOrZero:
+                return val.isPositiveOrZero();
+            case isZero:
+                return val.isZero();
+            default:
+                break;
+            }
+        }
+
+        return false;
     }
 
-    /**
-     * @return {@code 0}
-     */
+    /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
+    }
+
+    @Override
+    public String toString() {
+        if (type != null) {
+            return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
+        }
+        return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
     }
 }

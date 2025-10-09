@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -36,7 +35,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
-public class CCIIndicator extends CachedIndicator<Num> {
+public class CCIIndicator extends AbstractIndicator<Num> {
 
     private final Num factor;
     private final TypicalPriceIndicator typicalPriceInd;
@@ -52,7 +51,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(BarSeries series, int barCount) {
         super(series);
-        this.factor = getBarSeries().numFactory().numOf(0.015);
+        this.factor = numOf(0.015);
         this.typicalPriceInd = new TypicalPriceIndicator(series);
         this.smaInd = new SMAIndicator(typicalPriceInd, barCount);
         this.meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
@@ -65,13 +64,13 @@ public class CCIIndicator extends CachedIndicator<Num> {
         final Num typicalPriceAvg = smaInd.getValue(index);
         final Num meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
-            return getBarSeries().numFactory().zero();
+            return zero();
         }
         return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

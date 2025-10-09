@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,17 +23,17 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -41,13 +41,13 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     private BarSeries barSeries;
 
-    public TypicalPriceIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public TypicalPriceIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        barSeries = new MockBarSeries(numFunction);
         typicalPriceIndicator = new TypicalPriceIndicator(barSeries);
     }
 
@@ -55,7 +55,10 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             Bar bar = barSeries.getBar(i);
-            Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice()).dividedBy(numOf(3));
+            Num typicalPrice = bar.getHighPrice()
+                    .plus(bar.getLowPrice())
+                    .plus(bar.getClosePrice())
+                    .dividedBy(barSeries.numOf(3));
             assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
         }
     }

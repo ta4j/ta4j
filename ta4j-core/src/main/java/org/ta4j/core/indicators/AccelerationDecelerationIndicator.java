@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,21 +24,20 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Acceleration-deceleration indicator.
  */
-public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
+public class AccelerationDecelerationIndicator extends AbstractIndicator<Num> {
 
     private final AwesomeOscillatorIndicator awesome;
     private final SMAIndicator sma;
 
     /**
      * Constructor.
-     *
+     * 
      * @param series       the bar series
      * @param barCountSma1 the bar count for {@link #awesome}
      * @param barCountSma2 the bar count for {@link #sma}
@@ -51,7 +50,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with {@code barCountSma1} = 5 and {@code barCountSma2} = 34.
-     *
+     * 
      * @param series the bar series
      */
     public AccelerationDecelerationIndicator(BarSeries series) {
@@ -64,7 +63,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

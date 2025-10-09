@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,61 +23,69 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public MinusDMIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public MinusDMIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void zeroDirectionalMovement() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).build();
-        series.addBar(yesterdayBar);
-        series.addBar(todayBar);
-        var down = new MinusDMIndicator(series);
+        MockBar yesterdayBar = new MockBar(0, 0, 10, 2, numFunction);
+        MockBar todayBar = new MockBar(0, 0, 6, 6, numFunction);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockBarSeries series = new MockBarSeries(bars);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertNumEquals(0, down.getValue(1));
     }
 
     @Test
     public void zeroDirectionalMovement2() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(12).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
-        series.addBar(yesterdayBar);
-        series.addBar(todayBar);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 12, numFunction);
+        MockBar todayBar = new MockBar(0, 0, 12, 6, numFunction);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockBarSeries series = new MockBarSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
         assertNumEquals(0, down.getValue(1));
     }
 
     @Test
     public void zeroDirectionalMovement3() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(6).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
-        series.addBar(yesterdayBar);
-        series.addBar(todayBar);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 6, numFunction);
+        MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockBarSeries series = new MockBarSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
         assertNumEquals(0, down.getValue(1));
     }
 
     @Test
     public void positiveDirectionalMovement() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(20).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
-        series.addBar(yesterdayBar);
-        series.addBar(todayBar);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 20, numFunction);
+        MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockBarSeries series = new MockBarSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
         assertNumEquals(16, down.getValue(1));
     }

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,75 +23,68 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.function.Function;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.math.BigDecimal;
-
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NumFactory;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
-    public VersusEnterAndHoldCriterionTest(NumFactory numFactory) {
-        super(params -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFactory);
-    }
-
-    @Test
-    public void calculateWithOnePosition() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
-
-        var buyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, position));
-    }
-
-    @Test
-    public void calculateWithNoPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-
-        var buyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
+    public VersusEnterAndHoldCriterionTest(Function<Number, Num> numFunction) {
+        super(params -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
     public void calculateOnlyWithGainPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        var buyAndHold = getCriterion(new GrossReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
         assertNumEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateOnlyWithLossPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        var buyAndHold = getCriterion(new GrossReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
         assertNumEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithAverageProfit() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(5, series));
+    public void calculateWithOnlyOnePosition() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var buyAndHold = getCriterion(new AverageReturnPerBarCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
+        assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, position));
+    }
+
+    @Test
+    public void calculateWithNoPositions() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+
+        AnalysisCriterion buyAndHold = getCriterion(new ReturnCriterion());
+        assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void calculateWithAverageProfit() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN),
+                Trade.buyAt(2, NaN, NaN), Trade.sellAt(5, NaN, NaN));
+
+        AnalysisCriterion buyAndHold = getCriterion(new AverageReturnPerBarCriterion());
 
         assertNumEquals(Math.pow(95d / 100 * 130d / 100, 1d / 6) / Math.pow(130d / 100, 1d / 6),
                 buyAndHold.calculate(series, tradingRecord));
@@ -99,47 +92,18 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNumberOfBars() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 130).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        var buyAndHold = getCriterion(new NumberOfBarsCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new NumberOfBarsCriterion());
 
-        // 6d / 6d
-        assertNumEquals(1.0, buyAndHold.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateWithAmount() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110, 100, 95, 105)
-                .build();
-
-        // 2 winning positions
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
-                Trade.buyAt(3, series), Trade.sellAt(5, series));
-
-        // vs buy and hold of pnl with amount of 1
-        var amount1 = BigDecimal.valueOf(1);
-        var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount1);
-        var vsBuyAndHoldPnlValue1 = vsBuyAndHoldPnl1.calculate(series, tradingRecord);
-
-        // vs buy and hold of pnl with amount of 10
-        var amount2 = BigDecimal.valueOf(10);
-        var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(), amount2);
-        var vsBuyAndHoldPnlValue2 = vsBuyAndHoldPnl2.calculate(series, tradingRecord);
-
-        assertNumEquals(3 * 1d, vsBuyAndHoldPnlValue1);
-        assertNumEquals(3 / 10d, vsBuyAndHoldPnlValue2);
-
-        // The less amount you need to achieve a given (absolute) profit, the better.
-        assertTrue(vsBuyAndHoldPnl1.betterThan(vsBuyAndHoldPnlValue1, vsBuyAndHoldPnlValue2));
-        assertFalse(vsBuyAndHoldPnl2.betterThan(vsBuyAndHoldPnlValue2, vsBuyAndHoldPnlValue1));
+        assertNumEquals(6d / 6d, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        var criterion = getCriterion(new GrossReturnCriterion());
+        AnalysisCriterion criterion = getCriterion(new ReturnCriterion());
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -42,11 +42,12 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://en.wikipedia.org/wiki/Volume-weighted_average_price">
  *      https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
  */
-public class VWAPIndicator extends CachedIndicator<Num> {
+public class VWAPIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> typicalPrice;
     private final Indicator<Num> volume;
+    private final Num zero;
 
     /**
      * Constructor.
@@ -59,6 +60,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.typicalPrice = new TypicalPriceIndicator(series);
         this.volume = new VolumeIndicator(series);
+        this.zero = zero();
     }
 
     @Override
@@ -67,7 +69,6 @@ public class VWAPIndicator extends CachedIndicator<Num> {
             return typicalPrice.getValue(index);
         }
         int startIndex = Math.max(0, index - barCount + 1);
-        final var zero = getBarSeries().numFactory().zero();
         Num cumulativeTPV = zero;
         Num cumulativeVolume = zero;
         for (int i = startIndex; i <= index; i++) {
@@ -79,7 +80,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -109,9 +109,11 @@ public class BacktestExecutor {
      * @return a list of TradingStatements
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
-        return strategies.parallelStream().map(strategy -> {
+        List<TradingStatement> tradingStatements = strategies.parallelStream().map(strategy -> {
             TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
             return tradingStatementGenerator.generate(strategy, tradingRecord, seriesManager.getBarSeries());
         }).collect(Collectors.toList());
+
+        return tradingStatements;
     }
 }

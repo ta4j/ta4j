@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -80,7 +80,7 @@ public class Returns implements Indicator<Num> {
      * @param type      the ReturnType
      */
     public Returns(BarSeries barSeries, Position position, ReturnType type) {
-        one = barSeries.numFactory().one();
+        one = barSeries.one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
@@ -98,7 +98,7 @@ public class Returns implements Indicator<Num> {
      * @param type          the ReturnType
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
-        one = barSeries.numFactory().one();
+        one = barSeries.one();
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
@@ -125,13 +125,18 @@ public class Returns implements Indicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 
     @Override
     public BarSeries getBarSeries() {
         return barSeries;
+    }
+
+    @Override
+    public Num numOf(Number number) {
+        return barSeries.numOf(number);
     }
 
     /**
@@ -151,24 +156,24 @@ public class Returns implements Indicator<Num> {
      */
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
-        Num minusOne = barSeries.numFactory().numOf(-1);
-        int endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        Num minusOne = barSeries.numOf(-1);
+        int endIndex = CashFlow.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            values.addAll(Collections.nCopies(begin - values.size(), barSeries.numFactory().zero()));
+            values.addAll(Collections.nCopies(begin - values.size(), barSeries.zero()));
         }
 
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
         Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
+        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
         Num lastPrice = position.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
-            Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
             Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
@@ -191,7 +196,7 @@ public class Returns implements Indicator<Num> {
         }
 
         Num strategyReturn;
-        Num assetReturn = type.calculate(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
         if (position.getEntry().isBuy()) {
             strategyReturn = assetReturn;
         } else {
@@ -213,13 +218,12 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Pads {@link #values} with zeros up until {@code endIndex}.
-     *
+     * 
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
-            values.addAll(
-                    Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numFactory().zero()));
+            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.zero()));
         }
     }
 }

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,40 +23,55 @@
  */
 package org.ta4j.core.indicators.donchian;
 
-import static org.junit.Assert.assertEquals;
-
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertEquals;
 
 public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries series;
 
-    public DonchianChannelUpperIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public DonchianChannelUpperIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        this.series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withName("DonchianChannelUpperIndicatorTestSeries")
-                .build();
+        ZonedDateTime startDateTime = ZonedDateTime.now();
+        List<Bar> bars = new ArrayList<>();
 
-        series.barBuilder().openPrice(100d).highPrice(105d).lowPrice(95d).closePrice(100d).add();
-        series.barBuilder().openPrice(105).highPrice(110).lowPrice(100).closePrice(105).add();
-        series.barBuilder().openPrice(110).highPrice(115).lowPrice(105).closePrice(110).add();
-        series.barBuilder().openPrice(115).highPrice(120).lowPrice(110).closePrice(115).add();
-        series.barBuilder().openPrice(120).highPrice(125).lowPrice(115).closePrice(120).add();
-        series.barBuilder().openPrice(115).highPrice(120).lowPrice(110).closePrice(115).add();
-        series.barBuilder().openPrice(110).highPrice(115).lowPrice(105).closePrice(110).add();
-        series.barBuilder().openPrice(105).highPrice(110).lowPrice(100).closePrice(105).add();
-        series.barBuilder().openPrice(100).highPrice(105).lowPrice(95).closePrice(100).add();
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime, 100d, 105d, 95d, 100d, 0d, 0, 0, this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(1), 105, 110, 100, 105, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(2), 110, 115, 105, 110, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(3), 115, 120, 110, 115, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(4), 120, 125, 115, 120, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(5), 115, 120, 110, 115, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(6), 110, 115, 105, 110, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(7), 105, 110, 100, 105, 0d, 0, 0,
+                this::numOf));
+        bars.add(
+                new BaseBar(Duration.ofHours(1), startDateTime.plusHours(8), 100, 105, 95, 100, 0d, 0, 0, this::numOf));
+
+        this.series = new BaseBarSeries("DonchianChannelUpperIndicatorTestSeries", bars);
     }
 
     @After
@@ -65,7 +80,7 @@ public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<Bar
 
     @Test
     public void testGetValue() {
-        var subject = new DonchianChannelUpperIndicator(series, 3);
+        DonchianChannelUpperIndicator subject = new DonchianChannelUpperIndicator(series, 3);
 
         assertEquals(numOf(105), subject.getValue(0));
         assertEquals(numOf(110), subject.getValue(1));
@@ -80,7 +95,7 @@ public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<Bar
 
     @Test
     public void testGetValueWhenBarCountIs1() {
-        var subject = new DonchianChannelUpperIndicator(series, 1);
+        DonchianChannelUpperIndicator subject = new DonchianChannelUpperIndicator(series, 1);
 
         assertEquals(numOf(105), subject.getValue(0));
         assertEquals(numOf(110), subject.getValue(1));

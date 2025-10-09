@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,8 +24,8 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
@@ -48,7 +48,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      "https://www.tradingview.com/script/Eize4T9L-Relative-Volume-Standard-Deviation/">Relative
  *      Volume Standard Deviation</a>
  */
-public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Num> {
+public class RelativeVolumeStandardDeviationIndicator extends AbstractIndicator<Num> {
 
     private final StandardDeviationIndicator volumeStandardDeviation;
     private final SMAIndicator averageVolume;
@@ -72,7 +72,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
     @Override
     protected Num calculate(int index) {
         // If the index is less than the required unstable bars, return NaN
-        if (index < this.getCountOfUnstableBars()) {
+        if (index < this.getUnstableBars()) {
             return NaN;
         }
 
@@ -83,7 +83,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

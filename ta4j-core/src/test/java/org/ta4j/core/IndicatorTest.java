@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,23 +23,22 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -48,19 +47,19 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             24.35, 23.75, 24.09 };
     BarSeries data;
 
-    public IndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public IndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(typicalPrices).build();
+        data = new MockBarSeries(numFunction, typicalPrices);
     }
 
     @Test
     public void toDouble() {
         List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFactory::numOf)
+                .mapToObj(numFunction::apply)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
@@ -76,7 +75,7 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void shouldProvideStream() {
         List<Num> expectedValues = Arrays.stream(typicalPrices)
-                .mapToObj(numFactory::numOf)
+                .mapToObj(numFunction::apply)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 

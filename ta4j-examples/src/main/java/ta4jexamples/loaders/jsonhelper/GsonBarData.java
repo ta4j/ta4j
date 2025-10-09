@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,9 @@
  */
 package ta4jexamples.loaders.jsonhelper;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
@@ -39,8 +40,8 @@ public class GsonBarData {
     private Number amount;
 
     public static GsonBarData from(Bar bar) {
-        var result = new GsonBarData();
-        result.endTime = bar.getEndTime().toEpochMilli();
+        GsonBarData result = new GsonBarData();
+        result.endTime = bar.getEndTime().toInstant().toEpochMilli();
         result.openPrice = bar.getOpenPrice().getDelegate();
         result.highPrice = bar.getHighPrice().getDelegate();
         result.lowPrice = bar.getLowPrice().getDelegate();
@@ -51,16 +52,8 @@ public class GsonBarData {
     }
 
     public void addTo(BaseBarSeries barSeries) {
-        var endTimeInstant = Instant.ofEpochMilli(endTime);
-        barSeries.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTimeInstant)
-                .openPrice(openPrice)
-                .highPrice(highPrice)
-                .lowPrice(lowPrice)
-                .closePrice(closePrice)
-                .volume(volume)
-                .amount(amount)
-                .add();
+        Instant endTimeInstant = Instant.ofEpochMilli(endTime);
+        ZonedDateTime endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
+        barSeries.addBar(endBarTime, openPrice, highPrice, lowPrice, closePrice, volume, amount);
     }
 }

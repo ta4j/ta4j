@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,23 +24,23 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Highest value indicator.
- *
+ * 
  * <p>
  * Returns the highest indicator value from the bar series within the bar count.
  */
-public class HighestValueIndicator extends CachedIndicator<Num> {
+public class HighestValueIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
 
     /**
      * Constructor.
-     *
+     * 
      * @param indicator the {@link Indicator}
      * @param barCount  the time frame
      */
@@ -51,7 +51,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public Num calculate(int index) {
+    protected Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && barCount != 1) {
             return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
         }
@@ -67,7 +67,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     /** @return {@link #barCount} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 

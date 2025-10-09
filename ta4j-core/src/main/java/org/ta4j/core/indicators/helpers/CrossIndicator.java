@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Boolean indicator that monitors the crossing of two indicators.
  */
-public class CrossIndicator extends CachedIndicator<Boolean> {
+public class CrossIndicator extends AbstractIndicator<Boolean> {
 
     /** Upper indicator */
     private final Indicator<Num> up;
@@ -49,7 +49,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
      */
     public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
         // TODO: check if up series is equal to low series
-        super(up);
+        super(up.getBarSeries());
         this.up = up;
         this.low = low;
     }
@@ -62,15 +62,18 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        do {
+        i--;
+        if (up.getValue(i).isGreaterThan(low.getValue(i))) {
+            return true;
+        }
+        while (i > 0 && up.getValue(i).isEqual(low.getValue(i))) {
             i--;
-        } while (i > 0 && up.getValue(i).isEqual(low.getValue(i)));
-
-        return up.getValue(i).isGreaterThan(low.getValue(i));
+        }
+        return (i != 0) && (up.getValue(i).isGreaterThan(low.getValue(i)));
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 

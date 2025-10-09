@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,26 +23,31 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
-
 public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public VolumeIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public VolumeIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Test
     public void indicatorShouldRetrieveBarVolume() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        var volumeIndicator = new VolumeIndicator(series);
+        BarSeries series = new MockBarSeries(numFunction);
+        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
         for (int i = 0; i < 10; i++) {
             assertEquals(volumeIndicator.getValue(i), series.getBar(i).getVolume());
         }
@@ -50,16 +55,15 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void sumOfVolume() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().closePrice(0).volume(10).add();
-        series.barBuilder().closePrice(0).volume(11).add();
-        series.barBuilder().closePrice(0).volume(12).add();
-        series.barBuilder().closePrice(0).volume(13).add();
-        series.barBuilder().closePrice(0).volume(150).add();
-        series.barBuilder().closePrice(0).volume(155).add();
-        series.barBuilder().closePrice(0).volume(160).add();
-
-        var volumeIndicator = new VolumeIndicator(series, 3);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 10, numFunction));
+        bars.add(new MockBar(0, 11, numFunction));
+        bars.add(new MockBar(0, 12, numFunction));
+        bars.add(new MockBar(0, 13, numFunction));
+        bars.add(new MockBar(0, 150, numFunction));
+        bars.add(new MockBar(0, 155, numFunction));
+        bars.add(new MockBar(0, 160, numFunction));
+        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockBarSeries(bars), 3);
 
         assertNumEquals(10, volumeIndicator.getValue(0));
         assertNumEquals(21, volumeIndicator.getValue(1));

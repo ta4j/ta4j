@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/">
  *      http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/</a>
  */
-public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
+public class PearsonCorrelationIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
@@ -59,10 +59,9 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
 
-        final var numFactory = getBarSeries().numFactory();
-        Num n = numFactory.numOf(barCount);
+        Num n = numOf(barCount);
 
-        Num zero = numFactory.zero();
+        Num zero = zero();
         Num Sx = zero;
         Num Sy = zero;
         Num Sxx = zero;
@@ -85,7 +84,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         Num toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
                 .multipliedBy(n.multipliedBy(Syy).minus(Sy.multipliedBy(Sy)));
 
-        if (toSqrt.isGreaterThan(numFactory.zero())) {
+        if (toSqrt.isGreaterThan(zero())) {
             // pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy *
             // Sy))
             return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(toSqrt.sqrt());
@@ -95,7 +94,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 }

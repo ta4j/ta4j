@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,15 +34,18 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/c/close_location_value.asp">
  *      http://www.investopedia.com/terms/c/close_location_value.asp</a>
  */
-public class CloseLocationValueIndicator extends CachedIndicator<Num> {
+public class CloseLocationValueIndicator extends AbstractIndicator<Num> {
+
+    private final Num zero;
 
     /**
      * Constructor.
-     *
+     * 
      * @param series the bar series
      */
     public CloseLocationValueIndicator(BarSeries series) {
         super(series);
+        this.zero = zero();
     }
 
     @Override
@@ -54,13 +57,12 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
         final Num diffHighLow = high.minus(low);
 
-        return diffHighLow.isNaN() ? getBarSeries().numFactory().zero()
-                : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
+        return diffHighLow.isNaN() ? zero : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
     }
 
     /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

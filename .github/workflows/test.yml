@@ -12,28 +12,16 @@ on:
       - master
 
 jobs:
-  test:
-    name: Build and Test
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Build and run tests with Maven
+          distribution: 'zulu'
+          java-version: '11'
+      - name: Build with Maven
         run: xvfb-run mvn -B test
-

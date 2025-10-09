@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -26,7 +26,7 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
+import org.ta4j.core.criteria.pnl.ProfitLossRatioCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,7 +43,7 @@ import org.ta4j.core.num.Num;
  */
 public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
-    private final NetProfitLossRatioCriterion profitLossRatioCriterion = new NetProfitLossRatioCriterion();
+    private final ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
     private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
@@ -72,10 +72,10 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
     private Num calculate(BarSeries series, Num profitLossRatio, Num numberOfWinningPositions,
             Num numberOfAllPositions) {
         if (numberOfAllPositions.isZero() || profitLossRatio.isZero()) {
-            return series.numFactory().zero();
+            return series.zero();
         }
         // Expectancy = ((1 + AW/AL) * ProbabilityToWinOnePosition) - 1
-        Num one = series.numFactory().one();
+        Num one = series.one();
         Num probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(numberOfAllPositions);
         return (one.plus(profitLossRatio)).multipliedBy(probabiltyToWinOnePosition).minus(one);
     }

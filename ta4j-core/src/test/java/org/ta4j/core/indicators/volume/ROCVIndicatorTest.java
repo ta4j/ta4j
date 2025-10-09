@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,38 +23,43 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     BarSeries series;
 
-    public ROCVIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
+    public ROCVIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().closePrice(1355.69).volume(1000).add();
-        series.barBuilder().closePrice(1325.51).volume(3000).add();
-        series.barBuilder().closePrice(1335.02).volume(3500).add();
-        series.barBuilder().closePrice(1313.72).volume(2200).add();
-        series.barBuilder().closePrice(1319.99).volume(2300).add();
-        series.barBuilder().closePrice(1331.85).volume(200).add();
-        series.barBuilder().closePrice(1329.04).volume(2700).add();
-        series.barBuilder().closePrice(1362.16).volume(5000).add();
-        series.barBuilder().closePrice(1365.51).volume(1000).add();
-        series.barBuilder().closePrice(1374.02).volume(2500).add();
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(1355.69, 1000, numFunction));
+        bars.add(new MockBar(1325.51, 3000, numFunction));
+        bars.add(new MockBar(1335.02, 3500, numFunction));
+        bars.add(new MockBar(1313.72, 2200, numFunction));
+        bars.add(new MockBar(1319.99, 2300, numFunction));
+        bars.add(new MockBar(1331.85, 200, numFunction));
+        bars.add(new MockBar(1329.04, 2700, numFunction));
+        bars.add(new MockBar(1362.16, 5000, numFunction));
+        bars.add(new MockBar(1365.51, 1000, numFunction));
+        bars.add(new MockBar(1374.02, 2500, numFunction));
+        series = new MockBarSeries(bars);
     }
 
     @Test

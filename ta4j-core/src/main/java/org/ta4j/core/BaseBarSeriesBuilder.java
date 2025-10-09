@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,34 +25,52 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-import org.ta4j.core.bars.TimeBarBuilderFactory;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 /**
  * A builder to build a new {@link BaseBarSeries}.
  */
 public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
-    /** The {@link #name} for an unnamed bar series. */
-    private static final String UNNAMED_SERIES_NAME = "unnamed_series";
-
+    /** Default instance of Num to determine its Num type and function. */
+    private static Num defaultNum = DecimalNum.ZERO;
     private List<Bar> bars;
     private String name;
+    private Num num;
     private boolean constrained;
     private int maxBarCount;
-    private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
 
     /** Constructor to build a {@code BaseBarSeries}. */
     public BaseBarSeriesBuilder() {
         initValues();
     }
 
+    /**
+     * @param defaultNum any instance of Num to be used as default to determine its
+     *                   Num function; with this, we can convert a {@link Number} to
+     *                   a {@link Num Num implementation}
+     */
+    public static void setDefaultNum(Num defaultNum) {
+        BaseBarSeriesBuilder.defaultNum = defaultNum;
+    }
+
+    /**
+     * @param defaultFunction a Num function to be used as default; with this, we
+     *                        can convert a {@link Number} to a {@link Num Num
+     *                        implementation}
+     */
+    public static void setDefaultNum(Function<Number, Num> defaultFunction) {
+        BaseBarSeriesBuilder.defaultNum = defaultFunction.apply(0);
+    }
+
     private void initValues() {
         this.bars = new ArrayList<>();
         this.name = "unnamed_series";
+        this.num = BaseBarSeriesBuilder.defaultNum;
         this.constrained = false;
         this.maxBarCount = Integer.MAX_VALUE;
     }
@@ -65,29 +83,18 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
             beginIndex = 0;
             endIndex = bars.size() - 1;
         }
-
-        var series = new BaseBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
-                constrained, numFactory, barBuilderFactory);
+        BaseBarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, num);
         series.setMaximumBarCount(maxBarCount);
         initValues(); // reinitialize values for next series
         return series;
     }
 
     /**
-     * @param constrained to set
+     * @param constrained to set {@link BaseBarSeries#constrained}
      * @return {@code this}
      */
     public BaseBarSeriesBuilder setConstrained(boolean constrained) {
         this.constrained = constrained;
-        return this;
-    }
-
-    /**
-     * @param numFactory to set {@link BaseBarSeries#numFactory()}
-     * @return {@code this}
-     */
-    public BaseBarSeriesBuilder withNumFactory(NumFactory numFactory) {
-        this.numFactory = numFactory;
         return this;
     }
 
@@ -119,12 +126,41 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param barBuilderFactory to build bars with the same datatype as series
-     *
+     * @param type any instance of Num to determine its Num function; with this, we
+     *             can convert a {@link Number} to a {@link Num Num implementation}
      * @return {@code this}
      */
-    public BaseBarSeriesBuilder withBarBuilderFactory(final BarBuilderFactory barBuilderFactory) {
-        this.barBuilderFactory = barBuilderFactory;
+    public BaseBarSeriesBuilder withNumTypeOf(Num type) {
+        this.num = type;
         return this;
     }
+
+    /**
+     * @param type any Num function; with this, we can convert a {@link Number} to a
+     *             {@link Num Num implementation}
+     * @return {@code this}
+     */
+    public BaseBarSeriesBuilder withNumTypeOf(Function<Number, Num> function) {
+        this.num = function.apply(0);
+        return this;
+    }
+
+    /**
+     * @param clazz any Num class; with this, we can convert a {@link Number} to a
+     *              {@link Num Num implementation}; if {@code clazz} is not
+     *              registered, then {@link #defaultNum} is used.
+     * @return {@code this}
+     */
+    public BaseBarSeriesBuilder withNumTypeOf(Class<? extends Num> clazz) {
+        if (clazz == DecimalNum.class) {
+            this.num = DecimalNum.ZERO;
+            return this;
+        } else if (clazz == DoubleNum.class) {
+            this.num = DoubleNum.ZERO;
+            return this;
+        }
+        this.num = defaultNum;
+        return this;
+    }
+
 }

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,9 +31,6 @@ import org.ta4j.core.num.Num;
 /**
  * Satisfied when the value of the {@link Indicator indicator} is between two
  * other indicators or values.
- *
- * <p>
- * This rule does not use the {@code tradingRecord}.
  */
 public class InPipeRule extends AbstractRule {
 
@@ -54,7 +51,7 @@ public class InPipeRule extends AbstractRule {
      * @param lower the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
-        this(ref, ref.getBarSeries().numFactory().numOf(upper), ref.getBarSeries().numFactory().numOf(lower));
+        this(ref, ref.numOf(upper), ref.numOf(lower));
     }
 
     /**

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,26 +23,26 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * DateTime indicator.
- *
+ * 
  * <p>
- * Returns a {@link Instant} of (or for) a bar.
+ * Returns a {@link ZonedDateTime} of (or for) a bar.
  */
-public class DateTimeIndicator extends CachedIndicator<Instant> {
+public class DateTimeIndicator extends AbstractIndicator<ZonedDateTime> {
 
-    private final Function<Bar, Instant> action;
+    private final Function<Bar, ZonedDateTime> action;
 
     /**
      * Constructor to return {@link Bar#getBeginTime()} of a bar.
-     *
+     * 
      * @param barSeries the bar series
      */
     public DateTimeIndicator(BarSeries barSeries) {
@@ -51,24 +51,24 @@ public class DateTimeIndicator extends CachedIndicator<Instant> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param barSeries the bar series
      * @param action    the action
      */
-    public DateTimeIndicator(BarSeries barSeries, Function<Bar, Instant> action) {
+    public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
         super(barSeries);
         this.action = action;
     }
 
     @Override
-    protected Instant calculate(int index) {
+    protected ZonedDateTime calculate(int index) {
         Bar bar = getBarSeries().getBar(index);
         return this.action.apply(bar);
     }
 
     /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

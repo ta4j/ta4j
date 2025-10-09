@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,11 +25,12 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.caching.NoIndicatorValueCache;
 import org.ta4j.core.num.Num;
 
 /**
  * Open price indicator.
- *
+ * 
  * <p>
  * Returns the open price of a bar.
  */
@@ -37,21 +38,21 @@ public class OpenPriceIndicator extends AbstractIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param series the bar series
      */
     public OpenPriceIndicator(BarSeries series) {
-        super(series);
+        super(series, new NoIndicatorValueCache<>());
     }
 
     @Override
-    public Num getValue(int index) {
+    public Num calculate(int index) {
         return getBarSeries().getBar(index).getOpenPrice();
     }
 
     /** @return {@code 0} */
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,45 +23,54 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
-
 public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
+    private List<Bar> mockBarList;
     private BarSeries mockBarSeries;
 
-    public RelativeVolumeStandardDeviationIndicatorTest(NumFactory numFunction) {
+    public RelativeVolumeStandardDeviationIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(9).highPrice(10).lowPrice(9).volume(10).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(11).highPrice(11).lowPrice(10).volume(11).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).volume(12).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(12).highPrice(12).lowPrice(10).volume(13).add();
-        mockBarSeries.barBuilder().openPrice(9).closePrice(12).highPrice(12).lowPrice(9).volume(11).add();
-        mockBarSeries.barBuilder().openPrice(9).closePrice(8).highPrice(9).lowPrice(8).volume(10).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(8).highPrice(11).lowPrice(8).volume(12).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(13).highPrice(13).lowPrice(9).volume(15).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(2).highPrice(11).lowPrice(2).volume(12).add();
+        mockBarList = new ArrayList<>();
+        mockBarList.add(new MockBar(10, 9, 10, 9, 10, numFunction));
+        mockBarList.add(new MockBar(10, 11, 11, 10, 11, numFunction));
+        mockBarList.add(new MockBar(11, 12, 12, 10, 12, numFunction));
+        mockBarList.add(new MockBar(10, 12, 12, 10, 13, numFunction));
+        mockBarList.add(new MockBar(9, 12, 12, 9, 11, numFunction));
+        mockBarList.add(new MockBar(9, 8, 9, 8, 10, numFunction));
+        mockBarList.add(new MockBar(11, 8, 11, 8, 12, numFunction));
+        mockBarList.add(new MockBar(10, 13, 13, 9, 15, numFunction));
+        mockBarList.add(new MockBar(11, 2, 11, 2, 12, numFunction));
+
+        mockBarSeries = new MockBarSeries(mockBarList);
     }
 
     @Test
     public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 5);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                5);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());
@@ -73,7 +82,8 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf2_whenGetValue_thenReturnCorrectValue() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 2);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                2);
 
         assertTrue(subject.getValue(0).isNaN());
         assertNumEquals(NaN, subject.getValue(1));
@@ -88,7 +98,8 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 3);
+        RelativeVolumeStandardDeviationIndicator subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries,
+                3);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());

@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,17 +24,17 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Calculates the sum of all indicator values.
- *
+ * 
  * <pre>
  * Sum = summand0 + summand1 + ... + summandN
  * </pre>
  */
-public class SumIndicator extends CachedIndicator<Num> {
+public class SumIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num>[] summands;
 
@@ -52,7 +52,7 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = getBarSeries().numFactory().zero();
+        Num sum = zero();
         for (Indicator<Num> summand : summands) {
             sum = sum.plus(summand.getValue(index));
         }
@@ -60,7 +60,7 @@ public class SumIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return 0;
     }
 }

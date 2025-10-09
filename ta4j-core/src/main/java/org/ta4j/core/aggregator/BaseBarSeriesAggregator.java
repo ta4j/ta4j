@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,7 +28,6 @@ import java.util.List;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 
 /**
  * Aggregates a {@link BaseBarSeries} into another one using a
@@ -40,7 +39,7 @@ public class BaseBarSeriesAggregator implements BarSeriesAggregator {
 
     /**
      * Constructor.
-     *
+     * 
      * @param barAggregator the {@link BarAggregator}
      */
     public BaseBarSeriesAggregator(BarAggregator barAggregator) {
@@ -50,6 +49,6 @@ public class BaseBarSeriesAggregator implements BarSeriesAggregator {
     @Override
     public BarSeries aggregate(BarSeries series, String aggregatedSeriesName) {
         final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
-        return new BaseBarSeriesBuilder().withName(aggregatedSeriesName).withBars(aggregatedBars).build();
+        return new BaseBarSeries(aggregatedSeriesName, aggregatedBars);
     }
 }

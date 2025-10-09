@@ -14,14 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
+          ref: 'master'
           fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: 21
-          distribution: 'temurin'
-          server-id: maven-central-snapshots
+          java-version: 11
+          distribution: 'zulu'
+          server-id: sonatype-nexus-snapshots
           server-username: MAVEN_USERNAME
           server-password: MAVEN_CENTRAL_TOKEN
 
@@ -29,4 +30,4 @@ jobs:
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USER }}
           MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_PASSWORD }}
-        run: xvfb-run mvn -B deploy -X
+        run: xvfb-run mvn -B deploy

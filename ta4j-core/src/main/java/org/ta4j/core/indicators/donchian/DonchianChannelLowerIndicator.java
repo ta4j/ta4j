@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * Copyright (c) 2017-2023 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.donchian;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 /***
  * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
-public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
+public class DonchianChannelLowerIndicator extends AbstractIndicator<Num> {
 
     private final int barCount;
     private final LowPriceIndicator lowPrice;
@@ -40,7 +40,7 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     *
+     * 
      * @param series   the bar series
      * @param barCount the time frame
      */
@@ -57,7 +57,7 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public int getCountOfUnstableBars() {
+    public int getUnstableBars() {
         return barCount;
     }
 
