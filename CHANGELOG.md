@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - `PivotPointIndicatorTest` fixed to work also in java 25
 
 ### Changed
+- [#0000](https://github.com/ta4j/ta4j/issues/0000) Enhanced `NetMomentumIndicator` with configurable decay to model time-based resets
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
@@ -43,6 +44,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
 - Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
 - Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
+- Added new `NetMomentumIndicator` indicator class
+- New `substitute` helper function to `UnaryOperation`
 
 ## 0.18 (released May 15, 2025)
 
