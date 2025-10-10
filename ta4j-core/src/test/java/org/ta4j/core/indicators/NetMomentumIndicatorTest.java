@@ -27,7 +27,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -75,13 +77,15 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testWithRSIIndicator() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
+        NetMomentumIndicator decayed = NetMomentumIndicator.forRsiWithDecay(rsi, 5, 0.9);
 
         // Do not evaluate values because RSI has NaN early which is incompatible with
         // DecimalNum.
         // Instead, validate unstable bar propagation behavior without invoking
         // calculations.
         assertTrue(subject.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
+        assertTrue(decayed.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
     }
 
     @Test
@@ -131,7 +135,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testGetCountOfUnstableBars() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
 
         int unstableBars = subject.getCountOfUnstableBars();
         assertTrue(unstableBars >= 5); // At least the timeframe
@@ -212,12 +216,100 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
+    public void testExplicitDecayFactorOfOneMatchesDefault() {
+        CachedIndicator<Num> oscillator = new CachedIndicator<Num>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(50 + 7 * Math.sin(index * 0.2));
+            }
+        };
+
+        NetMomentumIndicator defaultDecay = new NetMomentumIndicator(oscillator, 8, 50);
+        NetMomentumIndicator explicitDecay = new NetMomentumIndicator(oscillator, 8, 50, 1.0);
+
+        for (int i = 0; i < series.getBarCount(); i++) {
+            assertTrue(defaultDecay.getValue(i).isEqual(explicitDecay.getValue(i)));
+        }
+    }
+
+    @Test
+    public void testDecayFactorPullsTowardNeutral() {
+        CachedIndicator<Num> constantAbove = new CachedIndicator<Num>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(70);
+            }
+        };
+
+        int timeFrame = 5;
+        NetMomentumIndicator noDecay = new NetMomentumIndicator(constantAbove, timeFrame, 50);
+        NetMomentumIndicator decayed = new NetMomentumIndicator(constantAbove, timeFrame, 50, 0.8);
+
+        // After the window fills, the decayed series should be closer to zero.
+        int targetIndex = Math.max(timeFrame, series.getBarCount() - 1);
+        Num noDecayValue = noDecay.getValue(targetIndex);
+        Num decayedValue = decayed.getValue(targetIndex);
+
+        assertTrue(decayedValue.abs().isLessThan(noDecayValue.abs()));
+
+        Num decay = numOf(0.8);
+        Num decayAtWindow = decay.pow(timeFrame);
+
+        KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
+        BinaryOperation deltaIndicator = BinaryOperation.difference(smoothed, 50);
+
+        Num expected = deltaIndicator.getValue(0);
+        for (int i = 1; i <= targetIndex; i++) {
+            expected = expected.multipliedBy(decay).plus(deltaIndicator.getValue(i));
+            if (i >= timeFrame) {
+                expected = expected.minus(deltaIndicator.getValue(i - timeFrame).multipliedBy(decayAtWindow));
+            }
+        }
+
+        assertTrue(decayedValue.isEqual(expected));
+    }
+
+    @Test
+    public void testDecayFactorZeroBehavesLikeInstantaneousDelta() {
+        CachedIndicator<Num> varying = new CachedIndicator<Num>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(40 + 20 * Math.sin(index * 0.3));
+            }
+        };
+
+        NetMomentumIndicator instant = new NetMomentumIndicator(varying, 6, 50, 0.0);
+        KalmanFilterIndicator smoothed = new KalmanFilterIndicator(varying);
+        BinaryOperation deltaIndicator = BinaryOperation.difference(smoothed, 50);
+
+        for (int i = 0; i < series.getBarCount(); i++) {
+            Num expected = deltaIndicator.getValue(i);
+            assertTrue("Mismatch at index " + i, instant.getValue(i).isEqual(expected));
+        }
+    }
+
+    @Test
     public void testConstructorRejectsNonPositiveTimeframe() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, 0));
-        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, -5));
-        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, 0, 50));
-        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(rsi, -1, 50));
+        assertThrows(IllegalArgumentException.class, () -> NetMomentumIndicator.forRsi(rsi, 0));
+        assertThrows(IllegalArgumentException.class, () -> NetMomentumIndicator.forRsi(rsi, -5));
+        assertThrows(IllegalArgumentException.class, () -> NetMomentumIndicator.forRsiWithDecay(rsi, 0, 0.9));
+        assertThrows(IllegalArgumentException.class, () -> NetMomentumIndicator.forRsiWithDecay(rsi, -1, 0.9));
     }
 
     @Test
@@ -226,12 +318,24 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         assertThrows(NullPointerException.class, () -> new NetMomentumIndicator((Indicator<Num>) null, 5, 50));
 
         assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(closePrice, 5, null));
+        assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(closePrice, 5, 50, null));
+        assertThrows(NullPointerException.class, () -> NetMomentumIndicator.forRsiWithDecay(null, 5, 0.9));
+        assertThrows(NullPointerException.class,
+                () -> NetMomentumIndicator.forRsiWithDecay(new RSIIndicator(closePrice, 14), 5, null));
+    }
+
+    @Test
+    public void testConstructorRejectsDecayOutsideBounds() {
+        CachedIndicator<Num> oscillator = buildOscillator();
+
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(oscillator, 5, 50, 1.5));
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(oscillator, 5, 50, -0.1));
     }
 
     @Test
     public void testUnstableBarsCountWithRSI() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        NetMomentumIndicator subject = new NetMomentumIndicator(rsi, 5);
+        NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
 
         // Validate count relationship without evaluating values
         assertTrue(subject.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
