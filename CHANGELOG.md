@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- [#0000](https://github.com/ta4j/ta4j/issues/0000) Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
 
 ## 0.19
 
