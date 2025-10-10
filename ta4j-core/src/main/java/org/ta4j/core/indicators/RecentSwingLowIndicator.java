@@ -255,4 +255,3 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
         return true;
     }
 }
-
