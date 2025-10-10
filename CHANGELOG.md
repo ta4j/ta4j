@@ -21,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - `PivotPointIndicatorTest` fixed to work also in java 25
 
 ### Changed
+- [#0000](https://github.com/ta4j/ta4j/issues/0000) Enhanced `NetMomentumIndicator` with configurable decay to model time-based resets
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life

@@ -25,3 +25,15 @@ These reminders capture the potential friction points when working on unit tests
 - When git status times out, narrow the scope with git status --short path instead of retrying broad commands.
 
 Following these best practices should keep future unit test development tight and predictable.
+
+## Scope: NetMomentumIndicator Enhancements
+
+- The indicator now supports a configurable decay factor. A decay of `1` preserves the legacy running-total behavior, while
+  values below `1` apply an exponential fade to older contributions. Tests rely on this recursive formulation, so prefer
+  reasoning in terms of weighted sums rather than reintroducing `RunningTotalIndicator`.
+- For deterministic expectations in tests, constant oscillators are a reliable way to assert the closed-form steady-state
+  values: `delta * (1 - decay^window) / (1 - decay)`.
+- A temporary changelog placeholder (`#0000`) is used when an originating ticket number is unknown. Replace it with the real
+  reference once available to keep release notes accurate.
+- RSI convenience accessors are exposed as static factories (`forRsi`, `forRsiWithDecay`). Use those in tests and
+  documentation snippets to avoid constructor ambiguity with the general-purpose overloads.

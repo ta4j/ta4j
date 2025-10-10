@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Net Momentum Indicator.
@@ -48,6 +48,8 @@ import org.ta4j.core.num.Num;
  * <li>Applies Kalman filter smoothing to the input oscillator</li>
  * <li>Calculates deviation from the neutral pivot value</li>
  * <li>Maintains a running total over the specified timeframe</li>
+ * <li>Optionally applies exponential decay so that momentum can reset through
+ * time/sideways action</li>
  * </ol>
  *
  * <p>
@@ -84,6 +86,12 @@ import org.ta4j.core.num.Num;
  * </ul>
  *
  * <p>
+ * The optional decay factor (defaults to {@code 1}) models how sideways price
+ * action can reset extreme readings. Values below {@code 1} exponentially
+ * reduce the influence of older contributions inside the window, pulling the
+ * running tally back toward zero unless fresh momentum persists.
+ *
+ * <p>
  * RSI-specific intuition (pivot at 50):
  * <ul>
  * <li>Brief RSI readings just above 50 produce small net momentum; RSI between
@@ -100,7 +108,14 @@ import org.ta4j.core.num.Num;
  *
  * <pre>{@code
  * RSIIndicator rsi = new RSIIndicator(closePrice, 14);
- * NetMomentumIndicator netMomentum = new NetMomentumIndicator(rsi, 20);
+ * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsi(rsi, 20);
+ * }</pre>
+ *
+ * Including a decay factor to emphasize time-based mean reversion:
+ *
+ * <pre>{@code
+ * RSIIndicator rsi = new RSIIndicator(closePrice, 14);
+ * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
  * }</pre>
  *
  * @see RSIIndicator
@@ -112,10 +127,14 @@ import org.ta4j.core.num.Num;
 public class NetMomentumIndicator extends CachedIndicator<Num> {
 
     private static final double DEFAULT_RSI_NEUTRAL_PIVOT = 50.0;
+    private static final double DEFAULT_DECAY_FACTOR = 1.0;
 
-    private final RunningTotalIndicator runningTotalIndicator;
     private final KalmanFilterIndicator smoothedIndicator;
     private final Indicator<Num> oscillatingIndicator;
+    private final Indicator<Num> deltaFromNeutralIndicator;
+    private final int timeFrame;
+    private final Num decayFactor;
+    private final Num decayFactorAtWindowLimit;
 
     /**
      * Constructor for Net Momentum Indicator.
@@ -131,42 +150,110 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      *                                  is null
      */
     public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue) {
+        this(oscillatingIndicator, timeFrame, neutralPivotValue, DEFAULT_DECAY_FACTOR);
+    }
+
+    /**
+     * Constructor for Net Momentum Indicator with configurable decay factor.
+     *
+     * @param oscillatingIndicator the input oscillating indicator (e.g., RSI,
+     *                             Stochastic)
+     * @param timeFrame            the period for the running total calculation
+     *                             (must be > 0)
+     * @param neutralPivotValue    the neutral/equilibrium value of the oscillator;
+     *                             fractional pivots are supported
+     * @param decayFactor          the per-bar retention factor in [0, 1]. Use 1 for
+     *                             no decay, values below 1 pull the indicator back
+     *                             toward the neutral pivot over time
+     * @throws IllegalArgumentException if timeFrame <= 0 or decayFactor is outside
+     *                                  [0, 1]
+     * @throws NullPointerException     if oscillatingIndicator, neutralPivotValue
+     *                                  or decayFactor is null
+     * @since 0.19
+     */
+    public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue,
+            Number decayFactor) {
         super(Objects.requireNonNull(oscillatingIndicator, "Oscillating indicator must not be null"));
 
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
+        Objects.requireNonNull(decayFactor, "Decay factor must not be null");
 
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");
         }
 
         this.oscillatingIndicator = oscillatingIndicator;
-
+        this.timeFrame = timeFrame;
         this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        BinaryOperation deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator, neutralPivotValue);
-        this.runningTotalIndicator = new RunningTotalIndicator(deltaFromNeutralIndicator, timeFrame);
+        this.deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator, neutralPivotValue);
+
+        double rawDecay = decayFactor.doubleValue();
+        if (Double.isNaN(rawDecay) || Double.isInfinite(rawDecay) || rawDecay < 0.0 || rawDecay > 1.0) {
+            throw new IllegalArgumentException("Decay factor must be between 0 and 1 inclusive");
+        }
+
+        NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
+        this.decayFactor = numFactory.numOf(decayFactor);
+        this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
     }
 
     /**
-     * Constructor specifically for RSI indicator with default neutral pivot of 50.
+     * Creates a {@link NetMomentumIndicator} configured for RSI inputs with the
+     * standard neutral pivot of 50.
      *
      * @param rsiIndicator the RSI indicator
      * @param timeFrame    the period for the running total calculation (must be >
      *                     0)
+     * @return the configured {@link NetMomentumIndicator}
      * @throws IllegalArgumentException if timeFrame <= 0
      * @throws NullPointerException     if rsiIndicator is null
+     * @since 0.19
      */
-    public NetMomentumIndicator(RSIIndicator rsiIndicator, int timeFrame) {
-        this(rsiIndicator, timeFrame, DEFAULT_RSI_NEUTRAL_PIVOT);
+    public static NetMomentumIndicator forRsi(RSIIndicator rsiIndicator, int timeFrame) {
+        return new NetMomentumIndicator(rsiIndicator, timeFrame, DEFAULT_RSI_NEUTRAL_PIVOT);
+    }
+
+    /**
+     * Creates a {@link NetMomentumIndicator} configured for RSI inputs with the
+     * standard neutral pivot of 50 and a custom decay factor.
+     *
+     * @param rsiIndicator the RSI indicator
+     * @param timeFrame    the period for the running total calculation (must be >
+     *                     0)
+     * @param decayFactor  the per-bar retention factor in [0, 1]
+     * @return the configured {@link NetMomentumIndicator}
+     * @throws IllegalArgumentException if timeFrame <= 0 or decayFactor is outside
+     *                                  [0, 1]
+     * @throws NullPointerException     if rsiIndicator or decayFactor is null
+     * @since 0.19
+     */
+    public static NetMomentumIndicator forRsiWithDecay(RSIIndicator rsiIndicator, int timeFrame, Number decayFactor) {
+        return new NetMomentumIndicator(rsiIndicator, timeFrame, DEFAULT_RSI_NEUTRAL_PIVOT, decayFactor);
     }
 
     @Override
     protected Num calculate(int index) {
-        return runningTotalIndicator.getValue(index);
+        Num delta = deltaFromNeutralIndicator.getValue(index);
+
+        if (index == 0) {
+            return delta;
+        }
+
+        Num previousValue = getValue(index - 1).multipliedBy(decayFactor);
+        Num decayedWithCurrent = previousValue.plus(delta);
+
+        if (index >= timeFrame) {
+            Num expiredContribution = deltaFromNeutralIndicator.getValue(index - timeFrame)
+                    .multipliedBy(decayFactorAtWindowLimit);
+            return decayedWithCurrent.minus(expiredContribution);
+        }
+
+        return decayedWithCurrent;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(runningTotalIndicator.getCountOfUnstableBars(),
+        return Math.max(timeFrame,
                 Math.max(oscillatingIndicator.getCountOfUnstableBars(), smoothedIndicator.getCountOfUnstableBars()));
     }
 }
