@@ -61,15 +61,34 @@ public class RuleNameTest {
         exitRule.setName("Exit");
 
         Rule andRule = new AndRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"AndRule\",\"rules\":[\"Entry\",\"Exit\"]}", andRule.getName());
+        assertEquals("{\"type\":\"AndRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+                andRule.getName());
 
         Rule orRule = new OrRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"OrRule\",\"rules\":[\"Entry\",\"Exit\"]}", orRule.getName());
+        assertEquals("{\"type\":\"OrRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}", orRule.getName());
 
         Rule xorRule = new XorRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"XorRule\",\"rules\":[\"Entry\",\"Exit\"]}", xorRule.getName());
+        assertEquals("{\"type\":\"XorRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+                xorRule.getName());
 
         Rule notRule = new NotRule(entryRule);
-        assertEquals("{\"type\":\"NotRule\",\"rules\":[\"Entry\"]}", notRule.getName());
+        assertEquals("{\"type\":\"NotRule\",\"rules\":[{\"label\":\"Entry\"}]}", notRule.getName());
+    }
+
+    @Test
+    public void nestedCompositeRulesAreSerializedRecursively() {
+        Rule entryRule = new FixedRule(1);
+        entryRule.setName("Entry");
+        Rule exitRule = new FixedRule(2);
+        exitRule.setName("Exit");
+
+        Rule innerAnd = new AndRule(entryRule, exitRule);
+        Rule notExit = new NotRule(exitRule);
+
+        Rule outerOr = new OrRule(innerAnd, notExit);
+
+        assertEquals(
+                "{\"type\":\"OrRule\",\"rules\":[{\"type\":\"AndRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]},{\"type\":\"NotRule\",\"rules\":[{\"label\":\"Exit\"}]}]}",
+                outerOr.getName());
     }
 }

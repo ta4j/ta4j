@@ -24,6 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
 - `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
+- #0000 - Migrated rule name serialization to Gson-backed component descriptors with full nested rule support
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator

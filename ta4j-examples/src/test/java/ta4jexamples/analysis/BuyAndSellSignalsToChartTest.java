@@ -23,11 +23,15 @@
  */
 package ta4jexamples.analysis;
 
+import java.awt.GraphicsEnvironment;
+
+import org.junit.Assume;
 import org.junit.Test;
 
 public class BuyAndSellSignalsToChartTest {
     @Test
     public void test() {
+        Assume.assumeFalse("Headless environments cannot render charts", GraphicsEnvironment.isHeadless());
         BuyAndSellSignalsToChart.main(null);
     }
 
