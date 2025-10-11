@@ -26,6 +26,8 @@ package org.ta4j.core.rules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -85,7 +87,7 @@ public abstract class AbstractRule implements Rule {
      * @return JSON string
      */
     protected String createTypeOnlyName(String type) {
-        return new StringBuilder().append('{').append("\"type\":\"").append(escapeJson(type)).append("\"}").toString();
+        return ComponentSerialization.toJson(ComponentDescriptor.typeOnly(type));
     }
 
     /**
@@ -97,65 +99,16 @@ public abstract class AbstractRule implements Rule {
      * @return JSON string
      */
     protected String createCompositeName(String type, String... childNames) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('{').append("\"type\":\"").append(escapeJson(type)).append('\"');
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
         if (childNames != null && childNames.length > 0) {
-            builder.append(",\"rules\":[");
-            for (int i = 0; i < childNames.length; i++) {
-                if (i > 0) {
-                    builder.append(',');
-                }
-                String child = childNames[i];
+            for (String child : childNames) {
                 if (child == null) {
-                    builder.append("null");
+                    builder.addChild(null);
                 } else {
-                    builder.append('\"').append(escapeJson(child)).append('\"');
+                    builder.addChild(ComponentSerialization.parse(child));
                 }
             }
-            builder.append(']');
         }
-        builder.append('}');
-        return builder.toString();
-    }
-
-    private String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        StringBuilder escaped = new StringBuilder(value.length() + 8);
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            switch (ch) {
-            case '\\':
-                escaped.append("\\\\");
-                break;
-            case '"':
-                escaped.append("\\\"");
-                break;
-            case '\b':
-                escaped.append("\\b");
-                break;
-            case '\f':
-                escaped.append("\\f");
-                break;
-            case '\n':
-                escaped.append("\\n");
-                break;
-            case '\r':
-                escaped.append("\\r");
-                break;
-            case '\t':
-                escaped.append("\\t");
-                break;
-            default:
-                if (ch < 0x20) {
-                    escaped.append(String.format("\\u%04x", (int) ch));
-                } else {
-                    escaped.append(ch);
-                }
-                break;
-            }
-        }
-        return escaped.toString();
+        return ComponentSerialization.toJson(builder.build());
     }
 }
