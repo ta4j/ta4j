@@ -135,6 +135,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
     private final int timeFrame;
     private final Num decayFactor;
     private final Num decayFactorAtWindowLimit;
+    private final Num zero;
 
     /**
      * Constructor for Net Momentum Indicator.
@@ -195,6 +196,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
         this.decayFactor = numFactory.numOf(decayFactor);
         this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
+        this.zero = numFactory.zero();
     }
 
     /**
@@ -234,17 +236,26 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num delta = deltaFromNeutralIndicator.getValue(index);
+        if (delta.isNaN()) {
+            delta = zero;
+        }
 
         if (index == 0) {
             return delta;
         }
 
-        Num previousValue = getValue(index - 1).multipliedBy(decayFactor);
-        Num decayedWithCurrent = previousValue.plus(delta);
+        Num previousValue = getValue(index - 1);
+        if (previousValue.isNaN()) {
+            previousValue = zero;
+        }
+        Num decayedWithCurrent = previousValue.multipliedBy(decayFactor).plus(delta);
 
         if (index >= timeFrame) {
-            Num expiredContribution = deltaFromNeutralIndicator.getValue(index - timeFrame)
-                    .multipliedBy(decayFactorAtWindowLimit);
+            Num expiredContribution = deltaFromNeutralIndicator.getValue(index - timeFrame);
+            if (expiredContribution.isNaN()) {
+                expiredContribution = zero;
+            }
+            expiredContribution = expiredContribution.multipliedBy(decayFactorAtWindowLimit);
             return decayedWithCurrent.minus(expiredContribution);
         }
 

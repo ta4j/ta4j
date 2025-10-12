@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -33,6 +34,7 @@ import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 
 import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -86,6 +88,22 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         // calculations.
         assertTrue(subject.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
         assertTrue(decayed.getCountOfUnstableBars() >= rsi.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void testRsiUnstableNaNsAreIgnored() {
+        Assume.assumeFalse("DecimalNum cannot represent NaN values",
+                numFactory instanceof DecimalNumFactory);
+
+        RSIIndicator rsi = new RSIIndicator(closePrice, 14);
+        NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
+        NetMomentumIndicator decayed = NetMomentumIndicator.forRsiWithDecay(rsi, 5, 0.9);
+
+        int stableIndex = series.getBarCount() - 1;
+        assertFalse("RSI should provide valid data once warmed up", rsi.getValue(stableIndex).isNaN());
+        assertFalse("Net momentum should recover from initial NaN inputs", subject.getValue(stableIndex).isNaN());
+        assertFalse("Net momentum with decay should recover from initial NaN inputs",
+                decayed.getValue(stableIndex).isNaN());
     }
 
     @Test
