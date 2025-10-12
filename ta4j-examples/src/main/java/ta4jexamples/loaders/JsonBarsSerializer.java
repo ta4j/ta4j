@@ -27,6 +27,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -83,6 +85,39 @@ public class JsonBarsSerializer {
                     reader.close();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    public static BarSeries loadSeries(InputStream inputStream) {
+        if (inputStream == null) {
+            LOG.log(Level.WARNING, "Input stream is null, returning null");
+            return null;
+        }
+        
+        Gson gson = new Gson();
+        InputStreamReader reader = null;
+        BarSeries result = null;
+        try {
+            reader = new InputStreamReader(inputStream);
+            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+            
+            if (loadedSeries == null) {
+                LOG.log(Level.WARNING, "Failed to parse JSON, loadedSeries is null");
+                return null;
+            }
+
+            result = loadedSeries.toBarSeries();
+            LOG.info("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Unable to load bars from JSON", e);
+        } finally {
+            try {
+                if (reader != null)
+                    reader.close();
+            } catch (IOException e) {
+                LOG.log(Level.WARNING, "Error closing input stream reader", e);
             }
         }
         return result;

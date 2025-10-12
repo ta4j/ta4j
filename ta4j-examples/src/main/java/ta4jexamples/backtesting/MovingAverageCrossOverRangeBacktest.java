@@ -23,9 +23,7 @@
  */
 package ta4jexamples.backtesting;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -58,14 +56,14 @@ public class MovingAverageCrossOverRangeBacktest {
     private static final Logger LOG = LoggerFactory.getLogger(MovingAverageCrossOverRangeBacktest.class);
 
     public static void main(String[] args) {
-        Path jsonFilePath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources",
-                "ETH-USD-PT5M-2023-3-13_2023-3-15.json");
-        if (!Files.exists(jsonFilePath)) {
-            LOG.error("File not found: {}", jsonFilePath);
+        String resourceName = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader().getResourceAsStream(resourceName);
+        if (resourceStream == null) {
+            LOG.error("File not found in classpath: {}", resourceName);
             return;
         }
 
-        BarSeries series = JsonBarsSerializer.loadSeries(jsonFilePath.toAbsolutePath().toString());
+        BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
 
         int barCountStart = 3;
         int barCountStop = 200;
