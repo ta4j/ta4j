@@ -67,12 +67,40 @@ final class RenkoCounter {
     }
 
     private RenkoState calculateState(int index) {
-        var price = priceIndicator.getValue(index);
         if (index == 0) {
-            return new RenkoState(price, 0, 0);
+            var initial = new RenkoState(priceIndicator.getValue(0), 0, 0);
+            if (!isFormingBar(0)) {
+                cache.put(0, initial);
+            }
+            return initial;
         }
-        var previous = stateAt(index - 1);
-        return previous.advance(price, pointSize);
+
+        int startIndex = -1;
+        RenkoState state = null;
+        for (int i = index - 1; i >= 0; i--) {
+            state = cache.get(i);
+            if (state != null) {
+                startIndex = i;
+                break;
+            }
+        }
+
+        if (startIndex < 0) {
+            startIndex = 0;
+            state = new RenkoState(priceIndicator.getValue(0), 0, 0);
+            if (!isFormingBar(0)) {
+                cache.put(0, state);
+            }
+        }
+
+        for (int i = startIndex + 1; i <= index; i++) {
+            var price = priceIndicator.getValue(i);
+            state = state.advance(price, pointSize);
+            if (i != index && !isFormingBar(i)) {
+                cache.put(i, state);
+            }
+        }
+        return state;
     }
 
     static final class RenkoState {
