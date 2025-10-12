@@ -57,7 +57,8 @@ public class MovingAverageCrossOverRangeBacktest {
 
     public static void main(String[] args) {
         String resourceName = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader().getResourceAsStream(resourceName);
+        InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
+                .getResourceAsStream(resourceName);
         if (resourceStream == null) {
             LOG.error("File not found in classpath: {}", resourceName);
             return;

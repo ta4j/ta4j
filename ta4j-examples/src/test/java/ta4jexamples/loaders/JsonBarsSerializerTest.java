@@ -79,26 +79,27 @@ public class JsonBarsSerializerTest {
         BarSeries originalSeries = CsvBarsLoader.loadAppleIncSeries();
         String testFilename = folder.getRoot().getAbsolutePath() + File.separator + "test_series.json";
         JsonBarsSerializer.persistSeries(originalSeries, testFilename);
-        
+
         // Read the JSON content from the file
         String jsonContent = Files.readString(java.nio.file.Paths.get(testFilename));
-        
+
         // Create an InputStream from the JSON content
         InputStream inputStream = new ByteArrayInputStream(jsonContent.getBytes(StandardCharsets.UTF_8));
-        
+
         // Load the series from the InputStream
         BarSeries loadedSeries = JsonBarsSerializer.loadSeries(inputStream);
-        
+
         // Verify the loaded series matches the original
         assertNotNull(loadedSeries);
         assertEquals(originalSeries.getBarCount(), loadedSeries.getBarCount());
         assertEquals(originalSeries.getName(), loadedSeries.getName());
-        
+
         // Verify a few random bars match exactly
-        int randomIndex = ThreadLocalRandom.current().nextInt(originalSeries.getBeginIndex(), originalSeries.getEndIndex());
+        int randomIndex = ThreadLocalRandom.current()
+                .nextInt(originalSeries.getBeginIndex(), originalSeries.getEndIndex());
         Bar originalBar = originalSeries.getBar(randomIndex);
         Bar loadedBar = loadedSeries.getBar(randomIndex);
-        
+
         assertEquals(originalBar.getEndTime(), loadedBar.getEndTime());
         assertEquals(originalBar.getOpenPrice(), loadedBar.getOpenPrice());
         assertEquals(originalBar.getHighPrice(), loadedBar.getHighPrice());
@@ -106,7 +107,7 @@ public class JsonBarsSerializerTest {
         assertEquals(originalBar.getClosePrice(), loadedBar.getClosePrice());
         assertEquals(originalBar.getVolume(), loadedBar.getVolume());
         assertEquals(originalBar.getAmount(), loadedBar.getAmount());
-        
+
         // Verify the delegate types are preserved
         assertTrue(originalBar.getOpenPrice().getDelegate() instanceof BigDecimal);
         assertTrue(loadedBar.getOpenPrice().getDelegate() instanceof BigDecimal);

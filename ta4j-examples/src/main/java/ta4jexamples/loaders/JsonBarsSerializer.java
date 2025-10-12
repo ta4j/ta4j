@@ -23,21 +23,14 @@
  */
 package ta4jexamples.loaders;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.ta4j.core.BarSeries;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
+import org.ta4j.core.BarSeries;
 import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
+
+import java.io.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JsonBarsSerializer {
 
@@ -90,19 +83,29 @@ public class JsonBarsSerializer {
         return result;
     }
 
+    /**
+     * Loads a BarSeries from the provided InputStream containing JSON data.
+     * The method parses the JSON content using Gson library and converts it to a BarSeries object.
+     * If the input stream is null or parsing fails, appropriate warning or error messages are logged
+     * and null is returned.
+     *
+     * @param inputStream the input stream containing JSON data to be parsed into a BarSeries
+     * @return the loaded BarSeries object, or null if loading fails or input stream is null
+     * @since 0.19
+     */
     public static BarSeries loadSeries(InputStream inputStream) {
         if (inputStream == null) {
             LOG.log(Level.WARNING, "Input stream is null, returning null");
             return null;
         }
-        
+
         Gson gson = new Gson();
         InputStreamReader reader = null;
         BarSeries result = null;
         try {
             reader = new InputStreamReader(inputStream);
             GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
-            
+
             if (loadedSeries == null) {
                 LOG.log(Level.WARNING, "Failed to parse JSON, loadedSeries is null");
                 return null;
