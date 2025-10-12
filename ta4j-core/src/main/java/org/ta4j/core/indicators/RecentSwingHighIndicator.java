@@ -41,7 +41,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/swinghigh.asp">Investopedia: Swing
  *      High</a>
- * @since 0.19-SNAPSHOT
+ * @since 0.19
  */
 public class RecentSwingHighIndicator extends CachedIndicator<Num> {
 
@@ -130,7 +130,7 @@ public class RecentSwingHighIndicator extends CachedIndicator<Num> {
      * @param index the current evaluation index
      * @return the index of the most recent swing high or {@code -1} if none can be
      *         confirmed yet
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public int getLatestSwingIndex(int index) {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
