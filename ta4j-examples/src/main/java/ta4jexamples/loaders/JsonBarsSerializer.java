@@ -84,13 +84,15 @@ public class JsonBarsSerializer {
     }
 
     /**
-     * Loads a BarSeries from the provided InputStream containing JSON data.
-     * The method parses the JSON content using Gson library and converts it to a BarSeries object.
-     * If the input stream is null or parsing fails, appropriate warning or error messages are logged
-     * and null is returned.
+     * Loads a BarSeries from the provided InputStream containing JSON data. The
+     * method parses the JSON content using Gson library and converts it to a
+     * BarSeries object. If the input stream is null or parsing fails, appropriate
+     * warning or error messages are logged and null is returned.
      *
-     * @param inputStream the input stream containing JSON data to be parsed into a BarSeries
-     * @return the loaded BarSeries object, or null if loading fails or input stream is null
+     * @param inputStream the input stream containing JSON data to be parsed into a
+     *                    BarSeries
+     * @return the loaded BarSeries object, or null if loading fails or input stream
+     *         is null
      * @since 0.19
      */
     public static BarSeries loadSeries(InputStream inputStream) {
