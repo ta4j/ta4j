@@ -93,12 +93,18 @@ public class UnaryOperation implements Indicator<Num> {
         return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
-    /***
+    /**
+     * Returns an {@code Indicator} that replaces a given operand value with a
+     * substitute.
      *
-     * @param operand
-     * @param valueToReplace
-     * @param replacementValue
-     * @return
+     * @param operand          the indicator supplying the original values to
+     *                         inspect
+     * @param valueToReplace   the value that, when matched exactly, triggers
+     *                         substitution
+     * @param replacementValue the value that replaces {@code valueToReplace} in the
+     *                         resulting indicator
+     * @return a unary operation indicator reflecting the original values with any
+     *         exact matches substituted
      */
     public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
             final Num replacementValue) {

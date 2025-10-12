@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.*;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,9 +36,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
-
 import static org.junit.Assert.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -92,8 +91,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testRsiUnstableNaNsAreIgnored() {
-        Assume.assumeFalse("DecimalNum cannot represent NaN values",
-                numFactory instanceof DecimalNumFactory);
+        Assume.assumeFalse("DecimalNum cannot represent NaN values", numFactory instanceof DecimalNumFactory);
 
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
         NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);

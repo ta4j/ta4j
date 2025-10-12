@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.math3.filter.DefaultMeasurementModel;
 import org.apache.commons.math3.filter.DefaultProcessModel;
 import org.apache.commons.math3.filter.KalmanFilter;
@@ -54,7 +51,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final double processNoise;
     private final double measurementNoise;
     private KalmanFilter filter;
-    private final List<Num> stateEstimates;
     private int lastProcessedIndex;
 
     /**
@@ -83,7 +79,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         this.processNoise = processNoise;
         this.measurementNoise = measurementNoise;
-        this.stateEstimates = new ArrayList<>();
         this.lastProcessedIndex = -1;
     }
 
@@ -101,9 +96,20 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        ensureProcessedUpTo(index);
+        if (filter == null || index < lastProcessedIndex) {
+            initializeFilter();
+        }
 
-        return stateEstimates.get(index);
+        final var numFactory = getBarSeries().numFactory();
+        for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
+            filter.predict();
+            double measurement = this.indicator.getValue(i).doubleValue();
+            filter.correct(new double[] { measurement });
+
+            lastProcessedIndex = i;
+        }
+
+        return numFactory.numOf(filter.getStateEstimation()[0]);
     }
 
     /**
@@ -115,35 +121,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return 0;
-    }
-
-    private void ensureProcessedUpTo(int index) {
-        if (filter == null || lastProcessedIndex < 0) {
-            initializeFilter();
-        }
-
-        if (index <= lastProcessedIndex && index < stateEstimates.size() && stateEstimates.get(index) != null) {
-            return;
-        }
-
-        final var numFactory = getBarSeries().numFactory();
-        for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
-            filter.predict();
-            double measurement = this.indicator.getValue(i).doubleValue();
-            filter.correct(new double[] { measurement });
-
-            double kalmanValue = filter.getStateEstimation()[0];
-            Num value = numFactory.numOf(kalmanValue);
-            ensureCapacity(i);
-            stateEstimates.set(i, value);
-            lastProcessedIndex = i;
-        }
-    }
-
-    private void ensureCapacity(int index) {
-        while (stateEstimates.size() <= index) {
-            stateEstimates.add(null);
-        }
     }
 
     private void initializeFilter() {
@@ -164,7 +141,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
 
         this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
-        stateEstimates.clear();
         lastProcessedIndex = -1;
     }
 }
