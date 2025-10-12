@@ -50,12 +50,19 @@ final class RenkoCounter {
         if (index < 0) {
             throw new IllegalArgumentException("index must be non-negative");
         }
-        var state = cache.get(index);
-        if (state != null) {
-            return state;
+        var formingBar = isFormingBar(index);
+        if (formingBar) {
+            cache.remove(index);
+        } else {
+            var state = cache.get(index);
+            if (state != null) {
+                return state;
+            }
         }
         var calculated = calculateState(index);
-        cache.put(index, calculated);
+        if (!formingBar) {
+            cache.put(index, calculated);
+        }
         return calculated;
     }
 
@@ -115,5 +122,10 @@ final class RenkoCounter {
 
             return new RenkoState(lastClose, upCount, downCount);
         }
+    }
+
+    private boolean isFormingBar(int index) {
+        var series = priceIndicator.getBarSeries();
+        return series != null && index == series.getEndIndex();
     }
 }

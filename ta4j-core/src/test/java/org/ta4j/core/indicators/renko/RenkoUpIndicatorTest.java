@@ -68,6 +68,19 @@ public class RenkoUpIndicatorTest extends AbstractIndicatorTest<Indicator<Boolea
     }
 
     @Test
+    public void updatesFormingBarAfterIntrabarPriceChange() {
+        var series = buildSeries(100d, 100.2d);
+        var indicator = new RenkoUpIndicator(new ClosePriceIndicator(series), 0.5d);
+
+        var currentIndex = series.getEndIndex();
+        assertThat(indicator.getValue(currentIndex)).as("initial move insufficient for brick").isFalse();
+
+        series.getLastBar().addPrice(numFactory.numOf(100.6d));
+
+        assertThat(indicator.getValue(currentIndex)).as("intrabar update forms brick").isTrue();
+    }
+
+    @Test
     public void accumulatesMultipleBricksFromSingleBar() {
         var series = buildSeries(100d, 101.6d);
         var indicator = new RenkoUpIndicator(new ClosePriceIndicator(series), 0.5d, 3);
