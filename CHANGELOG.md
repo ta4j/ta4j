@@ -2,6 +2,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Added
+- Added `MACDVIndicator` to volume-weight MACD calculations. (Closes #0000)
+
 ### Changed
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 
