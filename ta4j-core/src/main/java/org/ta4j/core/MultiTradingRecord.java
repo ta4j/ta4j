@@ -47,7 +47,7 @@ import org.ta4j.core.num.Num;
  * helpers to introspect open positions. Existing consumers that rely on
  * {@link #getCurrentPosition()} will receive the most recently opened position.
  *
- * @since 0.19-SNAPSHOT
+ * @since 0.19
  */
 public class MultiTradingRecord implements TradingRecord {
 
@@ -55,7 +55,7 @@ public class MultiTradingRecord implements TradingRecord {
      * Exit-matching policy that controls how open positions are selected when
      * multiple matches are available.
      *
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public enum MatchingPolicy {
         /** Selects the earliest (first) open position. */
@@ -209,7 +209,7 @@ public class MultiTradingRecord implements TradingRecord {
 
     /**
      * @return the exit matching policy
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public MatchingPolicy getMatchingPolicy() {
         return matchingPolicy;
@@ -238,14 +238,30 @@ public class MultiTradingRecord implements TradingRecord {
             return false;
         }
         Trade newTrade = positionToClose.operate(index, price, amount);
-        // TODO: Support partial closes where the exit amount is smaller than the entry
-        // amount.
         if (newTrade == null) {
             return false;
         }
         recordTrade(newTrade, false);
-        openPositions.remove(positionToClose);
-        closedPositions.add(positionToClose);
+
+        // Handle partial exits: if exit amount is less than entry amount,
+        // create a new position with the remaining amount
+        Num entryAmount = positionToClose.getEntry().getAmount();
+        if (amount.isLessThan(entryAmount)) {
+            // Create a new position with the remaining amount
+            Num remainingAmount = entryAmount.minus(amount);
+            Position remainingPosition = createPositionWithRemainingAmount(positionToClose, remainingAmount, index);
+
+            // Remove the original position and add the remaining position
+            openPositions.remove(positionToClose);
+            openPositions.addLast(remainingPosition);
+
+            // Close the partial position
+            closedPositions.add(positionToClose);
+        } else {
+            // Full exit - remove the position completely
+            openPositions.remove(positionToClose);
+            closedPositions.add(positionToClose);
+        }
         return true;
     }
 
@@ -338,7 +354,7 @@ public class MultiTradingRecord implements TradingRecord {
      *
      * @param ordering the ordering to apply, not null
      * @return the open positions in the requested order
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public List<Position> getOpenPositions(MatchingPolicy ordering) {
         Objects.requireNonNull(ordering, "Ordering must not be null");
@@ -362,7 +378,7 @@ public class MultiTradingRecord implements TradingRecord {
      *
      * @param amount the amount to match
      * @return the matching position or {@code null} if none found
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public Position findOpenPositionByAmount(Num amount) {
         if (openPositions.isEmpty() || amount == null || amount.isNaN()) {
@@ -413,5 +429,28 @@ public class MultiTradingRecord implements TradingRecord {
         } else {
             exitTrades.add(trade);
         }
+    }
+
+    /**
+     * Creates a new position with the remaining amount from a partially closed
+     * position. The new position maintains the same entry trade characteristics but
+     * with the remaining amount.
+     *
+     * @param originalPosition the position that was partially closed
+     * @param remainingAmount  the amount remaining after the partial exit
+     * @param exitIndex        the index at which the partial exit occurred
+     * @return a new position with the remaining amount
+     */
+    private Position createPositionWithRemainingAmount(Position originalPosition, Num remainingAmount, int exitIndex) {
+        Trade originalEntry = originalPosition.getEntry();
+
+        // Create a new position and use operate to set the entry trade
+        Position remainingPosition = new Position(originalPosition.getStartingType(), transactionCostModel,
+                holdingCostModel);
+
+        // Use operate to create the entry trade with the remaining amount
+        remainingPosition.operate(originalEntry.getIndex(), originalEntry.getPricePerAsset(), remainingAmount);
+
+        return remainingPosition;
     }
 }

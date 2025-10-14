@@ -32,8 +32,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.MultiTradingRecord.MatchingPolicy;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -46,10 +44,10 @@ class MultiTradingRecordTest {
 
     @BeforeEach
     void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
-        one = series.numFactory().numOf(1);
-        two = series.numFactory().numOf(2);
-        three = series.numFactory().numOf(3);
+        // Use a simple num factory for creating test numbers
+        one = org.ta4j.core.num.DecimalNum.valueOf(1);
+        two = org.ta4j.core.num.DecimalNum.valueOf(2);
+        three = org.ta4j.core.num.DecimalNum.valueOf(3);
     }
 
     @Test
@@ -165,5 +163,100 @@ class MultiTradingRecordTest {
         MultiTradingRecord named = new MultiTradingRecord("demo-record");
         assertEquals("demo-record", named.getName());
         assertEquals(MatchingPolicy.FIFO, named.getMatchingPolicy());
+    }
+
+    @Test
+    void partialExitCreatesRemainingPosition() {
+        MultiTradingRecord record = new MultiTradingRecord();
+
+        // Enter with amount 3
+        assertTrue(record.enter(0, one, three));
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(three, record.getOpenPositions().get(0).getEntry().getAmount());
+
+        // Partial exit with amount 1
+        assertTrue(record.exit(1, two, one));
+
+        // Should have one closed position and one open position
+        assertEquals(1, record.getPositions().size());
+        assertEquals(1, record.getOpenPositions().size());
+
+        // Closed position should have entry amount 3 and exit amount 1
+        Position closedPosition = record.getPositions().get(0);
+        assertEquals(three, closedPosition.getEntry().getAmount());
+        assertEquals(one, closedPosition.getExit().getAmount());
+
+        // Open position should have remaining amount 2
+        Position remainingPosition = record.getOpenPositions().get(0);
+        assertEquals(two, remainingPosition.getEntry().getAmount());
+        assertTrue(remainingPosition.isOpened());
+    }
+
+    @Test
+    void partialExitMaintainsCorrectEntryIndex() {
+        MultiTradingRecord record = new MultiTradingRecord();
+
+        // Enter at index 0
+        assertTrue(record.enter(0, one, three));
+
+        // Partial exit at index 2
+        assertTrue(record.exit(2, two, one));
+
+        // Remaining position should maintain original entry index
+        Position remainingPosition = record.getOpenPositions().get(0);
+        assertEquals(0, remainingPosition.getEntry().getIndex());
+        assertEquals(two, remainingPosition.getEntry().getAmount());
+    }
+
+    @Test
+    void fullExitRemovesPositionCompletely() {
+        MultiTradingRecord record = new MultiTradingRecord();
+
+        // Enter with amount 2
+        assertTrue(record.enter(0, one, two));
+        assertEquals(1, record.getOpenPositions().size());
+
+        // Full exit with same amount
+        assertTrue(record.exit(1, two, two));
+
+        // Should have one closed position and no open positions
+        assertEquals(1, record.getPositions().size());
+        assertEquals(0, record.getOpenPositions().size());
+        assertTrue(record.isClosed());
+
+        // Closed position should have matching entry and exit amounts
+        Position closedPosition = record.getPositions().get(0);
+        assertEquals(two, closedPosition.getEntry().getAmount());
+        assertEquals(two, closedPosition.getExit().getAmount());
+    }
+
+    @Test
+    void multiplePartialExitsWorkCorrectly() {
+        MultiTradingRecord record = new MultiTradingRecord();
+
+        // Enter with amount 10
+        Num ten = one.getNumFactory().numOf(10);
+        Num seven = one.getNumFactory().numOf(7);
+        Num five = one.getNumFactory().numOf(5);
+
+        assertTrue(record.enter(0, one, ten));
+
+        // First partial exit with amount 3
+        assertTrue(record.exit(1, two, three));
+        assertEquals(1, record.getPositions().size());
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(seven, record.getOpenPositions().get(0).getEntry().getAmount());
+
+        // Second partial exit with amount 2
+        assertTrue(record.exit(2, three, two));
+        assertEquals(2, record.getPositions().size());
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(five, record.getOpenPositions().get(0).getEntry().getAmount());
+
+        // Final exit with remaining amount 5
+        assertTrue(record.exit(3, one, five));
+        assertEquals(3, record.getPositions().size());
+        assertEquals(0, record.getOpenPositions().size());
+        assertTrue(record.isClosed());
     }
 }
