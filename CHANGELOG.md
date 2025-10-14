@@ -5,6 +5,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 
+### Added
+- [#0000](https://github.com/ta4j/ta4j/issues/0000) Added `MultiTradingRecord` to support multiple open positions with configurable FIFO/LIFO exit matching and new open-position helper APIs.
+
 ## 0.19
 
 ### Breaking
