@@ -32,7 +32,6 @@ import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 import java.io.*;
 
-
 public class JsonBarsSerializer {
 
     private static final Logger LOG = LoggerFactory.getLogger(JsonBarsSerializer.class);
@@ -73,7 +72,8 @@ public class JsonBarsSerializer {
             LOG.error("Unable to load bars from JSON", e);
         } finally {
             try {
-                if (reader != null) reader.close();
+                if (reader != null)
+                    reader.close();
             } catch (IOException e) {
                 LOG.warn("Unable to close file reader", e);
             }
@@ -90,7 +90,7 @@ public class JsonBarsSerializer {
      * @param inputStream the input stream containing JSON data to be parsed into a
      *                    BarSeries
      * @return the loaded BarSeries object, or null if loading fails or input stream
-     * is null
+     *         is null
      * @since 0.19
      */
     public static BarSeries loadSeries(InputStream inputStream) {
@@ -117,7 +117,8 @@ public class JsonBarsSerializer {
             LOG.error("Unable to load bars from JSON", e);
         } finally {
             try {
-                if (reader != null) reader.close();
+                if (reader != null)
+                    reader.close();
             } catch (IOException e) {
                 LOG.warn("Error closing input stream reader", e);
             }
