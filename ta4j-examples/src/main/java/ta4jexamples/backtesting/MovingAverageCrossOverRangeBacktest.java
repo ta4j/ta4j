@@ -23,22 +23,11 @@
  */
 package ta4jexamples.backtesting;
 
-import java.io.InputStream;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringJoiner;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -48,14 +37,23 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-
 import ta4jexamples.loaders.JsonBarsSerializer;
+
+import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringJoiner;
 
 public class MovingAverageCrossOverRangeBacktest {
 
     private static final Logger LOG = LoggerFactory.getLogger(MovingAverageCrossOverRangeBacktest.class);
+    private static final int DEFAULT_DECIMAL_PRECISION = 16;
 
     public static void main(String[] args) {
+        DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
+
         String resourceName = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
         InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
                 .getResourceAsStream(resourceName);
@@ -65,6 +63,10 @@ public class MovingAverageCrossOverRangeBacktest {
         }
 
         BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
+        if (series == null || series.isEmpty()) {
+            LOG.error("Bar series was null or empty: {}", series);
+            return;
+        }
 
         int barCountStart = 3;
         int barCountStop = 200;
@@ -86,23 +88,25 @@ public class MovingAverageCrossOverRangeBacktest {
         List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
                 Trade.TradeType.BUY);
 
-        LOG.debug("Back-tested {} strategies on {}-bar series in {}", strategies.size(), series.getBarCount(),
-                Duration.between(startInstant, Instant.now()));
+        LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
+                series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
         LOG.info(printReport(tradingStatements));
     }
 
     private static Rule createSmaCrossEntryRule(BarSeries series, int shortBarCount, int longBarCount) {
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator smaShort = new SMAIndicator(closePrice, shortBarCount);
-        SMAIndicator smaLong = new SMAIndicator(closePrice, longBarCount);
+        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
+        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
+        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
 
         return new CrossedUpIndicatorRule(smaShort, smaLong);
     }
 
     private static Rule createSmaCrossExitRule(BarSeries series, int shortBarCount, int longBarCount) {
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator smaShort = new SMAIndicator(closePrice, shortBarCount);
-        SMAIndicator smaLong = new SMAIndicator(closePrice, longBarCount);
+        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
+        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
+        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
 
         return new CrossedDownIndicatorRule(smaShort, smaLong);
     }

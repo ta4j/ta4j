@@ -69,16 +69,16 @@ class DecimalNumPrecisionPerformanceTest {
         for (final var valueStr : SAMPLE_VALUES) {
             final var value = (DecimalNum) factory.numOf(valueStr);
             sum = (DecimalNum) sum.plus(value);
-            sumSquared = (DecimalNum) sumSquared.plus((DecimalNum) value.multipliedBy(value));
+            sumSquared = (DecimalNum) sumSquared.plus(value.multipliedBy(value));
             final var delta = (DecimalNum) value.minus(prev);
-            volatility = (DecimalNum) volatility.plus((DecimalNum) delta.abs());
-            ema = (DecimalNum) ((DecimalNum) ema.multipliedBy(decay)).plus((DecimalNum) value.multipliedBy(alpha));
+            volatility = (DecimalNum) volatility.plus(delta.abs());
+            ema = (DecimalNum) ema.multipliedBy(decay).plus(value.multipliedBy(alpha));
             prev = value;
         }
 
-        final var count = (DecimalNum) factory.numOf(Integer.valueOf(SAMPLE_VALUES.length));
+        final var count = (DecimalNum) factory.numOf(SAMPLE_VALUES.length);
         final var mean = (DecimalNum) sum.dividedBy(count);
-        final var variance = (DecimalNum) sumSquared.dividedBy(count).minus((DecimalNum) mean.multipliedBy(mean));
+        final var variance = (DecimalNum) sumSquared.dividedBy(count).minus(mean.multipliedBy(mean));
         final var avgVolatility = (DecimalNum) volatility.dividedBy(count);
         return new Summary(ema, mean, variance, avgVolatility);
     }
@@ -91,10 +91,6 @@ class DecimalNumPrecisionPerformanceTest {
         final double base = Math.sin(index / 10.0) * 250 + 1000 + index * 0.1;
         final var value = BigDecimal.valueOf(base).setScale(8, RoundingMode.HALF_UP);
         return value.toPlainString();
-    }
-
-    void restoreDefaults() {
-        DecimalNum.resetDefaultPrecision();
     }
 
     void quantifyPrecisionPerformanceTradeOffs() {

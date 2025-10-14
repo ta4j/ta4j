@@ -25,16 +25,17 @@ package ta4jexamples.loaders;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 import java.io.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 public class JsonBarsSerializer {
 
-    private static final Logger LOG = Logger.getLogger(JsonBarsSerializer.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(JsonBarsSerializer.class);
 
     public static void persistSeries(BarSeries series, String filename) {
         GsonBarSeries exportableSeries = GsonBarSeries.from(series);
@@ -43,17 +44,16 @@ public class JsonBarsSerializer {
         try {
             writer = new FileWriter(filename);
             gson.toJson(exportableSeries, writer);
-            LOG.info("Bar series '" + series.getName() + "' successfully saved to '" + filename + "'");
+            LOG.debug("Bar series '{}' successfully saved to '{}'", series.getName(), filename);
         } catch (IOException e) {
-            e.printStackTrace();
-            LOG.log(Level.SEVERE, "Unable to store bars in JSON", e);
+            LOG.error("Unable to store bars in JSON", e);
         } finally {
             if (writer != null) {
                 try {
                     writer.flush();
                     writer.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOG.warn("Unable to flush and/or close file writer", e);
                 }
             }
         }
@@ -68,16 +68,14 @@ public class JsonBarsSerializer {
             GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
 
             result = loadedSeries.toBarSeries();
-            LOG.info("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
+            LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            LOG.log(Level.SEVERE, "Unable to load bars from JSON", e);
+            LOG.error("Unable to load bars from JSON", e);
         } finally {
             try {
-                if (reader != null)
-                    reader.close();
+                if (reader != null) reader.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.warn("Unable to close file reader", e);
             }
         }
         return result;
@@ -92,12 +90,12 @@ public class JsonBarsSerializer {
      * @param inputStream the input stream containing JSON data to be parsed into a
      *                    BarSeries
      * @return the loaded BarSeries object, or null if loading fails or input stream
-     *         is null
+     * is null
      * @since 0.19
      */
     public static BarSeries loadSeries(InputStream inputStream) {
         if (inputStream == null) {
-            LOG.log(Level.WARNING, "Input stream is null, returning null");
+            LOG.warn("Input stream is null, returning null");
             return null;
         }
 
@@ -109,20 +107,19 @@ public class JsonBarsSerializer {
             GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
 
             if (loadedSeries == null) {
-                LOG.log(Level.WARNING, "Failed to parse JSON, loadedSeries is null");
+                LOG.warn("Failed to parse JSON, loadedSeries is null");
                 return null;
             }
 
             result = loadedSeries.toBarSeries();
-            LOG.info("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
+            LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Unable to load bars from JSON", e);
+            LOG.error("Unable to load bars from JSON", e);
         } finally {
             try {
-                if (reader != null)
-                    reader.close();
+                if (reader != null) reader.close();
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Error closing input stream reader", e);
+                LOG.warn("Error closing input stream reader", e);
             }
         }
         return result;
