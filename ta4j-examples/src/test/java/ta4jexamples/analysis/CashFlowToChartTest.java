@@ -32,7 +32,7 @@ public class CashFlowToChartTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse("Headless environments cannot render charts", GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         CashFlowToChart.main(null);
     }
 }

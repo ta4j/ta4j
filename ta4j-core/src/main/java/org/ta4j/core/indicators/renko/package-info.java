@@ -21,18 +21,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.analysis;
-
-import java.awt.GraphicsEnvironment;
-
-import org.junit.Assume;
-import org.junit.Test;
-
-public class BuyAndSellSignalsToChartTest {
-    @Test
-    public void test() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        BuyAndSellSignalsToChart.main(null);
-    }
-
-}
+/**
+ * Indicators derived from Renko brick construction.
+ *
+ * @since 0.19
+ */
+package org.ta4j.core.indicators.renko;

@@ -28,11 +28,15 @@ import java.awt.GraphicsEnvironment;
 import org.junit.Assume;
 import org.junit.Test;
 
-public class BuyAndSellSignalsToChartTest {
+public class CashFlowToChartTest {
+
     @Test
     public void test() {
+<<<<<<< HEAD
+        Assume.assumeFalse("Headless environments cannot render charts", GraphicsEnvironment.isHeadless());
+=======
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        BuyAndSellSignalsToChart.main(null);
+>>>>>>> master
+        CashFlowToChart.main(null);
     }
-
 }

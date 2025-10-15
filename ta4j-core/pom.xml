@@ -17,7 +17,6 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.13</version>
         </dependency>
 
         <dependency>
@@ -52,7 +51,6 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
-            <version>5.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -61,11 +59,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-	        <groupId>com.opencsv</groupId>
-	        <artifactId>opencsv</artifactId>
-	        <version>5.9</version>
-	        <scope>test</scope>
-    	</dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -82,7 +79,7 @@
             <plugin>
                 <groupId>biz.aQute.bnd</groupId>
                 <artifactId>bnd-maven-plugin</artifactId>
-                <version>7.0.0</version>
+                <version>7.1.0</version>
                 <executions>
                     <execution>
                         <id>default-bnd-process</id>

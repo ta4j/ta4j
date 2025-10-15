@@ -31,7 +31,11 @@ import org.junit.Test;
 public class BuyAndSellSignalsToChartTest {
     @Test
     public void test() {
+<<<<<<< HEAD
+        Assume.assumeFalse("Headless environments cannot render charts", GraphicsEnvironment.isHeadless());
+=======
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+>>>>>>> master
         BuyAndSellSignalsToChart.main(null);
     }
 
