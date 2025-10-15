@@ -25,6 +25,7 @@ package org.ta4j.core.num;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -330,10 +331,17 @@ public class DecimalNumTest {
     @Test
     public void testEqualsDecimalNumWithDoubleNum() {
         final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
-
         final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
 
         assertNotEquals(decimalNum, doubleNum);
+    }
+
+    @Test
+    public void testZeroEquals() {
+        final Num num1 = DecimalNum.valueOf(-0.0);
+        final Num num2 = DecimalNum.valueOf(0.0);
+
+        assertTrue(num1.isEqual(num2));
     }
 
 }

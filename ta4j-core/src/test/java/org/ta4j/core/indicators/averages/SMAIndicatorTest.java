@@ -66,6 +66,39 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void ensureCountOfUnstableBarsAddsToCountOfUnstableBarsOfPreviousIndicator() {
+        var closePrice = new ClosePriceIndicator(data);
+        var firstSMAindicator = new SMAIndicator(closePrice, 2);
+        var secondSMAindicator = new SMAIndicator(firstSMAindicator, 3);
+
+        assertEquals(1, firstSMAindicator.getCountOfUnstableBars());
+        assertNumEquals(1.5, firstSMAindicator.getValue(1));
+        assertNumEquals(2.5, firstSMAindicator.getValue(2));
+        assertNumEquals(3.5, firstSMAindicator.getValue(3));
+        assertNumEquals(3.5, firstSMAindicator.getValue(4));
+        assertNumEquals(3.5, firstSMAindicator.getValue(5));
+        assertNumEquals(4.5, firstSMAindicator.getValue(6));
+        assertNumEquals(4.5, firstSMAindicator.getValue(7));
+        assertNumEquals(3.5, firstSMAindicator.getValue(8));
+        assertNumEquals(3, firstSMAindicator.getValue(9));
+        assertNumEquals(3.5, firstSMAindicator.getValue(10));
+        assertNumEquals(3.5, firstSMAindicator.getValue(11));
+        assertNumEquals(2.5, firstSMAindicator.getValue(12));
+
+        assertEquals(3, secondSMAindicator.getCountOfUnstableBars());
+        assertNumEquals(2.5, secondSMAindicator.getValue(3));
+        assertNumEquals((2.5 + 3.5 + 3.5) / 3, secondSMAindicator.getValue(4));
+        assertNumEquals(3.5, secondSMAindicator.getValue(5));
+        assertNumEquals((3.5 + 3.5 + 4.5) / 3, secondSMAindicator.getValue(6));
+        assertNumEquals((3.5 + 4.5 + 4.5) / 3, secondSMAindicator.getValue(7));
+        assertNumEquals((4.5 + 4.5 + 3.5) / 3, secondSMAindicator.getValue(8));
+        assertNumEquals((4.5 + 3.5 + 3) / 3, secondSMAindicator.getValue(9));
+        assertNumEquals((3.5 + 3 + 3.5) / 3, secondSMAindicator.getValue(10));
+        assertNumEquals((3 + 3.5 + 3.5) / 3, secondSMAindicator.getValue(11));
+        assertNumEquals((3.5 + 3.5 + 2.5) / 3, secondSMAindicator.getValue(12));
+    }
+
+    @Test
     public void usingBarCount3UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
