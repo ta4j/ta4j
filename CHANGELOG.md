@@ -2,8 +2,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
-### Changed
-- [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 
 ## 0.19
 
@@ -24,12 +22,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
 - Corrected the calculation of unstable bars of the SMA indicator
 - `PivotPointIndicatorTest` fixed to work also in java 25
+- Fixed bug in `MovingAverageCrossOverRangeBacktest` preventing successfully loading the test JSON bar data
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
 - `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
+- [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
@@ -44,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
 - Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
 - Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
+- Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
 
 ## 0.18 (released May 15, 2025)
 
