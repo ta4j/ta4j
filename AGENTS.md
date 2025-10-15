@@ -7,3 +7,4 @@
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
 - Run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) to keep the feedback loop fast.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
+- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` unreleased section instead.

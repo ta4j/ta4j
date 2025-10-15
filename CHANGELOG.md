@@ -36,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - TransformIndicator and CombineIndicator
 
 ### Added
+- [#1187](https://github.com/ta4j/ta4j/issues/1187) Added `RenkoUpIndicator`, `RenkoDownIndicator` and `RenkoXIndicator` to detect Renko brick sequences
 - Bars can now be built by `beginTime` instead of `endTime`
 - Added tests for `DoubleNumFactory` and `DecimalNumFactory`
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
