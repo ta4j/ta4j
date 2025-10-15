@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Clarify PnL criterion comments about trading costs
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
 - Fixed strict rules of `ConvergenceDivergenceIndicator`
+- Fixed calculation for `VersusEnterAndHoldCriterion`
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
