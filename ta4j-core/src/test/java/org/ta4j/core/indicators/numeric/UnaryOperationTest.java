@@ -27,9 +27,13 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -149,6 +153,23 @@ public class UnaryOperationTest extends AbstractIndicatorTest<UnaryOperation, Nu
         assertNumEquals(Math.log(0.1), result.getValue(0));
         assertNumEquals(Math.log(0.01), result.getValue(1));
         assertNumEquals(Math.log(0.001), result.getValue(2));
+    }
+
+    @Test
+    public void testSubstitute_ReplacesNaNWithCorrectValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Indicator<Num> indicator = new FixedIndicator<>(series, numOf(1), NaN.NaN, numOf(3), NaN.NaN, numOf(5));
+
+        Num valueToReplace = NaN.NaN;
+        Num replacementValue = numOf(0);
+
+        UnaryOperation subject = UnaryOperation.substitute(indicator, valueToReplace, replacementValue);
+
+        assertNumEquals(numFactory.one(), subject.getValue(0));
+        assertNumEquals(numFactory.zero(), subject.getValue(1));
+        assertNumEquals(numOf(3), subject.getValue(2));
+        assertNumEquals(numOf(0), subject.getValue(3));
+        assertNumEquals(numOf(5), subject.getValue(4));
     }
 
     @Test
