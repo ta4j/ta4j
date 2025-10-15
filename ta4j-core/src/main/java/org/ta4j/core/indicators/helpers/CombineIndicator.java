@@ -35,7 +35,11 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Combines two Num indicators by using common math operations.
+ *
+ * @deprecated Migrate usage to equivalent functions in BinaryOperation. This
+ *             class will be deleted in an upcoming release
  */
+@Deprecated
 public class CombineIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicatorLeft;
