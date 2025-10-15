@@ -37,6 +37,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - TransformIndicator and CombineIndicator
 
 ### Added
+- [#1187](https://github.com/ta4j/ta4j/issues/1187) Added `RenkoUpIndicator`, `RenkoDownIndicator` and `RenkoXIndicator` to detect Renko brick sequences
 - Bars can now be built by `beginTime` instead of `endTime`
 - Added tests for `DoubleNumFactory` and `DecimalNumFactory`
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
@@ -45,6 +46,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
 - Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
 - Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
+- Added new `NetMomentumIndicator` indicator class
+- New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
 - Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
 
