@@ -30,6 +30,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
 - `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
 - Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
 
 ### Removed/Deprecated
