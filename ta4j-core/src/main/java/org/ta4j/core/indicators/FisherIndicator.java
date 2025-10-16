@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://www.investopedia.com/terms/f/fisher-transform.asp">
  *      https://www.investopedia.com/terms/f/fisher-transform.asp</a>
  */
-public class FisherIndicator extends CachedIndicator<Num> {
+public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
     private static final double ZERO_DOT_FIVE = 0.5;
     private static final double VALUE_MAX = 0.999;

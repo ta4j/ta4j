@@ -31,7 +31,7 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,7 +47,7 @@ import org.ta4j.core.num.Num;
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
  */
-public class PivotPointIndicator extends CachedIndicator<Num> {
+public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
     private final Num three;

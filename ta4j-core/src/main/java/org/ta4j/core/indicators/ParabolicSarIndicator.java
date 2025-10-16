@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
  *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
-public class ParabolicSarIndicator extends CachedIndicator<Num> {
+public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
     private final LowPriceIndicator lowPriceIndicator;
     private final LowestValueIndicator lowestValueIndicator;

@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  * @see <a href="http://www.investopedia.com/terms/n/nvi.asp">
  *      http://www.investopedia.com/terms/n/nvi.asp</a>
  */
-public class NVIIndicator extends CachedIndicator<Num> {
+public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.

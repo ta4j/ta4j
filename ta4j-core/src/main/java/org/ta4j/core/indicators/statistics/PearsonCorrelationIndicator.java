@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  *      "http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/">
  *      http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/</a>
  */
-public class PearsonCorrelationIndicator extends CachedIndicator<Num> {
+public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;

@@ -26,13 +26,13 @@ package org.ta4j.core.indicators.supertrend;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * The SuperTrend indicator.
  */
-public class SuperTrendIndicator extends CachedIndicator<Num> {
+public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
