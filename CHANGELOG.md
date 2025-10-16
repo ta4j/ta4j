@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- [#907](https://github.com/ta4j/ta4j/issues/907) Replace `CachedIndicator` caching with a thread-safe windowed cache, remove the `RecursiveCachedIndicator` workaround, and tighten regression coverage for recursive indicators.
 
 ## 0.19
 

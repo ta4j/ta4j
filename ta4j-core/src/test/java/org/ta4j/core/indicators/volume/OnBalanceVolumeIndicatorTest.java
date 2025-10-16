@@ -64,8 +64,8 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
             bigSeries.barBuilder().closePrice(i).volume(0).add();
         }
         var obv = new OnBalanceVolumeIndicator(bigSeries);
-        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // If a StackOverflowError is thrown here, then the caching fallback for
+        // recursive indicators no longer works as intended.
         assertNumEquals(0, obv.getValue(9999));
     }
 }

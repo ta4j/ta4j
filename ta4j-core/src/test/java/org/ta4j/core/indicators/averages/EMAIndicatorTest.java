@@ -79,8 +79,8 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             bigSeries.barBuilder().closePrice(i).add();
         }
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // if a StackOverflowError is thrown here, then the caching fallback for
+        // recursive indicators no longer works as intended.
         assertNumEquals(9994.5, indicator.getValue(9999));
     }
 

@@ -23,9 +23,10 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -43,14 +44,29 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /** List of cached results. */
-    private final List<T> results;
+    private static final int RETAINED_HISTORICAL_RESULTS = 1;
+    private static final int RECURSION_THRESHOLD = 100;
+
+    /** Thread-safe map of cached results. */
+    private final ConcurrentMap<Integer, T> results;
+
+    /** Lock protecting structural cache changes. */
+    private final ReentrantLock cacheLock = new ReentrantLock();
+
+    /** Guards against recursive prefill loops on the same thread. */
+    private static final ThreadLocal<Integer> PREFILL_DEPTH = ThreadLocal.withInitial(() -> 0);
 
     /**
      * Should always be the index of the last (calculated) result in
      * {@link #results}.
      */
-    protected int highestResultIndex = -1;
+    protected volatile int highestResultIndex = -1;
+
+    /** Lowest index currently cached. */
+    private volatile int lowestResultIndex = Integer.MAX_VALUE;
+
+    /** Removed bars count already processed. */
+    private volatile int lastRemovalCount = -1;
 
     /**
      * Constructor.
@@ -59,8 +75,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
-        int limit = series.getMaximumBarCount();
-        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        this.results = new ConcurrentHashMap<>();
     }
 
     /**
@@ -97,45 +112,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         final int removedBarsCount = series.getRemovedBarsCount();
         final int maximumResultCount = series.getMaximumBarCount();
 
-        T result;
-        if (index < removedBarsCount) {
-            // Result already removed from cache
-            if (log.isTraceEnabled()) {
-                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                        getClass().getSimpleName(), index, removedBarsCount);
-            }
-            increaseLengthTo(removedBarsCount, maximumResultCount);
-            highestResultIndex = removedBarsCount;
-            result = results.get(0);
-            if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
-                results.set(0, result);
-            }
-        } else {
-            if (index == series.getEndIndex()) {
-                // Don't cache result if last bar
-                result = calculate(index);
-            } else {
-                increaseLengthTo(index, maximumResultCount);
-                if (index > highestResultIndex) {
-                    // Result not calculated yet
-                    highestResultIndex = index;
-                    result = calculate(index);
-                    results.set(results.size() - 1, result);
-                } else {
-                    // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                    result = results.get(resultInnerIndex);
-                    if (result == null) {
-                        result = calculate(index);
-                        results.set(resultInnerIndex, result);
-                    }
-                }
-            }
+        evictExpiredResults(removedBarsCount, maximumResultCount);
 
+        int normalizedIndex = normalizeIndex(index);
+        if (lowestResultIndex != Integer.MAX_VALUE && normalizedIndex < lowestResultIndex
+                && normalizedIndex < removedBarsCount) {
+            normalizedIndex = lowestResultIndex;
+        }
+
+        prefillIntermediateResults(normalizedIndex, removedBarsCount, maximumResultCount);
+
+        T result;
+        if (normalizedIndex == series.getEndIndex()) {
+            // Don't cache result if last bar
+            result = calculate(normalizedIndex);
+        } else {
+            result = results.get(normalizedIndex);
+            if (result == null) {
+                result = computeAndCacheValue(normalizedIndex, removedBarsCount, maximumResultCount);
+            }
         }
         if (log.isTraceEnabled()) {
             log.trace("{}({}): {}", this, index, result);
@@ -143,45 +138,133 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         return result;
     }
 
-    /**
-     * Increases the size of the cached results buffer.
-     *
-     * @param index     the index to increase length to
-     * @param maxLength the maximum length of the results buffer
-     */
-    private void increaseLengthTo(int index, int maxLength) {
-        if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
-            if (newResultsCount == maxLength) {
-                results.clear();
-                results.addAll(Collections.nCopies(maxLength, null));
-            } else if (newResultsCount > 0) {
-                results.addAll(Collections.nCopies(newResultsCount, null));
-                removeExceedingResults(maxLength);
+    private int normalizeIndex(int index) {
+        return Math.max(index, 0);
+    }
+
+    private void prefillIntermediateResults(int targetIndex, int removedBarsCount, int maximumResultCount) {
+        if (targetIndex <= 0 || PREFILL_DEPTH.get() > 0) {
+            return;
+        }
+
+        int startIndex = Math.max(removedBarsCount, highestResultIndex);
+        if (startIndex < 0) {
+            startIndex = Math.max(0, removedBarsCount);
+        }
+
+        if (targetIndex - startIndex <= RECURSION_THRESHOLD) {
+            return;
+        }
+
+        PREFILL_DEPTH.set(PREFILL_DEPTH.get() + 1);
+        try {
+            for (int index = startIndex; index < targetIndex; index++) {
+                if (index < 0) {
+                    continue;
+                }
+                if (results.containsKey(index)) {
+                    continue;
+                }
+                computeAndCacheValue(index, removedBarsCount, maximumResultCount);
             }
-        } else {
-            // First use of cache
-            assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
+        } finally {
+            int depth = PREFILL_DEPTH.get() - 1;
+            if (depth <= 0) {
+                PREFILL_DEPTH.remove();
+            } else {
+                PREFILL_DEPTH.set(depth);
+            }
         }
     }
 
-    /**
-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
-     * only the last maximumResultCount results)
-     *
-     * @param maximumResultCount the number of results to keep
-     */
-    private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
-        if (resultCount > maximumResultCount) {
-            // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
-            if (nbResultsToRemove == 1) {
-                results.remove(0);
-            } else {
-                results.subList(0, nbResultsToRemove).clear();
+    private T computeAndCacheValue(int index, int removedBarsCount, int maximumResultCount) {
+        cacheLock.lock();
+        try {
+            T computedValue = results.get(index);
+            if (computedValue != null) {
+                return computedValue;
             }
+
+            computedValue = calculate(index);
+            results.put(index, computedValue);
+            highestResultIndex = Math.max(highestResultIndex, index);
+            lowestResultIndex = Math.min(lowestResultIndex, index);
+
+            enforceMaximumSize(removedBarsCount, maximumResultCount);
+
+            return computedValue;
+        } finally {
+            cacheLock.unlock();
         }
+    }
+
+    private void evictExpiredResults(int removedBarsCount, int maximumResultCount) {
+        if (results.isEmpty()) {
+            if (removedBarsCount > lastRemovalCount) {
+                lastRemovalCount = removedBarsCount;
+            }
+            return;
+        }
+
+        boolean shouldProcessRemovals = removedBarsCount > lastRemovalCount;
+        boolean shouldTrim = maximumResultCount != Integer.MAX_VALUE && highestResultIndex >= 0
+                && lowestResultIndex != Integer.MAX_VALUE
+                && highestResultIndex - Math.max(lowestResultIndex, removedBarsCount) + 1 > maximumResultCount;
+
+        if (!shouldProcessRemovals && !shouldTrim) {
+            return;
+        }
+
+        cacheLock.lock();
+        try {
+            if (shouldProcessRemovals) {
+                removeResultsBefore(removedBarsCount);
+                lastRemovalCount = removedBarsCount;
+            }
+
+            if (maximumResultCount != Integer.MAX_VALUE) {
+                int threshold = highestResultIndex - maximumResultCount + 1;
+                if (threshold > Integer.MIN_VALUE) {
+                    removeResultsBefore(Math.max(removedBarsCount, threshold));
+                }
+            }
+        } finally {
+            cacheLock.unlock();
+        }
+    }
+
+    private void enforceMaximumSize(int removedBarsCount, int maximumResultCount) {
+        if (maximumResultCount == Integer.MAX_VALUE) {
+            return;
+        }
+        int threshold = highestResultIndex - maximumResultCount + 1;
+        if (threshold > Integer.MIN_VALUE) {
+            removeResultsBefore(Math.max(removedBarsCount, threshold));
+        }
+    }
+
+    private void removeResultsBefore(int threshold) {
+        final int retentionFloor = Math.max(0, threshold - RETAINED_HISTORICAL_RESULTS);
+
+        if (results.isEmpty()) {
+            lowestResultIndex = Integer.MAX_VALUE;
+            if (highestResultIndex < retentionFloor - 1) {
+                highestResultIndex = retentionFloor - 1;
+            }
+            return;
+        }
+
+        results.keySet().removeIf(key -> key < retentionFloor);
+
+        if (results.isEmpty()) {
+            lowestResultIndex = Integer.MAX_VALUE;
+            if (highestResultIndex < retentionFloor - 1) {
+                highestResultIndex = retentionFloor - 1;
+            }
+            return;
+        }
+
+        lowestResultIndex = results.keySet().stream().min(Comparator.naturalOrder()).orElse(Integer.MAX_VALUE);
+        highestResultIndex = results.keySet().stream().max(Comparator.naturalOrder()).orElse(retentionFloor - 1);
     }
 }

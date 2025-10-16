@@ -79,8 +79,8 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         }
         var closePrice = new ClosePriceIndicator(bigSeries);
         var actualIndicator = getIndicator(closePrice, 10);
-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // if a StackOverflowError is thrown here, then the caching fallback for
+        // recursive indicators no longer works as intended.
         assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
