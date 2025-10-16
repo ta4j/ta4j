@@ -2,6 +2,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Added
+- Introduced `StrategySerialization` with `Strategy#toJson()`/`Strategy#fromJson(BarSeries, String)` helpers for sharing
+  strategy descriptors alongside entry and exit rules.
 
 ## 0.19
 
