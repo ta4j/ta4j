@@ -1,3 +1,5 @@
+# Indicators package instructions
+
 # Indicator conventions
 
 - Indicators must avoid look-ahead bias: when evaluating index `i`, only data from `getBeginIndex()` through `i` may influence the result.

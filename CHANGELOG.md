@@ -1,7 +1,5 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## Unreleased
-
 
 ## 0.19
 
@@ -33,6 +31,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 - Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
 - Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
+- [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- [#907](https://github.com/ta4j/ta4j/issues/907) Replace `CachedIndicator` caching with a thread-safe windowed cache, remove the `RecursiveCachedIndicator` workaround, and tighten regression coverage for recursive indicators.
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator

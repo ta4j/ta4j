@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
@@ -30,29 +33,26 @@ import org.ta4j.core.Indicator;
  * Recursive cached {@link Indicator indicator}.
  *
  * <p>
- * Recursive indicators should extend this class.
- *
- * <p>
- * This class is only here to avoid (OK, to postpone) the StackOverflowError
- * that may be thrown on the first getValue(int) call of a recursive indicator.
- * Concretely when an index value is asked, if the last cached value is too
- * old/far, the computation of all the values between the last cached and the
- * asked one is executed iteratively.
+ * Recursive indicators should extend this class. It avoids the
+ * {@link StackOverflowError} risk by iteratively filling in missing values once
+ * a recursion threshold is exceeded.
  */
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
-     * The recursion threshold for which an iterative calculation is executed.
-     *
-     * TODO: Should be variable (depending on the sub-indicators used in this
-     * indicator, e.g. Indicator#getUnstableBars()).
+     * The recursion threshold for which an iterative calculation is executed. TODO
+     * Should be variable (depending on the sub-indicators used in this indicator)
      */
     private static final int RECURSION_THRESHOLD = 100;
+
+    /** Guards against recursively re-entering prefill for the same indicator. */
+    private static final ThreadLocal<Map<RecursiveCachedIndicator<?>, Integer>> PREFILL_DEPTH = ThreadLocal
+            .withInitial(IdentityHashMap::new);
 
     /**
      * Constructor.
      *
-     * @param series the bar series
+     * @param series the related bar series
      */
     protected RecursiveCachedIndicator(BarSeries series) {
         super(series);
@@ -61,30 +61,55 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator (with its bar series)
+     * @param indicator a related indicator (with a bar series)
      */
     protected RecursiveCachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());
     }
 
     @Override
-    public T getValue(int index) {
-        final BarSeries series = getBarSeries();
-        if (series == null || index > series.getEndIndex()) {
-            return super.getValue(index);
-        }
-
-        // We're not at the end of the series yet.
-        final int startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
-
-        if (index - startIndex > RECURSION_THRESHOLD) {
-            // Too many uncalculated values; the risk for a StackOverflowError becomes high.
-            // Calculating the previous values iteratively.
-            for (int prevIndex = startIndex; prevIndex < index; prevIndex++) {
-                super.getValue(prevIndex);
+    public synchronized T getValue(int index) {
+        BarSeries series = getBarSeries();
+        if (series != null) {
+            final int seriesEndIndex = series.getEndIndex();
+            if (index <= seriesEndIndex) {
+                // We are not after the end of the series
+                final int removedBarsCount = series.getRemovedBarsCount();
+                int startIndex = Math.max(removedBarsCount, highestResultIndex);
+                if (startIndex < 0) {
+                    startIndex = Math.max(0, removedBarsCount);
+                }
+                if (index - startIndex > RECURSION_THRESHOLD) {
+                    prefillMissingValues(startIndex, index);
+                }
             }
         }
 
         return super.getValue(index);
+    }
+
+    private void prefillMissingValues(int startIndex, int targetIndex) {
+        Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator = PREFILL_DEPTH.get();
+        Integer depth = depthByIndicator.get(this);
+        if (depth != null && depth > 0) {
+            return;
+        }
+
+        depthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
+        try {
+            for (int prevIdx = startIndex; prevIdx < targetIndex; prevIdx++) {
+                super.getValue(prevIdx);
+            }
+        } finally {
+            int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
+            if (updatedDepth <= 0) {
+                depthByIndicator.remove(this);
+            } else {
+                depthByIndicator.put(this, updatedDepth);
+            }
+            if (depthByIndicator.isEmpty()) {
+                PREFILL_DEPTH.remove();
+            }
+        }
     }
 }

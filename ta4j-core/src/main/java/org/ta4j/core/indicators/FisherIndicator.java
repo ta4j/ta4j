@@ -154,7 +154,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         final Indicator<Num> periodLow = new LowestValueIndicator(
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
-        this.intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
+        this.intermediateValue = new CachedIndicator<Num>(ref) {
 
             @Override
             protected Num calculate(int index) {

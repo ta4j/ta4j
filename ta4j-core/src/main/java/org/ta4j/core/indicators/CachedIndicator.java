@@ -31,15 +31,13 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
 /**
- * Cached {@link Indicator indicator}.
+ * Performance-optimized {@link Indicator} that caches computed values.
  *
  * <p>
- * Caches the calculated results of the indicator to avoid calculating the same
- * index of the indicator twice. The caching drastically speeds up access to
- * indicator values. Caching is especially recommended when indicators calculate
- * their values based on the values of other indicators. Such nested indicators
- * can call {@link #getValue(int)} multiple times without the need to
- * {@link #calculate(int)} again.
+ * Caching avoids recomputation of values at the same index and is especially
+ * beneficial for indicators built on top of other indicators. The cache length
+ * adapts to the series' {@link BarSeries#getMaximumBarCount()} and
+ * automatically discards leading results as the series rolls forward.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
@@ -47,8 +45,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final List<T> results;
 
     /**
-     * Should always be the index of the last (calculated) result in
-     * {@link #results}.
+     * Should always be the index of the last (calculated) result in the results
+     * list.
      */
     protected int highestResultIndex = -1;
 
@@ -81,18 +79,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     @Override
     public synchronized T getValue(int index) {
         BarSeries series = getBarSeries();
+
+        // If the series is null, don't use cache and calculate the value directly
         if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
             T result = calculate(index);
             if (log.isTraceEnabled()) {
                 log.trace("{}({}): {}", this, index, result);
             }
             return result;
         }
-
-        // Series is not null
 
         final int removedBarsCount = series.getRemovedBarsCount();
         final int maximumResultCount = series.getMaximumBarCount();
@@ -108,9 +103,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             highestResultIndex = removedBarsCount;
             result = results.get(0);
             if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
                 result = calculate(0);
                 results.set(0, result);
             }
@@ -144,7 +136,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Increases the size of the cached results buffer.
+     * Increases the size of cached results buffer.
      *
      * @param index     the index to increase length to
      * @param maxLength the maximum length of the results buffer
