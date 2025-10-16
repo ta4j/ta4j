@@ -1,0 +1,2060 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index b39b4bd7d176f4325b9d9ac85526a745a4575175..3b264421e94fd6c686c62a08c145617b7a542dab 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,31 +1,32 @@
+ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
+ 
+ ## Unreleased
+ 
+ ### Changed
+ - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
++- [#907](https://github.com/ta4j/ta4j/issues/907) Replace `CachedIndicator` caching with a thread-safe windowed cache, remove the `RecursiveCachedIndicator` workaround, and tighten regression coverage for recursive indicators.
+ 
+ ## 0.19
+ 
+ ### Breaking
+ - Refactored `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion` and `ProfitLossPercentageCriterion` criteria into their net and gross concrete classes
+ - [#1266](https://github.com/ta4j/ta4j/issues/1266) Consolidated BinaryOperation, UnaryOperation, TransformIndicator and CombineIndicator
+ - Moved `criteria/MaximumDrawdownCriterion.java` and `criteria/ReturnOverMaxDrawdownCriterion.java` to `criteria/drawdown/` sub-package
+ 
+ ### Fixed
+ - Updated Github test workflow to cache dependencies for quicker builds
+ - Updated test status badge on README
+ - Fixed EnterAndHoldCriterion to keep track of transaction and hold costs
+ - Clarify PnL criterion comments about trading costs
+ - Refactor ProfitLossPercentageCriterion to calculate aggregated return
+ - Fixed strict rules of `ConvergenceDivergenceIndicator`
+ - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
+ - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
+ - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
+ - Corrected the calculation of unstable bars of the SMA indicator
+ - `PivotPointIndicatorTest` fixed to work also in java 25
+ 
+ ### Changed
+ - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
+ - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
+ - Changed snapshot distribution to Maven Central after OSSRH end-of-life
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/AGENTS.md b/ta4j-core/src/main/java/org/ta4j/core/indicators/AGENTS.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c6a7c29724db0beaf76e3507576c6cbaf5c76ce
+--- /dev/null
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/AGENTS.md
+@@ -0,0 +1,12 @@
++# Indicators package instructions
++- `CachedIndicator` now stores values inside a thread-safe windowed cache backed by a `ConcurrentHashMap` and a `ReentrantLock`.
++  * Never bypass `getValue(int)` when retrieving indicator results. Direct writes to the cache should happen exclusively through
++    `calculate(int)` to preserve sequential computation guarantees for recursive indicators.
++  * When trimming cached entries, always retain at least one historical value prior to the current series window. This seed value
++    keeps recursive indicators stable when old bars are evicted.
++  * Requests for indices below the cached range automatically return the lowest retained value instead of recomputing removed
++    indices.
++- Recursive indicators no longer extend a dedicated `RecursiveCachedIndicator`. They should subclass `CachedIndicator`
++  directly and rely on the sequential pre-computation performed in `CachedIndicator#computeAndCacheValue`.
++- Keep the "last bar is not cached" behavior intact. Indicators are expected to recompute the most recent bar after intra-bar
++  updates.
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/CachedIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/CachedIndicator.java
+index c35cde1ad9624dde1577431760b11a3e980c8a89..4efe11a4f28f9b909ab59e45124c9cf1d72d9a17 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/CachedIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/CachedIndicator.java
+@@ -1,187 +1,270 @@
+ /*
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators;
+ 
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.List;
++import java.util.Comparator;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.ConcurrentMap;
++import java.util.concurrent.locks.ReentrantLock;
+ 
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.Indicator;
+ 
+ /**
+  * Cached {@link Indicator indicator}.
+  *
+  * <p>
+  * Caches the calculated results of the indicator to avoid calculating the same
+  * index of the indicator twice. The caching drastically speeds up access to
+  * indicator values. Caching is especially recommended when indicators calculate
+  * their values based on the values of other indicators. Such nested indicators
+  * can call {@link #getValue(int)} multiple times without the need to
+  * {@link #calculate(int)} again.
+  */
+ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
+ 
+-    /** List of cached results. */
+-    private final List<T> results;
++    private static final int RETAINED_HISTORICAL_RESULTS = 1;
++    private static final int RECURSION_THRESHOLD = 100;
++
++    /** Thread-safe map of cached results. */
++    private final ConcurrentMap<Integer, T> results;
++
++    /** Lock protecting structural cache changes. */
++    private final ReentrantLock cacheLock = new ReentrantLock();
++
++    /** Guards against recursive prefill loops on the same thread. */
++    private static final ThreadLocal<Integer> PREFILL_DEPTH = ThreadLocal.withInitial(() -> 0);
+ 
+     /**
+      * Should always be the index of the last (calculated) result in
+      * {@link #results}.
+      */
+-    protected int highestResultIndex = -1;
++    protected volatile int highestResultIndex = -1;
++
++    /** Lowest index currently cached. */
++    private volatile int lowestResultIndex = Integer.MAX_VALUE;
++
++    /** Removed bars count already processed. */
++    private volatile int lastRemovalCount = -1;
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the bar series
+      */
+     protected CachedIndicator(BarSeries series) {
+         super(series);
+-        int limit = series.getMaximumBarCount();
+-        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
++        this.results = new ConcurrentHashMap<>();
+     }
+ 
+     /**
+      * Constructor.
+      *
+      * @param indicator a related indicator (with a bar series)
+      */
+     protected CachedIndicator(Indicator<?> indicator) {
+         this(indicator.getBarSeries());
+     }
+ 
+     /**
+      * @param index the bar index
+      * @return the value of the indicator
+      */
+     protected abstract T calculate(int index);
+ 
+     @Override
+     public synchronized T getValue(int index) {
+         BarSeries series = getBarSeries();
+         if (series == null) {
+             // Series is null; the indicator doesn't need cache.
+             // (e.g. simple computation of the value)
+             // --> Calculating the value
+             T result = calculate(index);
+             if (log.isTraceEnabled()) {
+                 log.trace("{}({}): {}", this, index, result);
+             }
+             return result;
+         }
+ 
+         // Series is not null
+ 
+         final int removedBarsCount = series.getRemovedBarsCount();
+         final int maximumResultCount = series.getMaximumBarCount();
+ 
++        evictExpiredResults(removedBarsCount, maximumResultCount);
++
++        int normalizedIndex = normalizeIndex(index);
++        if (lowestResultIndex != Integer.MAX_VALUE && normalizedIndex < lowestResultIndex
++                && normalizedIndex < removedBarsCount) {
++            normalizedIndex = lowestResultIndex;
++        }
++
++        prefillIntermediateResults(normalizedIndex, removedBarsCount, maximumResultCount);
++
+         T result;
+-        if (index < removedBarsCount) {
+-            // Result already removed from cache
+-            if (log.isTraceEnabled()) {
+-                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+-                        getClass().getSimpleName(), index, removedBarsCount);
+-            }
+-            increaseLengthTo(removedBarsCount, maximumResultCount);
+-            highestResultIndex = removedBarsCount;
+-            result = results.get(0);
+-            if (result == null) {
+-                // It should be "result = calculate(removedBarsCount);".
+-                // We use "result = calculate(0);" as a workaround
+-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
+-                result = calculate(0);
+-                results.set(0, result);
+-            }
++        if (normalizedIndex == series.getEndIndex()) {
++            // Don't cache result if last bar
++            result = calculate(normalizedIndex);
+         } else {
+-            if (index == series.getEndIndex()) {
+-                // Don't cache result if last bar
+-                result = calculate(index);
+-            } else {
+-                increaseLengthTo(index, maximumResultCount);
+-                if (index > highestResultIndex) {
+-                    // Result not calculated yet
+-                    highestResultIndex = index;
+-                    result = calculate(index);
+-                    results.set(results.size() - 1, result);
+-                } else {
+-                    // Result covered by current cache
+-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+-                    result = results.get(resultInnerIndex);
+-                    if (result == null) {
+-                        result = calculate(index);
+-                        results.set(resultInnerIndex, result);
+-                    }
+-                }
++            result = results.get(normalizedIndex);
++            if (result == null) {
++                result = computeAndCacheValue(normalizedIndex, removedBarsCount, maximumResultCount);
+             }
+-
+         }
+         if (log.isTraceEnabled()) {
+             log.trace("{}({}): {}", this, index, result);
+         }
+         return result;
+     }
+ 
+-    /**
+-     * Increases the size of the cached results buffer.
+-     *
+-     * @param index     the index to increase length to
+-     * @param maxLength the maximum length of the results buffer
+-     */
+-    private void increaseLengthTo(int index, int maxLength) {
+-        if (highestResultIndex > -1) {
+-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
+-            if (newResultsCount == maxLength) {
+-                results.clear();
+-                results.addAll(Collections.nCopies(maxLength, null));
+-            } else if (newResultsCount > 0) {
+-                results.addAll(Collections.nCopies(newResultsCount, null));
+-                removeExceedingResults(maxLength);
++    private int normalizeIndex(int index) {
++        return Math.max(index, 0);
++    }
++
++    private void prefillIntermediateResults(int targetIndex, int removedBarsCount, int maximumResultCount) {
++        if (targetIndex <= 0 || PREFILL_DEPTH.get() > 0) {
++            return;
++        }
++
++        int startIndex = Math.max(removedBarsCount, highestResultIndex);
++        if (startIndex < 0) {
++            startIndex = Math.max(0, removedBarsCount);
++        }
++
++        if (targetIndex - startIndex <= RECURSION_THRESHOLD) {
++            return;
++        }
++
++        PREFILL_DEPTH.set(PREFILL_DEPTH.get() + 1);
++        try {
++            for (int index = startIndex; index < targetIndex; index++) {
++                if (index < 0) {
++                    continue;
++                }
++                if (results.containsKey(index)) {
++                    continue;
++                }
++                computeAndCacheValue(index, removedBarsCount, maximumResultCount);
++            }
++        } finally {
++            int depth = PREFILL_DEPTH.get() - 1;
++            if (depth <= 0) {
++                PREFILL_DEPTH.remove();
++            } else {
++                PREFILL_DEPTH.set(depth);
+             }
+-        } else {
+-            // First use of cache
+-            assert results.isEmpty() : "Cache results list should be empty";
+-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
+         }
+     }
+ 
+-    /**
+-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
+-     * only the last maximumResultCount results)
+-     *
+-     * @param maximumResultCount the number of results to keep
+-     */
+-    private void removeExceedingResults(int maximumResultCount) {
+-        int resultCount = results.size();
+-        if (resultCount > maximumResultCount) {
+-            // Removing old results
+-            final int nbResultsToRemove = resultCount - maximumResultCount;
+-            if (nbResultsToRemove == 1) {
+-                results.remove(0);
+-            } else {
+-                results.subList(0, nbResultsToRemove).clear();
++    private T computeAndCacheValue(int index, int removedBarsCount, int maximumResultCount) {
++        cacheLock.lock();
++        try {
++            T computedValue = results.get(index);
++            if (computedValue != null) {
++                return computedValue;
+             }
++
++            computedValue = calculate(index);
++            results.put(index, computedValue);
++            highestResultIndex = Math.max(highestResultIndex, index);
++            lowestResultIndex = Math.min(lowestResultIndex, index);
++
++            enforceMaximumSize(removedBarsCount, maximumResultCount);
++
++            return computedValue;
++        } finally {
++            cacheLock.unlock();
+         }
+     }
++
++    private void evictExpiredResults(int removedBarsCount, int maximumResultCount) {
++        if (results.isEmpty()) {
++            if (removedBarsCount > lastRemovalCount) {
++                lastRemovalCount = removedBarsCount;
++            }
++            return;
++        }
++
++        boolean shouldProcessRemovals = removedBarsCount > lastRemovalCount;
++        boolean shouldTrim = maximumResultCount != Integer.MAX_VALUE && highestResultIndex >= 0
++                && lowestResultIndex != Integer.MAX_VALUE
++                && highestResultIndex - Math.max(lowestResultIndex, removedBarsCount) + 1 > maximumResultCount;
++
++        if (!shouldProcessRemovals && !shouldTrim) {
++            return;
++        }
++
++        cacheLock.lock();
++        try {
++            if (shouldProcessRemovals) {
++                removeResultsBefore(removedBarsCount);
++                lastRemovalCount = removedBarsCount;
++            }
++
++            if (maximumResultCount != Integer.MAX_VALUE) {
++                int threshold = highestResultIndex - maximumResultCount + 1;
++                if (threshold > Integer.MIN_VALUE) {
++                    removeResultsBefore(Math.max(removedBarsCount, threshold));
++                }
++            }
++        } finally {
++            cacheLock.unlock();
++        }
++    }
++
++    private void enforceMaximumSize(int removedBarsCount, int maximumResultCount) {
++        if (maximumResultCount == Integer.MAX_VALUE) {
++            return;
++        }
++        int threshold = highestResultIndex - maximumResultCount + 1;
++        if (threshold > Integer.MIN_VALUE) {
++            removeResultsBefore(Math.max(removedBarsCount, threshold));
++        }
++    }
++
++    private void removeResultsBefore(int threshold) {
++        final int retentionFloor = Math.max(0, threshold - RETAINED_HISTORICAL_RESULTS);
++
++        if (results.isEmpty()) {
++            lowestResultIndex = Integer.MAX_VALUE;
++            if (highestResultIndex < retentionFloor - 1) {
++                highestResultIndex = retentionFloor - 1;
++            }
++            return;
++        }
++
++        results.keySet().removeIf(key -> key < retentionFloor);
++
++        if (results.isEmpty()) {
++            lowestResultIndex = Integer.MAX_VALUE;
++            if (highestResultIndex < retentionFloor - 1) {
++                highestResultIndex = retentionFloor - 1;
++            }
++            return;
++        }
++
++        lowestResultIndex = results.keySet().stream().min(Comparator.naturalOrder()).orElse(Integer.MAX_VALUE);
++        highestResultIndex = results.keySet().stream().max(Comparator.naturalOrder()).orElse(retentionFloor - 1);
++    }
+ }
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/FisherIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/FisherIndicator.java
+index 531e2bd4eb7efd6148465756bc9793e874b2d9d2..c4cf0bce2308e58494f15d56c8bb65b4182b80b6 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/FisherIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/FisherIndicator.java
+@@ -22,51 +22,51 @@
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators;
+ 
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.Indicator;
+ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * The Fisher Indicator.
+  *
+  * @apiNote Minimal deviations in last Num places possible. During the
+  *          calculations this indicator converts {@link Num Num} to
+  *          {@link Double double}
+  * @see <a href=
+  *      "http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf">
+  *      http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf</a>
+  * @see <a href="https://www.investopedia.com/terms/f/fisher-transform.asp">
+  *      https://www.investopedia.com/terms/f/fisher-transform.asp</a>
+  */
+-public class FisherIndicator extends RecursiveCachedIndicator<Num> {
++public class FisherIndicator extends CachedIndicator<Num> {
+ 
+     private static final double ZERO_DOT_FIVE = 0.5;
+     private static final double VALUE_MAX = 0.999;
+     private static final double VALUE_MIN = -0.999;
+ 
+     private final Indicator<Num> ref;
+     private final Indicator<Num> intermediateValue;
+     private final Num densityFactor;
+     private final Num gamma;
+     private final Num delta;
+     private final Num one;
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the series
+      */
+     public FisherIndicator(BarSeries series) {
+         this(new MedianPriceIndicator(series), 10);
+     }
+ 
+     /**
+      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
+      *
+      * @param price    the price indicator (usually {@link MedianPriceIndicator})
+@@ -132,51 +132,51 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
+      * @param barCount         the time frame (usually 10)
+      * @param alphaD           the alpha (usually 0.33 or 0.5)
+      * @param betaD            the beta (usually 0.67 or 0.5)
+      * @param gammaD           the gamma (usually 0.25 or 0.5)
+      * @param deltaD           the delta (usually 0.5)
+      * @param densityFactorD   the density factor (usually 1.0)
+      * @param isPriceIndicator use true, if "ref" is a price indicator
+      */
+     public FisherIndicator(Indicator<Num> ref, int barCount, final double alphaD, final double betaD,
+             final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
+         super(ref);
+         this.ref = ref;
+         final var numFactory = getBarSeries().numFactory();
+         this.gamma = numFactory.numOf(gammaD);
+         this.delta = numFactory.numOf(deltaD);
+         this.densityFactor = numFactory.numOf(densityFactorD);
+         this.one = numFactory.one();
+ 
+         Num alpha = numFactory.numOf(alphaD);
+         Num beta = numFactory.numOf(betaD);
+         final Indicator<Num> periodHigh = new HighestValueIndicator(
+                 isPriceIndicator ? new HighPriceIndicator(ref.getBarSeries()) : ref, barCount);
+         final Indicator<Num> periodLow = new LowestValueIndicator(
+                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
+ 
+-        this.intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
++        this.intermediateValue = new CachedIndicator<Num>(ref) {
+ 
+             @Override
+             protected Num calculate(int index) {
+                 if (index <= 0) {
+                     return numFactory.zero();
+                 }
+ 
+                 // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
+                 // priorValue) / densityFactor
+                 Num currentRef = FisherIndicator.this.ref.getValue(index);
+                 Num minL = periodLow.getValue(index);
+                 Num maxH = periodHigh.getValue(index);
+                 Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numFactory.numOf(ZERO_DOT_FIVE));
+                 Num term2 = alpha.multipliedBy(numFactory.numOf(2)).multipliedBy(term1);
+                 Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
+                 return term3.dividedBy(FisherIndicator.this.densityFactor);
+             }
+ 
+             @Override
+             public int getCountOfUnstableBars() {
+                 return 0;
+             }
+         };
+     }
+ 
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/ParabolicSarIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/ParabolicSarIndicator.java
+index 8797d76157428d643b0e3bdb01c35b4aa9cd4b5e..ab9532ea7878bc3244eea78e4497ebca31f6a0bd 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/ParabolicSarIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/ParabolicSarIndicator.java
+@@ -22,51 +22,51 @@
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Parabolic SAR indicator.
+  *
+  * @see <a href=
+  *      "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
+  *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
+  *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
+  */
+-public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
++public class ParabolicSarIndicator extends CachedIndicator<Num> {
+ 
+     private final LowPriceIndicator lowPriceIndicator;
+     private final LowestValueIndicator lowestValueIndicator;
+     private final HighPriceIndicator highPriceIndicator;
+     private final HighestValueIndicator highestValueIndicator;
+ 
+     private final Num maxAcceleration;
+     private final Num accelerationStart;
+     private final Num accelerationIncrement;
+ 
+     private final Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
+     private final Map<Integer, Num> lastExtreme = new HashMap<>();
+     private final Map<Integer, Num> lastAf = new HashMap<>();
+ 
+     /**
+      * If series have removed bars, first actual bar won't have 0 index.
+      */
+     private int seriesStartIndex = getBarSeries().getBeginIndex();
+ 
+     /**
+      * Constructor with:
+      *
+      * <ul>
+      * <li>{@code aF} = 0.02
+      * <li>{@code maxA} = 0.2
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/RecursiveCachedIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/RecursiveCachedIndicator.java
+deleted file mode 100644
+index 0845f318f98777fb9d5623c66467d63822973ed3..0000000000000000000000000000000000000000
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/RecursiveCachedIndicator.java
++++ /dev/null
+@@ -1,90 +0,0 @@
+-/*
+- * The MIT License (MIT)
+- *
+- * Copyright (c) 2017-2025 Ta4j Organization & respective
+- * authors (see AUTHORS)
+- *
+- * Permission is hereby granted, free of charge, to any person obtaining a copy of
+- * this software and associated documentation files (the "Software"), to deal in
+- * the Software without restriction, including without limitation the rights to
+- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+- * the Software, and to permit persons to whom the Software is furnished to do so,
+- * subject to the following conditions:
+- *
+- * The above copyright notice and this permission notice shall be included in all
+- * copies or substantial portions of the Software.
+- *
+- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+- */
+-package org.ta4j.core.indicators;
+-
+-import org.ta4j.core.BarSeries;
+-import org.ta4j.core.Indicator;
+-
+-/**
+- * Recursive cached {@link Indicator indicator}.
+- *
+- * <p>
+- * Recursive indicators should extend this class.
+- *
+- * <p>
+- * This class is only here to avoid (OK, to postpone) the StackOverflowError
+- * that may be thrown on the first getValue(int) call of a recursive indicator.
+- * Concretely when an index value is asked, if the last cached value is too
+- * old/far, the computation of all the values between the last cached and the
+- * asked one is executed iteratively.
+- */
+-public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
+-
+-    /**
+-     * The recursion threshold for which an iterative calculation is executed.
+-     *
+-     * TODO: Should be variable (depending on the sub-indicators used in this
+-     * indicator, e.g. Indicator#getUnstableBars()).
+-     */
+-    private static final int RECURSION_THRESHOLD = 100;
+-
+-    /**
+-     * Constructor.
+-     *
+-     * @param series the bar series
+-     */
+-    protected RecursiveCachedIndicator(BarSeries series) {
+-        super(series);
+-    }
+-
+-    /**
+-     * Constructor.
+-     *
+-     * @param indicator the indicator (with its bar series)
+-     */
+-    protected RecursiveCachedIndicator(Indicator<?> indicator) {
+-        this(indicator.getBarSeries());
+-    }
+-
+-    @Override
+-    public T getValue(int index) {
+-        final BarSeries series = getBarSeries();
+-        if (series == null || index > series.getEndIndex()) {
+-            return super.getValue(index);
+-        }
+-
+-        // We're not at the end of the series yet.
+-        final int startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
+-
+-        if (index - startIndex > RECURSION_THRESHOLD) {
+-            // Too many uncalculated values; the risk for a StackOverflowError becomes high.
+-            // Calculating the previous values iteratively.
+-            for (int prevIndex = startIndex; prevIndex < index; prevIndex++) {
+-                super.getValue(prevIndex);
+-            }
+-        }
+-
+-        return super.getValue(index);
+-    }
+-}
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/AbstractEMAIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/AbstractEMAIndicator.java
+index 9a0ac8ebec585ddeb56ab24923cbd0a95ca2ac73..a9a7d21d641a05eaa7c81b93234220aa052bfc1e 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/AbstractEMAIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/AbstractEMAIndicator.java
+@@ -2,57 +2,57 @@
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.averages;
+ 
+ import org.ta4j.core.Indicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Base class for Exponential Moving Average implementations.
+  */
+-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
++public abstract class AbstractEMAIndicator extends CachedIndicator<Num> {
+ 
+     private final Indicator<Num> indicator;
+     private final int barCount;
+     private final Num multiplier;
+ 
+     /**
+      * Constructor.
+      *
+      * @param indicator  the {@link Indicator}
+      * @param barCount   the time frame
+      * @param multiplier the multiplier
+      */
+     protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
+         super(indicator);
+         this.indicator = indicator;
+         this.barCount = barCount;
+         this.multiplier = getBarSeries().numFactory().numOf(multiplier);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index == 0) {
+             return indicator.getValue(0);
+         }
+         Num prevValue = getValue(index - 1);
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/KAMAIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/KAMAIndicator.java
+index 93a06437cb53f52913b24755519ccabfd0d4f3e6..e9d72e5e8d18556a6ab7a945be370b6fed50678a 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/KAMAIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/KAMAIndicator.java
+@@ -2,61 +2,61 @@
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.averages;
+ 
+ import org.ta4j.core.Indicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * The Kaufman's Adaptive Moving Average (KAMA) Indicator.
+  *
+  * @see <a href=
+  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average">
+  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average</a>
+  */
+-public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
++public class KAMAIndicator extends CachedIndicator<Num> {
+ 
+     private final Indicator<Num> price;
+     private final int barCountEffectiveRatio;
+     private final Num fastest;
+     private final Num slowest;
+ 
+     /**
+      * Constructor.
+      *
+      * @param price                  the price
+      * @param barCountEffectiveRatio the time frame of the effective ratio (usually
+      *                               10)
+      * @param barCountFast           the time frame fast (usually 2)
+      * @param barCountSlow           the time frame slow (usually 30)
+      */
+     public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
+         super(price);
+         this.price = price;
+         this.barCountEffectiveRatio = barCountEffectiveRatio;
+         final var numFactory = getBarSeries().numFactory();
+         final var two = numFactory.two();
+         this.fastest = two.dividedBy(numFactory.numOf(barCountFast + 1));
+         this.slowest = two.dividedBy(numFactory.numOf(barCountSlow + 1));
+     }
+ 
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/ZLEMAIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/ZLEMAIndicator.java
+index ea1e0218586085343719ca7dd62f914fd25a2c7b..9f64dedbe670776f64bf8d1b0f02eb5d63a4c249 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/ZLEMAIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/ZLEMAIndicator.java
+@@ -2,61 +2,61 @@
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.averages;
+ 
+ import org.ta4j.core.Indicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Zero-lag exponential moving average indicator.
+  *
+  * @see <a href=
+  *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
+  *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
+  */
+-public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
++public class ZLEMAIndicator extends CachedIndicator<Num> {
+ 
+     private final Indicator<Num> indicator;
+     private final int barCount;
+     private final Num two;
+     private final Num k;
+     private final int lag;
+ 
+     /**
+      * Constructor.
+      *
+      * @param indicator the {@link Indicator}
+      * @param barCount  the time frame
+      */
+     public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {
+         super(indicator);
+         this.indicator = indicator;
+         this.barCount = barCount;
+         this.two = getBarSeries().numFactory().numOf(2);
+         this.k = two.dividedBy(getBarSeries().numFactory().numOf(barCount + 1));
+         this.lag = (barCount - 1) / 2;
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index + 1 < barCount) {
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkPivotPointIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkPivotPointIndicator.java
+index b59e45fa7a5f37f04e1e7f2a9ebe77176e17266b..f9196a61cf921822052e474c6ac5f92206e53f5e 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkPivotPointIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkPivotPointIndicator.java
+@@ -9,67 +9,67 @@
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.pivotpoints;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.time.temporal.IsoFields;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * DeMark Pivot Point indicator.
+  *
+  * <p>
+  * The {@link java.time.Instant UTC} represents a point in time on the
+  * time-line, typically measured in milliseconds. It is independent of time
+  * zones, days of the week, or months. However, this rule converts a UTC to a
+  * ZonedDateTime in UTC to get the day, week and month in that time zone.
+  *
+  * @see <a href=
+  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+  */
+-public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
++public class DeMarkPivotPointIndicator extends CachedIndicator<Num> {
+ 
+     private final TimeLevel timeLevel;
+     private final Num two;
+     private final Num four;
+ 
+     /**
+      * Constructor.
+      *
+      * Calculates the deMark pivot point based on the time level parameter.
+      *
+      * @param series      the bar series with adequate endTime of each bar for the
+      *                    given time level.
+      * @param timeLevelId the corresponding time level for pivot calculation:
+      *                    <ul>
+      *                    <li>1-, 5-, 10- and 15-minute charts use the prior days
+      *                    high, low and close: <b>timeLevelId</b> =
+      *                    PIVOT_TIME_LEVEL_ID_DAY (= 1)</li>
+      *                    <li>30- 60- and 120-minute charts use the prior week's
+      *                    high, low, and close: <b>timeLevelId</b> =
+      *                    PIVOT_TIME_LEVEL_ID_WEEK (= 2)</li>
+      *                    <li>Pivot Points for daily charts use the prior month's
+      *                    high, low and close: <b>timeLevelId</b> =
+      *                    PIVOT_TIME_LEVEL_ID_MONTH (= 3)</li>
+      *                    <li>Pivot Points for weekly and monthly charts use the
+      *                    prior year's high, low and close: <b>timeLevelId</b> =
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkReversalIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkReversalIndicator.java
+index aa0619b4985c28ffcfaeaaa9603ee0ab4d15fd88..3466bdfd9469b336b01dc5a8623e96cb7139ed7c 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkReversalIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/DeMarkReversalIndicator.java
+@@ -6,61 +6,61 @@
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.pivotpoints;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.util.List;
+ 
+ import org.ta4j.core.Bar;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * DeMark Reversal Indicator.
+  *
+  * @see <a href=
+  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+  */
+-public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
++public class DeMarkReversalIndicator extends CachedIndicator<Num> {
+ 
+     private final DeMarkPivotPointIndicator pivotPointIndicator;
+     private final DeMarkPivotLevel level;
+ 
+     public enum DeMarkPivotLevel {
+         RESISTANCE, SUPPORT,
+     }
+ 
+     /**
+      * Constructor.
+      *
+      * Calculates the DeMark reversal for the corresponding pivot level.
+      *
+      * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this
+      *                            reversal
+      * @param level               the {@link DeMarkPivotLevel} for this reversal
+      *                            (RESISTANT, SUPPORT)
+      */
+     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
+         super(pivotPointIndicator);
+         this.pivotPointIndicator = pivotPointIndicator;
+         this.level = level;
+     }
+ 
+     @Override
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/FibonacciReversalIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/FibonacciReversalIndicator.java
+index c3e33c94c3e40e875e575e016780130c59851ab1..3cfa257bc2fde19d54e8ae335055b3756fae3717 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/FibonacciReversalIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/FibonacciReversalIndicator.java
+@@ -6,61 +6,61 @@
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.pivotpoints;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.util.List;
+ 
+ import org.ta4j.core.Bar;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Fibonacci Reversal Indicator.
+  *
+  * @see <a href=
+  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+  */
+-public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
++public class FibonacciReversalIndicator extends CachedIndicator<Num> {
+ 
+     private final PivotPointIndicator pivotPointIndicator;
+     private final FibReversalTyp fibReversalTyp;
+     private final Num fibonacciFactor;
+ 
+     public enum FibReversalTyp {
+         SUPPORT, RESISTANCE
+     }
+ 
+     /**
+      * Standard Fibonacci factors.
+      */
+     public enum FibonacciFactor {
+         FACTOR_1(0.382), FACTOR_2(0.618), FACTOR_3(1);
+ 
+         private final double factor;
+ 
+         FibonacciFactor(double factor) {
+             this.factor = factor;
+         }
+ 
+         public double getFactor() {
+             return this.factor;
+         }
+ 
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/PivotPointIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/PivotPointIndicator.java
+index 5e544367572043f16aa1b4bab79496615b426b15..3eb9353bad61f8b6dec2806a324c9b411d2f1262 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/PivotPointIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/PivotPointIndicator.java
+@@ -9,67 +9,67 @@
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.pivotpoints;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.time.temporal.IsoFields;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Pivot Point indicator.
+  *
+  * <p>
+  * The {@link java.time.Instant UTC} represents a point in time on the
+  * time-line, typically measured in milliseconds. It is independent of time
+  * zones, days of the week, or months. However, this rule converts a UTC to a
+  * ZonedDateTime in UTC to get the day, week and month in that time zone.
+  *
+  * @see <a href=
+  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+  */
+-public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
++public class PivotPointIndicator extends CachedIndicator<Num> {
+ 
+     private final TimeLevel timeLevel;
+     private final Num three;
+ 
+     /**
+      * Constructor.
+      *
+      * Calculates the pivot point based on the time level parameter.
+      *
+      * @param series    the bar series with adequate endTime of each bar for the
+      *                  given time level.
+      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
+      *                  <ul>
+      *                  <li>1-, 5-, 10- and 15-minute charts use the prior days
+      *                  high, low and close: <b>timeLevelId</b> = TimeLevel.DAY</li>
+      *                  <li>30- 60- and 120-minute charts use the prior week's high,
+      *                  low, and close: <b>timeLevelId</b> = TimeLevel.WEEK</li>
+      *                  <li>Pivot Points for daily charts use the prior month's
+      *                  high, low and close: <b>timeLevelId</b> =
+      *                  TimeLevel.MONTH</li>
+      *                  <li>Pivot Points for weekly and monthly charts use the prior
+      *                  year's high, low and close: <b>timeLevelId</b> =
+      *                  TimeLevel.YEAR (= 4)</li>
+      *                  <li>If you want to use just the last bar data:
+      *                  <b>timeLevelId</b> = TimeLevel.BARBASED</li>
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/StandardReversalIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/StandardReversalIndicator.java
+index b39b69e7184241a6b9205adb90216ad1009636f1..91cc687df4fdbfef5f980e6610cc87257c0c07b7 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/StandardReversalIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/pivotpoints/StandardReversalIndicator.java
+@@ -6,61 +6,61 @@
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.pivotpoints;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import java.util.List;
+ 
+ import org.ta4j.core.Bar;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Pivot Reversal Indicator.
+  *
+  * @see <a href=
+  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
+  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
+  */
+-public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
++public class StandardReversalIndicator extends CachedIndicator<Num> {
+ 
+     private final PivotPointIndicator pivotPointIndicator;
+     private final PivotLevel level;
+     private final Num two;
+ 
+     /**
+      * Constructor.
+      *
+      * Calculates the (standard) reversal for the corresponding pivot level
+      *
+      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
+      * @param level               the {@link PivotLevel} for this reversal
+      */
+     public StandardReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
+         super(pivotPointIndicator);
+         this.pivotPointIndicator = pivotPointIndicator;
+         this.level = level;
+         this.two = pivotPointIndicator.getBarSeries().numFactory().numOf(2);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+         if (barsOfPreviousPeriod.isEmpty()) {
+             return NaN;
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/statistics/PearsonCorrelationIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/statistics/PearsonCorrelationIndicator.java
+index cc76fbdaae752a1211a6f0697e1daa154014253d..5ba517c23cbe76a6c00c38ff582c0ec94911e705 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/statistics/PearsonCorrelationIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/statistics/PearsonCorrelationIndicator.java
+@@ -4,61 +4,61 @@
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.statistics;
+ 
+ import static org.ta4j.core.num.NaN.NaN;
+ 
+ import org.ta4j.core.Indicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Indicator-Pearson-Correlation
+  *
+  * @see <a href=
+  *      "http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/">
+  *      http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/</a>
+  */
+-public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
++public class PearsonCorrelationIndicator extends CachedIndicator<Num> {
+ 
+     private final Indicator<Num> indicator1;
+     private final Indicator<Num> indicator2;
+     private final int barCount;
+ 
+     /**
+      * Constructor.
+      *
+      * @param indicator1 the first indicator
+      * @param indicator2 the second indicator
+      * @param barCount   the time frame
+      */
+     public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
+         super(indicator1);
+         this.indicator1 = indicator1;
+         this.indicator2 = indicator2;
+         this.barCount = barCount;
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+ 
+         final var numFactory = getBarSeries().numFactory();
+         Num n = numFactory.numOf(barCount);
+ 
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendIndicator.java
+index 09e70bb0c5e05d56a79c7228a85fb3e7b7cf6408..3492bc9b5e841e565d39c246dd1cadd4764cf501 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendIndicator.java
+@@ -4,57 +4,57 @@
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.supertrend;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.indicators.ATRIndicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * The SuperTrend indicator.
+  */
+-public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
++public class SuperTrendIndicator extends CachedIndicator<Num> {
+ 
+     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
+     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
+ 
+     /**
+      * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
+      *
+      * @param series the bar series
+      */
+     public SuperTrendIndicator(final BarSeries series) {
+         this(series, 10, 3d);
+     }
+ 
+     /**
+      * Constructor.
+      *
+      * @param series     the bar series
+      * @param barCount   the time frame for the {@code ATRIndicator}
+      * @param multiplier the multiplier for the
+      *                   {@link #superTrendUpperBandIndicator} and
+      *                   {@link #superTrendLowerBandIndicator}
+      */
+     public SuperTrendIndicator(final BarSeries series, int barCount, final Double multiplier) {
+         super(series);
+         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendLowerBandIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendLowerBandIndicator.java
+index e3228b97a6e61e3775ab5ad026ab31cbdc26d17a..1d3b043ee12fcc829ab498d9674ada1051a3c80d 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendLowerBandIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendLowerBandIndicator.java
+@@ -4,58 +4,58 @@
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.supertrend;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.indicators.ATRIndicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * The lower band of the SuperTrend indicator.
+  */
+-public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
++public class SuperTrendLowerBandIndicator extends CachedIndicator<Num> {
+ 
+     private final ATRIndicator atrIndicator;
+     private final Num multiplier;
+     private final MedianPriceIndicator medianPriceIndicator;
+ 
+     /**
+      * Constructor with {@code multiplier} = 3.
+      *
+      * @param barSeries the bar series
+      */
+     public SuperTrendLowerBandIndicator(final BarSeries barSeries) {
+         this(barSeries, new ATRIndicator(barSeries, 10), 3d);
+     }
+ 
+     /**
+      * Constructor.
+      *
+      * @param barSeries    the bar series
+      * @param atrIndicator the {@link ATRIndicator}
+      * @param multiplier   the multiplier
+      */
+     public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
+             final Double multiplier) {
+         super(barSeries);
+         this.atrIndicator = atrIndicator;
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendUpperBandIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendUpperBandIndicator.java
+index 377876da7b1db6e86877bcadc960054cb3d463fa..b3ca1c7b3049848e14986555378ae4d5742a7381 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendUpperBandIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/supertrend/SuperTrendUpperBandIndicator.java
+@@ -4,58 +4,58 @@
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.supertrend;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.indicators.ATRIndicator;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * The upper band of the SuperTrend indicator.
+  */
+-public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
++public class SuperTrendUpperBandIndicator extends CachedIndicator<Num> {
+ 
+     private final ATRIndicator atrIndicator;
+     private final Num multiplier;
+     private final MedianPriceIndicator medianPriceIndicator;
+ 
+     /**
+      * Constructor with {@code multiplier} = 3.
+      *
+      * @param barSeries the bar series
+      */
+     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
+         this(barSeries, new ATRIndicator(barSeries, 10), 3d);
+     }
+ 
+     /**
+      * Constructor.
+      *
+      * @param barSeries    the bar series
+      * @param atrIndicator the {@link #ATRIndicator}
+      * @param multiplier   the multiplier
+      */
+     public SuperTrendUpperBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
+             final Double multiplier) {
+         super(barSeries);
+         this.atrIndicator = atrIndicator;
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/AccumulationDistributionIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/AccumulationDistributionIndicator.java
+index 59da94323b2d1276c3af7fd592bf6cb8d794125a..8021bb655cfef1c1a6c06032e4d3e1b75760ebb8 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/AccumulationDistributionIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/AccumulationDistributionIndicator.java
+@@ -2,58 +2,58 @@
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.volume;
+ 
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Accumulation-distribution indicator.
+  */
+-public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
++public class AccumulationDistributionIndicator extends CachedIndicator<Num> {
+ 
+     private final CloseLocationValueIndicator clvIndicator;
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the bar series
+      */
+     public AccumulationDistributionIndicator(BarSeries series) {
+         super(series);
+         this.clvIndicator = new CloseLocationValueIndicator(series);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index == 0) {
+             return getBarSeries().numFactory().zero();
+         }
+ 
+         // Calculating the money flow multiplier
+         Num moneyFlowMultiplier = clvIndicator.getValue(index);
+ 
+         // Calculating the money flow volume
+         Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
+ 
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/NVIIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/NVIIndicator.java
+index 6070c338d662b1a29585dde8766cf2b952f6ab2d..ce5ad11d5ac0b6446a8f8a1dcab69e4fc9df3fc6 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/NVIIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/NVIIndicator.java
+@@ -3,66 +3,66 @@
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.volume;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Negative Volume Index (NVI) indicator.
+  *
+  * @see <a href=
+  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde">
+  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde</a>
+  * @see <a href=
+  *      "http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75">
+  *      http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75</a>
+  * @see <a href="http://www.investopedia.com/terms/n/nvi.asp">
+  *      http://www.investopedia.com/terms/n/nvi.asp</a>
+  */
+-public class NVIIndicator extends RecursiveCachedIndicator<Num> {
++public class NVIIndicator extends CachedIndicator<Num> {
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the bar series
+      */
+     public NVIIndicator(BarSeries series) {
+         super(series);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index == 0) {
+             return getBarSeries().numFactory().thousand();
+         }
+ 
+         Bar currentBar = getBarSeries().getBar(index);
+         Bar previousBar = getBarSeries().getBar(index - 1);
+         Num previousValue = getValue(index - 1);
+ 
+         if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
+             Num currentPrice = currentBar.getClosePrice();
+             Num previousPrice = previousBar.getClosePrice();
+             Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+             return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicator.java
+index 823abbb82022d9d777520680edc18b21ba28ac4c..2f25bef909bcc4be8811f2650c999c02f538e484 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicator.java
+@@ -2,60 +2,60 @@
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.volume;
+ 
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * On-balance volume indicator.
+  *
+  * @see <a href="https://www.investopedia.com/terms/o/onbalancevolume.asp">
+  *      https://www.investopedia.com/terms/o/onbalancevolume.asp</a>
+  */
+-public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
++public class OnBalanceVolumeIndicator extends CachedIndicator<Num> {
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the bar series
+      */
+     public OnBalanceVolumeIndicator(BarSeries series) {
+         super(series);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index == 0) {
+             return getBarSeries().numFactory().zero();
+         }
+         final Num prevClose = getBarSeries().getBar(index - 1).getClosePrice();
+         final Num currentClose = getBarSeries().getBar(index).getClosePrice();
+ 
+         final Num obvPrev = getValue(index - 1);
+         if (prevClose.isGreaterThan(currentClose)) {
+             return obvPrev.minus(getBarSeries().getBar(index).getVolume());
+         } else if (prevClose.isLessThan(currentClose)) {
+             return obvPrev.plus(getBarSeries().getBar(index).getVolume());
+         } else {
+             return obvPrev;
+diff --git a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/PVIIndicator.java b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/PVIIndicator.java
+index 8a87fc489bee64782a2360d8e63874c6a0dfd83e..76519622e831529bc57df53cd3321fa6e1c7ec21 100644
+--- a/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/PVIIndicator.java
++++ b/ta4j-core/src/main/java/org/ta4j/core/indicators/volume/PVIIndicator.java
+@@ -3,63 +3,63 @@
+  *
+  * Copyright (c) 2017-2025 Ta4j Organization & respective
+  * authors (see AUTHORS)
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a copy of
+  * this software and associated documentation files (the "Software"), to deal in
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators.volume;
+ 
+ import org.ta4j.core.Bar;
+ import org.ta4j.core.BarSeries;
+-import org.ta4j.core.indicators.RecursiveCachedIndicator;
++import org.ta4j.core.indicators.CachedIndicator;
+ import org.ta4j.core.num.Num;
+ 
+ /**
+  * Positive Volume Index (PVI) indicator.
+  *
+  * @see <a href=
+  *      "http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92">
+  *      http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92</a>
+  * @see <a href="http://www.investopedia.com/terms/p/pvi.asp">
+  *      http://www.investopedia.com/terms/p/pvi.asp</a>
+  */
+-public class PVIIndicator extends RecursiveCachedIndicator<Num> {
++public class PVIIndicator extends CachedIndicator<Num> {
+ 
+     /**
+      * Constructor.
+      *
+      * @param series the bar series
+      */
+     public PVIIndicator(BarSeries series) {
+         super(series);
+     }
+ 
+     @Override
+     protected Num calculate(int index) {
+         if (index == 0) {
+             return getBarSeries().numFactory().thousand();
+         }
+ 
+         Bar currentBar = getBarSeries().getBar(index);
+         Bar previousBar = getBarSeries().getBar(index - 1);
+         Num previousValue = getValue(index - 1);
+ 
+         if (currentBar.getVolume().isGreaterThan(previousBar.getVolume())) {
+             Num currentPrice = currentBar.getClosePrice();
+             Num previousPrice = previousBar.getClosePrice();
+             Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+             return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+diff --git a/ta4j-core/src/test/java/org/ta4j/core/indicators/CachedIndicatorTest.java b/ta4j-core/src/test/java/org/ta4j/core/indicators/CachedIndicatorTest.java
+index cd78d87e30ec111105c8f878ae65a97dee902ef5..f23dec4c2e82f43f92bcbe54d5ecd244bb080b4c 100644
+--- a/ta4j-core/src/test/java/org/ta4j/core/indicators/CachedIndicatorTest.java
++++ b/ta4j-core/src/test/java/org/ta4j/core/indicators/CachedIndicatorTest.java
+@@ -9,50 +9,55 @@
+  * the Software without restriction, including without limitation the rights to
+  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  * the Software, and to permit persons to whom the Software is furnished to do so,
+  * subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in all
+  * copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+ package org.ta4j.core.indicators;
+ 
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertTrue;
+ import static org.junit.Assert.fail;
+ import static org.ta4j.core.TestUtils.assertNumEquals;
+ 
+ import java.util.Arrays;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ import org.junit.Before;
+ import org.junit.Test;
+ import org.ta4j.core.BarSeries;
+ import org.ta4j.core.BaseBarSeriesBuilder;
+ import org.ta4j.core.BaseStrategy;
+ import org.ta4j.core.Indicator;
+ import org.ta4j.core.Strategy;
+ import org.ta4j.core.indicators.averages.SMAIndicator;
+ import org.ta4j.core.indicators.averages.ZLEMAIndicator;
+ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+ import org.ta4j.core.indicators.helpers.ConstantIndicator;
+ import org.ta4j.core.mocks.MockBarSeriesBuilder;
+ import org.ta4j.core.num.Num;
+ import org.ta4j.core.num.NumFactory;
+ import org.ta4j.core.rules.OverIndicatorRule;
+ import org.ta4j.core.rules.UnderIndicatorRule;
+ 
+ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+ 
+     private BarSeries series;
+ 
+     public CachedIndicatorTest(NumFactory numFactory) {
+         super(numFactory);
+     }
+@@ -170,26 +175,84 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
+         // See also: CachedIndicator#getValue(int index)
+         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+         series.setMaximumBarCount(5);
+         assertEquals(5, series.getBarCount());
+ 
+         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
+         try {
+             assertNumEquals(4996, zlema.getValue(8));
+         } catch (Throwable t) {
+             fail(t.getMessage());
+         }
+     }
+ 
+     @Test
+     public void leaveLastBarUncached() {
+         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
+         assertNumEquals(4998.0, smaIndicator.getValue(barSeries.getEndIndex()));
+         barSeries.getLastBar().addTrade(numOf(10), numOf(5));
+ 
+         // (4996 + 4997 + 4998 + 4999 + 5) / 5
+         assertNumEquals(3999, smaIndicator.getValue(barSeries.getEndIndex()));
+ 
+     }
+ 
++    @Test
++    public void concurrentAccessCachesSingleComputationPerIndex() throws InterruptedException {
++        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
++        CountingIndicator indicator = new CountingIndicator(barSeries);
++
++        int threads = 8;
++        ExecutorService executor = Executors.newFixedThreadPool(threads);
++        CountDownLatch ready = new CountDownLatch(threads);
++        CountDownLatch start = new CountDownLatch(1);
++        CountDownLatch done = new CountDownLatch(threads);
++
++        for (int i = 0; i < threads; i++) {
++            executor.submit(() -> {
++                ready.countDown();
++                try {
++                    start.await();
++                    indicator.getValue(4);
++                } catch (InterruptedException e) {
++                    Thread.currentThread().interrupt();
++                } finally {
++                    done.countDown();
++                }
++            });
++        }
++
++        ready.await();
++        start.countDown();
++        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
++        executor.shutdownNow();
++
++        assertEquals("Only one calculation should be performed for the requested index despite concurrent access.", 1,
++                indicator.getCalculationCount());
++    }
++
++    private final class CountingIndicator extends CachedIndicator<Num> {
++
++        private final AtomicInteger calculations = new AtomicInteger();
++
++        private CountingIndicator(BarSeries series) {
++            super(series);
++        }
++
++        @Override
++        protected Num calculate(int index) {
++            calculations.incrementAndGet();
++            return numFactory.numOf(index);
++        }
++
++        @Override
++        public int getCountOfUnstableBars() {
++            return 0;
++        }
++
++        private int getCalculationCount() {
++            return calculations.get();
++        }
++    }
++
+ }
+diff --git a/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/EMAIndicatorTest.java b/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/EMAIndicatorTest.java
+index 8233397d9ce0afee1faae15aa1a15ad57fdf53dd..a14e22798d1781da1a0c09b62f35d9b0b4cabbab 100644
+--- a/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/EMAIndicatorTest.java
++++ b/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/EMAIndicatorTest.java
+@@ -57,52 +57,52 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
+                 .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
+                 .build();
+     }
+ 
+     @Test
+     public void firstValueShouldBeEqualsToFirstDataValue() {
+         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+         assertNumEquals(64.75, indicator.getValue(0));
+     }
+ 
+     @Test
+     public void usingBarCount10UsingClosePrice() {
+         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
+         assertNumEquals(63.6948, indicator.getValue(9));
+         assertNumEquals(63.2648, indicator.getValue(10));
+         assertNumEquals(62.9457, indicator.getValue(11));
+     }
+ 
+     @Test
+     public void stackOverflowError() throws Exception {
+         var bigSeries = new MockBarSeriesBuilder().build();
+         for (int i = 0; i < 10000; i++) {
+             bigSeries.barBuilder().closePrice(i).add();
+         }
+         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
+-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
+-        // does not work as intended.
++        // if a StackOverflowError is thrown here, then the caching fallback for
++        // recursive indicators no longer works as intended.
+         assertNumEquals(9994.5, indicator.getValue(9999));
+     }
+ 
+     @Test
+     public void externalData() throws Exception {
+         BarSeries xlsSeries = xls.getSeries();
+         Indicator<Num> closePrice = new ClosePriceIndicator(xlsSeries);
+         Indicator<Num> indicator;
+ 
+         indicator = getIndicator(closePrice, 1);
+         assertIndicatorEquals(xls.getIndicator(1), indicator);
+         assertEquals(329.0, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+ 
+         indicator = getIndicator(closePrice, 3);
+         assertIndicatorEquals(xls.getIndicator(3), indicator);
+         assertEquals(327.7748, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+ 
+         indicator = getIndicator(closePrice, 13);
+         assertIndicatorEquals(xls.getIndicator(13), indicator);
+         assertEquals(327.4076, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+     }
+ 
+diff --git a/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/MMAIndicatorTest.java b/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/MMAIndicatorTest.java
+index 6e20f434506921da5931273d4404c47459bbae52..a2c91bb644081604d23cce9dcd7e3f57109f284a 100644
+--- a/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/MMAIndicatorTest.java
++++ b/ta4j-core/src/test/java/org/ta4j/core/indicators/averages/MMAIndicatorTest.java
+@@ -57,52 +57,52 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
+                 .build();
+     }
+ 
+     @Test
+     public void firstValueShouldBeEqualsToFirstDataValue() {
+         var actualIndicator = getIndicator(new ClosePriceIndicator(data), 1);
+         assertEquals(64.75, actualIndicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);
+     }
+ 
+     @Test
+     public void mmaUsingBarCount10UsingClosePrice() {
+         var actualIndicator = getIndicator(new ClosePriceIndicator(data), 10);
+         assertEquals(63.9983, actualIndicator.getValue(9).doubleValue(), TestUtils.GENERAL_OFFSET);
+         assertEquals(63.7315, actualIndicator.getValue(10).doubleValue(), TestUtils.GENERAL_OFFSET);
+         assertEquals(63.5093, actualIndicator.getValue(11).doubleValue(), TestUtils.GENERAL_OFFSET);
+     }
+ 
+     @Test
+     public void stackOverflowError() {
+         var bigSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+         for (int i = 0; i < 10000; i++) {
+             bigSeries.barBuilder().closePrice(i).add();
+         }
+         var closePrice = new ClosePriceIndicator(bigSeries);
+         var actualIndicator = getIndicator(closePrice, 10);
+-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
+-        // does not work as intended.
++        // if a StackOverflowError is thrown here, then the caching fallback for
++        // recursive indicators no longer works as intended.
+         assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.GENERAL_OFFSET);
+     }
+ 
+     @Test
+     public void testAgainstExternalData() throws Exception {
+         var xlsClose = new ClosePriceIndicator(xls.getSeries());
+         Indicator<Num> actualIndicator;
+ 
+         actualIndicator = getIndicator(xlsClose, 1);
+         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
+         assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+ 
+         actualIndicator = getIndicator(xlsClose, 3);
+         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
+         assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+ 
+         actualIndicator = getIndicator(xlsClose, 13);
+         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
+         assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
+                 TestUtils.GENERAL_OFFSET);
+     }
+ 
+ }
+diff --git a/ta4j-core/src/test/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicatorTest.java b/ta4j-core/src/test/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicatorTest.java
+index 25892dc9834d902c33eed85ee3c0cebc594c41cf..fc3872ccc867051ae2e195822e6d978d86442abf 100644
+--- a/ta4j-core/src/test/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicatorTest.java
++++ b/ta4j-core/src/test/java/org/ta4j/core/indicators/volume/OnBalanceVolumeIndicatorTest.java
+@@ -42,30 +42,30 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
+     public void getValue() {
+         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+         series.barBuilder().closePrice(10).volume(4).add();
+         series.barBuilder().closePrice(5).volume(2).add();
+         series.barBuilder().closePrice(6).volume(3).add();
+         series.barBuilder().closePrice(7).volume(8).add();
+         series.barBuilder().closePrice(7).volume(6).add();
+         series.barBuilder().closePrice(6).volume(10).add();
+ 
+         var obv = new OnBalanceVolumeIndicator(series);
+         assertNumEquals(0, obv.getValue(0));
+         assertNumEquals(-2, obv.getValue(1));
+         assertNumEquals(1, obv.getValue(2));
+         assertNumEquals(9, obv.getValue(3));
+         assertNumEquals(9, obv.getValue(4));
+         assertNumEquals(-1, obv.getValue(5));
+     }
+ 
+     @Test
+     public void noStackOverflowError() {
+         var bigSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+         for (int i = 0; i < 10000; i++) {
+             bigSeries.barBuilder().closePrice(i).volume(0).add();
+         }
+         var obv = new OnBalanceVolumeIndicator(bigSeries);
+-        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
+-        // does not work as intended.
++        // If a StackOverflowError is thrown here, then the caching fallback for
++        // recursive indicators no longer works as intended.
+         assertNumEquals(0, obv.getValue(9999));
+     }
+ }

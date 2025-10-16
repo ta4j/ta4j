@@ -23,10 +23,11 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Comparator;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -44,29 +45,20 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    private static final int RETAINED_HISTORICAL_RESULTS = 1;
     private static final int RECURSION_THRESHOLD = 100;
 
-    /** Thread-safe map of cached results. */
-    private final ConcurrentMap<Integer, T> results;
+    /** List of cached results. */
+    private final List<T> results;
 
-    /** Lock protecting structural cache changes. */
-    private final ReentrantLock cacheLock = new ReentrantLock();
-
-    /** Guards against recursive prefill loops on the same thread. */
-    private static final ThreadLocal<Integer> PREFILL_DEPTH = ThreadLocal.withInitial(() -> 0);
+    /** Guards against recursively re-entering prefill for the same indicator. */
+    private static final ThreadLocal<Map<CachedIndicator<?>, Integer>> PREFILL_DEPTH = ThreadLocal
+            .withInitial(IdentityHashMap::new);
 
     /**
-     * Should always be the index of the last (calculated) result in
-     * {@link #results}.
+     * Should always be the index of the last (calculated) result in the results
+     * list.
      */
-    protected volatile int highestResultIndex = -1;
-
-    /** Lowest index currently cached. */
-    private volatile int lowestResultIndex = Integer.MAX_VALUE;
-
-    /** Removed bars count already processed. */
-    private volatile int lastRemovalCount = -1;
+    protected int highestResultIndex = -1;
 
     /**
      * Constructor.
@@ -75,7 +67,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
-        this.results = new ConcurrentHashMap<>();
+        int limit = series.getMaximumBarCount();
+        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
     }
 
     /**
@@ -97,9 +90,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     public synchronized T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
             T result = calculate(index);
             if (log.isTraceEnabled()) {
                 log.trace("{}({}): {}", this, index, result);
@@ -107,43 +97,60 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             return result;
         }
 
-        // Series is not null
-
         final int removedBarsCount = series.getRemovedBarsCount();
         final int maximumResultCount = series.getMaximumBarCount();
+        int normalizedIndex = Math.max(index, 0);
 
-        evictExpiredResults(removedBarsCount, maximumResultCount);
-
-        int normalizedIndex = normalizeIndex(index);
-        if (lowestResultIndex != Integer.MAX_VALUE && normalizedIndex < lowestResultIndex
-                && normalizedIndex < removedBarsCount) {
-            normalizedIndex = lowestResultIndex;
+        if (normalizedIndex >= removedBarsCount) {
+            prefillIntermediateResults(normalizedIndex, removedBarsCount, maximumResultCount);
         }
-
-        prefillIntermediateResults(normalizedIndex, removedBarsCount, maximumResultCount);
 
         T result;
-        if (normalizedIndex == series.getEndIndex()) {
-            // Don't cache result if last bar
+        if (normalizedIndex < removedBarsCount) {
+            if (log.isTraceEnabled()) {
+                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                        getClass().getSimpleName(), normalizedIndex, removedBarsCount);
+            }
+            increaseLengthTo(removedBarsCount, maximumResultCount);
+            highestResultIndex = removedBarsCount;
+            if (results.isEmpty()) {
+                results.add(null);
+            }
+            result = results.get(0);
+            if (result == null) {
+                result = calculate(0);
+                results.set(0, result);
+            }
+        } else if (normalizedIndex == series.getEndIndex()) {
             result = calculate(normalizedIndex);
         } else {
-            result = results.get(normalizedIndex);
-            if (result == null) {
-                result = computeAndCacheValue(normalizedIndex, removedBarsCount, maximumResultCount);
-            }
+            result = cacheValue(normalizedIndex, maximumResultCount);
         }
+
         if (log.isTraceEnabled()) {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
     }
 
-    private int normalizeIndex(int index) {
-        return Math.max(index, 0);
-    }
-
     private void prefillIntermediateResults(int targetIndex, int removedBarsCount, int maximumResultCount) {
-        if (targetIndex <= 0 || PREFILL_DEPTH.get() > 0) {
+        if (targetIndex <= 0) {
+            return;
+        }
+
+        BarSeries series = getBarSeries();
+        if (series == null) {
+            return;
+        }
+
+        final int seriesEndIndex = series.getEndIndex();
+        if (targetIndex > seriesEndIndex) {
+            return;
+        }
+
+        Map<CachedIndicator<?>, Integer> prefillDepthByIndicator = PREFILL_DEPTH.get();
+        Integer depth = prefillDepthByIndicator.get(this);
+        if (depth != null && depth > 0) {
             return;
         }
 
@@ -156,115 +163,82 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             return;
         }
 
-        PREFILL_DEPTH.set(PREFILL_DEPTH.get() + 1);
+        prefillDepthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
         try {
-            for (int index = startIndex; index < targetIndex; index++) {
-                if (index < 0) {
+            int upperBound = Math.min(targetIndex, seriesEndIndex + 1);
+            for (int prefIndex = startIndex; prefIndex < upperBound; prefIndex++) {
+                if (prefIndex < removedBarsCount) {
                     continue;
                 }
-                if (results.containsKey(index)) {
+                if (prefIndex == seriesEndIndex) {
                     continue;
                 }
-                computeAndCacheValue(index, removedBarsCount, maximumResultCount);
+                cacheValue(prefIndex, maximumResultCount);
             }
         } finally {
-            int depth = PREFILL_DEPTH.get() - 1;
-            if (depth <= 0) {
-                PREFILL_DEPTH.remove();
+            int updatedDepth = prefillDepthByIndicator.getOrDefault(this, 1) - 1;
+            if (updatedDepth <= 0) {
+                prefillDepthByIndicator.remove(this);
             } else {
-                PREFILL_DEPTH.set(depth);
+                prefillDepthByIndicator.put(this, updatedDepth);
+            }
+            if (prefillDepthByIndicator.isEmpty()) {
+                PREFILL_DEPTH.remove();
             }
         }
     }
 
-    private T computeAndCacheValue(int index, int removedBarsCount, int maximumResultCount) {
-        cacheLock.lock();
-        try {
-            T computedValue = results.get(index);
-            if (computedValue != null) {
-                return computedValue;
+    private T cacheValue(int index, int maximumResultCount) {
+        increaseLengthTo(index, maximumResultCount);
+        if (index > highestResultIndex) {
+            highestResultIndex = index;
+            T result = calculate(index);
+            if (results.isEmpty()) {
+                results.add(result);
+            } else {
+                results.set(results.size() - 1, result);
             }
+            return result;
+        }
 
-            computedValue = calculate(index);
-            results.put(index, computedValue);
-            highestResultIndex = Math.max(highestResultIndex, index);
-            lowestResultIndex = Math.min(lowestResultIndex, index);
+        int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+        if (resultInnerIndex < 0 || resultInnerIndex >= results.size()) {
+            // Index outside cached window; fall back to earliest cached slot.
+            resultInnerIndex = 0;
+            index = highestResultIndex - results.size() + 1;
+        }
+        T result = results.get(resultInnerIndex);
+        if (result == null) {
+            result = calculate(index);
+            results.set(resultInnerIndex, result);
+        }
+        return result;
+    }
 
-            enforceMaximumSize(removedBarsCount, maximumResultCount);
-
-            return computedValue;
-        } finally {
-            cacheLock.unlock();
+    private void increaseLengthTo(int index, int maxLength) {
+        if (highestResultIndex > -1) {
+            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
+            if (newResultsCount == maxLength) {
+                results.clear();
+                results.addAll(Collections.nCopies(maxLength, null));
+            } else if (newResultsCount > 0) {
+                results.addAll(Collections.nCopies(newResultsCount, null));
+                removeExceedingResults(maxLength);
+            }
+        } else {
+            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
         }
     }
 
-    private void evictExpiredResults(int removedBarsCount, int maximumResultCount) {
-        if (results.isEmpty()) {
-            if (removedBarsCount > lastRemovalCount) {
-                lastRemovalCount = removedBarsCount;
+    private void removeExceedingResults(int maximumResultCount) {
+        int resultCount = results.size();
+        if (resultCount > maximumResultCount) {
+            int nbResultsToRemove = resultCount - maximumResultCount;
+            if (nbResultsToRemove == 1) {
+                results.remove(0);
+            } else {
+                results.subList(0, nbResultsToRemove).clear();
             }
-            return;
         }
-
-        boolean shouldProcessRemovals = removedBarsCount > lastRemovalCount;
-        boolean shouldTrim = maximumResultCount != Integer.MAX_VALUE && highestResultIndex >= 0
-                && lowestResultIndex != Integer.MAX_VALUE
-                && highestResultIndex - Math.max(lowestResultIndex, removedBarsCount) + 1 > maximumResultCount;
-
-        if (!shouldProcessRemovals && !shouldTrim) {
-            return;
-        }
-
-        cacheLock.lock();
-        try {
-            if (shouldProcessRemovals) {
-                removeResultsBefore(removedBarsCount);
-                lastRemovalCount = removedBarsCount;
-            }
-
-            if (maximumResultCount != Integer.MAX_VALUE) {
-                int threshold = highestResultIndex - maximumResultCount + 1;
-                if (threshold > Integer.MIN_VALUE) {
-                    removeResultsBefore(Math.max(removedBarsCount, threshold));
-                }
-            }
-        } finally {
-            cacheLock.unlock();
-        }
-    }
-
-    private void enforceMaximumSize(int removedBarsCount, int maximumResultCount) {
-        if (maximumResultCount == Integer.MAX_VALUE) {
-            return;
-        }
-        int threshold = highestResultIndex - maximumResultCount + 1;
-        if (threshold > Integer.MIN_VALUE) {
-            removeResultsBefore(Math.max(removedBarsCount, threshold));
-        }
-    }
-
-    private void removeResultsBefore(int threshold) {
-        final int retentionFloor = Math.max(0, threshold - RETAINED_HISTORICAL_RESULTS);
-
-        if (results.isEmpty()) {
-            lowestResultIndex = Integer.MAX_VALUE;
-            if (highestResultIndex < retentionFloor - 1) {
-                highestResultIndex = retentionFloor - 1;
-            }
-            return;
-        }
-
-        results.keySet().removeIf(key -> key < retentionFloor);
-
-        if (results.isEmpty()) {
-            lowestResultIndex = Integer.MAX_VALUE;
-            if (highestResultIndex < retentionFloor - 1) {
-                highestResultIndex = retentionFloor - 1;
-            }
-            return;
-        }
-
-        lowestResultIndex = results.keySet().stream().min(Comparator.naturalOrder()).orElse(Integer.MAX_VALUE);
-        highestResultIndex = results.keySet().stream().max(Comparator.naturalOrder()).orElse(retentionFloor - 1);
     }
 }
