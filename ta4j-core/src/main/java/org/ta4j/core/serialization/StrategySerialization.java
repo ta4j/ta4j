@@ -72,8 +72,8 @@ public final class StrategySerialization {
     public static ComponentDescriptor describe(Strategy strategy) {
         Objects.requireNonNull(strategy, "strategy");
 
-        ComponentDescriptor entryDescriptor = ComponentSerialization.parse(strategy.getEntryRule().getName());
-        ComponentDescriptor exitDescriptor = ComponentSerialization.parse(strategy.getExitRule().getName());
+        ComponentDescriptor entryDescriptor = RuleSerialization.describe(strategy.getEntryRule());
+        ComponentDescriptor exitDescriptor = RuleSerialization.describe(strategy.getExitRule());
 
         ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
                 .withType(strategy.getClass().getSimpleName());
@@ -185,6 +185,10 @@ public final class StrategySerialization {
         if (descriptor == null) {
             throw new IllegalArgumentException("Rule descriptor cannot be null");
         }
+        if (descriptor.getParameters().containsKey("__args")) {
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
+
         String type = descriptor.getType();
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Rule descriptor missing type: " + descriptor);
