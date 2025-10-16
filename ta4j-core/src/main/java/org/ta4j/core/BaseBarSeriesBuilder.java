@@ -42,6 +42,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private String name;
     private boolean constrained;
     private int maxBarCount;
+    private boolean isNumFactoryAssigned = false;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
     private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
 
@@ -64,6 +65,27 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         if (!bars.isEmpty()) {
             beginIndex = 0;
             endIndex = bars.size() - 1;
+
+            if (!isNumFactoryAssigned) {
+                // use numFactory derived from bars instead of default numFactory
+                var closePrice = bars.get(0).getClosePrice();
+                if (closePrice != null) {
+                    var derivedNumFactory = closePrice.getNumFactory();
+                    numFactory = derivedNumFactory;
+                }
+            }
+
+            // check if each bar has the same numFactory as the series numFactory
+            for (var bar : bars) {
+                if (bar.getClosePrice() != null) {
+                    if (!numFactory.produces(bar.getClosePrice())) {
+                        throw new IllegalArgumentException(
+                                String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                                        bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+                    }
+                }
+            }
+
         }
 
         var series = new BaseBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
@@ -83,10 +105,16 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param numFactory to set {@link BaseBarSeries#numFactory()}
+     * @param numFactory to set {@link BaseBarSeries#numFactory()} (by default, uses
+     *                   either {@link DecimalNumFactory} or {@code numFactory}
+     *                   derived from {@link #bars})
      * @return {@code this}
      */
     public BaseBarSeriesBuilder withNumFactory(NumFactory numFactory) {
+        if (numFactory != null) {
+            // user has explicitly assigned a numFactory
+            isNumFactoryAssigned = true;
+        }
         this.numFactory = numFactory;
         return this;
     }
@@ -101,7 +129,10 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param bars to set {@link BaseBarSeries#getBarData()}
+     * @param bars to set {@link BaseBarSeries#getBarData()}; If {@link #numFactory}
+     *             is not assigned by {@link #withNumFactory(NumFactory)},
+     *             {@link #numFactory} defaults to the {@code numFactory} of the
+     *             {@code bars}.
      * @return {@code this}
      */
     public BaseBarSeriesBuilder withBars(List<Bar> bars) {
@@ -119,7 +150,8 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param barBuilderFactory to build bars with the same datatype as series
+     * @param barBuilderFactory to build bars with the same datatype as series (by
+     *                          default, uses {@link TimeBarBuilderFactory})
      *
      * @return {@code this}
      */
@@ -127,4 +159,5 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         this.barBuilderFactory = barBuilderFactory;
         return this;
     }
+
 }

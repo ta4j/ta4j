@@ -23,19 +23,27 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.UnaryOperator;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
+import java.util.function.UnaryOperator;
+
 /**
  * Objects of this class defer the evaluation of a unary operator, like sqrt().
- *
+ * <p>
  * There may be other unary operations on Num that could be added here.
  */
 public class UnaryOperation implements Indicator<Num> {
+
+    private final UnaryOperator<Num> operator;
+    private final Indicator<Num> operand;
+
+    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
+        this.operator = operator;
+        this.operand = operand;
+    }
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
@@ -85,12 +93,23 @@ public class UnaryOperation implements Indicator<Num> {
         return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
     }
 
-    private final UnaryOperator<Num> operator;
-    private final Indicator<Num> operand;
-
-    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
-        this.operator = operator;
-        this.operand = operand;
+    /**
+     * Returns an {@code Indicator} that replaces a given operand value with a
+     * substitute.
+     *
+     * @param operand          the indicator supplying the original values to
+     *                         inspect
+     * @param valueToReplace   the value that, when matched exactly, triggers
+     *                         substitution
+     * @param replacementValue the value that replaces {@code valueToReplace} in the
+     *                         resulting indicator
+     * @return a unary operation indicator reflecting the original values with any
+     *         exact matches substituted
+     */
+    public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
+            final Num replacementValue) {
+        return new UnaryOperation(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
+                operand);
     }
 
     @Override
