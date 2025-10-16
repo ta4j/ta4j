@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
@@ -38,8 +39,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -70,6 +73,7 @@ public final class IndicatorSerialization {
     private static final ConcurrentMap<String, List<Class<?>>> INDICATOR_TYPES = new ConcurrentHashMap<>();
     private static final Set<String> IGNORED_CHILD_INDICATORS = Set
             .of("org.ta4j.core.indicators.helpers.RunningTotalIndicator");
+    private static final Object NO_PARAMETER_VALUE = new Object();
 
     private IndicatorSerialization() {
     }
@@ -186,7 +190,7 @@ public final class IndicatorSerialization {
         Constructor<?>[] constructors = type.getDeclaredConstructors();
         Arrays.sort(constructors,
                 (left, right) -> Integer.compare(right.getParameterCount(), left.getParameterCount()));
-        List<Object> parameterValues = parameters == null ? List.of() : new ArrayList<>(parameters.values());
+        Map<String, Object> parameterValues = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
         for (Constructor<?> constructor : constructors) {
             if (Modifier.isPrivate(constructor.getModifiers())) {
                 continue;
@@ -200,14 +204,18 @@ public final class IndicatorSerialization {
     }
 
     private static Optional<Object> tryInvoke(Constructor<?> constructor, BarSeries series, List<Indicator<?>> children,
-            List<Object> parameters) {
+            Map<String, Object> parameters) {
         Class<?>[] parameterTypes = constructor.getParameterTypes();
+        Parameter[] parameterMetadata = constructor.getParameters();
         Object[] args = new Object[parameterTypes.length];
         int childIndex = 0;
-        int paramIndex = 0;
+        LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(parameters);
+        List<NumericParameterRequest> numericRequests = new ArrayList<>();
 
         for (int i = 0; i < parameterTypes.length; i++) {
             Class<?> parameterType = parameterTypes[i];
+            Parameter parameter = parameterMetadata.length > i ? parameterMetadata[i] : null;
             if (BarSeries.class.isAssignableFrom(parameterType)) {
                 args[i] = series;
             } else if (Indicator.class.isAssignableFrom(parameterType)) {
@@ -233,20 +241,36 @@ public final class IndicatorSerialization {
                 args[i] = remaining;
                 childIndex = children.size();
             } else {
-                if (paramIndex >= parameters.size()) {
-                    return Optional.empty();
-                }
-                Object value = parameters.get(paramIndex++);
-                Object converted = convertNumericValue(value, parameterType, series);
-                if (converted == null) {
-                    return Optional.empty();
-                }
-                args[i] = converted;
+                numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
             }
         }
 
-        if (childIndex != children.size() || paramIndex != parameters.size()) {
-            return Optional.empty();
+        Map<Integer, Object> resolvedValues = new HashMap<>();
+        for (NumericParameterRequest request : numericRequests) {
+            Object value = extractNamedParameterValue(request.parameter(), parameterPool);
+            if (value != NO_PARAMETER_VALUE) {
+                resolvedValues.put(request.index(), value);
+            }
+        }
+
+        for (NumericParameterRequest request : numericRequests) {
+            if (resolvedValues.containsKey(request.index())) {
+                continue;
+            }
+            Object value = pollNextParameterValue(parameterPool);
+            if (value == NO_PARAMETER_VALUE) {
+                return Optional.empty();
+            }
+            resolvedValues.put(request.index(), value);
+        }
+
+        for (NumericParameterRequest request : numericRequests) {
+            Object value = resolvedValues.get(request.index());
+            Object converted = convertNumericValue(value, request.type(), series);
+            if (converted == null) {
+                return Optional.empty();
+            }
+            args[request.index()] = converted;
         }
 
         try {
@@ -255,6 +279,62 @@ public final class IndicatorSerialization {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             return Optional.empty();
         }
+    }
+
+    private static Object extractNamedParameterValue(Parameter parameter, LinkedHashMap<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty() || parameter == null || !parameter.isNamePresent()) {
+            return NO_PARAMETER_VALUE;
+        }
+        String name = parameter.getName();
+        if (parameters.containsKey(name)) {
+            return parameters.remove(name);
+        }
+        Iterator<Map.Entry<String, Object>> iterator = parameters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            if (entry.getKey().equalsIgnoreCase(name)) {
+                iterator.remove();
+                return entry.getValue();
+            }
+        }
+        String normalizedName = normalizeName(name);
+        if (normalizedName.isEmpty()) {
+            return NO_PARAMETER_VALUE;
+        }
+        iterator = parameters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            String normalizedKey = normalizeName(entry.getKey());
+            if (normalizedKey.startsWith(normalizedName)) {
+                iterator.remove();
+                return entry.getValue();
+            }
+        }
+        return NO_PARAMETER_VALUE;
+    }
+
+    private static Object pollNextParameterValue(LinkedHashMap<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return NO_PARAMETER_VALUE;
+        }
+        Iterator<Map.Entry<String, Object>> iterator = parameters.entrySet().iterator();
+        if (!iterator.hasNext()) {
+            return NO_PARAMETER_VALUE;
+        }
+        Map.Entry<String, Object> entry = iterator.next();
+        iterator.remove();
+        return entry.getValue();
+    }
+
+    private static String normalizeName(String name) {
+        StringBuilder builder = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                builder.append(Character.toLowerCase(ch));
+            }
+        }
+        return builder.toString();
     }
 
     private static Object convertNumericValue(Object value, Class<?> targetType, BarSeries series) {
@@ -544,5 +624,8 @@ public final class IndicatorSerialization {
     }
 
     private record ChildView(String label, Indicator<?> indicator) {
+    }
+
+    private record NumericParameterRequest(int index, Class<?> type, Parameter parameter) {
     }
 }
