@@ -31,6 +31,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferencePercentageIndicator;
+import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
@@ -85,5 +86,26 @@ public class IndicatorSerializationTest {
         Indicator<?> reconstructed = Indicator.fromJson(series, json);
         assertThat(reconstructed).isInstanceOf(DifferencePercentageIndicator.class);
         assertThat(((Indicator<?>) reconstructed).toDescriptor()).isEqualTo(descriptor);
+    }
+
+    @Test
+    public void deserializeIndicatorWithSameTypedParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7).build();
+        Num accelerationStart = series.numFactory().numOf("0.03");
+        Num maxAcceleration = series.numFactory().numOf("0.27");
+        Num accelerationIncrement = series.numFactory().numOf("0.09");
+        ParabolicSarIndicator original = new ParabolicSarIndicator(series, accelerationStart, maxAcceleration,
+                accelerationIncrement);
+
+        ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getParameters()).containsEntry("accelerationStart", "0.03");
+        assertThat(descriptor.getParameters()).containsEntry("maxAcceleration", "0.27");
+        assertThat(descriptor.getParameters()).containsEntry("accelerationIncrement", "0.09");
+
+        String json = original.toJson();
+        Indicator<?> reconstructed = Indicator.fromJson(series, json);
+
+        assertThat(reconstructed).isInstanceOf(ParabolicSarIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
     }
 }
