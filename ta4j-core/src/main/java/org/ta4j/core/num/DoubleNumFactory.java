@@ -27,43 +27,51 @@ public class DoubleNumFactory implements NumFactory {
 
     private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
 
+    private static final DoubleNum MINUS_ONE = DoubleNum.valueOf(-1);
+    private static final DoubleNum ZERO = DoubleNum.valueOf(0);
+    private static final DoubleNum ONE = DoubleNum.valueOf(1);
+    private static final DoubleNum TWO = DoubleNum.valueOf(2);
+    private static final DoubleNum THREE = DoubleNum.valueOf(3);
+    private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
+    private static final DoubleNum THOUSAND = DoubleNum.valueOf(1000);
+
     private DoubleNumFactory() {
         // hidden
     }
 
     @Override
     public Num minusOne() {
-        return DoubleNum.MINUS_ONE;
+        return MINUS_ONE;
     }
 
     @Override
     public Num zero() {
-        return DoubleNum.ZERO;
+        return ZERO;
     }
 
     @Override
     public Num one() {
-        return DoubleNum.ONE;
+        return ONE;
     }
 
     @Override
     public Num two() {
-        return DoubleNum.TWO;
+        return TWO;
     }
 
     @Override
     public Num three() {
-        return DoubleNum.THREE;
+        return THREE;
     }
 
     @Override
     public Num hundred() {
-        return DoubleNum.HUNDRED;
+        return HUNDRED;
     }
 
     @Override
     public Num thousand() {
-        return DoubleNum.THOUSAND;
+        return THOUSAND;
     }
 
     @Override
