@@ -24,9 +24,13 @@
 - **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`). For focused module testing, you may use `scripts/run-full-build-quiet.sh -pl ta4j-core` to get filtered logs while still validating a single module.
 - **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags) - this is mandatory, not optional
 - The script stores the full log under `.agents/logs/` and prints aggregated test totals
+- Use `git diff -- path/to/file` to keep diffs scoped when full-file output is large
+- When `git status` times out, narrow the scope with `git status --short path` instead of retrying broad commands
 - All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
+- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` unreleased section instead.
+- When the originating ticket number is unknown, use a temporary placeholder (`#0000`) and replace it once available.
 - **🚫 CRITICAL: Do not ignore build errors even if you think they were pre-existing.** Suppressing/ignoring/assuming or otherwise skipping over the errors is forbidden. **All errors that surface must be investigated and root cause resolved.** Surface to the user any fixes that require complex refactoring or design changes. **Never skip over a failing test without explicit approval from user.**
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
@@ -43,7 +47,14 @@
   - If you encounter a failing test, treat it as a bug that must be fixed, not something to skip
 - **Never use reflection to access private APIs in tests.** Always test through the nearest public API, even if it requires additional setup. If testing private methods is necessary, refactor the production code to support dependency injection and mocks, or extract the logic into a testable public method. Reflection-based tests are brittle, harder to maintain, and don't reflect real usage patterns.
 - **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties.
+- When adding `assertThrows`, check for an existing `assertThrows` import before adding a new one to avoid duplicates.
+- Keep assertion messages implicit; JUnit expresses the expectation via `assertThrows` semantics.
 - **Prefer dependency injection for testability.** When code is difficult to test, refactor to accept dependencies through constructors or methods rather than accessing them statically or creating them internally. This enables mocking and makes tests more focused and maintainable.
+- **Windows OS**: Use `apply_patch` for small Java test edits; it preserves CRLF line endings and avoids full-file rewrites.
+- Touch only the lines around the assertions being converted; keep the rest of the file untouched to prevent outsized diffs.
+- When adding new imports, insert them with `apply_patch` in the existing import block. Do not replace the whole block.
+- Stick with `bash -lc` commands unless PowerShell is strictly required; mixing shells can introduce quoting issues.
+- For Windows paths, rely on the workspace-relative form (`ta4j-core/...`) in commands to avoid drive-letter confusion.
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
@@ -64,3 +75,11 @@ For toString(), output JSON — prefer Gson serialization > manual JSON > custom
 ## Finding Scoped Agent Guides
 - Many packages (e.g., `ta4j-core/src/main/java/org/ta4j/core/serialization`) have their own `AGENTS.md` with domain-specific conventions. Before editing a feature area, run `rg --files -g 'AGENTS.md'` or `fd AGENTS.md` from the repo root and open the closest file to your working directory.
 - When adding new modules or significant subsystems, include an `AGENTS.md` in that directory and link back to it from higher-level docs when possible.
+
+## Specific Component Guidelines
+
+### NetMomentumIndicator Enhancements
+- The indicator now supports a configurable decay factor. A decay of `1` preserves the legacy running-total behavior, while values below `1` apply an exponential fade to older contributions.
+- Tests rely on this recursive formulation, so prefer reasoning in terms of weighted sums rather than reintroducing `RunningTotalIndicator`.
+- For deterministic expectations in tests, constant oscillators are a reliable way to assert the closed-form steady-state values: `delta * (1 - decay^window) / (1 - decay)`.
+- RSI convenience accessors are exposed as static factories (`forRsi`, `forRsiWithDecay`). Use those in tests and documentation snippets to avoid constructor ambiguity with the general-purpose overloads.
