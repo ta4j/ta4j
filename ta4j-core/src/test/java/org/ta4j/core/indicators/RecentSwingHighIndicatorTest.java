@@ -23,28 +23,25 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.ArrayList;
-import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.num.NaN.NaN;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    BarSeries series;
+    private BarSeries series;
 
     public RecentSwingHighIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -52,185 +49,113 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Before
     public void setUp() {
-        List<Bar> bars = new ArrayList<>();
-
-        // 0 - Normal movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
-        // 1 - Normal movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build());
-        // 2 - Potential swing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
-        // 3 - Plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
-        // 4 - Plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
-        // 5 -Down after plateau
-        bars.add(new MockBarBuilder(numFactory).openPrice(11).closePrice(11).highPrice(11).lowPrice(11).build());
-        // 6 -Down movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
-        // 7 - New potential swing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-        // 8 - Sharp down
-        bars.add(new MockBarBuilder(numFactory).openPrice(10).closePrice(10).highPrice(10).lowPrice(10).build());
-        // 9 - Higher swing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(14).closePrice(14).highPrice(14).lowPrice(14).build());
-        // 10 - Normal movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-        // 11 - Down movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(12).closePrice(12).highPrice(12).lowPrice(12).build());
-        // 12 - Up movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-        // 13- New potentialswing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
-        // 14 - Down movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-        // 15 - Equal high to swing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
-        // 16 - Down movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-        // 17 - Equal high to swing high
-        bars.add(new MockBarBuilder(numFactory).openPrice(15).closePrice(15).highPrice(15).lowPrice(15).build());
-        // 18 - Down movement
-        bars.add(new MockBarBuilder(numFactory).openPrice(13).closePrice(13).highPrice(13).lowPrice(13).build());
-
-        this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(bars).build();
+        series = createSeriesFromHighs(10, 12, 15, 13, 11, 17, 16, 14, 18, 16, 13, 19, 17, 16);
     }
 
     @Test
-    public void testCalculate_Using2SurroundingBarsAnd2EqualBars_ReturnsValue() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2,
-                2);
+    public void shouldReturnMostRecentSwingHigh() {
+        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
 
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(0));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(1));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(2));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(3));
-        assertNumEquals(12, swingHighIndicator.getValue(4));
-        assertNumEquals(12, swingHighIndicator.getValue(5));
-        assertNumEquals(12, swingHighIndicator.getValue(6));
-        assertNumEquals(12, swingHighIndicator.getValue(7));
-        assertNumEquals(12, swingHighIndicator.getValue(8));
-        assertNumEquals(14, swingHighIndicator.getValue(9));
-        assertNumEquals(14, swingHighIndicator.getValue(10));
-        assertNumEquals(14, swingHighIndicator.getValue(11));
-        assertNumEquals(14, swingHighIndicator.getValue(12));
-        assertNumEquals(15, swingHighIndicator.getValue(13));
-        assertNumEquals(15, swingHighIndicator.getValue(14));
-        assertNumEquals(15, swingHighIndicator.getValue(15));
-        assertNumEquals(15, swingHighIndicator.getValue(16));
-        assertNumEquals(15, swingHighIndicator.getValue(17));
-        assertNumEquals(15, swingHighIndicator.getValue(18));
+        assertThat(indicator.getValue(0).isNaN()).isTrue();
+        assertThat(indicator.getValue(3).isNaN()).isTrue();
+        assertThat(indicator.getLatestSwingIndex(3)).isEqualTo(-1);
+
+        assertThat(indicator.getValue(4)).isEqualByComparingTo(numOf(15));
+        assertThat(indicator.getLatestSwingIndex(4)).isEqualTo(2);
+
+        assertThat(indicator.getValue(6)).isEqualByComparingTo(numOf(15));
+        assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(2);
+
+        assertThat(indicator.getValue(7)).isEqualByComparingTo(numOf(17));
+        assertThat(indicator.getLatestSwingIndex(7)).isEqualTo(5);
+
+        assertThat(indicator.getValue(10)).isEqualByComparingTo(numOf(18));
+        assertThat(indicator.getLatestSwingIndex(10)).isEqualTo(8);
+
+        assertThat(indicator.getValue(13)).isEqualByComparingTo(numOf(19));
+        assertThat(indicator.getLatestSwingIndex(13)).isEqualTo(11);
     }
 
     @Test
-    public void testCalculate_Using2SurroundingBarsAnd1EqualBars_ReturnsValue() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2,
-                1);
+    public void shouldDelayConfirmationUntilFollowingBarsAvailable() {
+        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
 
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(0));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(1));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(2));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(3));
-        assertNumEquals(12, swingHighIndicator.getValue(4));
-        assertNumEquals(12, swingHighIndicator.getValue(5));
-        assertNumEquals(12, swingHighIndicator.getValue(6));
-        assertNumEquals(12, swingHighIndicator.getValue(7));
-        assertNumEquals(12, swingHighIndicator.getValue(8));
-        assertNumEquals(14, swingHighIndicator.getValue(9));
-        assertNumEquals(14, swingHighIndicator.getValue(10));
-        assertNumEquals(14, swingHighIndicator.getValue(11));
-        assertNumEquals(14, swingHighIndicator.getValue(12));
-        assertNumEquals(15, swingHighIndicator.getValue(13));
-        assertNumEquals(15, swingHighIndicator.getValue(14));
-        assertNumEquals(15, swingHighIndicator.getValue(15));
-        assertNumEquals(15, swingHighIndicator.getValue(16));
-        assertNumEquals(15, swingHighIndicator.getValue(17));
-        assertNumEquals(15, swingHighIndicator.getValue(18));
+        assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(2);
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(numOf(15));
+
+        assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(2);
+        assertThat(indicator.getValue(6)).isEqualByComparingTo(numOf(15));
+
+        assertThat(indicator.getLatestSwingIndex(7)).isEqualTo(5);
+        assertThat(indicator.getValue(7)).isEqualByComparingTo(numOf(17));
     }
 
     @Test
-    public void testCalculate_Using2SurroundingBarsAnd0EqualBars_ReturnsValue() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, 2);
+    public void shouldAllowFlatTopsWhenEqualBarsPermitted() {
+        final var plateauSeries = createSeriesFromHighs(9, 11, 10, 12, 12, 9, 8, 7);
+        final var noEquals = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 0);
+        final var withEquals = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 1);
 
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(0));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(1));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(2));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(3));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(4));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(5));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(6));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(7));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(8));
-        assertNumEquals(14, swingHighIndicator.getValue(9));
-        assertNumEquals(14, swingHighIndicator.getValue(10));
-        assertNumEquals(14, swingHighIndicator.getValue(11));
-        assertNumEquals(14, swingHighIndicator.getValue(12));
-        assertNumEquals(14, swingHighIndicator.getValue(13));
-        assertNumEquals(14, swingHighIndicator.getValue(14));
-        assertNumEquals(14, swingHighIndicator.getValue(15));
-        assertNumEquals(14, swingHighIndicator.getValue(16));
-        assertNumEquals(14, swingHighIndicator.getValue(17));
-        assertNumEquals(14, swingHighIndicator.getValue(18));
+        assertThat(noEquals.getValue(6).isNaN()).isTrue();
+        assertThat(noEquals.getLatestSwingIndex(6)).isEqualTo(-1);
+
+        assertThat(withEquals.getValue(6)).isEqualByComparingTo(numOf(12));
+        assertThat(withEquals.getLatestSwingIndex(6)).isEqualTo(4);
     }
 
     @Test
-    public void testGetUnstableBars_whenSetSurroundingBars_ReturnsSameValue() {
-        int surroundingBars = 2;
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, surroundingBars);
+    public void shouldRejectFlatTopsThatExceedEqualAllowance() {
+        final var plateauSeries = createSeriesFromHighs(8, 12, 12, 12, 12, 10, 8, 7);
+        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 1, 2, 1);
 
-        assertEquals(surroundingBars * 2, swingHighIndicator.getCountOfUnstableBars());
+        assertThat(indicator.getValue(6).isNaN()).isTrue();
+        assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(-1);
     }
 
     @Test
-    public void testCalculate_Using1SurroundingBar_ReturnsValue() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 1, 1,
-                2);
+    public void shouldPropagateNaNFromUnderlyingIndicator() {
+        final var baseSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 17, 16, 14, 18, 16, 13);
+        final var highIndicator = new HighPriceIndicator(baseSeries);
+        final var indicatorWithNaNFollowing = new RecentSwingHighIndicator(indicatorWithNaN(highIndicator, 6), 2, 2, 0);
 
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(0));
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(1));
-        assertNumEquals(12, swingHighIndicator.getValue(2));
-        assertNumEquals(12, swingHighIndicator.getValue(3));
-        assertNumEquals(12, swingHighIndicator.getValue(4));
-        assertNumEquals(12, swingHighIndicator.getValue(5));
-        assertNumEquals(12, swingHighIndicator.getValue(6));
-        assertNumEquals(13, swingHighIndicator.getValue(7));
-        assertNumEquals(13, swingHighIndicator.getValue(8));
-        assertNumEquals(14, swingHighIndicator.getValue(9));
-        assertNumEquals(14, swingHighIndicator.getValue(10));
-        assertNumEquals(14, swingHighIndicator.getValue(11));
+        assertThat(indicatorWithNaNFollowing.getValue(7)).isEqualByComparingTo(numOf(15));
+        assertThat(indicatorWithNaNFollowing.getLatestSwingIndex(7)).isEqualTo(2);
+        assertThat(indicatorWithNaNFollowing.getValue(10)).isEqualByComparingTo(numOf(15));
+
+        final var shortSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 9, 8);
+        final var shortIndicator = new HighPriceIndicator(shortSeries);
+        final var indicator = new RecentSwingHighIndicator(indicatorWithNaN(shortIndicator, 3), 2, 2, 0);
+
+        assertThat(indicator.getValue(5).isNaN()).isTrue();
+        assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(-1);
     }
 
-    @Test
-    public void testCalculate_OnMovingBarSeries_ReturnsValue() {
-        // movingSeries: [1]
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(1).build());
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(movingSeries);
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(closePrice, 1, 1, 0);
-
-        // movingSeries: [1, 2]
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build());
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(movingSeries.getEndIndex()));
-
-        // movingSeries: [1, 2, 3]
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(3).build());
-        assertNumEquals(NaN.NaN, swingHighIndicator.getValue(movingSeries.getEndIndex()));
-
-        // movingSeries: [1, 2, 3, 2]
-        movingSeries.addBar(new MockBarBuilder(numFactory).closePrice(2).build());
-        assertNumEquals(3, swingHighIndicator.getValue(movingSeries.getEndIndex()));
+    private BarSeries createSeriesFromHighs(double... highs) {
+        final var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (double high : highs) {
+            final double low = high - 2d;
+            barSeries.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+        return barSeries;
     }
 
-    @SuppressWarnings("unused")
-    @Test(expected = IllegalArgumentException.class)
-    public void testConstructor_SurroundingBarsZero() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(series, 0);
-    }
+    private Indicator<Num> indicatorWithNaN(Indicator<Num> delegate, int... indices) {
+        final Set<Integer> invalidIndices = Arrays.stream(indices).boxed().collect(Collectors.toSet());
+        return new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                return invalidIndices.contains(index) ? NaN : delegate.getValue(index);
+            }
 
-    @SuppressWarnings("unused")
-    @Test(expected = IllegalArgumentException.class)
-    public void testConstructor_AllowedEqualBarsNegative() {
-        RecentSwingHighIndicator swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 1, 1,
-                -1);
+            @Override
+            public BarSeries getBarSeries() {
+                return delegate.getBarSeries();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return delegate.getCountOfUnstableBars();
+            }
+        };
     }
 }

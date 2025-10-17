@@ -23,22 +23,19 @@
  */
 package org.ta4j.core.analysis;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.*;
+
+import java.math.MathContext;
+import java.math.RoundingMode;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ReturnsTest {
 
@@ -126,7 +123,9 @@ public class ReturnsTest {
     @Test
     public void returnsPrecision() {
         var doubleSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1.2d, 1.1d).build();
-        BarSeries precisionSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+        final var highPrecisionContext = new MathContext(32, RoundingMode.HALF_UP);
+        final var precisionFactory = DecimalNumFactory.getInstance(highPrecisionContext);
+        BarSeries precisionSeries = new MockBarSeriesBuilder().withNumFactory(precisionFactory)
                 .withData(1.2d, 1.1d)
                 .build();
 
@@ -150,10 +149,12 @@ public class ReturnsTest {
         Num logPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.LOG).getValue(1);
 
         assertNumEquals(DoubleNum.valueOf(-0.08333333333333326), arithDouble);
-        assertNumEquals(arithPrecision,
-                DecimalNum.valueOf(1.1).dividedBy(DecimalNum.valueOf(1.2)).minus(DecimalNum.valueOf(1)));
+        final var expectedArithmetic = DecimalNum.valueOf("1.1", highPrecisionContext)
+                .dividedBy(DecimalNum.valueOf("1.2", highPrecisionContext))
+                .minus(DecimalNum.valueOf(1, highPrecisionContext));
+        assertNumEquals(arithPrecision, expectedArithmetic);
 
         assertNumEquals(DoubleNum.valueOf(-0.08701137698962969), logDouble);
-        assertNumEquals(DecimalNum.valueOf("-0.087011376989629766167765901873746"), logPrecision);
+        assertNumEquals(DecimalNum.valueOf("-0.087011376989629766167765901873746", highPrecisionContext), logPrecision);
     }
 }

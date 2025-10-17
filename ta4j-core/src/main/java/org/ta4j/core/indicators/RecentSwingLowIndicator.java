@@ -32,38 +32,47 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Recent Swing Low Indicator.
+ * <p>
+ * Identifies the price of the most recently confirmed swing low, defined as a
+ * bar whose low is lower than its surrounding bars within the configured
+ * windows. The behaviour aligns with the commonly used definition of swing lows
+ * in technical analysis literature.
+ *
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/s/swinglow.asp">Investopedia: Swing
+ *      Low</a>
+ * @since 0.19
  */
 public class RecentSwingLowIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int precedingHigherBars;
     private final int followingHigherBars;
     private final int allowedEqualBars;
-    Indicator<Num> indicator;
 
     /**
-     * Constructs a RecentSwingLowIndicator
+     * Constructs a RecentSwingLowIndicator.
      *
-     * @param indicator           The Indicator to be analyzed.
-     * @param precedingHigherBars For a bar to be identified as a swing low, it must
-     *                            have a lower low than this number of bars
-     *                            immediately preceding it.
-     * @param followingHigherBars For a bar to be identified as a swing low, it must
-     *                            have a lower low than this number of bars
-     *                            immediately following it.
-     * @param allowedEqualBars    For a looser definition of swing low, instead of
-     *                            requiring the surrounding bars to be strictly
-     *                            higher lows we allow this number of equal lows to
-     *                            either side (i.e. flat-ish valley)
-     * @throws IllegalArgumentException if precedingHigherBars is less than or equal
-     *                                  to 0.
-     * @throws IllegalArgumentException if followingHigherBars is less 0.
-     * @throws IllegalArgumentException if allowedEqualBars is less than 0.
+     * @param indicator           the indicator providing the values to inspect for
+     *                            swing lows
+     * @param precedingHigherBars number of immediately preceding bars that must
+     *                            have strictly higher values than the candidate
+     *                            swing low
+     * @param followingHigherBars number of immediately following bars that must
+     *                            have strictly higher values than the candidate
+     *                            swing low
+     * @param allowedEqualBars    number of bars on each side that are allowed to
+     *                            match the candidate value (to support rounded
+     *                            bottoms)
+     * @throws IllegalArgumentException if {@code precedingHigherBars} is less than
+     *                                  {@code 1}
+     * @throws IllegalArgumentException if {@code followingHigherBars} is negative
+     * @throws IllegalArgumentException if {@code allowedEqualBars} is negative
      */
     public RecentSwingLowIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
         super(indicator);
-
-        if (precedingHigherBars <= 0) {
+        if (precedingHigherBars < 1) {
             throw new IllegalArgumentException("precedingHigherBars must be greater than 0");
         }
         if (followingHigherBars < 0) {
@@ -72,121 +81,177 @@ public class RecentSwingLowIndicator extends CachedIndicator<Num> {
         if (allowedEqualBars < 0) {
             throw new IllegalArgumentException("allowedEqualBars must be 0 or greater");
         }
+        this.indicator = indicator;
         this.precedingHigherBars = precedingHigherBars;
         this.followingHigherBars = followingHigherBars;
         this.allowedEqualBars = allowedEqualBars;
-        this.indicator = indicator;
     }
 
     /**
-     * Constructs a RecentSwingLowIndicator with the specified BarSeries (and
-     * defaulting to use LowPriceIndicator) and surrounding higher bars count and a
-     * default allowed equal bars of 0
+     * Constructs a RecentSwingLowIndicator that uses the low price of each bar and
+     * a symmetric window on both sides of the candidate swing low.
      *
-     * @param series                The BarSeries to be analyzed.
-     * @param surroundingHigherBars The number of bars to consider on each side that
-     *                              must have higher lows to identify a swing low.
+     * @param series                the {@link BarSeries} to analyse
+     * @param surroundingHigherBars number of bars on each side that must remain
+     *                              above the candidate swing low
      */
     public RecentSwingLowIndicator(BarSeries series, int surroundingHigherBars) {
         this(new LowPriceIndicator(series), surroundingHigherBars, surroundingHigherBars, 0);
     }
 
     /**
-     * Constructs a RecentSwingLowIndicator with the specified BarSeries (and
-     * defaulting to use LowPriceIndicator), a default surrounding higher bars count
-     * of 3, and a default allowed equal bars of 0
+     * Constructs a RecentSwingLowIndicator that uses a 3-bar symmetric window and
+     * no tolerance for equal lows.
      *
-     * @param series The BarSeries to be analyzed.
+     * @param series the {@link BarSeries} to analyse
      */
     public RecentSwingLowIndicator(BarSeries series) {
-        this(new LowPriceIndicator(series), 3, 0, 0);
-    }
-
-    private boolean isSwingLow(int index) {
-        Num currentPrice = this.indicator.getValue(index);
-
-        // Check bars before
-        if (!checkPrecedingBars(index, currentPrice)) {
-            return false;
-        }
-
-        // Check bars after (up to the current calculation index)
-        return checkFollowingBars(index, currentPrice);
-    }
-
-    private boolean checkPrecedingBars(int index, Num currentPrice) {
-        int higherBarsCount = 0;
-        int equalBarsCount = 0;
-
-        for (int i = index - 1; i >= index - precedingHigherBars - allowedEqualBars && i >= 0; i--) {
-            Num comparisonPrice = this.indicator.getValue(i);
-
-            if (currentPrice.isEqual(comparisonPrice)) {
-                equalBarsCount++;
-                if (equalBarsCount > allowedEqualBars) {
-                    return false;
-                }
-            } else if (currentPrice.isGreaterThan(comparisonPrice)) {
-                return false;
-            } else {
-                higherBarsCount++;
-                if (higherBarsCount == precedingHigherBars) {
-                    return true;
-                }
-            }
-        }
-
-        return higherBarsCount == precedingHigherBars;
-    }
-
-    private boolean checkFollowingBars(int index, Num currentPrice) {
-        int higherBarsCount = 0;
-        int equalBarsCount = 0;
-
-        for (int i = index + 1; i < index + followingHigherBars + allowedEqualBars + 1
-                && i < getBarSeries().getBarCount(); i++) {
-            Num comparisonPrice = this.indicator.getValue(i);
-
-            if (currentPrice.isEqual(comparisonPrice)) {
-                equalBarsCount++;
-                if (equalBarsCount > allowedEqualBars) {
-                    return false;
-                }
-            } else if (currentPrice.isGreaterThan(comparisonPrice)) {
-                return false;
-            } else {
-                higherBarsCount++;
-                if (higherBarsCount == followingHigherBars) {
-                    return true;
-                }
-            }
-        }
-
-        return higherBarsCount == followingHigherBars;
+        this(series, 3);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars() || index >= getBarSeries().getBarCount()) {
+        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return NaN;
         }
-
-        for (int i = index; i >= getBarSeries().getBeginIndex(); i--) {
-            if (isSwingLow(i)) {
-                return this.indicator.getValue(i);
-            }
+        final int swingIndex = getLatestSwingIndex(index);
+        if (swingIndex < 0) {
+            return NaN;
         }
-        return NaN;
+        return indicator.getValue(swingIndex);
     }
 
     /**
-     * Returns the number of unstable bars as defined by the surroundingHigherBars
-     * parameter.
-     *
-     * @return The number of unstable bars.
+     * Returns the number of unstable bars determined by the surrounding windows.
      */
     @Override
     public int getCountOfUnstableBars() {
         return precedingHigherBars + followingHigherBars;
+    }
+
+    /**
+     * Returns the index of the most recent confirmed swing low that can be
+     * evaluated with the data available up to {@code index}.
+     *
+     * @param index the current evaluation index
+     * @return the index of the most recent swing low or {@code -1} if none can be
+     *         confirmed yet
+     * @since 0.19
+     */
+    public int getLatestSwingIndex(int index) {
+        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
+            return -1;
+        }
+        final int latestConfirmable = index - followingHigherBars;
+        final int earliestCandidate = getBarSeries().getBeginIndex() + precedingHigherBars;
+        if (latestConfirmable < earliestCandidate) {
+            return -1;
+        }
+        for (int candidate = latestConfirmable; candidate >= earliestCandidate; candidate--) {
+            if (isSwingLow(candidate, index)) {
+                return candidate;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isSwingLow(int candidateIndex, int maxAvailableIndex) {
+        final Num candidateValue = indicator.getValue(candidateIndex);
+        if (candidateValue.isNaN()) {
+            return false;
+        }
+        final int plateauStart = findPlateauStart(candidateIndex, candidateValue);
+        if (plateauStart < 0) {
+            return false;
+        }
+        final int plateauEnd = findPlateauEnd(candidateIndex, maxAvailableIndex, candidateValue);
+        if (plateauEnd < 0) {
+            return false;
+        }
+        return hasHigherPrecedingBars(plateauStart, candidateValue)
+                && hasHigherFollowingBars(plateauEnd, maxAvailableIndex, candidateValue);
+    }
+
+    private int findPlateauStart(int candidateIndex, Num candidateValue) {
+        final int beginIndex = getBarSeries().getBeginIndex();
+        int equalsUsed = 0;
+        int index = candidateIndex;
+        while (index > beginIndex && equalsUsed < allowedEqualBars) {
+            final Num previousValue = indicator.getValue(index - 1);
+            if (previousValue.isNaN()) {
+                return -1;
+            }
+            if (!previousValue.isEqual(candidateValue)) {
+                break;
+            }
+            equalsUsed++;
+            index--;
+        }
+        if (index > beginIndex) {
+            final Num previousValue = indicator.getValue(index - 1);
+            if (previousValue.isEqual(candidateValue)) {
+                return -1;
+            }
+        }
+        return index;
+    }
+
+    private int findPlateauEnd(int candidateIndex, int maxAvailableIndex, Num candidateValue) {
+        int equalsUsed = 0;
+        int index = candidateIndex;
+        while (index < maxAvailableIndex && equalsUsed < allowedEqualBars) {
+            final Num nextValue = indicator.getValue(index + 1);
+            if (nextValue.isNaN()) {
+                return -1;
+            }
+            if (!nextValue.isEqual(candidateValue)) {
+                break;
+            }
+            equalsUsed++;
+            index++;
+        }
+        if (index < maxAvailableIndex) {
+            final Num nextValue = indicator.getValue(index + 1);
+            if (nextValue.isEqual(candidateValue)) {
+                return -1;
+            }
+        }
+        return index;
+    }
+
+    private boolean hasHigherPrecedingBars(int plateauStartIndex, Num candidateValue) {
+        if (precedingHigherBars == 0) {
+            return true;
+        }
+        final int beginIndex = getBarSeries().getBeginIndex();
+        if (plateauStartIndex - precedingHigherBars < beginIndex) {
+            return false;
+        }
+        for (int i = plateauStartIndex - 1; i >= plateauStartIndex - precedingHigherBars; i--) {
+            final Num value = indicator.getValue(i);
+            if (value.isNaN() || !value.isGreaterThan(candidateValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasHigherFollowingBars(int plateauEndIndex, int maxAvailableIndex, Num candidateValue) {
+        if (followingHigherBars == 0) {
+            return true;
+        }
+        if (maxAvailableIndex - plateauEndIndex < followingHigherBars) {
+            return false;
+        }
+        for (int i = plateauEndIndex + 1; i <= plateauEndIndex + followingHigherBars; i++) {
+            if (i > maxAvailableIndex) {
+                return false;
+            }
+            final Num value = indicator.getValue(i);
+            if (value.isNaN() || !value.isGreaterThan(candidateValue)) {
+                return false;
+            }
+        }
+        return true;
     }
 }
