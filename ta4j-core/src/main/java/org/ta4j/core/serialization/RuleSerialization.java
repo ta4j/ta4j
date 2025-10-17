@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.serialization;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -31,6 +32,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -56,8 +58,8 @@ import org.ta4j.core.num.Num;
  * capture the constructor arguments that were used to build a rule. Only rule
  * classes that keep references to their constructor arguments (directly or via
  * nested helper classes) can be reconstructed. Rules that eagerly transform
- * their inputs into derived indicators without keeping the original
- * constructor arguments may not be fully supported.
+ * their inputs into derived indicators without keeping the original constructor
+ * arguments may not be fully supported.
  *
  * @since 0.19
  */
@@ -91,8 +93,7 @@ public final class RuleSerialization {
                     + ": no supported constructor signature found");
         }
 
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(rule.getClass().getName());
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(rule.getClass().getName());
 
         Map<String, Object> parameters = new LinkedHashMap<>();
         List<ComponentDescriptor> children = new ArrayList<>();
@@ -191,7 +192,8 @@ public final class RuleSerialization {
         }
     }
 
-    private static Constructor<? extends Rule> locateConstructor(Class<? extends Rule> type, Class<?>[] parameterTypes) {
+    private static Constructor<? extends Rule> locateConstructor(Class<? extends Rule> type,
+            Class<?>[] parameterTypes) {
         try {
             return type.getDeclaredConstructor(parameterTypes);
         } catch (NoSuchMethodException ex) {
@@ -255,7 +257,8 @@ public final class RuleSerialization {
             }
         }
 
-        private Object resolveArgument(ArgumentKind kind, String name, Map<String, Object> metadata, Class<?> targetType) {
+        private Object resolveArgument(ArgumentKind kind, String name, Map<String, Object> metadata,
+                Class<?> targetType) {
             switch (kind) {
             case SERIES:
                 return series;
@@ -274,6 +277,11 @@ public final class RuleSerialization {
             case LONG:
             case DOUBLE:
                 return resolveNumber(name, targetType);
+            case NUMBER_ARRAY:
+            case INT_ARRAY:
+            case LONG_ARRAY:
+            case DOUBLE_ARRAY:
+                return resolveNumberArray(name, targetType);
             case BOOLEAN:
                 return convertBoolean(descriptor.getParameters().get(name));
             case STRING:
@@ -282,6 +290,9 @@ public final class RuleSerialization {
             case ENUM:
                 String enumClassName = String.valueOf(metadata.get("enumType"));
                 return resolveEnum(name, enumClassName, targetType);
+            case ENUM_ARRAY:
+                String enumArrayType = String.valueOf(metadata.get("enumType"));
+                return resolveEnumArray(name, enumArrayType, targetType);
             default:
                 throw new IllegalStateException("Unsupported argument kind: " + kind);
             }
@@ -319,6 +330,21 @@ public final class RuleSerialization {
             return convertNumber(raw, targetType);
         }
 
+        private Object resolveNumberArray(String name, Class<?> targetType) {
+            Object raw = descriptor.getParameters().get(name);
+            if (!(raw instanceof List<?> list)) {
+                throw new IllegalArgumentException("Missing numeric array parameter: " + name);
+            }
+            Class<?> componentType = targetType.getComponentType();
+            Object array = Array.newInstance(componentType, list.size());
+            for (int i = 0; i < list.size(); i++) {
+                Object element = list.get(i);
+                Object converted = convertNumber(element, componentType);
+                Array.set(array, i, converted);
+            }
+            return array;
+        }
+
         private Object resolveEnum(String name, String enumClassName, Class<?> targetType) {
             Object raw = descriptor.getParameters().get(name);
             if (raw == null) {
@@ -329,6 +355,26 @@ public final class RuleSerialization {
                 Class<? extends Enum> enumType = (Class<? extends Enum>) Class.forName(enumClassName);
                 String label = String.valueOf(raw);
                 return Enum.valueOf(enumType, label);
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
+            }
+        }
+
+        private Object resolveEnumArray(String name, String enumClassName, Class<?> targetType) {
+            Object raw = descriptor.getParameters().get(name);
+            if (!(raw instanceof List<?> list)) {
+                throw new IllegalArgumentException("Missing enum array parameter: " + name);
+            }
+            try {
+                @SuppressWarnings({ "unchecked", "rawtypes" })
+                Class<? extends Enum> enumType = (Class<? extends Enum>) Class.forName(enumClassName);
+                Object array = Array.newInstance(enumType, list.size());
+                for (int i = 0; i < list.size(); i++) {
+                    Object element = list.get(i);
+                    Object value = element == null ? null : Enum.valueOf(enumType, String.valueOf(element));
+                    Array.set(array, i, value);
+                }
+                return array;
             } catch (ClassNotFoundException ex) {
                 throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
             }
@@ -434,7 +480,8 @@ public final class RuleSerialization {
             return null;
         }
 
-        private static Optional<List<Argument>> match(Rule rule, Constructor<?> constructor, Map<String, Object> values) {
+        private static Optional<List<Argument>> match(Rule rule, Constructor<?> constructor,
+                Map<String, Object> values) {
             Parameter[] parameters = constructor.getParameters();
             List<Argument> arguments = new ArrayList<>(parameters.length);
             Set<String> used = new LinkedHashSet<>();
@@ -474,6 +521,23 @@ public final class RuleSerialization {
                     }
                     arguments.add(Argument.num(name, type, (Num) match.value));
                     continue;
+                }
+
+                if (type.isArray()) {
+                    Match match = findArrayMatch(values, used, type);
+                    if (match == null) {
+                        return Optional.empty();
+                    }
+                    Class<?> componentType = type.getComponentType();
+                    if (componentType.isEnum()) {
+                        arguments.add(Argument.enumArray(name, type, match.value));
+                        continue;
+                    }
+                    if (isNumericType(componentType)) {
+                        arguments.add(Argument.numberArray(name, type, match.value));
+                        continue;
+                    }
+                    return Optional.empty();
                 }
 
                 if (type.isEnum()) {
@@ -590,6 +654,60 @@ public final class RuleSerialization {
             }
             return null;
         }
+
+        private static Match findArrayMatch(Map<String, Object> values, Set<String> used, Class<?> arrayType) {
+            for (Map.Entry<String, Object> entry : values.entrySet()) {
+                if (used.contains(entry.getKey())) {
+                    continue;
+                }
+                Object value = entry.getValue();
+                if (value == null) {
+                    continue;
+                }
+                if (arrayType.isInstance(value)) {
+                    used.add(entry.getKey());
+                    return new Match(entry.getKey(), copyArray(value, arrayType));
+                }
+                if (value instanceof Collection<?> collection) {
+                    Class<?> componentType = arrayType.getComponentType();
+                    if (componentType != null && !componentType.isPrimitive()) {
+                        Object array = collectionToArray(collection, componentType);
+                        if (array != null) {
+                            used.add(entry.getKey());
+                            return new Match(entry.getKey(), array);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static boolean isNumericType(Class<?> type) {
+            if (type.isPrimitive()) {
+                return type.equals(int.class) || type.equals(long.class) || type.equals(double.class)
+                        || type.equals(float.class) || type.equals(short.class) || type.equals(byte.class);
+            }
+            return Number.class.isAssignableFrom(type);
+        }
+
+        private static Object copyArray(Object source, Class<?> arrayType) {
+            int length = Array.getLength(source);
+            Object copy = Array.newInstance(arrayType.getComponentType(), length);
+            System.arraycopy(source, 0, copy, 0, length);
+            return copy;
+        }
+
+        private static Object collectionToArray(Collection<?> collection, Class<?> componentType) {
+            Object array = Array.newInstance(componentType, collection.size());
+            int index = 0;
+            for (Object element : collection) {
+                if (element != null && !componentType.isInstance(element)) {
+                    return null;
+                }
+                Array.set(array, index++, element);
+            }
+            return array;
+        }
     }
 
     private record Match(String key, Object value) {
@@ -600,7 +718,8 @@ public final class RuleSerialization {
     }
 
     private enum ArgumentKind {
-        SERIES, RULE, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM
+        SERIES, RULE, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY, INT_ARRAY,
+        LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY
     }
 
     private static final class Argument {
@@ -652,6 +771,15 @@ public final class RuleSerialization {
             return new Argument(kind, name, targetType, value, name);
         }
 
+        private static Argument numberArray(String name, Class<?> targetType, Object value) {
+            ArgumentKind kind = determineNumericArrayKind(targetType.getComponentType());
+            return new Argument(kind, name, targetType, value, name);
+        }
+
+        private static Argument enumArray(String name, Class<?> targetType, Object value) {
+            return new Argument(ArgumentKind.ENUM_ARRAY, name, targetType, value, name);
+        }
+
         private static ArgumentKind determineNumericKind(Class<?> targetType) {
             if (targetType.equals(int.class) || targetType.equals(Integer.class)) {
                 return ArgumentKind.INT;
@@ -663,6 +791,19 @@ public final class RuleSerialization {
                 return ArgumentKind.DOUBLE;
             }
             return ArgumentKind.NUMBER;
+        }
+
+        private static ArgumentKind determineNumericArrayKind(Class<?> componentType) {
+            if (componentType.equals(int.class) || componentType.equals(Integer.class)) {
+                return ArgumentKind.INT_ARRAY;
+            }
+            if (componentType.equals(long.class) || componentType.equals(Long.class)) {
+                return ArgumentKind.LONG_ARRAY;
+            }
+            if (componentType.equals(double.class) || componentType.equals(Double.class)) {
+                return ArgumentKind.DOUBLE_ARRAY;
+            }
+            return ArgumentKind.NUMBER_ARRAY;
         }
 
         private void serialize(Rule owner, ArgumentContext context) {
@@ -706,6 +847,19 @@ public final class RuleSerialization {
             case DOUBLE:
                 context.parameters.put(name, serializeNumber(value));
                 break;
+            case NUMBER_ARRAY:
+            case INT_ARRAY:
+            case LONG_ARRAY:
+            case DOUBLE_ARRAY:
+                context.parameters.put(name, serializeNumberArray(value));
+                break;
+            case ENUM_ARRAY:
+                context.parameters.put(name, serializeEnumArray(value));
+                Class<?> componentType = targetType.getComponentType();
+                if (componentType != null) {
+                    metadata.put("enumType", componentType.getName());
+                }
+                break;
             default:
                 throw new IllegalStateException("Unsupported argument kind: " + kind);
             }
@@ -718,6 +872,31 @@ public final class RuleSerialization {
                 return String.valueOf(num);
             }
             return value;
+        }
+
+        private static List<Object> serializeNumberArray(Object array) {
+            int length = Array.getLength(array);
+            List<Object> serialized = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(array, i);
+                serialized.add(serializeNumber(element));
+            }
+            return serialized;
+        }
+
+        private static List<String> serializeEnumArray(Object array) {
+            int length = Array.getLength(array);
+            List<String> serialized = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(array, i);
+                if (element == null) {
+                    serialized.add(null);
+                } else {
+                    Enum<?> enumValue = (Enum<?>) element;
+                    serialized.add(enumValue.name());
+                }
+            }
+            return serialized;
         }
     }
 
@@ -789,8 +968,8 @@ public final class RuleSerialization {
     private static final class IndicatorIntrospector {
 
         private static Class<?> resolveValueType(Class<?> indicatorType) {
-            for (Class<?> current = indicatorType; current != null && !current.equals(Object.class); current = current
-                    .getSuperclass()) {
+            for (Class<?> current = indicatorType; current != null
+                    && !current.equals(Object.class); current = current.getSuperclass()) {
                 Type generic = current.getGenericSuperclass();
                 if (generic instanceof ParameterizedType parameterized) {
                     Type raw = parameterized.getRawType();
@@ -806,4 +985,3 @@ public final class RuleSerialization {
         }
     }
 }
-
