@@ -2,6 +2,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Added
+- [#0000](https://github.com/ta4j/ta4j/issues/0000) Introduced a thread-safe `ConcurrentBarSeries` with a dedicated builder and comprehensive concurrency tests for simultaneous reads and writes.
+
 ### Changed
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 
