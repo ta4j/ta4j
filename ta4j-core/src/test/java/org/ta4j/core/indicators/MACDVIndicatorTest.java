@@ -50,6 +50,10 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     private final double[] closes = { 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79, 36.83,
             37.1 };
+    private final double[] highs = { 37.45, 37.12, 36.58, 36.27, 36.15, 36.47, 36.92, 38.04, 38.39, 38.18, 37.21,
+            37.48 };
+    private final double[] lows = { 36.72, 36.24, 35.74, 35.41, 35.22, 35.64, 35.97, 37.21, 37.62, 37.29, 36.37,
+            36.62 };
     private final double[] volumes = { 91500, 98200, 105000, 99000, 101500, 110000, 122000, 130000, 128000, 126500,
             118500, 117000 };
 
@@ -66,8 +70,8 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                     .timePeriod(PERIOD)
                     .endTime(START.plus(PERIOD.multipliedBy(i + 1)))
                     .openPrice(closes[i])
-                    .highPrice(closes[i])
-                    .lowPrice(closes[i])
+                    .highPrice(highs[i])
+                    .lowPrice(lows[i])
                     .closePrice(closes[i])
                     .volume(volumes[i])
                     .add();
@@ -82,7 +86,7 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     @Test
     public void macdvUsingPeriod5And10() {
         var macdv = new MACDVIndicator(new ClosePriceIndicator(series), 5, 10);
-        double[] expected = computeMacdv(closes, volumes, 5, 10);
+        double[] expected = computeMacdv(closes, highs, lows, volumes, 5, 10);
 
         for (int i = 0; i < expected.length; i++) {
             assertNumEquals(expected[i], macdv.getValue(i));
@@ -90,8 +94,8 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         var shortVwema = macdv.getShortTermVolumeWeightedEma();
         var longVwema = macdv.getLongTermVolumeWeightedEma();
-        double[] shortExpected = computeVolumeWeightedEma(closes, volumes, 5);
-        double[] longExpected = computeVolumeWeightedEma(closes, volumes, 10);
+        double[] shortExpected = computeVolumeAtrWeightedEma(closes, highs, lows, volumes, 5);
+        double[] longExpected = computeVolumeAtrWeightedEma(closes, highs, lows, volumes, 10);
 
         assertNumEquals(shortExpected[5], shortVwema.getValue(5));
         assertNumEquals(longExpected[5], longVwema.getValue(5));
@@ -102,7 +106,7 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     @Test
     public void signalLineAndHistogram() {
         var macdv = new MACDVIndicator(series);
-        double[] macdvValues = computeMacdv(closes, volumes, 12, 26);
+        double[] macdvValues = computeMacdv(closes, highs, lows, volumes, 12, 26);
         double[] signal = ema(macdvValues, 9);
 
         var signalLine = macdv.getSignalLine(9);
@@ -124,6 +128,8 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         var nanSeries = builder.build();
         double[] specialCloses = { 10.0, Double.NaN, 11.0, 12.0 };
         double[] specialVolumes = { 1000, 1100, 0, 1200 };
+        double[] specialHighs = { 10.4, Double.NaN, 11.4, 12.4 };
+        double[] specialLows = { 9.6, Double.NaN, 10.6, 11.6 };
         for (int i = 0; i < specialCloses.length; i++) {
             var barBuilder = nanSeries.barBuilder()
                     .timePeriod(PERIOD)
@@ -133,7 +139,7 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
             if (Double.isNaN(close)) {
                 barBuilder.openPrice(NaN.NaN).closePrice(NaN.NaN).highPrice(NaN.NaN).lowPrice(NaN.NaN);
             } else {
-                barBuilder.openPrice(close).closePrice(close).highPrice(close).lowPrice(close);
+                barBuilder.openPrice(close).closePrice(close).highPrice(specialHighs[i]).lowPrice(specialLows[i]);
             }
             barBuilder.add();
         }
@@ -145,9 +151,10 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertTrue(macdv.getValue(3).isNaN());
     }
 
-    private static double[] computeMacdv(double[] price, double[] volume, int shortPeriod, int longPeriod) {
-        double[] shortVwema = computeVolumeWeightedEma(price, volume, shortPeriod);
-        double[] longVwema = computeVolumeWeightedEma(price, volume, longPeriod);
+    private static double[] computeMacdv(double[] price, double[] high, double[] low, double[] volume, int shortPeriod,
+            int longPeriod) {
+        double[] shortVwema = computeVolumeAtrWeightedEma(price, high, low, volume, shortPeriod);
+        double[] longVwema = computeVolumeAtrWeightedEma(price, high, low, volume, longPeriod);
         double[] macdv = new double[price.length];
         for (int i = 0; i < price.length; i++) {
             double shortVal = shortVwema[i];
@@ -157,20 +164,31 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         return macdv;
     }
 
-    private static double[] computeVolumeWeightedEma(double[] price, double[] volume, int period) {
-        double[] priceVolume = new double[price.length];
+    private static double[] computeVolumeAtrWeightedEma(double[] price, double[] high, double[] low, double[] volume,
+            int period) {
+        double[] atr = computeAtr(high, low, price, period);
+        double[] weights = new double[price.length];
+        double[] weightedPrice = new double[price.length];
         for (int i = 0; i < price.length; i++) {
             double p = price[i];
             double v = volume[i];
-            priceVolume[i] = Double.isNaN(p) || Double.isNaN(v) ? Double.NaN : p * v;
+            double a = atr[i];
+            if (Double.isNaN(p) || Double.isNaN(v) || Double.isNaN(a) || a == 0.0) {
+                weights[i] = Double.NaN;
+                weightedPrice[i] = Double.NaN;
+            } else {
+                double w = v / a;
+                weights[i] = w;
+                weightedPrice[i] = p * w;
+            }
         }
 
-        double[] priceVolumeEma = ema(priceVolume, period);
-        double[] volumeEma = ema(volume, period);
+        double[] priceVolumeEma = ema(weightedPrice, period);
+        double[] weightEma = ema(weights, period);
         double[] vwema = new double[price.length];
         for (int i = 0; i < price.length; i++) {
             double numerator = priceVolumeEma[i];
-            double denominator = volumeEma[i];
+            double denominator = weightEma[i];
             if (Double.isNaN(numerator) || Double.isNaN(denominator) || denominator == 0.0) {
                 vwema[i] = Double.NaN;
             } else {
@@ -178,6 +196,51 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
             }
         }
         return vwema;
+    }
+
+    private static double[] computeAtr(double[] high, double[] low, double[] close, int period) {
+        double[] trueRange = new double[close.length];
+        for (int i = 0; i < close.length; i++) {
+            double h = high[i];
+            double l = low[i];
+            if (Double.isNaN(h) || Double.isNaN(l)) {
+                trueRange[i] = Double.NaN;
+                continue;
+            }
+            double hl = Math.abs(h - l);
+            if (i == 0) {
+                trueRange[i] = hl;
+                continue;
+            }
+            double prevClose = close[i - 1];
+            if (Double.isNaN(prevClose)) {
+                trueRange[i] = Double.NaN;
+                continue;
+            }
+            double hc = Math.abs(h - prevClose);
+            double lc = Math.abs(prevClose - l);
+            trueRange[i] = Math.max(hl, Math.max(hc, lc));
+        }
+        return mma(trueRange, period);
+    }
+
+    private static double[] mma(double[] values, int period) {
+        double multiplier = 1.0 / period;
+        double[] result = new double[values.length];
+        if (values.length == 0) {
+            return result;
+        }
+        result[0] = values[0];
+        for (int i = 1; i < values.length; i++) {
+            double prev = result[i - 1];
+            double current = values[i];
+            if (Double.isNaN(prev) || Double.isNaN(current)) {
+                result[i] = Double.NaN;
+            } else {
+                result[i] = prev + (current - prev) * multiplier;
+            }
+        }
+        return result;
     }
 
     private static double[] ema(double[] values, int period) {

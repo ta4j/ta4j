@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.VWMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -37,12 +38,13 @@ import org.ta4j.core.num.Num;
  * Moving Average Convergence Divergence Volume (MACD-V) indicator.
  *
  * <p>
- * MACD-V applies the standard MACD calculation to volume-weighted exponential
- * moving averages. For each look-back period, the close price is weighted by
- * volume through an EMA of the price-volume product divided by the EMA of
- * volume. The MACD-V line is the difference between the short and long
- * volume-weighted EMAs, the signal line is the EMA of that difference, and the
- * histogram is their divergence.
+ * MACD-V applies the standard MACD calculation to volume and volatility
+ * weighted exponential moving averages. For each look-back period, the close
+ * price is weighted by the ratio of volume to the average true range (ATR);
+ * this produces an EMA of the price-volume product divided by an EMA of the
+ * volume/ATR weights. The MACD-V line is the difference between the short and
+ * long volume-volatility weighted EMAs, the signal line is the EMA of that
+ * difference, and the histogram is their divergence.
  *
  * @see <a href=
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/macd-v">
@@ -111,9 +113,20 @@ public class MACDVIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
 
-        var volumeIndicator = new VolumeIndicator(priceIndicator.getBarSeries());
-        this.shortTermVwema = new VWMAIndicator(priceIndicator, volumeIndicator, shortBarCount, EMAIndicator::new);
-        this.longTermVwema = new VWMAIndicator(priceIndicator, volumeIndicator, longBarCount, EMAIndicator::new);
+        var series = priceIndicator.getBarSeries();
+        var volumeIndicator = new VolumeIndicator(series);
+
+        var shortAtr = new ATRIndicator(series, shortBarCount);
+        var shortVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(shortAtr);
+        this.shortTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, shortBarCount, EMAIndicator::new);
+
+        if (shortBarCount == longBarCount) {
+            this.longTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, longBarCount, EMAIndicator::new);
+        } else {
+            var longAtr = new ATRIndicator(series, longBarCount);
+            var longVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(longAtr);
+            this.longTermVwema = new VWMAIndicator(priceIndicator, longVolumeWeights, longBarCount, EMAIndicator::new);
+        }
     }
 
     /**
