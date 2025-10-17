@@ -107,8 +107,9 @@ public class StrategySerializationTest {
 
         String json = strategy.toJson();
 
-        assertThat(json).isEqualTo("""
-                {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"org.ta4j.core.rules.CrossedUpIndicatorRule","label":"entry","parameters":{"__args":[{"kind":"INDICATOR","name":"first","target":"org.ta4j.core.Indicator","label":"low"},{"kind":"INDICATOR","name":"second","target":"org.ta4j.core.Indicator","label":"up"}]},"rules":[{"type":"SMAIndicator","label":"low","parameters":{"barCount":2},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]},{"type":"SMAIndicator","label":"up","parameters":{"barCount":3},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]}]},{"type":"org.ta4j.core.rules.StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5","__args":[{"kind":"INDICATOR","name":"priceIndicator","target":"org.ta4j.core.Indicator","label":"priceIndicator"},{"kind":"NUMBER","name":"lossPercentage","target":"java.lang.Number"}]},"rules":[{"type":"ClosePriceIndicator","label":"priceIndicator"}]}]}""");
+        assertThat(json).isEqualTo(
+                """
+                        {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"org.ta4j.core.rules.CrossedUpIndicatorRule","label":"entry","parameters":{"__args":[{"kind":"INDICATOR","name":"first","target":"org.ta4j.core.Indicator","label":"low"},{"kind":"INDICATOR","name":"second","target":"org.ta4j.core.Indicator","label":"up"}]},"rules":[{"type":"SMAIndicator","label":"low","parameters":{"barCount":2},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]},{"type":"SMAIndicator","label":"up","parameters":{"barCount":3},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]}]},{"type":"org.ta4j.core.rules.StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5","__args":[{"kind":"INDICATOR","name":"priceIndicator","target":"org.ta4j.core.Indicator","label":"priceIndicator"},{"kind":"NUMBER","name":"lossPercentage","target":"java.lang.Number"}]},"rules":[{"type":"ClosePriceIndicator","label":"priceIndicator"}]}]}""");
     }
 
     @Test
@@ -120,10 +121,8 @@ public class StrategySerializationTest {
         RSIIndicator shortRsi = new RSIIndicator(close, 3);
         RSIIndicator longRsi = new RSIIndicator(close, 5);
 
-        Rule entry = new AndRule(new OverIndicatorRule(fastSma, slowSma),
-                new UnderIndicatorRule(shortRsi, longRsi));
-        Rule exit = new OrRule(new CrossedDownIndicatorRule(fastSma, slowSma),
-                new StopGainRule(close, 4));
+        Rule entry = new AndRule(new OverIndicatorRule(fastSma, slowSma), new UnderIndicatorRule(shortRsi, longRsi));
+        Rule exit = new OrRule(new CrossedDownIndicatorRule(fastSma, slowSma), new StopGainRule(close, 4));
 
         Strategy original = new BaseStrategy("Composite", entry, exit, 2);
         String json = original.toJson();
