@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Added
+- Introduced a thread-safe `ConcurrentBarSeries` with a dedicated builder and comprehensive concurrency tests for simultaneous reads and writes.
+
 ### Removed
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
 
