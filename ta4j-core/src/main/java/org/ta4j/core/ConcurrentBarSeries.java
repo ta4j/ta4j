@@ -23,15 +23,17 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Thread-safe {@link BarSeries} implementation for concurrent read/write use
@@ -45,6 +47,11 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
     private final Lock readLock;
     private final Lock writeLock;
+
+    ConcurrentBarSeries(final String name, final List<Bar> bars) {
+        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory(),
+                new ReentrantReadWriteLock());
+    }
 
     ConcurrentBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {

@@ -23,15 +23,17 @@
  */
 package org.ta4j.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link BarSeries}.
@@ -40,35 +42,55 @@ public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
 
-    /** The logger. */
+    /**
+     * The logger.
+     */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The name of the bar series. */
+    /**
+     * The name of the bar series.
+     */
     private final String name;
 
-    /** The list of bars of the bar series. */
+    /**
+     * The list of bars of the bar series.
+     */
     private final List<Bar> bars;
     private final BarBuilderFactory barBuilderFactory;
 
     private final NumFactory numFactory;
-
-    /** The begin index of the bar series */
-    private int seriesBeginIndex = -1;
-
-    /** The end index of the bar series. */
-    private int seriesEndIndex = -1;
-
-    /** The maximum number of bars for the bar series. */
-    private int maximumBarCount = Integer.MAX_VALUE;
-
-    /** The number of removed bars. */
-    private int removedBarsCount = 0;
-
     /**
      * True if the current bar series is constrained (i.e. its indexes cannot
      * change), false otherwise.
      */
     private final boolean constrained;
+    /**
+     * The begin index of the bar series
+     */
+    private int seriesBeginIndex = -1;
+    /**
+     * The end index of the bar series.
+     */
+    private int seriesEndIndex = -1;
+    /**
+     * The maximum number of bars for the bar series.
+     */
+    private int maximumBarCount = Integer.MAX_VALUE;
+    /**
+     * The number of removed bars.
+     */
+    private int removedBarsCount = 0;
+
+    /**
+     * Convenience constructor for BaseBarSeries minimizing upfront parameter
+     * setting. Defaults to Time-based bars, and DecimalNum values
+     *
+     * @param name the name of the bar series
+     * @param bars the list of bars of the bar series
+     */
+    public BaseBarSeries(final String name, final List<Bar> bars) {
+        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory());
+    }
 
     /**
      * Constructor.
