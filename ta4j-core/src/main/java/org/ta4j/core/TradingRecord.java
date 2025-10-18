@@ -117,7 +117,7 @@ public interface TradingRecord extends Serializable {
      * @return true if no position is open, false otherwise
      */
     default boolean isClosed() {
-        return !getCurrentPosition().isOpened();
+        return getOpenPositions().isEmpty();
     }
 
     /**
@@ -146,6 +146,20 @@ public interface TradingRecord extends Serializable {
      * @return the current (open) position
      */
     Position getCurrentPosition();
+
+    /**
+     * Returns the currently open positions.
+     *
+     * @return the list of open positions
+     * @since 0.19-SNAPSHOT
+     */
+    default List<Position> getOpenPositions() {
+        Position currentPosition = getCurrentPosition();
+        if (currentPosition != null && currentPosition.isOpened()) {
+            return List.of(currentPosition);
+        }
+        return List.of();
+    }
 
     /**
      * @return the last closed position recorded
