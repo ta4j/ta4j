@@ -51,7 +51,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added new `NetMomentumIndicator` indicator class
 - New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
-- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function
+- Added `MACDVIndicator` to volume-weight MACD calculations. (Closes #0000)
 
 ## 0.18 (released May 15, 2025)
 
