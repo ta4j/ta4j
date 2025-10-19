@@ -34,8 +34,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Detects Elliott swings (alternating pivots) using a symmetric lookback/forward
- * window.
+ * Detects Elliott swings (alternating pivots) using a symmetric
+ * lookback/forward window.
  *
  * @since 0.19
  */
@@ -48,9 +48,9 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     /**
      * Builds a new indicator with identical lookback/forward lengths.
      *
-     * @param series   source bar series
-     * @param window   number of bars to inspect before and after a pivot
-     * @param degree   swing degree metadata
+     * @param series source bar series
+     * @param window number of bars to inspect before and after a pivot
+     * @param degree swing degree metadata
      * @since 0.19
      */
     public ElliottSwingIndicator(final BarSeries series, final int window, final ElliottDegree degree) {
@@ -60,10 +60,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     /**
      * Builds a new indicator using dedicated lookback/forward lengths.
      *
-     * @param series          source bar series
-     * @param lookbackLength  bars inspected before a pivot candidate
+     * @param series            source bar series
+     * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
-     * @param degree          swing degree metadata
+     * @param degree            swing degree metadata
      * @since 0.19
      */
     public ElliottSwingIndicator(final BarSeries series, final int lookbackLength, final int lookforwardLength,
@@ -210,9 +210,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     private enum PivotClassification {
-        HIGH,
-        LOW,
-        NONE
+        HIGH, LOW, NONE
     }
 
     private record Pivot(int index, Num price, PivotClassification classification) {
