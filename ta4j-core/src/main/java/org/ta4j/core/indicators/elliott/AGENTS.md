@@ -11,3 +11,8 @@
 - Expose helper methods (such as `ElliottRatioIndicator#isNearLevel` and
   `ElliottConfluenceIndicator#isConfluent`) so tests and downstream rules can
   interrogate intermediate state without duplicating calculations.
+- Keep Elliott phase logic pure and metadata-driven: prefer `ElliottSwingMetadata`
+  for slicing swing windows and `ElliottFibonacciValidator` for ratio checks so
+  recursive indicators remain side-effect free.
+- When signalling invalidations prefer boolean indicators that reuse existing
+  validators (for example see `ElliottInvalidationIndicator`).
