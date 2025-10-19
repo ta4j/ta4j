@@ -25,6 +25,7 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -50,6 +51,7 @@ import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.strategy.named.NamedStrategy;
 
 public class StrategySerializationTest {
 
@@ -89,8 +91,8 @@ public class StrategySerializationTest {
         assertThat(restored.getExitRule().getName()).isEqualTo(original.getExitRule().getName());
 
         TradingRecord record = new BaseTradingRecord();
-        assertThat(restored.shouldEnter(2, record)).isTrue();
-        assertThat(restored.shouldExit(2, record)).isFalse();
+        assertThat(restored.shouldEnter(3, record)).isTrue();
+        assertThat(restored.shouldExit(3, record)).isFalse();
     }
 
     @Test
@@ -158,6 +160,43 @@ public class StrategySerializationTest {
         assertThat(restored.shouldExit(3, restoredRecord)).isEqualTo(original.shouldExit(3, originalRecord));
     }
 
+    @Test
+    public void describeNamedStrategy() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ToggleNamedStrategy strategy = ToggleNamedStrategy.create(series, true, false, 4);
+
+        ComponentDescriptor descriptor = StrategySerialization.describe(strategy);
+
+        assertThat(descriptor.getType()).isEqualTo(ToggleNamedStrategy.class.getName());
+        assertThat(descriptor.getLabel()).isEqualTo("ToggleNamedStrategy_true_false_u4");
+        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 4);
+        assertThat(descriptor.getParameters()).containsEntry("args", List.of("true", "false"));
+        assertThat(descriptor.getChildren()).isEmpty();
+    }
+
+    @Test
+    public void roundTripNamedStrategy() {
+        BarSeries series = new MockBarSeriesBuilder().withData(11, 12, 13, 14).build();
+        ToggleNamedStrategy original = ToggleNamedStrategy.create(series, true, false, 3);
+
+        String json = original.toJson();
+        Strategy restored = Strategy.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(ToggleNamedStrategy.class);
+        assertThat(restored.getUnstableBars()).isEqualTo(3);
+        assertThat(restored.toString()).isEqualTo("ToggleNamedStrategy_true_false_u3");
+
+        TradingRecord record = new BaseTradingRecord();
+        assertThat(restored.getName()).isEqualTo(original.getName());
+
+        TradingRecord originalRecord = new BaseTradingRecord();
+        assertThat(restored.shouldEnter(2, record)).isEqualTo(original.shouldEnter(2, originalRecord));
+        assertThat(restored.shouldExit(2, record)).isEqualTo(original.shouldExit(2, originalRecord));
+
+        assertThat(restored.shouldEnter(3, record)).isEqualTo(original.shouldEnter(3, originalRecord));
+        assertThat(restored.shouldExit(3, record)).isEqualTo(original.shouldExit(3, originalRecord));
+    }
+
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
 
         private final boolean satisfied;
@@ -178,6 +217,39 @@ public class StrategySerializationTest {
         @Override
         public boolean isSatisfied(int index, TradingRecord tradingRecord) {
             return satisfied;
+        }
+    }
+
+    private static final class ToggleNamedStrategy extends NamedStrategy {
+
+        static {
+            registerParser(ToggleNamedStrategy.class, ToggleNamedStrategy::parseTokens);
+        }
+
+        private static Specification parseTokens(BarSeries series, List<String> tokens) {
+            if (tokens.size() != 3) {
+                throw new IllegalArgumentException("ToggleNamedStrategy expects [entry, exit, unstable]");
+            }
+            boolean entry = Boolean.parseBoolean(tokens.get(0));
+            boolean exit = Boolean.parseBoolean(tokens.get(1));
+            int unstable = Integer.parseInt(tokens.get(2));
+            return specification("Toggle", new SerializableRule(entry), new SerializableRule(exit), unstable,
+                    tokens.subList(0, 2));
+        }
+
+        protected ToggleNamedStrategy(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars) {
+            super("Toggle", new SerializableRule(entrySatisfied), new SerializableRule(exitSatisfied), unstableBars,
+                    List.of(Boolean.toString(entrySatisfied), Boolean.toString(exitSatisfied)));
+        }
+
+        public ToggleNamedStrategy(BarSeries series, String... parameters) {
+            super(series, parameters);
+        }
+
+        static ToggleNamedStrategy create(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars) {
+            return new ToggleNamedStrategy(series, entrySatisfied, exitSatisfied, unstableBars);
         }
     }
 }

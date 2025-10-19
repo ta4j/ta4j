@@ -27,6 +27,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.strategy.named.NamedStrategy;
 
 /**
  * Serializes and deserializes {@link Strategy} instances into structured
@@ -71,6 +74,10 @@ public final class StrategySerialization {
      */
     public static ComponentDescriptor describe(Strategy strategy) {
         Objects.requireNonNull(strategy, "strategy");
+
+        if (strategy instanceof NamedStrategy) {
+            return strategy.toDescriptor();
+        }
 
         ComponentDescriptor entryDescriptor = RuleSerialization.describe(strategy.getEntryRule());
         ComponentDescriptor exitDescriptor = RuleSerialization.describe(strategy.getExitRule());
@@ -120,13 +127,17 @@ public final class StrategySerialization {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(descriptor, "descriptor");
 
+        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptor.getType());
+        if (NamedStrategy.class.isAssignableFrom(strategyType)) {
+            return instantiateNamedStrategy(series, descriptor, strategyType);
+        }
+
         Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL));
         Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL));
 
         String name = descriptor.getLabel();
         int unstableBars = extractUnstableBars(descriptor.getParameters().get("unstableBars"));
 
-        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptor.getType());
         Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars);
         strategy.setUnstableBars(unstableBars);
         return strategy;
@@ -404,5 +415,118 @@ public final class StrategySerialization {
             return new BaseStrategy(name, entryRule, exitRule, unstableBars);
         }
         throw new IllegalStateException("No suitable constructor found for strategy type: " + strategyType.getName());
+    }
+
+    private static Strategy instantiateNamedStrategy(BarSeries series, ComponentDescriptor descriptor,
+            Class<? extends Strategy> strategyType) {
+        String label = descriptor.getLabel();
+        if (label == null || label.isBlank()) {
+            throw new IllegalArgumentException("Named strategy descriptor missing label");
+        }
+
+        String simpleName = strategyType.getSimpleName();
+        if (!label.startsWith(simpleName)) {
+            throw new IllegalArgumentException(
+                    "Descriptor label does not match strategy type: " + label + " vs " + simpleName);
+        }
+
+        List<String> encodedTokens = parseLabelTokens(label, simpleName);
+        if (encodedTokens.isEmpty()) {
+            throw new IllegalArgumentException("Named strategy label missing unstable token: " + label);
+        }
+
+        String unstableToken = encodedTokens.get(encodedTokens.size() - 1);
+        if (!unstableToken.startsWith("u")) {
+            throw new IllegalArgumentException("Unstable token must start with 'u': " + unstableToken);
+        }
+
+        int labelUnstable;
+        try {
+            labelUnstable = Integer.parseInt(unstableToken.substring(1));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid unstable token: " + unstableToken, ex);
+        }
+
+        List<String> labelArguments = encodedTokens.subList(0, encodedTokens.size() - 1);
+
+        Map<String, Object> parameters = descriptor.getParameters();
+        List<String> descriptorArgs = extractArgumentList(parameters.get("args"));
+        int descriptorUnstable = extractUnstableBars(parameters.get("unstableBars"));
+
+        if (descriptorUnstable != labelUnstable) {
+            throw new IllegalArgumentException("Unstable bar mismatch between label and descriptor: " + labelUnstable
+                    + " vs " + descriptorUnstable);
+        }
+
+        List<String> constructorArguments;
+        if (!descriptorArgs.isEmpty()) {
+            if (descriptorArgs.size() != labelArguments.size()) {
+                throw new IllegalArgumentException("Named strategy argument count mismatch: " + descriptorArgs.size()
+                        + " vs " + labelArguments.size());
+            }
+            constructorArguments = descriptorArgs;
+        } else {
+            constructorArguments = labelArguments;
+        }
+
+        List<String> tokens = new ArrayList<>(constructorArguments.size() + 1);
+        tokens.addAll(constructorArguments);
+        tokens.add(Integer.toString(descriptorUnstable));
+
+        Constructor<? extends Strategy> constructor = findNamedStrategyConstructor(strategyType);
+        try {
+            return constructor.newInstance(series, tokens.toArray(new String[0]));
+        } catch (InstantiationException | IllegalAccessException ex) {
+            throw new IllegalStateException("Failed to construct named strategy: " + strategyType.getName(), ex);
+        } catch (InvocationTargetException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IllegalArgumentException) {
+                throw (IllegalArgumentException) cause;
+            }
+            throw new IllegalStateException("Failed to construct named strategy: " + strategyType.getName(), cause);
+        }
+    }
+
+    private static Constructor<? extends Strategy> findNamedStrategyConstructor(
+            Class<? extends Strategy> strategyType) {
+        try {
+            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(BarSeries.class,
+                    String[].class);
+            constructor.setAccessible(true);
+            return constructor;
+        } catch (NoSuchMethodException ex) {
+            throw new IllegalStateException(
+                    "Named strategy missing (BarSeries, String...) constructor: " + strategyType.getName(), ex);
+        }
+    }
+
+    private static List<String> parseLabelTokens(String label, String simpleName) {
+        if (label.length() == simpleName.length()) {
+            return Collections.singletonList("u0");
+        }
+        int separatorIndex = simpleName.length();
+        if (label.charAt(separatorIndex) != '_') {
+            throw new IllegalArgumentException("Named strategy label missing separator: " + label);
+        }
+        String remainder = label.substring(separatorIndex + 1);
+        if (remainder.isEmpty()) {
+            return Collections.singletonList("u0");
+        }
+        return Arrays.asList(remainder.split("_"));
+    }
+
+    private static List<String> extractArgumentList(Object raw) {
+        if (raw == null) {
+            return Collections.emptyList();
+        }
+        if (raw instanceof List<?>) {
+            List<?> list = (List<?>) raw;
+            List<String> arguments = new ArrayList<>(list.size());
+            for (Object element : list) {
+                arguments.add(String.valueOf(element));
+            }
+            return arguments;
+        }
+        return Collections.singletonList(String.valueOf(raw));
     }
 }
