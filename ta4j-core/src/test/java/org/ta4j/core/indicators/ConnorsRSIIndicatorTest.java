@@ -103,9 +103,7 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void percentRankUsesFullLookbackWhenExcludingCurrentBar() throws Exception {
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10, 11, 9, 12, 11)
-                .build();
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 9, 12, 11).build();
         final var closePrice = new ClosePriceIndicator(series);
         int percentRankPeriod = 3;
         final var indicator = new ConnorsRSIIndicator(closePrice, 2, 2, percentRankPeriod);
