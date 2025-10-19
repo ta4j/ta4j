@@ -194,10 +194,9 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
             }
             int beginIndex = getBarSeries().getBeginIndex();
             int startIndex = Math.max(beginIndex, index - period + 1);
-            int endIndex = index;
             int valid = 0;
             int lessThanCount = 0;
-            for (int i = startIndex; i <= endIndex; i++) {
+            for (int i = startIndex; i < index; i++) {
                 Num candidate = indicator.getValue(i);
                 if (isNaN(candidate)) {
                     continue;
