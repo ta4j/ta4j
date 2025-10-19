@@ -25,13 +25,17 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.Test;
+import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
-public class ElliottWaveCountIndicatorTest {
+public class ElliottConfluenceIndicatorTest {
 
     @Test
-    public void countsRawSwings() {
+    public void aggregatesRatioAndChannelMatches() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -39,14 +43,31 @@ public class ElliottWaveCountIndicatorTest {
         }
 
         var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
-        var waveCount = new ElliottWaveCountIndicator(swingIndicator);
+        var ratioIndicator = new ElliottRatioIndicator(swingIndicator);
+        var channelIndicator = new ElliottChannelIndicator(swingIndicator);
+        var priceIndicator = new ClosePriceIndicator(series);
 
-        assertThat(waveCount.getValue(series.getEndIndex())).isEqualTo(6);
-        assertThat(waveCount.getSwings(series.getEndIndex())).hasSize(6);
+        var factory = series.numFactory();
+        var retracements = List.of(factory.numOf(1.0));
+        var extensions = List.of(factory.numOf(1.618));
+        var ratioTolerance = factory.numOf(0.2);
+        var channelTolerance = factory.numOf(0.5);
+        var minimumScore = factory.numOf(2);
+
+        var indicator = new ElliottConfluenceIndicator(priceIndicator, ratioIndicator, channelIndicator, retracements,
+                extensions, ratioTolerance, channelTolerance, minimumScore);
+
+        var index = series.getEndIndex();
+        var score = indicator.getValue(index);
+        assertThat(score).isEqualByComparingTo(factory.numOf(2));
+        assertThat(indicator.isConfluent(index)).isTrue();
+
+        var ratio = ratioIndicator.getValue(index);
+        assertThat(ratio.type()).isEqualTo(RatioType.RETRACEMENT);
     }
 
     @Test
-    public void countsCompressedSwings() {
+    public void defaultConfigurationProducesScore() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -54,11 +75,12 @@ public class ElliottWaveCountIndicatorTest {
         }
 
         var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
-        var compressor = new ElliottSwingCompressor(series.numFactory().numOf(6), 0);
-        var waveCount = new ElliottWaveCountIndicator(swingIndicator, compressor);
+        var ratioIndicator = new ElliottRatioIndicator(swingIndicator);
+        var channelIndicator = new ElliottChannelIndicator(swingIndicator);
+        var priceIndicator = new ClosePriceIndicator(series);
 
-        assertThat(waveCount.getValue(series.getEndIndex())).isEqualTo(3);
-        assertThat(waveCount.getSwings(series.getEndIndex()))
-                .allMatch(s -> s.amplitude().isGreaterThanOrEqual(series.numFactory().numOf(6)));
+        var indicator = new ElliottConfluenceIndicator(priceIndicator, ratioIndicator, channelIndicator);
+        var score = indicator.getValue(series.getEndIndex());
+        assertThat(score.isGreaterThanOrEqual(series.numFactory().numOf(1))).isTrue();
     }
 }

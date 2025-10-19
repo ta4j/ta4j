@@ -2,6 +2,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+- Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and
+  `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence (#0000)
+
 
 ## 0.19
 
