@@ -24,9 +24,11 @@
 package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -37,6 +39,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -52,6 +55,7 @@ import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
+import org.ta4j.core.strategy.named.NamedStrategyFixture;
 
 public class StrategySerializationTest {
 
@@ -195,6 +199,73 @@ public class StrategySerializationTest {
 
         assertThat(restored.shouldEnter(3, record)).isEqualTo(original.shouldEnter(3, originalRecord));
         assertThat(restored.shouldExit(3, record)).isEqualTo(original.shouldExit(3, originalRecord));
+    }
+
+    @Test
+    public void roundTripNamedStrategyFixture() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(3, 6, 9, 12, 15)
+                .build();
+        NamedStrategyFixture.resetConstructionCounters();
+
+        NamedStrategyFixture original = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 4);
+
+        String json = original.toJson();
+        Strategy restored = Strategy.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(NamedStrategyFixture.class);
+        NamedStrategyFixture reconstructed = (NamedStrategyFixture) restored;
+
+        assertThat(NamedStrategyFixture.typedConstructionCount()).isEqualTo(2);
+        assertThat(NamedStrategyFixture.varargsConstructionCount()).isEqualTo(1);
+        assertThat(reconstructed.isDelegated()).isTrue();
+        assertThat(Double.isNaN(reconstructed.getThreshold().doubleValue())).isTrue();
+        assertThat(reconstructed.toString()).isEqualTo(original.toString());
+        assertThat(reconstructed.getUnstableBars()).isEqualTo(original.getUnstableBars());
+        assertThat(reconstructed.toDescriptor().getParameters()).containsEntry("args", List.of("NaN"));
+        assertThat(json).contains("\"NaN\"");
+    }
+
+    @Test
+    public void namedStrategyArgumentMismatchThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(2, 4, 6).build();
+        NamedStrategyFixture.resetConstructionCounters();
+        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
+
+        ComponentDescriptor descriptor = strategy.toDescriptor();
+        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
+        parameters.put("args", List.of("NaN", "extra"));
+
+        ComponentDescriptor mutated = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel(descriptor.getLabel())
+                .withParameters(parameters)
+                .build();
+
+        String json = ComponentSerialization.toJson(mutated);
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Named strategy argument count mismatch");
+    }
+
+    @Test
+    public void namedStrategyLabelFormatMismatchThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(5, 10, 15).build();
+        NamedStrategyFixture.resetConstructionCounters();
+        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
+
+        ComponentDescriptor descriptor = strategy.toDescriptor();
+        ComponentDescriptor mutated = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel("FixtureNamedStrategy_NaN")
+                .withParameters(descriptor.getParameters())
+                .build();
+
+        String json = ComponentSerialization.toJson(mutated);
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Descriptor label does not match strategy type");
     }
 
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
