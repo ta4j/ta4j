@@ -193,7 +193,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
                 return NaN;
             }
             int beginIndex = getBarSeries().getBeginIndex();
-            int startIndex = Math.max(beginIndex, index - period + 1);
+            int startIndex = Math.max(beginIndex, index - period);
             int valid = 0;
             int lessThanCount = 0;
             for (int i = startIndex; i < index; i++) {

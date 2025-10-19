@@ -25,6 +25,8 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Field;
+
 import org.junit.Assume;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
@@ -33,6 +35,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 
 public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -96,5 +99,68 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         final var indicator = new ConnorsRSIIndicator(closePrice, 2, 2, 4);
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(5);
+    }
+
+    @Test
+    public void percentRankUsesFullLookbackWhenExcludingCurrentBar() throws Exception {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 9, 12, 11)
+                .build();
+        final var closePrice = new ClosePriceIndicator(series);
+        int percentRankPeriod = 3;
+        final var indicator = new ConnorsRSIIndicator(closePrice, 2, 2, percentRankPeriod);
+        int index = 4;
+
+        Field percentRankField = ConnorsRSIIndicator.class.getDeclaredField("percentRankIndicator");
+        percentRankField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Indicator<Num> percentRankIndicator = (Indicator<Num>) percentRankField.get(indicator);
+
+        Num expectedPercentRank = computePercentRank(closePrice, index, percentRankPeriod);
+        Num actualPercentRank = percentRankIndicator.getValue(index);
+
+        assertThat(actualPercentRank).isEqualByComparingTo(expectedPercentRank);
+        Num one = numFactory.one();
+        Num three = numFactory.numOf(3);
+        Num hundred = numFactory.numOf(100);
+        Num expectedRatio = one.dividedBy(three).multipliedBy(hundred);
+        assertThat(actualPercentRank).isEqualByComparingTo(expectedRatio);
+    }
+
+    private Num computePercentRank(Indicator<Num> closePrice, int index, int period) {
+        if (index <= closePrice.getBarSeries().getBeginIndex()) {
+            return NaN.NaN;
+        }
+        Num current = closePrice.getValue(index);
+        Num previous = closePrice.getValue(index - 1);
+        if (isNaN(current) || isNaN(previous)) {
+            return NaN.NaN;
+        }
+        Num currentChange = current.minus(previous);
+        int beginIndex = closePrice.getBarSeries().getBeginIndex();
+        int startIndex = Math.max(beginIndex + 1, index - period);
+        int valid = 0;
+        int lessThanCount = 0;
+        for (int i = startIndex; i < index; i++) {
+            Num candidate = closePrice.getValue(i);
+            Num prior = closePrice.getValue(i - 1);
+            if (isNaN(candidate) || isNaN(prior)) {
+                continue;
+            }
+            Num candidateChange = candidate.minus(prior);
+            valid++;
+            if (candidateChange.isLessThan(currentChange)) {
+                lessThanCount++;
+            }
+        }
+        if (valid == 0) {
+            return NaN.NaN;
+        }
+        Num ratio = numFactory.numOf(lessThanCount).dividedBy(numFactory.numOf(valid));
+        return ratio.multipliedBy(numFactory.numOf(100));
+    }
+
+    private static boolean isNaN(Num value) {
+        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }
