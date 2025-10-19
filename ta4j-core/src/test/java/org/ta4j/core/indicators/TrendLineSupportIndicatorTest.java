@@ -83,6 +83,27 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(valueAtNine).isEqualByComparingTo(slope.multipliedBy(numFactory.numOf(9)).plus(intercept));
     }
 
+    @Test
+    public void shouldPurgeCachedPivotsWhenSeriesLosesLeadingBars() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        series.setMaximumBarCount(5);
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var indicator = new TrendLineSupportIndicator(lowIndicator, 1, 1, 0);
+
+        final double[] lows = { 12, 11, 9, 10, 13, 8, 9, 11, 7, 10, 12 };
+        for (double low : lows) {
+            final double high = low + 2d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+            indicator.getValue(series.getEndIndex());
+        }
+
+        final int beginIndex = series.getBeginIndex();
+        assertThat(beginIndex).isGreaterThan(0);
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex);
+        assertThat(indicator.getValue(series.getEndIndex()).isNaN()).isFalse();
+    }
+
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();

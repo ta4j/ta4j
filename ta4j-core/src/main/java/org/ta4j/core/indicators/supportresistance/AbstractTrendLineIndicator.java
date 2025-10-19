@@ -93,6 +93,15 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private void updatePivotCache(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
+        if (!pivots.isEmpty()) {
+            int firstRetained = 0;
+            while (firstRetained < pivots.size() && pivots.get(firstRetained).index < beginIndex) {
+                firstRetained++;
+            }
+            if (firstRetained > 0) {
+                pivots.subList(0, firstRetained).clear();
+            }
+        }
         if (lastScannedIndex < beginIndex - 1) {
             lastScannedIndex = beginIndex - 1;
         }
