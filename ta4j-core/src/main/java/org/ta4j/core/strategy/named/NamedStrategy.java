@@ -25,6 +25,7 @@ package org.ta4j.core.strategy.named;
 
 import java.lang.StackWalker;
 import java.lang.StackWalker.Option;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -113,8 +114,9 @@ public abstract class NamedStrategy extends BaseStrategy {
     private static Class<? extends NamedStrategy> resolveConcreteType() {
         return StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
                 .walk(stream -> stream.map(StackWalker.StackFrame::getDeclaringClass)
-                        .filter(clazz -> NamedStrategy.class.isAssignableFrom(clazz) && clazz != NamedStrategy.class)
-                        .reduce((first, second) -> (Class<?>) second))
+                        .filter(clazz -> NamedStrategy.class.isAssignableFrom(clazz) && clazz != NamedStrategy.class
+                                && !Modifier.isAbstract(clazz.getModifiers()))
+                        .findFirst())
                 .map(clazz -> (Class<? extends NamedStrategy>) clazz)
                 .orElseThrow(() -> new IllegalStateException("Unable to determine named strategy subtype"));
     }
