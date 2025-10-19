@@ -1,7 +1,5 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## Unreleased
-
 
 ## 0.19
 
@@ -51,7 +49,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added new `NetMomentumIndicator` indicator class
 - New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
-- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function
+- Introduced a thread-safe `ConcurrentBarSeries` with a dedicated builder and comprehensive concurrency tests for simultaneous reads and writes.
 
 ## 0.18 (released May 15, 2025)
 
