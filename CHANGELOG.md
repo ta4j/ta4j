@@ -5,6 +5,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - Introduced `StrategySerialization` with `Strategy#toJson()`/`Strategy#fromJson(BarSeries, String)` helpers for sharing
   strategy descriptors alongside entry and exit rules.
+- [#1349](https://github.com/ta4j/ta4j/issues/1349) Enabled `NamedStrategy` serialization/deserialization with compact labels
+  (for example `ToggleNamedStrategy_true_false_u3`) so clients can persist strategy presets alongside their parameters.
 
 ## 0.19
 
