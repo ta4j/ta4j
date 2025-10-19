@@ -114,7 +114,7 @@ public abstract class NamedStrategy extends BaseStrategy {
         return StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
                 .walk(stream -> stream.map(StackWalker.StackFrame::getDeclaringClass)
                         .filter(clazz -> NamedStrategy.class.isAssignableFrom(clazz) && clazz != NamedStrategy.class)
-                        .findFirst())
+                        .reduce((first, second) -> (Class<?>) second))
                 .map(clazz -> (Class<? extends NamedStrategy>) clazz)
                 .orElseThrow(() -> new IllegalStateException("Unable to determine named strategy subtype"));
     }

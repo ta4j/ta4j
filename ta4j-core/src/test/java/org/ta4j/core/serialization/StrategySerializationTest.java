@@ -26,9 +26,10 @@ package org.ta4j.core.serialization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -226,6 +227,24 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void roundTripMultiLevelNamedStrategy() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        MultiLevelToggleNamedStrategy.resetConstructionCounters();
+
+        MultiLevelToggleNamedStrategy original = MultiLevelToggleNamedStrategy.create(series, true, false, 2);
+
+        String json = original.toJson();
+        Strategy restored = Strategy.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(MultiLevelToggleNamedStrategy.class);
+        assertThat(MultiLevelToggleNamedStrategy.typedConstructionCount()).isEqualTo(1);
+        assertThat(MultiLevelToggleNamedStrategy.varargsConstructionCount()).isEqualTo(1);
+        assertThat(restored.getName()).isEqualTo(original.getName());
+        assertThat(restored.getUnstableBars()).isEqualTo(original.getUnstableBars());
+        assertThat(restored.toString()).isEqualTo(original.toString());
+    }
+
+    @Test
     public void namedStrategyArgumentMismatchThrows() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(2, 4, 6).build();
         NamedStrategyFixture.resetConstructionCounters();
@@ -288,6 +307,69 @@ public class StrategySerializationTest {
         @Override
         public boolean isSatisfied(int index, TradingRecord tradingRecord) {
             return satisfied;
+        }
+    }
+
+    private abstract static class AbstractToggleNamedStrategy extends NamedStrategy {
+
+        protected AbstractToggleNamedStrategy(BarSeries series, String name, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars) {
+            super(name, new SerializableRule(entrySatisfied), new SerializableRule(exitSatisfied), unstableBars,
+                    List.of(Boolean.toString(entrySatisfied), Boolean.toString(exitSatisfied)));
+        }
+
+        protected AbstractToggleNamedStrategy(BarSeries series, String... parameters) {
+            super(series, parameters);
+        }
+    }
+
+    private static final class MultiLevelToggleNamedStrategy extends AbstractToggleNamedStrategy {
+
+        private static final AtomicInteger TYPED_CONSTRUCTIONS = new AtomicInteger();
+        private static final AtomicInteger VARARGS_CONSTRUCTIONS = new AtomicInteger();
+
+        static {
+            registerParser(MultiLevelToggleNamedStrategy.class, MultiLevelToggleNamedStrategy::parseTokens);
+        }
+
+        private static Specification parseTokens(BarSeries series, List<String> tokens) {
+            if (tokens.size() != 3) {
+                throw new IllegalArgumentException("MultiLevelToggleNamedStrategy expects [entry, exit, unstable]");
+            }
+            boolean entry = Boolean.parseBoolean(tokens.get(0));
+            boolean exit = Boolean.parseBoolean(tokens.get(1));
+            int unstable = Integer.parseInt(tokens.get(2));
+            return specification("MultiLevelToggle", new SerializableRule(entry), new SerializableRule(exit), unstable,
+                    tokens.subList(0, 2));
+        }
+
+        private MultiLevelToggleNamedStrategy(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars) {
+            super(series, "MultiLevelToggle", entrySatisfied, exitSatisfied, unstableBars);
+            TYPED_CONSTRUCTIONS.incrementAndGet();
+        }
+
+        public MultiLevelToggleNamedStrategy(BarSeries series, String... parameters) {
+            super(series, parameters);
+            VARARGS_CONSTRUCTIONS.incrementAndGet();
+        }
+
+        static MultiLevelToggleNamedStrategy create(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars) {
+            return new MultiLevelToggleNamedStrategy(series, entrySatisfied, exitSatisfied, unstableBars);
+        }
+
+        static void resetConstructionCounters() {
+            TYPED_CONSTRUCTIONS.set(0);
+            VARARGS_CONSTRUCTIONS.set(0);
+        }
+
+        static int typedConstructionCount() {
+            return TYPED_CONSTRUCTIONS.get();
+        }
+
+        static int varargsConstructionCount() {
+            return VARARGS_CONSTRUCTIONS.get();
         }
     }
 
