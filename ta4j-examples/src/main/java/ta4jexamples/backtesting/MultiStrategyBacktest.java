@@ -37,7 +37,7 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
+import ta4jexamples.loaders.JsonBarsSerializer;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -46,23 +46,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
-public class MovingAverageCrossOverRangeBacktest {
+public class MultiStrategyBacktest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MovingAverageCrossOverRangeBacktest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MultiStrategyBacktest.class);
     private static final int DEFAULT_DECIMAL_PRECISION = 16;
 
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String resourceName = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
-                .getResourceAsStream(resourceName);
+        String resourceName = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader().getResourceAsStream(resourceName);
         if (resourceStream == null) {
             LOG.error("File not found in classpath: {}", resourceName);
             return;
         }
 
-        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+        BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
         if (series == null || series.isEmpty()) {
             LOG.error("Bar series was null or empty: {}", series);
             return;
