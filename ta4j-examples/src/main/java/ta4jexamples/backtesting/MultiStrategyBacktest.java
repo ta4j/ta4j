@@ -25,62 +25,68 @@ package ta4jexamples.backtesting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.indicators.KalmanFilterIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.PerformanceReport;
-import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
-import org.ta4j.core.rules.CrossedDownIndicatorRule;
-import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.JsonBarsSerializer;
+import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
+import java.util.Objects;
 
+/**
+ * A class to perform backtesting of multiple trading strategies
+ */
 public class MultiStrategyBacktest {
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiStrategyBacktest.class);
     private static final int DEFAULT_DECIMAL_PRECISION = 16;
 
+    /**
+     * Entry point of the application that configures the decimal precision and runs
+     * a multi-strategy backtest. The method sets the default decimal precision for
+     * calculations and executes a backtest using OHLC data loaded from a specified
+     * JSON resource file.
+     *
+     * @param args command-line arguments passed to the application (not used in
+     *             this implementation)
+     */
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String resourceName = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
-        InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader().getResourceAsStream(resourceName);
-        if (resourceStream == null) {
-            LOG.error("File not found in classpath: {}", resourceName);
-            return;
+        String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        new MultiStrategyBacktest().runBacktest(jsonOhlcResourceFile);
+    }
+
+    /**
+     * Executes a backtest using OHLC data loaded from a JSON resource file. The
+     * method loads the bar series from the specified resource file, validates its
+     * content, and then generates multiple strategies based on SMA crossover rules
+     * with varying parameters. Each strategy is executed against the loaded bar
+     * series, and the results are logged.
+     *
+     * @param jsonOHLCResourceFile the path to the JSON resource file containing
+     *                             OHLC data
+     */
+    public void runBacktest(String jsonOHLCResourceFile) {
+        BarSeries series = null;
+        try (InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader()
+                .getResourceAsStream(jsonOHLCResourceFile)) {
+            series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+        } catch (IOException ex) {
+            LOG.error("IOException while loading resource: {} - {}", jsonOHLCResourceFile, ex.getMessage());
         }
 
-        BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
-        if (series == null || series.isEmpty()) {
-            LOG.error("Bar series was null or empty: {}", series);
-            return;
-        }
+        Objects.requireNonNull(series, "Bar series was null");
 
-        int barCountStart = 3;
-        int barCountStop = 200;
-        int barCountStep = 3;
-
-        final List<Strategy> strategies = new ArrayList<>();
-        for (int shortBarCount = barCountStart; shortBarCount <= barCountStop; shortBarCount += barCountStep) {
-            for (int longBarCount = shortBarCount
-                    + barCountStep; longBarCount <= barCountStop; longBarCount += barCountStep) {
-                String strategyName = String.format("Sma(%d) CrossOver Sma(%d)", shortBarCount, longBarCount);
-                strategies.add(
-                        new BaseStrategy(strategyName, createSmaCrossEntryRule(series, shortBarCount, longBarCount),
-                                createSmaCrossExitRule(series, shortBarCount, longBarCount)));
-            }
-        }
+        List<Strategy> strategies = new ArrayList<>();
 
         Instant startInstant = Instant.now();
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
@@ -89,84 +95,5 @@ public class MultiStrategyBacktest {
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
-        LOG.info(printReport(tradingStatements));
-    }
-
-    private static Rule createSmaCrossEntryRule(BarSeries series, int shortBarCount, int longBarCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
-        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
-        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
-
-        return new CrossedUpIndicatorRule(smaShort, smaLong);
-    }
-
-    private static Rule createSmaCrossExitRule(BarSeries series, int shortBarCount, int longBarCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
-        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
-        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
-
-        return new CrossedDownIndicatorRule(smaShort, smaLong);
-    }
-
-    private static String printReport(List<TradingStatement> tradingStatements) {
-        StringJoiner resultJoiner = new StringJoiner(System.lineSeparator());
-        for (TradingStatement statement : tradingStatements) {
-            resultJoiner.add(printStatementReport(statement).toString());
-        }
-
-        return resultJoiner.toString();
-    }
-
-    private static StringBuilder printStatementReport(TradingStatement statement) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("######### ")
-                .append(statement.getStrategy().getName())
-                .append(" #########")
-                .append(System.lineSeparator())
-                .append(printPerformanceReport(statement.getPerformanceReport()))
-                .append(System.lineSeparator())
-                .append(printPositionStats(statement.getPositionStatsReport()))
-                .append(System.lineSeparator())
-                .append("###########################");
-        return resultBuilder;
-    }
-
-    private static StringBuilder printPerformanceReport(PerformanceReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- performance report ---------")
-                .append(System.lineSeparator())
-                .append("total loss: ")
-                .append(report.getTotalLoss())
-                .append(System.lineSeparator())
-                .append("total profit: ")
-                .append(report.getTotalProfit())
-                .append(System.lineSeparator())
-                .append("total profit loss: ")
-                .append(report.getTotalProfitLoss())
-                .append(System.lineSeparator())
-                .append("total profit loss percentage: ")
-                .append(report.getTotalProfitLossPercentage())
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
-    }
-
-    private static StringBuilder printPositionStats(PositionStatsReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- trade statistics report ---------")
-                .append(System.lineSeparator())
-                .append("loss trade count: ")
-                .append(report.getLossCount())
-                .append(System.lineSeparator())
-                .append("profit trade count: ")
-                .append(report.getProfitCount())
-                .append(System.lineSeparator())
-                .append("break even trade count: ")
-                .append(report.getBreakEvenCount())
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
     }
 }

@@ -85,4 +85,79 @@ public class AdaptiveJsonBarsSerializerTest {
         BarSeries series = AdaptiveJsonBarsSerializer.loadSeries((InputStream) null);
         assertNull(series, "Should return null for null input stream");
     }
+
+    @Test
+    public void testLoadSeriesFromValidFile() {
+        String coinbaseJsonPath = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        String resourcePath = getClass().getClassLoader().getResource(coinbaseJsonPath).getPath();
+
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourcePath);
+
+        assertNotNull(series, "BarSeries should be loaded successfully from file");
+        assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
+        assertEquals("CoinbaseData", series.getName(), "Series name should be set correctly");
+
+        // Verify first bar data
+        var firstBar = series.getBar(0);
+        assertNotNull(firstBar, "First bar should not be null");
+        assertTrue(firstBar.getClosePrice().doubleValue() > 0, "Close price should be positive");
+        assertTrue(firstBar.getVolume().doubleValue() > 0, "Volume should be positive");
+
+        // Verify last bar data
+        var lastBar = series.getBar(series.getBarCount() - 1);
+        assertNotNull(lastBar, "Last bar should not be null");
+        assertTrue(lastBar.getClosePrice().doubleValue() > 0, "Last bar close price should be positive");
+        assertTrue(lastBar.getVolume().doubleValue() > 0, "Last bar volume should be positive");
+    }
+
+    @Test
+    public void testLoadSeriesFromNonExistentFile() {
+        String nonExistentPath = "non-existent-file.json";
+
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(nonExistentPath);
+
+        assertNull(series, "Should return null for non-existent file");
+    }
+
+    @Test
+    public void testLoadSeriesFromNullFilename() {
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries((String) null);
+
+        assertNull(series, "Should return null for null filename");
+    }
+
+    @Test
+    public void testLoadSeriesFromEmptyFilename() {
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries("");
+
+        assertNull(series, "Should return null for empty filename");
+    }
+
+    @Test
+    public void testLoadSeriesFromInvalidJsonFile() {
+        // Create a temporary file with invalid JSON content
+        String invalidJsonContent = "invalid json content";
+        String tempFilePath = null;
+
+        try {
+            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("invalid", ".json");
+            tempFilePath = tempFile.toString();
+            java.nio.file.Files.write(tempFile, invalidJsonContent.getBytes());
+
+            BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(tempFilePath);
+
+            assertNull(series, "Should return null for invalid JSON file");
+        } catch (Exception e) {
+            fail("Unexpected exception during test setup: " + e.getMessage());
+        } finally {
+            // Clean up temporary file
+            if (tempFilePath != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(tempFilePath));
+                } catch (Exception e) {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+    }
 }
