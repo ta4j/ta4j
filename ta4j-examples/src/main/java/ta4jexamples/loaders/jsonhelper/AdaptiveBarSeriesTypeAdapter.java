@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -44,17 +45,17 @@ import java.util.List;
  * structure of the input data. It currently handles two formats: - Coinbase
  * format: identified by the presence of a "candles" array - Binance format:
  * identified by the presence of an "ohlc" array
- *
+ * <p>
  * The adapter parses the JSON input and converts it into a BaseBarSeries
  * instance populated with the appropriate bar data. The bar data is sorted by
  * timestamp for the Coinbase format to ensure chronological order.
- *
+ * <p>
  * Write operations are not supported by this adapter and will throw an
  * exception.
- *
+ * <p>
  * The adapter uses internal lightweight data classes to temporarily hold the
  * parsed JSON data before converting it into the final BarSeries format.
- *
+ * <p>
  * Logging is implemented to track which format is being parsed during
  * deserialization.
  *
@@ -78,13 +79,12 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
      *
      * @param in the JsonReader to read the JSON data from
      * @return the parsed BarSeries object
-     * @throws IOException        if an I/O error occurs while reading the JSON
      * @throws JsonParseException if the JSON format is unknown or neither "candles"
      *                            nor "ohlc" fields are found
      * @since 0.19
      */
     @Override
-    public BarSeries read(JsonReader in) throws IOException {
+    public BarSeries read(JsonReader in) {
         JsonElement json = JsonParser.parseReader(in);
         JsonObject root = json.getAsJsonObject();
 
@@ -108,20 +108,18 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
      * @return a BarSeries populated with data parsed from the Coinbase format JSON
      */
     private BarSeries parseCoinbaseFormat(JsonObject root) {
-        LOG.debug("Parsing Coinbase format");
+        LOG.trace("Parsing Coinbase format");
 
         JsonArray candles = root.getAsJsonArray("candles");
         List<CoinbaseBar> barList = new ArrayList<>();
 
         for (JsonElement candle : candles) {
             JsonObject candleObj = candle.getAsJsonObject();
-            barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(),
-                    candleObj.get("high").getAsString(), candleObj.get("low").getAsString(),
-                    candleObj.get("close").getAsString(), candleObj.get("volume").getAsString()));
+            barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(), candleObj.get("high").getAsString(), candleObj.get("low").getAsString(), candleObj.get("close").getAsString(), candleObj.get("volume").getAsString()));
         }
 
         // Sort by timestamp
-        barList.sort((a, b) -> Long.compare(a.getStartTime(), b.getStartTime()));
+        barList.sort(Comparator.comparingLong(CoinbaseBar::getStartTime));
 
         // Build series
         BaseBarSeries series = new BaseBarSeriesBuilder().withName("CoinbaseData").build();
@@ -143,7 +141,7 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
      * @return a BarSeries populated with data parsed from the Binance format JSON
      */
     private BarSeries parseBinanceFormat(JsonObject root) {
-        LOG.debug("Parsing Binance format");
+        LOG.trace("Parsing Binance format");
 
         JsonArray ohlc = root.getAsJsonArray("ohlc");
         String seriesName = root.has("name") ? root.get("name").getAsString() : "BinanceData";
@@ -152,10 +150,7 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         for (JsonElement barElement : ohlc) {
             JsonObject barObj = barElement.getAsJsonObject();
-            BinanceBar bar = new BinanceBar(barObj.get("endTime").getAsLong(), barObj.get("openPrice").getAsNumber(),
-                    barObj.get("highPrice").getAsNumber(), barObj.get("lowPrice").getAsNumber(),
-                    barObj.get("closePrice").getAsNumber(), barObj.get("volume").getAsNumber(),
-                    barObj.get("amount").getAsNumber());
+            BinanceBar bar = new BinanceBar(barObj.get("endTime").getAsLong(), barObj.get("openPrice").getAsNumber(), barObj.get("highPrice").getAsNumber(), barObj.get("lowPrice").getAsNumber(), barObj.get("closePrice").getAsNumber(), barObj.get("volume").getAsNumber(), barObj.get("amount").getAsNumber());
             bar.addToSeries(series);
         }
 
@@ -163,17 +158,7 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
     }
 
     // Lightweight data classes for internal use only
-    private static class CoinbaseBar {
-        private final String start, open, high, low, close, volume;
-
-        public CoinbaseBar(String start, String open, String high, String low, String close, String volume) {
-            this.start = start;
-            this.open = open;
-            this.high = high;
-            this.low = low;
-            this.close = close;
-            this.volume = volume;
-        }
+    private record CoinbaseBar(String start, String open, String high, String low, String close, String volume) {
 
         public long getStartTime() {
             return Long.parseLong(start);
@@ -181,45 +166,16 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         public void addToSeries(BaseBarSeries series) {
             Instant endTime = Instant.ofEpochSecond(getStartTime());
-            series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
-                    .openPrice(open)
-                    .highPrice(high)
-                    .lowPrice(low)
-                    .closePrice(close)
-                    .volume(volume)
-                    .add();
+            series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(endTime).openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
         }
     }
 
-    private static class BinanceBar {
-        private final long endTime;
-        private final Number openPrice, highPrice, lowPrice, closePrice, volume, amount;
-
-        public BinanceBar(long endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-                Number volume, Number amount) {
-            this.endTime = endTime;
-            this.openPrice = openPrice;
-            this.highPrice = highPrice;
-            this.lowPrice = lowPrice;
-            this.closePrice = closePrice;
-            this.volume = volume;
-            this.amount = amount;
-        }
+    private record BinanceBar(long endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
+                              Number volume, Number amount) {
 
         public void addToSeries(BaseBarSeries series) {
             Instant endTimeInstant = Instant.ofEpochMilli(endTime);
-            series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(endTimeInstant)
-                    .openPrice(openPrice)
-                    .highPrice(highPrice)
-                    .lowPrice(lowPrice)
-                    .closePrice(closePrice)
-                    .volume(volume)
-                    .amount(amount)
-                    .add();
+            series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(endTimeInstant).openPrice(openPrice).highPrice(highPrice).lowPrice(lowPrice).closePrice(closePrice).volume(volume).amount(amount).add();
         }
     }
 }

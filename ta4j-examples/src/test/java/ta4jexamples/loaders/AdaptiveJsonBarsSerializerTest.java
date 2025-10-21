@@ -27,8 +27,14 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
 
-import static org.junit.Assume.assumeNotNull;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -44,9 +50,9 @@ public class AdaptiveJsonBarsSerializerTest {
 
     @Test
     public void testLoadCoinbaseInputStream() {
-        String coinbaseJsonPath = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(coinbaseJsonPath);
-        assumeNotNull(inputStream);
+        String jsonFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
+        assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
 
         BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(inputStream);
 
@@ -63,9 +69,9 @@ public class AdaptiveJsonBarsSerializerTest {
 
     @Test
     public void testLoadBinanceInputStream() {
-        String binanceJsonPath = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(binanceJsonPath);
-        assumeNotNull(inputStream);
+        String jsonFile = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
+        assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
 
         BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(inputStream);
 
@@ -88,8 +94,8 @@ public class AdaptiveJsonBarsSerializerTest {
 
     @Test
     public void testLoadSeriesFromValidFile() {
-        String coinbaseJsonPath = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
-        String resourcePath = getClass().getClassLoader().getResource(coinbaseJsonPath).getPath();
+        String jsonFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        String resourcePath = Objects.requireNonNull(getClass().getClassLoader().getResource(jsonFile)).getPath();
 
         BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourcePath);
 
@@ -140,9 +146,9 @@ public class AdaptiveJsonBarsSerializerTest {
         String tempFilePath = null;
 
         try {
-            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("invalid", ".json");
+            Path tempFile = Files.createTempFile("invalid", ".json");
             tempFilePath = tempFile.toString();
-            java.nio.file.Files.write(tempFile, invalidJsonContent.getBytes());
+            Files.write(tempFile, invalidJsonContent.getBytes());
 
             BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(tempFilePath);
 
@@ -153,7 +159,7 @@ public class AdaptiveJsonBarsSerializerTest {
             // Clean up temporary file
             if (tempFilePath != null) {
                 try {
-                    java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(tempFilePath));
+                    Files.deleteIfExists(Paths.get(tempFilePath));
                 } catch (Exception e) {
                     // Ignore cleanup errors
                 }

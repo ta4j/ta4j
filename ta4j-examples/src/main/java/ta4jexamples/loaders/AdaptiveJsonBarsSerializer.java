@@ -46,9 +46,7 @@ import java.io.InputStreamReader;
  * @since 0.19
  */
 public class AdaptiveJsonBarsSerializer {
-    private static final Gson TYPEADAPTER_GSON = new GsonBuilder()
-            .registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter())
-            .create();
+    private static final Gson TYPEADAPTER_GSON = new GsonBuilder().registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter()).create();
     private static final Logger LOG = LoggerFactory.getLogger(AdaptiveJsonBarsSerializer.class);
 
     /**
@@ -61,19 +59,19 @@ public class AdaptiveJsonBarsSerializer {
      *
      * @param inputStream the input stream containing JSON data to be deserialized
      * @return the deserialized BarSeries object, or null if the input stream is
-     *         null or an error occurs
+     * null or an error occurs
      * @since 0.19
      */
     public static BarSeries loadSeries(InputStream inputStream) {
         if (inputStream == null) {
-            LOG.warn("Input stream is null, returning null");
+            LOG.debug("Input stream is null, returning null");
             return null;
         }
 
         try (JsonReader reader = new JsonReader(new InputStreamReader(inputStream))) {
             return TYPEADAPTER_GSON.fromJson(reader, BarSeries.class);
         } catch (Exception e) {
-            LOG.error("Unable to load bars from JSON using TypeAdapter", e);
+            LOG.debug("Unable to load bars from JSON using TypeAdapter", e);
             return null;
         }
     }
@@ -93,7 +91,7 @@ public class AdaptiveJsonBarsSerializer {
         try (FileInputStream fis = new FileInputStream(filename)) {
             return loadSeries(fis);
         } catch (Exception e) {
-            LOG.error("Unable to load bars from file: " + filename, e);
+            LOG.debug("Unable to load bars from file: {}", filename, e);
             return null;
         }
     }
