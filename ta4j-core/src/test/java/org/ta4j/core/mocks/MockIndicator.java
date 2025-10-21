@@ -36,8 +36,8 @@ public class MockIndicator implements Indicator<Num> {
     private final List<Num> values;
 
     /**
-     * Constructs a MockIndicator with the specified bar series and values.
-     * The unstable bars count is set to zero by default.
+     * Constructs a MockIndicator with the specified bar series and values. The
+     * unstable bars count is set to zero by default.
      *
      * @param series the bar series associated with this indicator
      * @param values the list of numeric values for this indicator
@@ -47,11 +47,12 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     /**
-     * Constructs a MockIndicator with the specified bar series, unstable bars count, and values.
+     * Constructs a MockIndicator with the specified bar series, unstable bars
+     * count, and values.
      *
-     * @param series       the bar series associated with this indicator
+     * @param series            the bar series associated with this indicator
      * @param unstableBarsCount the number of unstable bars for this indicator
-     * @param values       the list of numeric values for this indicator
+     * @param values            the list of numeric values for this indicator
      */
     public MockIndicator(BarSeries series, int unstableBarsCount, List<Num> values) {
         this.unstableBarsCount = unstableBarsCount;
@@ -60,7 +61,8 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     /**
-     * Returns the numeric value at the specified index from the indicator's value list.
+     * Returns the numeric value at the specified index from the indicator's value
+     * list.
      *
      * @param index the position of the value to retrieve
      * @return the numeric value at the given index
@@ -71,9 +73,9 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     /**
-     * Returns the number of unstable bars for this indicator.
-     * Unstable bars are typically excluded from certain calculations or analyses
-     * to ensure reliability and stability of the results.
+     * Returns the number of unstable bars for this indicator. Unstable bars are
+     * typically excluded from certain calculations or analyses to ensure
+     * reliability and stability of the results.
      *
      * @return the count of unstable bars
      */

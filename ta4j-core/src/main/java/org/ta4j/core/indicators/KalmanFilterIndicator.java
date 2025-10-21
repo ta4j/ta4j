@@ -101,10 +101,21 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         }
 
         final var numFactory = getBarSeries().numFactory();
+
+        // Check if the current value is NaN - if so, return NaN immediately
+        double currentMeasurement = this.indicator.getValue(index).doubleValue();
+        if (Double.isNaN(currentMeasurement) || Double.isInfinite(currentMeasurement)) {
+            return NaN.NaN;
+        }
+
         for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
             double measurement = this.indicator.getValue(i).doubleValue();
-            filter.predict();
-            filter.correct(new double[] { measurement });
+
+            // Skip NaN or infinite values - only process valid measurements
+            if (!Double.isNaN(measurement) && !Double.isInfinite(measurement)) {
+                filter.predict();
+                filter.correct(new double[] { measurement });
+            }
 
             lastProcessedIndex = i;
         }
@@ -118,9 +129,9 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns the number of bars up to which this indicator calculates unstable values.
-     * This typically corresponds to the number of bars required for the underlying indicator
-     * to produce reliable results.
+     * Returns the number of bars up to which this indicator calculates unstable
+     * values. This typically corresponds to the number of bars required for the
+     * underlying indicator to produce reliable results.
      *
      * @return the number of unstable bars
      */

@@ -117,7 +117,8 @@ public class MultiStrategyBacktest {
             for (int oversoldThreshold = 0; oversoldThreshold >= -1000; oversoldThreshold -= 50) {
                 for (int timeFrame = 50; timeFrame <= 300; timeFrame += 50) {
                     for (int rsiBarCount = 7; rsiBarCount <= 70; rsiBarCount += 7) {
-                        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsi(new RSIIndicator(closePrice, rsiBarCount), timeFrame);
+                        NetMomentumIndicator rsiM = NetMomentumIndicator
+                                .forRsi(new RSIIndicator(closePrice, rsiBarCount), timeFrame);
                         Rule entryRule = new CrossedDownIndicatorRule(rsiM, oversoldThreshold);
                         Rule exitRule = new CrossedUpIndicatorRule(rsiM, overboughtThreshold);
                         Strategy strategy = new BaseStrategy(entryRule, exitRule);
@@ -141,5 +142,5 @@ public class MultiStrategyBacktest {
         strategies.add(strategy);
 
         return strategies;
-}
+    }
 }
