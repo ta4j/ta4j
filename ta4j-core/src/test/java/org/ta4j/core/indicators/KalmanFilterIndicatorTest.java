@@ -142,12 +142,12 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // values)
         // The first valid value should be close to 50.0 (the first non-NaN underlying
         // value)
-        Assert.assertEquals(50.0, kalmanFilterIndicator.getValue(3).doubleValue(), 0.1);
+        Assert.assertEquals(49.95005, kalmanFilterIndicator.getValue(3).doubleValue(), 1e-5);
         // Subsequent values should be increasing as the underlying values increase
         Assert.assertTrue(kalmanFilterIndicator.getValue(4).doubleValue() > kalmanFilterIndicator.getValue(3).doubleValue());
         Assert.assertTrue(kalmanFilterIndicator.getValue(5).doubleValue() > kalmanFilterIndicator.getValue(4).doubleValue());
         // The filtered values should be close to the underlying values
-        Assert.assertEquals(55.21, kalmanFilterIndicator.getValue(4).doubleValue(), 0.1);
-        Assert.assertEquals(60.89, kalmanFilterIndicator.getValue(5).doubleValue(), 0.1);
+        Assert.assertEquals(55.21203, kalmanFilterIndicator.getValue(4).doubleValue(), 1e-5);
+        Assert.assertEquals(60.89177, kalmanFilterIndicator.getValue(5).doubleValue(), 1e-5);
     }
 }
