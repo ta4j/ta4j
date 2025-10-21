@@ -130,24 +130,14 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         // Starting from index 3, the underlying indicator returns valid values,
         // so the Kalman filter should produce valid filtered values
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(3));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(4));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(5));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(6));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(7));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(8));
-        Assert.assertNotEquals(NaN.NaN, kalmanFilterIndicator.getValue(9));
-
-        // Verify that the filtered values are reasonable (close to the underlying
-        // values)
         // The first valid value should be close to 50.0 (the first non-NaN underlying
         // value)
         Assert.assertEquals(49.95005, kalmanFilterIndicator.getValue(3).doubleValue(), 1e-5);
-        // Subsequent values should be increasing as the underlying values increase
-        Assert.assertTrue(kalmanFilterIndicator.getValue(4).doubleValue() > kalmanFilterIndicator.getValue(3).doubleValue());
-        Assert.assertTrue(kalmanFilterIndicator.getValue(5).doubleValue() > kalmanFilterIndicator.getValue(4).doubleValue());
-        // The filtered values should be close to the underlying values
         Assert.assertEquals(55.21203, kalmanFilterIndicator.getValue(4).doubleValue(), 1e-5);
         Assert.assertEquals(60.89177, kalmanFilterIndicator.getValue(5).doubleValue(), 1e-5);
+        Assert.assertEquals(67.12451, kalmanFilterIndicator.getValue(6).doubleValue(), 1e-5);
+        Assert.assertEquals(73.96032, kalmanFilterIndicator.getValue(7).doubleValue(), 1e-5);
+        Assert.assertEquals(78.53347, kalmanFilterIndicator.getValue(8).doubleValue(), 1e-5);
+        Assert.assertEquals(81.72161, kalmanFilterIndicator.getValue(9).doubleValue(), 1e-5);
     }
 }
