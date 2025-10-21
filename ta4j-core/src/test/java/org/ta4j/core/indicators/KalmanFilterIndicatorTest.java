@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.List;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,9 +30,13 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private Indicator<Num> closePrice;
@@ -75,9 +77,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithNoiseAndOutliers() {
-        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0)
-                .build();
+        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0).build();
         Indicator<Num> noiseClosePrice = new ClosePriceIndicator(noiseSeries);
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
@@ -114,5 +114,24 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void testUnstableBars() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
         Assert.assertEquals(0, kalmanIndicator.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void testKalmanFilterIndicatorWithUnderlyingNaNValues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).build();
+        MockIndicator mockRsi = new MockIndicator(series, 3, Arrays.asList(NaN.NaN, NaN.NaN, NaN.NaN, numOf(50), numOf(60), numOf(70), numOf(80), numOf(90), numOf(90), numOf(90)));
+
+        KalmanFilterIndicator kalmanFilterIndicator = new KalmanFilterIndicator(mockRsi);
+
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(0));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(1));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(2));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(3));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(4));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(5));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(6));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(7));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(8));
+        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(9));
     }
 }

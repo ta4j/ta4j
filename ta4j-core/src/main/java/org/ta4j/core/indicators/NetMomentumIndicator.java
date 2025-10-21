@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Objects;
-
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import java.util.Objects;
 
 /**
  * Net Momentum Indicator.
@@ -120,7 +120,6 @@ import org.ta4j.core.num.NumFactory;
  *
  * @see RSIIndicator
  * @see KalmanFilterIndicator
- * @see RunningTotalIndicator
  *
  * @since 0.19
  */

@@ -4,7 +4,7 @@
 - All changes should be validated, formatted, and tested using Maven goal: `mvn -B clean license:format formatter:format test install`
 - Run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) to keep the feedback loop fast.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
-- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` unreleased section instead.
+- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` within the appropriate section.
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.

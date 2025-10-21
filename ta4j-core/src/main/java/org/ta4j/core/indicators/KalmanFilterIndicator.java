@@ -102,25 +102,31 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
 
         final var numFactory = getBarSeries().numFactory();
         for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
-            filter.predict();
             double measurement = this.indicator.getValue(i).doubleValue();
+            filter.predict();
             filter.correct(new double[] { measurement });
 
             lastProcessedIndex = i;
         }
 
-        return numFactory.numOf(filter.getStateEstimation()[0]);
+        Double value = filter.getStateEstimation()[0];
+        if (value.isNaN()) {
+            return NaN.NaN;
+        }
+
+        return numFactory.numOf(value);
     }
 
     /**
-     * Returns the number of unstable bars for this indicator. Since the Kalman
-     * filter is a stateful algorithm, there are no unstable bars.
+     * Returns the number of bars up to which this indicator calculates unstable values.
+     * This typically corresponds to the number of bars required for the underlying indicator
+     * to produce reliable results.
      *
-     * @return 0, as there are no unstable bars for this indicator
+     * @return the number of unstable bars
      */
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return indicator.getCountOfUnstableBars();
     }
 
     private void initializeFilter() {

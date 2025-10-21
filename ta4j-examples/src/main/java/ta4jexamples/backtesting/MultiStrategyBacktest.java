@@ -30,8 +30,8 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
-import org.ta4j.core.indicators.KalmanFilterIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
@@ -97,35 +97,49 @@ public class MultiStrategyBacktest {
         BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02),
                 new ZeroCostModel(), new TradeOnNextOpenModel());
 
-        List<Strategy> strategies = buildStrategies(series);
+        List<Strategy> strategies = buildStrategies2(series);
         List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(1_000),
                 Trade.TradeType.BUY);
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
 
-        for (TradingStatement tradingStatement : tradingStatements) {
-            LOG.debug(tradingStatement.tradingRecord.toString());
-        }
+//        for (TradingStatement tradingStatement : tradingStatements) {
+//            LOG.debug(tradingStatement.tradingRecord.toString());
+//        }
     }
 
     private List<Strategy> buildStrategies(BarSeries series) {
-        int shortBarCount = 12;
-        int longBarCount = 26;
-
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
-        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
-        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
-
-        Rule entryRule = new CrossedUpIndicatorRule(smaShort, smaLong);
-        Rule exitRule = new CrossedDownIndicatorRule(smaShort, smaLong);
-
-        Strategy strategy = new BaseStrategy(entryRule, exitRule);
-
         List<Strategy> strategies = new ArrayList<>();
-        strategies.add(strategy);
+
+        for (int overboughtThreshold = 0; overboughtThreshold <= 1000; overboughtThreshold += 50) {
+            for (int oversoldThreshold = 0; oversoldThreshold >= -1000; oversoldThreshold -= 50) {
+                for (int timeFrame = 50; timeFrame <= 300; timeFrame += 50) {
+                    for (int rsiBarCount = 7; rsiBarCount <= 70; rsiBarCount += 7) {
+                        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsi(new RSIIndicator(closePrice, rsiBarCount), timeFrame);
+                        Rule entryRule = new CrossedDownIndicatorRule(rsiM, oversoldThreshold);
+                        Rule exitRule = new CrossedUpIndicatorRule(rsiM, overboughtThreshold);
+                        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+                        strategies.add(strategy);
+                    }
+                }
+            }
+        }
 
         return strategies;
     }
+
+    private List<Strategy> buildStrategies2(BarSeries series) {
+        Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        List<Strategy> strategies = new ArrayList<>();
+
+        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsi(new RSIIndicator(closePrice, 35), 150);
+        Rule entryRule = new CrossedDownIndicatorRule(rsiM, 20);
+        Rule exitRule = new CrossedUpIndicatorRule(rsiM, 80);
+        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+        strategies.add(strategy);
+
+        return strategies;
+}
 }
