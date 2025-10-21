@@ -115,7 +115,9 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         for (JsonElement candle : candles) {
             JsonObject candleObj = candle.getAsJsonObject();
-            barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(), candleObj.get("high").getAsString(), candleObj.get("low").getAsString(), candleObj.get("close").getAsString(), candleObj.get("volume").getAsString()));
+            barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(),
+                    candleObj.get("high").getAsString(), candleObj.get("low").getAsString(),
+                    candleObj.get("close").getAsString(), candleObj.get("volume").getAsString()));
         }
 
         // Sort by timestamp
@@ -150,7 +152,10 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         for (JsonElement barElement : ohlc) {
             JsonObject barObj = barElement.getAsJsonObject();
-            BinanceBar bar = new BinanceBar(barObj.get("endTime").getAsLong(), barObj.get("openPrice").getAsNumber(), barObj.get("highPrice").getAsNumber(), barObj.get("lowPrice").getAsNumber(), barObj.get("closePrice").getAsNumber(), barObj.get("volume").getAsNumber(), barObj.get("amount").getAsNumber());
+            BinanceBar bar = new BinanceBar(barObj.get("endTime").getAsLong(), barObj.get("openPrice").getAsNumber(),
+                    barObj.get("highPrice").getAsNumber(), barObj.get("lowPrice").getAsNumber(),
+                    barObj.get("closePrice").getAsNumber(), barObj.get("volume").getAsNumber(),
+                    barObj.get("amount").getAsNumber());
             bar.addToSeries(series);
         }
 
@@ -166,16 +171,33 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         public void addToSeries(BaseBarSeries series) {
             Instant endTime = Instant.ofEpochSecond(getStartTime());
-            series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(endTime).openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(endTime)
+                    .openPrice(open)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(close)
+                    .volume(volume)
+                    .add();
         }
     }
 
     private record BinanceBar(long endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-                              Number volume, Number amount) {
+            Number volume, Number amount) {
 
         public void addToSeries(BaseBarSeries series) {
             Instant endTimeInstant = Instant.ofEpochMilli(endTime);
-            series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(endTimeInstant).openPrice(openPrice).highPrice(highPrice).lowPrice(lowPrice).closePrice(closePrice).volume(volume).amount(amount).add();
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(endTimeInstant)
+                    .openPrice(openPrice)
+                    .highPrice(highPrice)
+                    .lowPrice(lowPrice)
+                    .closePrice(closePrice)
+                    .volume(volume)
+                    .amount(amount)
+                    .add();
         }
     }
 }

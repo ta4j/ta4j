@@ -48,7 +48,7 @@ public class BacktestExecutor {
     /**
      * Constructor.
      *
-     * @param series               the bar series
+     * @param series the bar series
      */
     public BacktestExecutor(BarSeries series) {
         this(series, new TradingStatementGenerator());

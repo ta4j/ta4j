@@ -29,14 +29,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
-import static org.junit.Assert.*;
 
 public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

@@ -46,7 +46,9 @@ import java.io.InputStreamReader;
  * @since 0.19
  */
 public class AdaptiveJsonBarsSerializer {
-    private static final Gson TYPEADAPTER_GSON = new GsonBuilder().registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter()).create();
+    private static final Gson TYPEADAPTER_GSON = new GsonBuilder()
+            .registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter())
+            .create();
     private static final Logger LOG = LoggerFactory.getLogger(AdaptiveJsonBarsSerializer.class);
 
     /**
@@ -59,7 +61,7 @@ public class AdaptiveJsonBarsSerializer {
      *
      * @param inputStream the input stream containing JSON data to be deserialized
      * @return the deserialized BarSeries object, or null if the input stream is
-     * null or an error occurs
+     *         null or an error occurs
      * @since 0.19
      */
     public static BarSeries loadSeries(InputStream inputStream) {

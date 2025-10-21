@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.reports;
 
+import com.google.gson.Gson;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
@@ -37,17 +38,18 @@ public class TradingStatement {
     public final TradingRecord tradingRecord;
     public final Strategy strategy;
 
-
     /**
      * Constructs a TradingStatement with the specified strategy, trading record,
      * position statistics report, and performance report.
      *
-     * @param strategy            the trading strategy used to generate the statement
+     * @param strategy            the trading strategy used to generate the
+     *                            statement
      * @param tradingRecord       the record of all trading operations
      * @param positionStatsReport the report containing position-related statistics
      * @param performanceReport   the report containing performance metrics
      */
-    public TradingStatement(Strategy strategy, TradingRecord tradingRecord, PositionStatsReport positionStatsReport, PerformanceReport performanceReport) {
+    public TradingStatement(Strategy strategy, TradingRecord tradingRecord, PositionStatsReport positionStatsReport,
+            PerformanceReport performanceReport) {
         this.positionStatsReport = positionStatsReport;
         this.performanceReport = performanceReport;
         this.tradingRecord = tradingRecord;
@@ -55,14 +57,17 @@ public class TradingStatement {
     }
 
     /**
-     * Constructs a TradingStatement with the specified strategy, position statistics report, and performance report.
-     * The trading record is set to null by default.
+     * Constructs a TradingStatement with the specified strategy, position
+     * statistics report, and performance report. The trading record is set to null
+     * by default.
      *
-     * @param strategy            the trading strategy used to generate the statement
+     * @param strategy            the trading strategy used to generate the
+     *                            statement
      * @param positionStatsReport the report containing position-related statistics
      * @param performanceReport   the report containing performance metrics
      */
-    public TradingStatement(Strategy strategy, PositionStatsReport positionStatsReport, PerformanceReport performanceReport) {
+    public TradingStatement(Strategy strategy, PositionStatsReport positionStatsReport,
+            PerformanceReport performanceReport) {
         this(strategy, null, positionStatsReport, performanceReport);
     }
 
@@ -90,5 +95,12 @@ public class TradingStatement {
     /**
      * @return {@link #tradingRecord}
      */
-    public TradingRecord getTradingRecord() { return tradingRecord;}
+    public TradingRecord getTradingRecord() {
+        return tradingRecord;
+    }
+
+    @Override
+    public String toString() {
+        return new Gson().toJson(this);
+    }
 }

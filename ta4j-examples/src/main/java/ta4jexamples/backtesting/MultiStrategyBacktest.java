@@ -25,14 +25,19 @@ package ta4jexamples.backtesting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
+import org.ta4j.core.*;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
+import org.ta4j.core.indicators.KalmanFilterIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
@@ -88,13 +93,39 @@ public class MultiStrategyBacktest {
 
         Objects.requireNonNull(series, "Bar series was null");
 
-        List<Strategy> strategies = new ArrayList<>();
-
         Instant startInstant = Instant.now();
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02), new ZeroCostModel(), new TradeOnNextOpenModel());
-        backtestExecutor.execute(strategies, DecimalNum.valueOf(1_000), Trade.TradeType.BUY);
+        BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02),
+                new ZeroCostModel(), new TradeOnNextOpenModel());
+
+        List<Strategy> strategies = buildStrategies(series);
+        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(1_000),
+                Trade.TradeType.BUY);
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
+
+        for (TradingStatement tradingStatement : tradingStatements) {
+            LOG.debug(tradingStatement.tradingRecord.toString());
+        }
+    }
+
+    private List<Strategy> buildStrategies(BarSeries series) {
+        int shortBarCount = 12;
+        int longBarCount = 26;
+
+        Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        KalmanFilterIndicator kalmanFilteredClosePrice = new KalmanFilterIndicator(closePrice);
+        SMAIndicator smaShort = new SMAIndicator(kalmanFilteredClosePrice, shortBarCount);
+        SMAIndicator smaLong = new SMAIndicator(kalmanFilteredClosePrice, longBarCount);
+
+        Rule entryRule = new CrossedUpIndicatorRule(smaShort, smaLong);
+        Rule exitRule = new CrossedDownIndicatorRule(smaShort, smaLong);
+
+        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+
+        List<Strategy> strategies = new ArrayList<>();
+        strategies.add(strategy);
+
+        return strategies;
     }
 }
