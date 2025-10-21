@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.backtest;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -35,6 +32,9 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Allows backtesting multiple strategies and comparing them to find out which
@@ -49,9 +49,6 @@ public class BacktestExecutor {
      * Constructor.
      *
      * @param series               the bar series
-     * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding the asset (e.g.
-     *                             borrowing)
      */
     public BacktestExecutor(BarSeries series) {
         this(series, new TradingStatementGenerator());

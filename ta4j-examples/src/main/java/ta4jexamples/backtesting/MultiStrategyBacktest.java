@@ -28,9 +28,11 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.TradeOnNextOpenModel;
 import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.reports.TradingStatement;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
@@ -89,9 +91,8 @@ public class MultiStrategyBacktest {
         List<Strategy> strategies = new ArrayList<>();
 
         Instant startInstant = Instant.now();
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
-                Trade.TradeType.BUY);
+        BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02), new ZeroCostModel(), new TradeOnNextOpenModel());
+        backtestExecutor.execute(strategies, DecimalNum.valueOf(1_000), Trade.TradeType.BUY);
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
