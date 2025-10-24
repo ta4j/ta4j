@@ -34,6 +34,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
 - Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
 - NumericIndicator's previous method return NumericIndicator
+- Remove magic number 25 in `UpTrendIndicator` and `DownTrendIndicator`
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
