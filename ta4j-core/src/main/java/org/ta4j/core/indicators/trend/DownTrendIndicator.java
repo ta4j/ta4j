@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.adx.MinusDIIndicator;
 import org.ta4j.core.indicators.adx.PlusDIIndicator;
+import org.ta4j.core.num.Num;
 
 public class DownTrendIndicator extends AbstractIndicator<Boolean> {
 
@@ -36,6 +37,7 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
     private final ADXIndicator directionStrengthIndicator;
     private final MinusDIIndicator minusDIIndicator;
     private final PlusDIIndicator plusDIIndicator;
+    private final Num strengthThreshold;
     private final int unstableBars;
 
     public DownTrendIndicator(final BarSeries series) {
@@ -43,8 +45,13 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
     }
 
     public DownTrendIndicator(final BarSeries series, int unstableBars) {
+        this(series, unstableBars, 25);
+    }
+
+    public DownTrendIndicator(final BarSeries series, int unstableBars, double strengthThreshold) {
         super(series);
         this.unstableBars = unstableBars;
+        this.strengthThreshold = getBarSeries().numFactory().numOf(strengthThreshold);
         this.directionStrengthIndicator = new ADXIndicator(series, unstableBars);
         this.minusDIIndicator = new MinusDIIndicator(series, unstableBars);
         this.plusDIIndicator = new PlusDIIndicator(series, unstableBars);
@@ -54,7 +61,7 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
     public Boolean getValue(final int index) {
         // calculate trend excluding this bar
         final var previousIndex = index - 1;
-        return this.directionStrengthIndicator.getValue(index).isGreaterThan(getBarSeries().numFactory().numOf(25))
+        return this.directionStrengthIndicator.getValue(index).isGreaterThan(strengthThreshold)
                 && this.minusDIIndicator.getValue(previousIndex)
                         .isGreaterThan(this.plusDIIndicator.getValue(previousIndex));
     }
