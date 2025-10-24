@@ -37,12 +37,14 @@ public class VoteRuleTest {
     @Test
     public void isSatisfied() {
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(0, BooleanRule.TRUE));
-        assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, new Rule[]{}));
+        assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, new Rule[] {}));
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(2, BooleanRule.TRUE));
 
-        assertThrows(IllegalArgumentException.class, () -> new VoteRule(0, Collections.singletonList(BooleanRule.TRUE)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VoteRule(0, Collections.singletonList(BooleanRule.TRUE)));
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, Collections.emptyList()));
-        assertThrows(IllegalArgumentException.class, () -> new VoteRule(2, Collections.singletonList(BooleanRule.TRUE)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VoteRule(2, Collections.singletonList(BooleanRule.TRUE)));
 
         assertTrue(new VoteRule(1, BooleanRule.TRUE).isSatisfied(0));
         assertFalse(new VoteRule(1, BooleanRule.FALSE).isSatisfied(0));
