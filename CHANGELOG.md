@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## Unreleased
 
 
+
 ## 0.19
 
 ### Breaking
@@ -53,6 +54,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
 - Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
+- Added `MultiTradingRecord` to support multiple open positions with configurable FIFO/LIFO exit matching and new open-position helper APIs.
+
 
 ## 0.18 (released May 15, 2025)
 
