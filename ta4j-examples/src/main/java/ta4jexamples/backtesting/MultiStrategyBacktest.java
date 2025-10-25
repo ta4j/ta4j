@@ -35,6 +35,8 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.PerformanceReport;
+import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
@@ -47,6 +49,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * A class to perform backtesting of multiple trading strategies
@@ -70,6 +73,66 @@ public class MultiStrategyBacktest {
 
         String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
         new MultiStrategyBacktest().runBacktest(jsonOhlcResourceFile);
+    }
+
+    private static String printReport(List<TradingStatement> tradingStatements) {
+        StringJoiner resultJoiner = new StringJoiner(System.lineSeparator());
+        for (TradingStatement statement : tradingStatements) {
+            resultJoiner.add(printStatementReport(statement).toString());
+        }
+
+        return resultJoiner.toString();
+    }
+
+    private static StringBuilder printStatementReport(TradingStatement statement) {
+        StringBuilder resultBuilder = new StringBuilder();
+        resultBuilder.append("######### ")
+                .append(statement.getStrategy().getName())
+                .append(" #########")
+                .append(System.lineSeparator())
+                .append(printPerformanceReport(statement.getPerformanceReport()))
+                .append(System.lineSeparator())
+                .append(printPositionStats(statement.getPositionStatsReport()))
+                .append(System.lineSeparator())
+                .append("###########################");
+        return resultBuilder;
+    }
+
+    private static StringBuilder printPerformanceReport(PerformanceReport report) {
+        StringBuilder resultBuilder = new StringBuilder();
+        resultBuilder.append("--------- performance report ---------")
+                .append(System.lineSeparator())
+                .append("total loss: ")
+                .append(report.getTotalLoss())
+                .append(System.lineSeparator())
+                .append("total profit: ")
+                .append(report.getTotalProfit())
+                .append(System.lineSeparator())
+                .append("total profit loss: ")
+                .append(report.getTotalProfitLoss())
+                .append(System.lineSeparator())
+                .append("total profit loss percentage: ")
+                .append(report.getTotalProfitLossPercentage())
+                .append(System.lineSeparator())
+                .append("---------------------------");
+        return resultBuilder;
+    }
+
+    private static StringBuilder printPositionStats(PositionStatsReport report) {
+        StringBuilder resultBuilder = new StringBuilder();
+        resultBuilder.append("--------- trade statistics report ---------")
+                .append(System.lineSeparator())
+                .append("loss trade count: ")
+                .append(report.getLossCount())
+                .append(System.lineSeparator())
+                .append("profit trade count: ")
+                .append(report.getProfitCount())
+                .append(System.lineSeparator())
+                .append("break even trade count: ")
+                .append(report.getBreakEvenCount())
+                .append(System.lineSeparator())
+                .append("---------------------------");
+        return resultBuilder;
     }
 
     /**
@@ -97,31 +160,33 @@ public class MultiStrategyBacktest {
         BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02),
                 new ZeroCostModel(), new TradeOnNextOpenModel());
 
-        List<Strategy> strategies = buildStrategies2(series);
+        List<Strategy> strategies = buildStrategies(series);
         List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(1_000),
                 Trade.TradeType.BUY);
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
-
-//        for (TradingStatement tradingStatement : tradingStatements) {
-//            LOG.debug(tradingStatement.tradingRecord.toString());
-//        }
+//      LOG.info(printReport(tradingStatements));
     }
 
     private List<Strategy> buildStrategies(BarSeries series) {
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
         List<Strategy> strategies = new ArrayList<>();
 
-        for (int overboughtThreshold = 0; overboughtThreshold <= 1000; overboughtThreshold += 50) {
-            for (int oversoldThreshold = 0; oversoldThreshold >= -1000; oversoldThreshold -= 50) {
+        for (int overboughtThreshold = 0; overboughtThreshold <= 1000; overboughtThreshold += 25) {
+            for (int oversoldThreshold = 0; oversoldThreshold >= -1000; oversoldThreshold -= 25) {
                 for (int timeFrame = 50; timeFrame <= 300; timeFrame += 50) {
                     for (int rsiBarCount = 7; rsiBarCount <= 70; rsiBarCount += 7) {
                         NetMomentumIndicator rsiM = NetMomentumIndicator
                                 .forRsi(new RSIIndicator(closePrice, rsiBarCount), timeFrame);
                         Rule entryRule = new CrossedDownIndicatorRule(rsiM, oversoldThreshold);
                         Rule exitRule = new CrossedUpIndicatorRule(rsiM, overboughtThreshold);
-                        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+
+                        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame="
+                                + timeFrame + ", oversoldThreshold=" + oversoldThreshold
+                                + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame
+                                + ", overboughtThreshold=" + overboughtThreshold + "}";
+                        Strategy strategy = new BaseStrategy(strategyName, entryRule, exitRule);
                         strategies.add(strategy);
                     }
                 }

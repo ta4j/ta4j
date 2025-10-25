@@ -77,7 +77,9 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithNoiseAndOutliers() {
-        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0).build();
+        BarSeries noiseSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10.0, 11.0, 100.0, 13.0, 14.0, 15.0)
+                .build();
         Indicator<Num> noiseClosePrice = new ClosePriceIndicator(noiseSeries);
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
@@ -118,8 +120,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void testKalmanFilterIndicatorWithUnderlyingNaNValues() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).build();
-        MockIndicator mockRsi = new MockIndicator(series, 3, Arrays.asList(NaN.NaN, NaN.NaN, NaN.NaN, numOf(50), numOf(60), numOf(70), numOf(80), numOf(90), numOf(90), numOf(90)));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                .build();
+        MockIndicator mockRsi = new MockIndicator(series, 3, Arrays.asList(NaN.NaN, NaN.NaN, NaN.NaN, numOf(50),
+                numOf(60), numOf(70), numOf(80), numOf(90), numOf(90), numOf(90)));
 
         KalmanFilterIndicator kalmanFilterIndicator = new KalmanFilterIndicator(mockRsi);
 
