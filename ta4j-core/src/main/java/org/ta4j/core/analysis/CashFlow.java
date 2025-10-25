@@ -132,27 +132,29 @@ public class CashFlow implements Indicator<Num> {
      * @param finalIndex index up until cash flow of open positions is considered
      */
     private void calculate(Position position, int finalIndex) {
-        boolean isLongTrade = position.getEntry().isBuy();
-        int endIndex = determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-        final int entryIndex = position.getEntry().getIndex();
-        int begin = entryIndex + 1;
+        var numFactory = barSeries.numFactory();
+        var isLongTrade = position.getEntry().isBuy();
+        var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        var entryIndex = position.getEntry().getIndex();
+        var begin = entryIndex + 1;
         if (begin > values.size()) {
-            Num lastValue = values.get(values.size() - 1);
+            var lastValue = values.getLast();
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
         // Trade is not valid if net balance at the entryIndex is negative
-        if (values.get(values.size() - 1).isGreaterThan(values.get(0).getNumFactory().numOf(0))) {
-            int startingIndex = Math.max(begin, 1);
-
-            int nPeriods = endIndex - entryIndex;
-            Num holdingCost = position.getHoldingCost(endIndex);
-            Num avgCost = holdingCost.dividedBy(holdingCost.getNumFactory().numOf(nPeriods));
+        var zero = numFactory.zero();
+        if (values.getLast().isGreaterThan(zero)) {
+            var startingIndex = Math.max(begin, 1);
+            var nPeriods = endIndex - entryIndex;
+            var holdingCost = position.getHoldingCost(endIndex);
+            var avgCost = holdingCost.dividedBy(numFactory.numOf(nPeriods));
 
             // Add intermediate cash flows during position
-            Num netEntryPrice = position.getEntry().getNetPrice();
-            for (int i = startingIndex; i < endIndex; i++) {
-                Num intermediateNetPrice = addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+            var netEntryPrice = position.getEntry().getNetPrice();
+            for (var i = startingIndex; i < endIndex; i++) {
+                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+                        isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
 
@@ -163,7 +165,8 @@ public class CashFlow implements Indicator<Num> {
             } else {
                 exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
-            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, addCost(exitPrice, avgCost, isLongTrade));
+            var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
+            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }
     }
@@ -214,51 +217,15 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Adjusts (intermediate) price to incorporate trading costs.
-     *
-     * @param rawPrice    the gross asset price
-     * @param holdingCost share of the holding cost per period
-     * @param isLongTrade true, if the entry trade type is BUY
-     */
-    static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
-        Num netPrice;
-        if (isLongTrade) {
-            netPrice = rawPrice.minus(holdingCost);
-        } else {
-            netPrice = rawPrice.plus(holdingCost);
-        }
-        return netPrice;
-    }
-
-    /**
      * Pads {@link #values} with its last value up until {@code endIndex}.
      *
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
-            Num lastValue = values.get(values.size() - 1);
+            var lastValue = values.getLast();
             values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, lastValue));
         }
     }
 
-    /**
-     * Determines the valid final index to be considered.
-     *
-     * @param position   the position
-     * @param finalIndex index up until cash flows of open positions are considered
-     * @param maxIndex   maximal valid index
-     */
-    static int determineEndIndex(Position position, int finalIndex, int maxIndex) {
-        int idx = finalIndex;
-        // After closing of position, no further accrual necessary
-        if (position.getExit() != null) {
-            idx = Math.min(position.getExit().getIndex(), finalIndex);
-        }
-        // Accrual at most until maximal index of asset data
-        if (idx > maxIndex) {
-            idx = maxIndex;
-        }
-        return idx;
-    }
 }

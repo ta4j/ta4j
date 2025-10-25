@@ -35,6 +35,9 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Satisfied when the price reaches the trailing loss threshold.
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class TrailingStopLossRule extends AbstractRule {
 

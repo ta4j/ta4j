@@ -31,7 +31,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
-import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;

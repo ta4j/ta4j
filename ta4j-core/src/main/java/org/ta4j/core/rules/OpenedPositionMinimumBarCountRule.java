@@ -33,6 +33,10 @@ import org.ta4j.core.TradingRecord;
  * Using this rule only makes sense for exit rules. For entry rules,
  * {@link OpenedPositionMinimumBarCountRule#isSatisfied(int, TradingRecord)}
  * always returns {@code false}.
+ *
+ *
+ * <p>
+ * This rule uses the {@code tradingRecord}.
  */
 public class OpenedPositionMinimumBarCountRule extends AbstractRule {
 
@@ -54,6 +58,8 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
     }
 
     /**
+     * This rule uses the {@code tradingRecord}.
+     *
      * @param index         the bar index
      * @param tradingRecord the required trading history
      * @return true if opened trade has reached {@link #barCount}, otherwise false
