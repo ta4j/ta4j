@@ -23,6 +23,11 @@
  */
 package ta4jexamples.charting;
 
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.plot.IntervalMarker;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.ui.Layer;
 import org.jfree.chart.JFreeChart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.Collection;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -95,6 +101,26 @@ public class ChartMakerTest {
         assertNotNull(chart, "Chart should not be null");
         assertNotNull(chart.getTitle(), "Chart title should not be null");
         assertTrue(chart.getTitle().getText().contains("Test Strategy"), "Chart title should contain strategy name");
+    }
+
+    @Test
+    public void testGenerateChartAddsTradeMarkers() {
+        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", tradingRecord);
+        XYPlot plot = chart.getXYPlot();
+
+        assertTrue(plot.getDatasetCount() > 1, "Trade dataset should be present on the chart");
+        assertNotNull(plot.getDataset(1), "Trade dataset should not be null");
+        assertTrue(plot.getRenderer(1) instanceof XYLineAndShapeRenderer,
+                "Trade renderer should provide marker shapes");
+
+        Collection<?> domainMarkers = plot.getDomainMarkers(Layer.BACKGROUND);
+        assertNotNull(domainMarkers, "Position shading markers should be present");
+        assertFalse(domainMarkers.isEmpty(), "Position shading should highlight completed trades");
+        assertTrue(domainMarkers.stream().anyMatch(marker -> marker instanceof IntervalMarker),
+                "Position shading should use interval markers");
+
+        assertTrue(plot.getAnnotations().stream().anyMatch(XYTextAnnotation.class::isInstance),
+                "Trade annotations should contain readable labels");
     }
 
     @Test

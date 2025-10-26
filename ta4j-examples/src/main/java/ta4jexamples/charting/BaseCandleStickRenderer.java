@@ -44,10 +44,10 @@ import java.awt.*;
 public class BaseCandleStickRenderer extends CandlestickRenderer {
 
     /** Color for up candles (close > open). */
-    private static final Color UP_OUTLINE_COLOR = new Color(0x00ff00);
+    public static final Color DEFAULT_UP_COLOR = new Color(0x00E676);
 
     /** Color for down candles (close < open). */
-    private static final Color DOWN_OUTLINE_COLOR = new Color(0xff0000);
+    public static final Color DEFAULT_DOWN_COLOR = new Color(0xFF5252);
 
     /**
      * Returns the paint color for the specified item based on whether it's an up or
@@ -83,6 +83,6 @@ public class BaseCandleStickRenderer extends CandlestickRenderer {
 
         boolean isUpCandle = yClose.doubleValue() > yOpen.doubleValue();
 
-        return isUpCandle ? UP_OUTLINE_COLOR : DOWN_OUTLINE_COLOR;
+        return isUpCandle ? DEFAULT_UP_COLOR : DEFAULT_DOWN_COLOR;
     }
 }

@@ -27,14 +27,18 @@ import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.annotations.XYPointerAnnotation;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.chart.ui.Layer;
+import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.xy.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +48,11 @@ import org.ta4j.core.num.Num;
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -98,8 +104,20 @@ public class ChartMaker {
     private static final Color CHART_BACKGROUND_COLOR = Color.BLACK;
     private static final float CHART_BACKGROUND_ALPHA = 0.85f;
     private static final Color GRIDLINE_COLOR = new Color(0x232323);
-    private static final Color BUY_ANNOTATION_COLOR = Color.LIGHT_GRAY;
-    private static final Color SELL_ANNOTATION_COLOR = Color.LIGHT_GRAY;
+    private static final Color BUY_MARKER_COLOR = new Color(0x26A69A);
+    private static final Color SELL_MARKER_COLOR = new Color(0xEF5350);
+    private static final Color TRADE_LABEL_BACKGROUND = new Color(0, 0, 0, 170);
+    private static final float POSITION_BAND_ALPHA = 0.14f;
+    private static final int TRADE_MARKER_SIZE = 7;
+    private static final Color[] POSITION_BAND_COLORS = { new Color(33, 150, 243), new Color(156, 39, 176),
+            new Color(76, 175, 80) };
+    private static final Font TRADE_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
+    private static final Font POSITION_LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+    private static final ThreadLocal<DecimalFormat> PRICE_FORMAT = ThreadLocal.withInitial(() -> {
+        DecimalFormat decimalFormat = new DecimalFormat("#,##0.00###");
+        decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
+        return decimalFormat;
+    });
 
     // Date formatting constants
     private static final String DATE_FORMAT_DAILY = "yyyy-MM-dd";
@@ -456,12 +474,15 @@ public class ChartMaker {
      */
     private void addTradingRecordToChart(XYPlot plot, BarSeries series, TradingRecord tradingRecord) {
         try {
+            XYSeries buyMarkers = createTradeSeries("Buy trades");
+            XYSeries sellMarkers = createTradeSeries("Sell trades");
             int positionIndex = 1;
 
             // Add completed positions
             for (Position position : tradingRecord.getPositions()) {
-                addTradeToChart(position.getEntry(), positionIndex, plot, series);
-                addTradeToChart(position.getExit(), positionIndex, plot, series);
+                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getEntry(), positionIndex);
+                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getExit(), positionIndex);
+                addPositionBand(plot, series, positionIndex, position.getEntry(), position.getExit());
                 positionIndex++;
             }
 
@@ -469,9 +490,12 @@ public class ChartMaker {
             if (tradingRecord.getCurrentPosition().isOpened()) {
                 Trade lastTrade = tradingRecord.getLastTrade();
                 if (lastTrade != null) {
-                    addTradeToChart(lastTrade, positionIndex, plot, series);
+                    addTradeMarker(buyMarkers, sellMarkers, plot, series, lastTrade, positionIndex);
                 }
+                addPositionBand(plot, series, positionIndex, tradingRecord.getCurrentPosition().getEntry(), null);
             }
+
+            attachTradeDataset(plot, buyMarkers, sellMarkers);
         } catch (Exception ex) {
             LOG.error("Failed to add trading record to chart", ex);
         }
@@ -480,7 +504,8 @@ public class ChartMaker {
     /**
      * Adds a single trade to the chart plot.
      */
-    private void addTradeToChart(Trade trade, int tradeIndex, XYPlot plot, BarSeries series) {
+    private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, BarSeries series, Trade trade,
+            int positionIndex) {
         if (trade == null) {
             return;
         }
@@ -489,21 +514,116 @@ public class ChartMaker {
         Instant seriesEndTime = series.getLastBar().getEndTime();
         Instant tradeTime = series.getBar(trade.getIndex()).getEndTime();
 
-        if (isTradeTimeInRange(tradeTime, seriesStartTime, seriesEndTime)) {
-            double orderDateTime = tradeTime.toEpochMilli();
-            String label = (trade.isBuy() ? "buy" : "sell") + "#" + tradeIndex;
-            double angle = trade.isBuy() ? 90 : 180;
-            Color color = trade.isBuy() ? BUY_ANNOTATION_COLOR : SELL_ANNOTATION_COLOR;
-
-            XYPointerAnnotation annotation = new XYPointerAnnotation(label, orderDateTime,
-                    trade.getPricePerAsset().doubleValue(), angle);
-            annotation.setPaint(color);
-            annotation.setArrowPaint(color);
-            plot.addAnnotation(annotation);
-        } else {
+        if (!isTradeTimeInRange(tradeTime, seriesStartTime, seriesEndTime)) {
             LOG.debug("Trade at {} not added to chart - outside range [{}, {}]", tradeTime, seriesStartTime,
                     seriesEndTime);
+            return;
         }
+
+        double orderDateTime = tradeTime.toEpochMilli();
+        double price = trade.getPricePerAsset().doubleValue();
+
+        if (trade.isBuy()) {
+            buyMarkers.add(orderDateTime, price);
+        } else {
+            sellMarkers.add(orderDateTime, price);
+        }
+
+        annotateTrade(plot, trade, positionIndex, orderDateTime, price);
+    }
+
+    private void annotateTrade(XYPlot plot, Trade trade, int positionIndex, double orderDateTime, double price) {
+        String labelPrefix = trade.isBuy() ? "B" : "S";
+        String label = labelPrefix + positionIndex + " @" + PRICE_FORMAT.get().format(price);
+
+        XYTextAnnotation annotation = new XYTextAnnotation(label, orderDateTime, price);
+        annotation.setFont(TRADE_LABEL_FONT);
+        annotation.setPaint(trade.isBuy() ? BUY_MARKER_COLOR : SELL_MARKER_COLOR);
+        annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
+        annotation.setTextAnchor(trade.isBuy() ? TextAnchor.BOTTOM_LEFT : TextAnchor.TOP_LEFT);
+        plot.addAnnotation(annotation);
+    }
+
+    private void attachTradeDataset(XYPlot plot, XYSeries buyMarkers, XYSeries sellMarkers) {
+        if (buyMarkers.isEmpty() && sellMarkers.isEmpty()) {
+            return;
+        }
+
+        XYSeriesCollection tradeData = new XYSeriesCollection();
+        tradeData.addSeries(buyMarkers);
+        tradeData.addSeries(sellMarkers);
+
+        XYLineAndShapeRenderer markerRenderer = new XYLineAndShapeRenderer(false, true);
+        markerRenderer.setSeriesShape(0, createTriangleShape(true));
+        markerRenderer.setSeriesShape(1, createTriangleShape(false));
+        markerRenderer.setSeriesPaint(0, BUY_MARKER_COLOR);
+        markerRenderer.setSeriesPaint(1, SELL_MARKER_COLOR);
+        markerRenderer.setSeriesFillPaint(0, BUY_MARKER_COLOR);
+        markerRenderer.setSeriesFillPaint(1, SELL_MARKER_COLOR);
+        markerRenderer.setSeriesOutlinePaint(0, Color.DARK_GRAY);
+        markerRenderer.setSeriesOutlinePaint(1, Color.DARK_GRAY);
+        markerRenderer.setSeriesOutlineStroke(0, new BasicStroke(1.2f));
+        markerRenderer.setSeriesOutlineStroke(1, new BasicStroke(1.2f));
+        markerRenderer.setSeriesShapesVisible(0, true);
+        markerRenderer.setSeriesShapesVisible(1, true);
+        markerRenderer.setSeriesShapesFilled(0, true);
+        markerRenderer.setSeriesShapesFilled(1, true);
+        markerRenderer.setUseFillPaint(true);
+
+        int datasetIndex = plot.getDatasetCount();
+        plot.setDataset(datasetIndex, tradeData);
+        plot.setRenderer(datasetIndex, markerRenderer);
+        plot.mapDatasetToRangeAxis(datasetIndex, 0);
+    }
+
+    private XYSeries createTradeSeries(String key) {
+        return new XYSeries(key, false, true);
+    }
+
+    private void addPositionBand(XYPlot plot, BarSeries series, int positionIndex, Trade entry, Trade exit) {
+        if (entry == null) {
+            return;
+        }
+
+        long start = series.getBar(entry.getIndex()).getEndTime().toEpochMilli();
+        long end;
+        if (exit != null) {
+            end = series.getBar(exit.getIndex()).getEndTime().toEpochMilli();
+        } else {
+            end = series.getLastBar().getEndTime().toEpochMilli();
+        }
+        if (end <= start) {
+            end = start + 1;
+        }
+
+        IntervalMarker marker = new IntervalMarker(start, end);
+        Color baseColor = POSITION_BAND_COLORS[(positionIndex - 1) % POSITION_BAND_COLORS.length];
+        marker.setPaint(withAlpha(baseColor, POSITION_BAND_ALPHA));
+        marker.setLabel("Position " + positionIndex);
+        marker.setLabelFont(POSITION_LABEL_FONT);
+        marker.setLabelPaint(Color.LIGHT_GRAY);
+        marker.setLabelAnchor(RectangleAnchor.TOP_LEFT);
+        marker.setLabelTextAnchor(TextAnchor.TOP_LEFT);
+        plot.addDomainMarker(marker, Layer.BACKGROUND);
+    }
+
+    private Shape createTriangleShape(boolean pointingUp) {
+        Polygon polygon = new Polygon();
+        if (pointingUp) {
+            polygon.addPoint(0, -TRADE_MARKER_SIZE);
+            polygon.addPoint(TRADE_MARKER_SIZE, TRADE_MARKER_SIZE);
+            polygon.addPoint(-TRADE_MARKER_SIZE, TRADE_MARKER_SIZE);
+        } else {
+            polygon.addPoint(0, TRADE_MARKER_SIZE);
+            polygon.addPoint(TRADE_MARKER_SIZE, -TRADE_MARKER_SIZE);
+            polygon.addPoint(-TRADE_MARKER_SIZE, -TRADE_MARKER_SIZE);
+        }
+        return polygon;
+    }
+
+    private Color withAlpha(Color color, float alpha) {
+        int alphaChannel = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alphaChannel);
     }
 
     /**
@@ -627,6 +747,10 @@ public class ChartMaker {
             domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
         }
         domainAxis.setAutoRange(true);
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
+        domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        domainAxis.setLabelPaint(Color.LIGHT_GRAY);
     }
 
     /**
@@ -635,6 +759,8 @@ public class ChartMaker {
     private void configureRangeAxis(XYPlot plot) {
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
+        rangeAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        rangeAxis.setLabelPaint(Color.LIGHT_GRAY);
     }
 
     /**
@@ -642,8 +768,13 @@ public class ChartMaker {
      */
     private void configureCandlestickRenderer(XYPlot plot) {
         BaseCandleStickRenderer candleStickRenderer = new BaseCandleStickRenderer();
-        candleStickRenderer.setDownPaint(new Color(0x9C0004));
-        candleStickRenderer.setUpPaint(new Color(0x00B909));
+        candleStickRenderer.setDownPaint(BaseCandleStickRenderer.DEFAULT_DOWN_COLOR);
+        candleStickRenderer.setUpPaint(BaseCandleStickRenderer.DEFAULT_UP_COLOR);
+        candleStickRenderer.setAutoWidthMethod(BaseCandleStickRenderer.WIDTHMETHOD_SMALLEST);
+        candleStickRenderer.setAutoWidthGap(0.35);
+        candleStickRenderer.setAutoWidthFactor(0.65);
+        candleStickRenderer.setUseOutlinePaint(true);
+        candleStickRenderer.setDrawVolume(false);
         plot.setRenderer(candleStickRenderer);
     }
 
@@ -724,8 +855,8 @@ public class ChartMaker {
                 if (parsedValue > 0.1 && parsedValue <= 1.0) {
                     return parsedValue;
                 }
-                LOG.warn("Ignoring display scale property {} outside accepted range (0.1, 1.0]: {}", DISPLAY_SCALE_PROPERTY,
-                        configuredScale);
+                LOG.warn("Ignoring display scale property {} outside accepted range (0.1, 1.0]: {}",
+                        DISPLAY_SCALE_PROPERTY, configuredScale);
             } catch (NumberFormatException numberFormatException) {
                 LOG.warn("Unable to parse display scale property {} value: {}", DISPLAY_SCALE_PROPERTY, configuredScale,
                         numberFormatException);
