@@ -26,6 +26,9 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 /**
  * Recursive cached {@link Indicator indicator}.
  *
@@ -35,7 +38,7 @@ import org.ta4j.core.Indicator;
  * <p>
  * This class is only here to avoid (OK, to postpone) the StackOverflowError
  * that may be thrown on the first getValue(int) call of a recursive indicator.
- * Concretely when an index value is asked, if the last cached value is too
+ * Concretely when an index value is asked if the last cached value is too
  * old/far, the computation of all the values between the last cached and the
  * asked one is executed iteratively.
  */
@@ -43,11 +46,16 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed.
-     *
+     * <p>
      * TODO: Should be variable (depending on the sub-indicators used in this
      * indicator, e.g. Indicator#getUnstableBars()).
      */
     private static final int RECURSION_THRESHOLD = 100;
+
+    /**
+     * Guards against recursively re-entering prefill for the same indicator.
+     */
+    private static final ThreadLocal<Map<RecursiveCachedIndicator<?>, Integer>> PREFILL_DEPTH = ThreadLocal.withInitial(IdentityHashMap::new);
 
     /**
      * Constructor.
@@ -68,23 +76,48 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     @Override
-    public T getValue(int index) {
-        final BarSeries series = getBarSeries();
-        if (series == null || index > series.getEndIndex()) {
-            return super.getValue(index);
-        }
-
-        // We're not at the end of the series yet.
-        final int startIndex = Math.max(series.getRemovedBarsCount(), highestResultIndex);
-
-        if (index - startIndex > RECURSION_THRESHOLD) {
-            // Too many uncalculated values; the risk for a StackOverflowError becomes high.
-            // Calculating the previous values iteratively.
-            for (int prevIndex = startIndex; prevIndex < index; prevIndex++) {
-                super.getValue(prevIndex);
+    public synchronized T getValue(int index) {
+        BarSeries series = getBarSeries();
+        if (series != null) {
+            final int seriesEndIndex = series.getEndIndex();
+            if (index <= seriesEndIndex) {
+                // We are not after the end of the series
+                final int removedBarsCount = series.getRemovedBarsCount();
+                int startIndex = Math.max(removedBarsCount, highestResultIndex);
+                if (startIndex < 0) {
+                    startIndex = Math.max(0, removedBarsCount);
+                }
+                if (index - startIndex > RECURSION_THRESHOLD) {
+                    prefillMissingValues(startIndex, index);
+                }
             }
         }
 
         return super.getValue(index);
+    }
+
+    private void prefillMissingValues(int startIndex, int targetIndex) {
+        Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator = PREFILL_DEPTH.get();
+        Integer depth = depthByIndicator.get(this);
+        if (depth != null && depth > 0) {
+            return;
+        }
+
+        depthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
+        try {
+            for (int prevIdx = startIndex; prevIdx < targetIndex; prevIdx++) {
+                super.getValue(prevIdx);
+            }
+        } finally {
+            int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
+            if (updatedDepth <= 0) {
+                depthByIndicator.remove(this);
+            } else {
+                depthByIndicator.put(this, updatedDepth);
+            }
+            if (depthByIndicator.isEmpty()) {
+                PREFILL_DEPTH.remove();
+            }
+        }
     }
 }
