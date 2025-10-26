@@ -24,7 +24,6 @@
 package ta4jexamples.charting;
 
 import org.jfree.chart.JFreeChart;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.*;
@@ -182,6 +181,30 @@ public class ChartMakerTest {
 
         assertNotNull(bytes, "Bytes should not be null");
         assertTrue(bytes.length > 0, "Bytes should not be empty");
+    }
+
+    @Test
+    public void testResolveDisplayScaleWithValidProperty() {
+        System.setProperty("ta4j.chart.displayScale", "0.5");
+        try {
+            assertEquals(0.5, chartMaker.resolveDisplayScale(), 1e-9,
+                    "Display scale should reflect configured property");
+        } finally {
+            System.clearProperty("ta4j.chart.displayScale");
+        }
+    }
+
+    @Test
+    public void testResolveDisplayScaleOnInvalidProperty() {
+        System.clearProperty("ta4j.chart.displayScale");
+        double defaultScale = chartMaker.resolveDisplayScale();
+        System.setProperty("ta4j.chart.displayScale", "invalid");
+        try {
+            assertEquals(defaultScale, chartMaker.resolveDisplayScale(), 1e-9,
+                    "Invalid property should fall back to default scale");
+        } finally {
+            System.clearProperty("ta4j.chart.displayScale");
+        }
     }
 
     @Test

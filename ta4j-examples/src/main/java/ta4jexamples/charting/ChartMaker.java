@@ -89,6 +89,10 @@ public class ChartMaker {
     private static final int DEFAULT_CHART_IMAGE_HEIGHT = 1080;
     private static final int DEFAULT_DISPLAY_WIDTH = 1920;
     private static final int DEFAULT_DISPLAY_HEIGHT = 1200;
+    private static final int MIN_DISPLAY_WIDTH = 800;
+    private static final int MIN_DISPLAY_HEIGHT = 600;
+    private static final double DEFAULT_DISPLAY_SCALE = 0.75;
+    private static final String DISPLAY_SCALE_PROPERTY = "ta4j.chart.displayScale";
 
     // Chart styling constants
     private static final Color CHART_BACKGROUND_COLOR = Color.BLACK;
@@ -679,11 +683,54 @@ public class ChartMaker {
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setDomainZoomable(true);
-        panel.setPreferredSize(new Dimension(DEFAULT_DISPLAY_WIDTH, DEFAULT_DISPLAY_HEIGHT));
+        panel.setPreferredSize(determineDisplaySize());
 
         ApplicationFrame frame = new ApplicationFrame("Ta4j-examples");
         frame.setContentPane(panel);
         frame.pack();
         frame.setVisible(true);
+    }
+
+    Dimension determineDisplaySize() {
+        double displayScale = resolveDisplayScale();
+
+        try {
+            Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            if (bounds != null && bounds.getWidth() > 0 && bounds.getHeight() > 0) {
+                int width = (int) Math.round(bounds.getWidth() * displayScale);
+                int height = (int) Math.round(bounds.getHeight() * displayScale);
+                width = Math.max(MIN_DISPLAY_WIDTH, width);
+                height = Math.max(MIN_DISPLAY_HEIGHT, height);
+                return new Dimension(width, height);
+            }
+        } catch (HeadlessException headlessEx) {
+            LOG.debug("Headless environment detected while determining chart display size", headlessEx);
+        } catch (Exception ex) {
+            LOG.warn("Unable to determine screen bounds for chart display size", ex);
+        }
+
+        int fallbackWidth = (int) Math.round(DEFAULT_DISPLAY_WIDTH * displayScale);
+        int fallbackHeight = (int) Math.round(DEFAULT_DISPLAY_HEIGHT * displayScale);
+        fallbackWidth = Math.max(MIN_DISPLAY_WIDTH, fallbackWidth);
+        fallbackHeight = Math.max(MIN_DISPLAY_HEIGHT, fallbackHeight);
+        return new Dimension(fallbackWidth, fallbackHeight);
+    }
+
+    double resolveDisplayScale() {
+        String configuredScale = System.getProperty(DISPLAY_SCALE_PROPERTY);
+        if (configuredScale != null) {
+            try {
+                double parsedValue = Double.parseDouble(configuredScale);
+                if (parsedValue > 0.1 && parsedValue <= 1.0) {
+                    return parsedValue;
+                }
+                LOG.warn("Ignoring display scale property {} outside accepted range (0.1, 1.0]: {}", DISPLAY_SCALE_PROPERTY,
+                        configuredScale);
+            } catch (NumberFormatException numberFormatException) {
+                LOG.warn("Unable to parse display scale property {} value: {}", DISPLAY_SCALE_PROPERTY, configuredScale,
+                        numberFormatException);
+            }
+        }
+        return DEFAULT_DISPLAY_SCALE;
     }
 }
