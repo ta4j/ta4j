@@ -55,7 +55,8 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     /**
      * Guards against recursively re-entering prefill for the same indicator.
      */
-    private static final ThreadLocal<Map<RecursiveCachedIndicator<?>, Integer>> PREFILL_DEPTH = ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<Map<RecursiveCachedIndicator<?>, Integer>> PREFILL_DEPTH = ThreadLocal
+            .withInitial(IdentityHashMap::new);
 
     /**
      * Constructor.

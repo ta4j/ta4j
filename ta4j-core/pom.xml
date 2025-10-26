@@ -25,6 +25,12 @@
             <version>3.6.1</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -57,10 +63,7 @@
             <artifactId>opencsv</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
+
     </dependencies>
     <build>
         <plugins>
