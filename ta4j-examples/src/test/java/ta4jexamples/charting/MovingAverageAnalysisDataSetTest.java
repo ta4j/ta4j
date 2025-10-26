@@ -28,8 +28,6 @@ import org.jfree.data.xy.OHLCDataItem;
 import org.jfree.data.xy.XYDataset;
 import org.junit.Test;
 
-import java.util.Date;
-
 import static org.junit.Assert.*;
 
 /**
@@ -74,7 +72,7 @@ public class MovingAverageAnalysisDataSetTest {
     @Test
     public void testGetAnalysisWithValidData() {
         MovingAverageAnalysisDataSet dataSet = new MovingAverageAnalysisDataSet(10);
-        DefaultOHLCDataset ohlcData = createTestOHLCDataset();
+        DefaultOHLCDataset ohlcData = ChartingTestFixtures.linearOhlcDataset("Test", 6);
 
         XYDataset result = dataSet.getAnalysis(ohlcData);
 
@@ -91,7 +89,7 @@ public class MovingAverageAnalysisDataSetTest {
 
     @Test
     public void testGetAnalysisWithDifferentPeriods() {
-        DefaultOHLCDataset ohlcData = createTestOHLCDataset();
+        DefaultOHLCDataset ohlcData = ChartingTestFixtures.linearOhlcDataset("Test", 6);
 
         // Test different periods
         MovingAverageAnalysisDataSet dataSet5 = new MovingAverageAnalysisDataSet(5);
@@ -126,9 +124,7 @@ public class MovingAverageAnalysisDataSetTest {
         MovingAverageAnalysisDataSet dataSet = new MovingAverageAnalysisDataSet(10);
 
         // Create dataset with single data point
-        Date date = new Date(System.currentTimeMillis());
-        OHLCDataItem item = new OHLCDataItem(date, 100.0, 105.0, 99.0, 104.0, 1000.0);
-        DefaultOHLCDataset singleData = new DefaultOHLCDataset("Single", new OHLCDataItem[] { item });
+        DefaultOHLCDataset singleData = ChartingTestFixtures.linearOhlcDataset("Single", 1);
 
         XYDataset result = dataSet.getAnalysis(singleData);
         assertNotNull("Result should not be null even with single data point", result);
@@ -172,30 +168,4 @@ public class MovingAverageAnalysisDataSetTest {
         assertFalse("toString should not be empty", toString.isEmpty());
     }
 
-    /**
-     * Creates a test OHLC dataset for testing purposes.
-     */
-    private DefaultOHLCDataset createTestOHLCDataset() {
-        // Create test data with multiple points
-        Date[] dates = { new Date(System.currentTimeMillis() - 86400000L * 5), // 5 days ago
-                new Date(System.currentTimeMillis() - 86400000L * 4), // 4 days ago
-                new Date(System.currentTimeMillis() - 86400000L * 3), // 3 days ago
-                new Date(System.currentTimeMillis() - 86400000L * 2), // 2 days ago
-                new Date(System.currentTimeMillis() - 86400000L), // 1 day ago
-                new Date(System.currentTimeMillis()) // today
-        };
-
-        double[] opens = { 100.0, 101.0, 102.0, 103.0, 104.0, 105.0 };
-        double[] highs = { 105.0, 106.0, 107.0, 108.0, 109.0, 110.0 };
-        double[] lows = { 99.0, 100.0, 101.0, 102.0, 103.0, 104.0 };
-        double[] closes = { 104.0, 105.0, 106.0, 107.0, 108.0, 109.0 };
-        double[] volumes = { 1000.0, 1100.0, 1200.0, 1300.0, 1400.0, 1500.0 };
-
-        OHLCDataItem[] items = new OHLCDataItem[6];
-        for (int i = 0; i < 6; i++) {
-            items[i] = new OHLCDataItem(dates[i], opens[i], highs[i], lows[i], closes[i], volumes[i]);
-        }
-
-        return new DefaultOHLCDataset("Test", items);
-    }
 }

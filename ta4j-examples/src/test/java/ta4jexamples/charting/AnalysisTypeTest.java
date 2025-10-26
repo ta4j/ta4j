@@ -24,10 +24,7 @@
 package ta4jexamples.charting;
 
 import org.jfree.data.xy.DefaultOHLCDataset;
-import org.jfree.data.xy.OHLCDataItem;
 import org.junit.Test;
-
-import java.util.Date;
 
 import static org.junit.Assert.*;
 
@@ -114,7 +111,7 @@ public class AnalysisTypeTest {
     @Test
     public void testDataSetGetAnalysis() {
         // Test that each analysis type can generate analysis data
-        DefaultOHLCDataset dataset = createTestOHLCDataset();
+        DefaultOHLCDataset dataset = ChartingTestFixtures.linearOhlcDataset("Test", 2);
 
         for (AnalysisType type : AnalysisType.values()) {
             assertNotNull("Analysis should not be null for " + type, type.dataSet.getAnalysis(dataset));
@@ -134,24 +131,4 @@ public class AnalysisTypeTest {
         }
     }
 
-    /**
-     * Creates a test OHLC dataset for testing purposes.
-     */
-    private DefaultOHLCDataset createTestOHLCDataset() {
-        Date[] dates = { new Date(System.currentTimeMillis() - 86400000L), // 1 day ago
-                new Date(System.currentTimeMillis()) };
-
-        double[] opens = { 100.0, 101.0 };
-        double[] highs = { 105.0, 106.0 };
-        double[] lows = { 99.0, 100.0 };
-        double[] closes = { 104.0, 105.0 };
-        double[] volumes = { 1000.0, 1100.0 };
-
-        OHLCDataItem[] items = new OHLCDataItem[2];
-        for (int i = 0; i < 2; i++) {
-            items[i] = new OHLCDataItem(dates[i], opens[i], highs[i], lows[i], closes[i], volumes[i]);
-        }
-
-        return new DefaultOHLCDataset("Test", items);
-    }
 }

@@ -30,12 +30,12 @@ import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Collection;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,8 +52,8 @@ class TradingChartFactoryTest {
     @BeforeEach
     void setUp() {
         factory = new TradingChartFactory();
-        barSeries = createTestBarSeries();
-        tradingRecord = createTestTradingRecord(barSeries);
+        barSeries = ChartingTestFixtures.standardDailySeries();
+        tradingRecord = ChartingTestFixtures.completedTradeRecord(barSeries);
     }
 
     @Test
@@ -228,14 +228,14 @@ class TradingChartFactoryTest {
     @Test
     void testChartWithDifferentTimePeriods() {
         // Daily series
-        BarSeries dailySeries = createDailyBarSeries();
-        TradingRecord dailyRecord = createTestTradingRecord(dailySeries);
+        BarSeries dailySeries = ChartingTestFixtures.dailySeries("Daily");
+        TradingRecord dailyRecord = ChartingTestFixtures.completedTradeRecord(dailySeries);
         JFreeChart dailyChart = factory.createTradingRecordChart(dailySeries, "Daily", dailyRecord);
         assertNotNull(dailyChart, "Daily chart should be created");
 
         // Intraday series
-        BarSeries intradaySeries = createIntradayBarSeries();
-        TradingRecord intradayRecord = createTestTradingRecord(intradaySeries);
+        BarSeries intradaySeries = ChartingTestFixtures.hourlySeries("Intraday");
+        TradingRecord intradayRecord = ChartingTestFixtures.completedTradeRecord(intradaySeries);
         JFreeChart intradayChart = factory.createTradingRecordChart(intradaySeries, "Intraday", intradayRecord);
         assertNotNull(intradayChart, "Intraday chart should be created");
     }
@@ -252,83 +252,4 @@ class TradingChartFactoryTest {
         assertFalse(domainMarkers.isEmpty(), "Should have marker for open position");
     }
 
-    private BarSeries createTestBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Test Series").build();
-        Instant startTime = Instant.now().minus(Duration.ofDays(10));
-
-        for (int i = 0; i < 10; i++) {
-            Instant time = startTime.plus(Duration.ofDays(i));
-            double basePrice = 100.0 + i;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 2)
-                    .lowPrice(basePrice - 1)
-                    .closePrice(basePrice + 1)
-                    .volume(1000 + i * 100)
-                    .build());
-        }
-
-        return series;
-    }
-
-    private BarSeries createDailyBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Daily").build();
-        Instant startTime = Instant.now().minus(Duration.ofDays(10));
-
-        for (int i = 0; i < 10; i++) {
-            Instant time = startTime.plus(Duration.ofDays(i));
-            double basePrice = 100.0 + i;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 2)
-                    .lowPrice(basePrice - 1)
-                    .closePrice(basePrice + 1)
-                    .volume(1000 + i * 100)
-                    .build());
-        }
-
-        return series;
-    }
-
-    private BarSeries createIntradayBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Intraday").build();
-        Instant startTime = Instant.now().minus(Duration.ofHours(5));
-
-        for (int i = 0; i < 5; i++) {
-            Instant time = startTime.plus(Duration.ofHours(i));
-            double basePrice = 100.0 + i * 0.5;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofHours(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 1)
-                    .lowPrice(basePrice - 0.5)
-                    .closePrice(basePrice + 0.5)
-                    .volume(500 + i * 50)
-                    .build());
-        }
-
-        return series;
-    }
-
-    private TradingRecord createTestTradingRecord(BarSeries series) {
-        TradingRecord record = new BaseTradingRecord();
-
-        if (series.getBarCount() >= 6) {
-            Trade buyTrade = Trade.buyAt(2, series);
-            Trade sellTrade = Trade.sellAt(5, series);
-
-            record.enter(2, buyTrade.getPricePerAsset(), buyTrade.getAmount());
-            record.exit(5, sellTrade.getPricePerAsset(), sellTrade.getAmount());
-        }
-
-        return record;
-    }
 }

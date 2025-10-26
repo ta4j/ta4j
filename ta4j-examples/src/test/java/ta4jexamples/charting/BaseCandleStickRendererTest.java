@@ -27,11 +27,9 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.xy.DefaultOHLCDataset;
-import org.jfree.data.xy.OHLCDataItem;
 import org.junit.Test;
 
 import java.awt.*;
-import java.util.Date;
 
 import static org.junit.Assert.*;
 
@@ -51,7 +49,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Create a chart with up candle data (close > open)
-        DefaultOHLCDataset dataset = createTestOHLCDataset(true);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(true);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -67,7 +65,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Create a chart with down candle data (close < open)
-        DefaultOHLCDataset dataset = createTestOHLCDataset(false);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(false);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -111,7 +109,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Create a dataset with null values
-        DefaultOHLCDataset dataset = createTestOHLCDatasetWithNulls();
+        DefaultOHLCDataset dataset = ChartingTestFixtures.candleDatasetWithZeros();
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -125,7 +123,7 @@ public class BaseCandleStickRendererTest {
     public void testGetItemPaintWithInvalidIndices() {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
-        DefaultOHLCDataset dataset = createTestOHLCDataset(true);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(true);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -165,7 +163,7 @@ public class BaseCandleStickRendererTest {
     public void testMultipleCalls() {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
-        DefaultOHLCDataset dataset = createTestOHLCDataset(true);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(true);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -184,7 +182,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Create dataset where close > open (up candle)
-        DefaultOHLCDataset dataset = createTestOHLCDataset(true);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(true);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -200,7 +198,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Create dataset where close < open (down candle)
-        DefaultOHLCDataset dataset = createTestOHLCDataset(false);
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(false);
         JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
@@ -211,31 +209,4 @@ public class BaseCandleStickRendererTest {
         assertTrue("Should return a Color object", paint instanceof Color);
     }
 
-    /**
-     * Creates a test OHLC dataset for testing purposes.
-     *
-     * @param upCandle true to create up candle (close > open), false for down
-     *                 candle
-     */
-    private DefaultOHLCDataset createTestOHLCDataset(boolean upCandle) {
-        Date date = new Date(System.currentTimeMillis());
-        double open = 100.0;
-        double high = 105.0;
-        double low = 99.0;
-        double close = upCandle ? 104.0 : 96.0; // Up candle: close > open, Down candle: close < open
-        double volume = 1000.0;
-
-        OHLCDataItem item = new OHLCDataItem(date, open, high, low, close, volume);
-        return new DefaultOHLCDataset("Test", new OHLCDataItem[] { item });
-    }
-
-    /**
-     * Creates a test OHLC dataset with null values for testing error handling.
-     */
-    private DefaultOHLCDataset createTestOHLCDatasetWithNulls() {
-        // Create a dataset that might have null values
-        Date date = new Date(System.currentTimeMillis());
-        OHLCDataItem item = new OHLCDataItem(date, 0.0, 0.0, 0.0, 0.0, 0.0);
-        return new DefaultOHLCDataset("Test", new OHLCDataItem[] { item });
-    }
 }

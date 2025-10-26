@@ -31,7 +31,10 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ui.Layer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 
@@ -40,9 +43,7 @@ import java.util.Comparator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.Optional;
-import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -68,8 +69,8 @@ public class ChartMakerTest {
     @BeforeEach
     public void setUp() {
         chartMaker = new ChartMaker();
-        barSeries = createTestBarSeries();
-        tradingRecord = createTestTradingRecord(barSeries);
+        barSeries = ChartingTestFixtures.standardDailySeries();
+        tradingRecord = ChartingTestFixtures.completedTradeRecord(barSeries);
     }
 
     @Test
@@ -316,7 +317,7 @@ public class ChartMakerTest {
     @Test
     public void testErrorHandlingWithInvalidData() {
         // Test with series that might cause issues
-        BarSeries problematicSeries = createProblematicBarSeries();
+        BarSeries problematicSeries = ChartingTestFixtures.problematicSeries();
         JFreeChart chart = chartMaker.createTradingRecordChart(problematicSeries, "Test Strategy", tradingRecord);
 
         // Should handle gracefully and return a chart (possibly empty)
@@ -326,100 +327,11 @@ public class ChartMakerTest {
     @Test
     public void testPathSanitizationSimple() {
         // Test that sanitization doesn't crash the system (without file creation)
-        BarSeries seriesWithSpecialChars = createSeriesWithSpecialChars();
+        BarSeries seriesWithSpecialChars = ChartingTestFixtures.seriesWithSpecialChars();
         JFreeChart chart = chartMaker.createTradingRecordChart(seriesWithSpecialChars, "Test Strategy",
                 new BaseTradingRecord());
 
         assertNotNull(chart, "Chart should not be null even with special chars in series name");
     }
 
-    /**
-     * Creates a test bar series for testing purposes.
-     */
-    private BarSeries createTestBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Test Series").build();
-
-        Instant startTime = Instant.now().minus(Duration.ofDays(10));
-
-        for (int i = 0; i < 10; i++) {
-            Instant time = startTime.plus(Duration.ofDays(i));
-            double basePrice = 100.0 + i;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 2)
-                    .lowPrice(basePrice - 1)
-                    .closePrice(basePrice + 1)
-                    .volume(1000 + i * 100)
-                    .build());
-        }
-
-        return series;
-    }
-
-    /**
-     * Creates a problematic bar series for testing error handling.
-     */
-    private BarSeries createProblematicBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Problematic Series").build();
-
-        Instant time = Instant.now();
-
-        // Add a bar with potentially problematic values
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(time)
-                .openPrice(0.0) // Zero price
-                .highPrice(0.0)
-                .lowPrice(0.0)
-                .closePrice(0.0)
-                .volume(0.0) // Zero volume
-                .build());
-
-        return series;
-    }
-
-    /**
-     * Creates a test trading record for testing purposes.
-     */
-    private TradingRecord createTestTradingRecord(BarSeries series) {
-        TradingRecord record = new BaseTradingRecord();
-
-        // Only add trades if series has enough bars
-        if (series.getBarCount() >= 6) {
-            Trade buyTrade = Trade.buyAt(2, series);
-            Trade sellTrade = Trade.sellAt(5, series);
-
-            record.enter(2, buyTrade.getPricePerAsset(), buyTrade.getAmount());
-            record.exit(5, sellTrade.getPricePerAsset(), sellTrade.getAmount());
-        } else {
-            series.getBarCount();// For single bar, don't add any trades (indices would be out of bounds)
-        }
-
-        return record;
-    }
-
-    /**
-     * Creates a bar series with special characters in the name for testing path
-     * sanitization.
-     */
-    private BarSeries createSeriesWithSpecialChars() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Test:Series/With\\Special?Chars*<>|\"").build();
-
-        Instant time = Instant.now();
-
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(time)
-                .openPrice(100.0)
-                .highPrice(105.0)
-                .lowPrice(99.0)
-                .closePrice(104.0)
-                .volume(1000.0)
-                .build());
-
-        return series;
-    }
 }

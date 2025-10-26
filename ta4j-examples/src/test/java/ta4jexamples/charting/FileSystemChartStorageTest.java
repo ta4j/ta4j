@@ -27,17 +27,11 @@ import org.jfree.chart.ChartFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.jfree.data.xy.DefaultOHLCDataset;
-import org.jfree.data.xy.OHLCDataItem;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,22 +51,9 @@ class FileSystemChartStorageTest {
     @BeforeEach
     void setUp() {
         storage = new FileSystemChartStorage(tempDir);
-        barSeries = createTestBarSeries();
-        chart = ChartFactory.createCandlestickChart("Test Chart", "Date", "Price", createChartDataset(barSeries), true);
-    }
-
-    private DefaultOHLCDataset createChartDataset(BarSeries series) {
-        List<OHLCDataItem> dataItems = new ArrayList<>();
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            org.ta4j.core.Bar bar = series.getBar(i);
-            OHLCDataItem item = new OHLCDataItem(java.util.Date.from(bar.getEndTime()),
-                    bar.getOpenPrice().doubleValue(), bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),
-                    bar.getClosePrice().doubleValue(), bar.getVolume().doubleValue());
-            dataItems.add(item);
-        }
-
-        return new DefaultOHLCDataset("Series", dataItems.toArray(new OHLCDataItem[0]));
+        barSeries = ChartingTestFixtures.standardDailySeries();
+        chart = ChartFactory.createCandlestickChart("Test Chart", "Date", "Price",
+                ChartingTestFixtures.seriesToDataset(barSeries), true);
     }
 
     @Test
@@ -111,8 +92,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitization() {
-        BarSeries seriesWithSpecialChars = new BaseBarSeriesBuilder().withName("Test:Series/With\\Special?Chars*<>|\"")
-                .build();
+        BarSeries seriesWithSpecialChars = ChartingTestFixtures.seriesWithSpecialChars();
 
         Optional<Path> result = storage.save(chart, seriesWithSpecialChars, "Test:Strategy/Path", 800, 600);
 
@@ -130,7 +110,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWithNullSeriesName() {
-        BarSeries seriesWithNullName = new BaseBarSeriesBuilder().build();
+        BarSeries seriesWithNullName = new MockBarSeriesBuilder().build();
 
         Optional<Path> result = storage.save(chart, seriesWithNullName, "Test Strategy", 800, 600);
 
@@ -140,7 +120,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWithEmptySeriesName() {
-        BarSeries seriesWithEmptyName = new BaseBarSeriesBuilder().withName("").build();
+        BarSeries seriesWithEmptyName = new MockBarSeriesBuilder().withName("").build();
 
         Optional<Path> result = storage.save(chart, seriesWithEmptyName, "Test Strategy", 800, 600);
 
@@ -150,7 +130,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWhitespaceHandling() {
-        BarSeries seriesWithWhitespace = new BaseBarSeriesBuilder().withName("Series   Name  With   Spaces").build();
+        BarSeries seriesWithWhitespace = new MockBarSeriesBuilder().withName("Series   Name  With   Spaces").build();
 
         Optional<Path> result = storage.save(chart, seriesWithWhitespace, "Strategy  Name", 800, 600);
 
@@ -162,7 +142,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationRemovesLeadingAndTrailingDots() {
-        BarSeries seriesWithDots = new BaseBarSeriesBuilder().withName("...Series...").build();
+        BarSeries seriesWithDots = new MockBarSeriesBuilder().withName("...Series...").build();
 
         Optional<Path> result = storage.save(chart, seriesWithDots, "...Strategy...", 800, 600);
 
@@ -206,25 +186,4 @@ class FileSystemChartStorageTest {
         assertNotNull(parentDir, "Should have parent directory");
     }
 
-    private BarSeries createTestBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Test Series").build();
-        Instant startTime = Instant.now().minus(Duration.ofDays(10));
-
-        for (int i = 0; i < 10; i++) {
-            Instant time = startTime.plus(Duration.ofDays(i));
-            double basePrice = 100.0 + i;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 2)
-                    .lowPrice(basePrice - 1)
-                    .closePrice(basePrice + 1)
-                    .volume(1000 + i * 100)
-                    .build());
-        }
-
-        return series;
-    }
 }
