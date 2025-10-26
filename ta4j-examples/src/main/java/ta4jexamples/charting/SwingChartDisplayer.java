@@ -37,10 +37,29 @@ import java.awt.Rectangle;
 /**
  * Swing-based {@link ChartDisplayer} that renders charts in an
  * {@link ApplicationFrame}.
+ *
+ * <p>
+ * This implementation displays charts in a Swing window with zoom and pan
+ * capabilities. The display size can be configured via the
+ * {@link #DISPLAY_SCALE_PROPERTY system property}.
+ * </p>
+ *
+ * @since 0.19
  */
 final class SwingChartDisplayer implements ChartDisplayer {
 
+    /**
+     * System property key for chart display scale configuration.
+     *
+     * @since 0.19
+     */
     static final String DISPLAY_SCALE_PROPERTY = "ta4j.chart.displayScale";
+
+    /**
+     * Default chart display scale.
+     *
+     * @since 0.19
+     */
     static final double DEFAULT_DISPLAY_SCALE = 0.75;
     private static final int DEFAULT_DISPLAY_WIDTH = 1920;
     private static final int DEFAULT_DISPLAY_HEIGHT = 1200;

@@ -37,7 +37,15 @@ import java.util.Optional;
 import java.util.Objects;
 
 /**
- * Persists charts to the filesystem.
+ * Persists charts to the filesystem as JPEG images.
+ *
+ * <p>
+ * This storage implementation saves charts to a configurable root directory,
+ * organizing files by series name and period. Chart titles are sanitized to
+ * ensure filesystem compatibility.
+ * </p>
+ *
+ * @since 0.19
  */
 final class FileSystemChartStorage implements ChartStorage {
 

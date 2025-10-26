@@ -40,13 +40,22 @@ import java.awt.*;
  * </p>
  *
  * @see CandlestickRenderer
+ * @since 0.19
  */
 public class BaseCandleStickRenderer extends CandlestickRenderer {
 
-    /** Color for up candles (close > open). */
+    /**
+     * Color for up candles (close > open).
+     *
+     * @since 0.19
+     */
     public static final Color DEFAULT_UP_COLOR = new Color(0x00E676);
 
-    /** Color for down candles (close < open). */
+    /**
+     * Color for down candles (close < open).
+     *
+     * @since 0.19
+     */
     public static final Color DEFAULT_DOWN_COLOR = new Color(0xFF5252);
 
     /**
@@ -56,6 +65,7 @@ public class BaseCandleStickRenderer extends CandlestickRenderer {
      * @param row    the row (series) index
      * @param column the column (item) index
      * @return the paint color for the item
+     * @since 0.19
      */
     @Override
     public Paint getItemPaint(int row, int column) {

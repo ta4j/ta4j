@@ -56,10 +56,23 @@ import java.util.Optional;
  * High-level convenience methods remain available while delegating to these
  * collaborators, enabling more focused unit testing and future extension.
  * </p>
+ *
+ * @since 0.19
  */
 public class ChartMaker {
 
+    /**
+     * Default chart image width.
+     *
+     * @since 0.19
+     */
     static final int DEFAULT_CHART_IMAGE_WIDTH = 1920;
+
+    /**
+     * Default chart image height.
+     *
+     * @since 0.19
+     */
     static final int DEFAULT_CHART_IMAGE_HEIGHT = 1080;
 
     private static final Logger LOG = LoggerFactory.getLogger(ChartMaker.class);
@@ -71,6 +84,8 @@ public class ChartMaker {
     /**
      * Creates a {@link ChartMaker} that supports chart composition and display but
      * omits chart persistence.
+     *
+     * @since 0.19
      */
     public ChartMaker() {
         this(new TradingChartFactory(), new SwingChartDisplayer(), ChartStorage.noOp());
@@ -80,6 +95,7 @@ public class ChartMaker {
      * Creates a {@link ChartMaker} with filesystem persistence enabled.
      *
      * @param chartImageSaveDirectory the directory to store generated chart images
+     * @since 0.19
      */
     public ChartMaker(String chartImageSaveDirectory) {
         this(new TradingChartFactory(), new SwingChartDisplayer(),
@@ -94,6 +110,8 @@ public class ChartMaker {
 
     /**
      * Builds a chart that overlays a trading record on top of OHLC data.
+     *
+     * @since 0.19
      */
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
@@ -104,6 +122,7 @@ public class ChartMaker {
      * Persists a trading record chart if persistence is configured.
      *
      * @return an optional path to the stored chart
+     * @since 0.19
      */
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
@@ -115,6 +134,8 @@ public class ChartMaker {
 
     /**
      * Displays a trading record chart, logging any presentation exceptions.
+     *
+     * @since 0.19
      */
     public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
@@ -128,6 +149,8 @@ public class ChartMaker {
 
     /**
      * Produces a PNG representation of a trading record chart.
+     *
+     * @since 0.19
      */
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
@@ -137,6 +160,8 @@ public class ChartMaker {
 
     /**
      * Builds an indicator overlay chart.
+     *
+     * @since 0.19
      */
     @SafeVarargs
     public final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
@@ -154,6 +179,8 @@ public class ChartMaker {
 
     /**
      * Displays an indicator overlay chart.
+     *
+     * @since 0.19
      */
     @SafeVarargs
     public final void displayIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
@@ -167,6 +194,8 @@ public class ChartMaker {
 
     /**
      * Builds an analysis overlay chart.
+     *
+     * @since 0.19
      */
     public JFreeChart createAnalysisChart(BarSeries series, AnalysisType... analysisTypes) {
         validateSeries(series);
@@ -183,6 +212,8 @@ public class ChartMaker {
 
     /**
      * Displays an analysis overlay chart.
+     *
+     * @since 0.19
      */
     public void displayAnalysisChart(BarSeries series, AnalysisType... analysisTypes) {
         try {
@@ -195,6 +226,8 @@ public class ChartMaker {
 
     /**
      * Displays a caller-provided chart using the configured displayer.
+     *
+     * @since 0.19
      */
     public void displayChart(JFreeChart chart) {
         if (chart == null) {
@@ -207,6 +240,7 @@ public class ChartMaker {
      * Persists the supplied chart.
      *
      * @return an optional path to the stored chart
+     * @since 0.19
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartTitle) {
         if (chart == null) {
@@ -221,6 +255,8 @@ public class ChartMaker {
 
     /**
      * Converts a chart into PNG bytes.
+     *
+     * @since 0.19
      */
     public byte[] getChartAsByteArray(JFreeChart chart) {
         if (chart == null) {

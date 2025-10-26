@@ -58,8 +58,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -67,6 +65,8 @@ import java.util.List;
 /**
  * Builds {@link JFreeChart} instances with different overlays for TA4J trading
  * data.
+ *
+ * @since 0.19
  */
 final class TradingChartFactory {
 

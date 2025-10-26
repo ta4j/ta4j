@@ -43,12 +43,21 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
 import java.time.Instant;
-import java.awt.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for {@link ChartMaker}.
+ * Integration tests for {@link ChartMaker}.
+ *
+ * <p>
+ * This test class focuses on testing the integration between ChartMaker and its
+ * collaborators. Unit tests for specific components are located in:
+ * </p>
+ * <ul>
+ * <li>{@link FileSystemChartStorageTest} - Chart storage functionality</li>
+ * <li>{@link SwingChartDisplayerTest} - Chart display functionality</li>
+ * <li>{@link TradingChartFactoryTest} - Chart creation functionality</li>
+ * </ul>
  */
 public class ChartMakerTest {
 
@@ -60,24 +69,20 @@ public class ChartMakerTest {
     public void setUp() {
         chartMaker = new ChartMaker();
         barSeries = createTestBarSeries();
-        tradingRecord = createTestTradingRecord(barSeries); // Pass barSeries to create appropriate trades
+        tradingRecord = createTestTradingRecord(barSeries);
     }
 
     @Test
     public void testDefaultConstructor() {
         ChartMaker maker = new ChartMaker();
-        assertNotNull(maker, "ChartMaker should not be null");
-        // Test that the default constructor works
-        assertNotNull(maker, "ChartMaker should be created successfully");
+        assertNotNull(maker);
     }
 
     @Test
     public void testConstructorWithSaveDirectory() {
         String saveDir = "test/charts";
         ChartMaker maker = new ChartMaker(saveDir);
-        assertNotNull(maker, "ChartMaker should not be null");
-        // Test that the constructor works without accessing private fields
-        assertNotNull(maker, "ChartMaker should be created successfully");
+        assertNotNull(maker);
     }
 
     @Test
@@ -227,31 +232,7 @@ public class ChartMakerTest {
         assertTrue(bytes.length > 0, "Bytes should not be empty");
     }
 
-    @Test
-    public void testResolveDisplayScaleWithValidProperty() {
-        SwingChartDisplayer displayer = new SwingChartDisplayer();
-        System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "0.5");
-        try {
-            assertEquals(0.5, displayer.resolveDisplayScale(), 1e-9,
-                    "Display scale should reflect configured property");
-        } finally {
-            System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
-        }
-    }
-
-    @Test
-    public void testResolveDisplayScaleOnInvalidProperty() {
-        SwingChartDisplayer displayer = new SwingChartDisplayer();
-        System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
-        double defaultScale = displayer.resolveDisplayScale();
-        System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "invalid");
-        try {
-            assertEquals(defaultScale, displayer.resolveDisplayScale(), 1e-9,
-                    "Invalid property should fall back to default scale");
-        } finally {
-            System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
-        }
-    }
+    // Display scale tests moved to SwingChartDisplayerTest
 
     @Test
     public void testGenerateAndSaveChartImageWithoutSaveDirectory() {
@@ -329,70 +310,8 @@ public class ChartMakerTest {
         }
     }
 
-    @Test
-    public void testChartTitleGeneration() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        String title = chart.getTitle().getText();
-
-        assertNotNull(title, "Title should not be null");
-        assertTrue(title.contains("Test Strategy"), "Title should contain strategy name");
-        assertTrue(title.contains("Test"), "Title should contain series name");
-    }
-
-    @Test
-    public void testChartWithEmptyTradingRecord() {
-        TradingRecord emptyRecord = new BaseTradingRecord();
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", emptyRecord);
-
-        assertNotNull(chart, "Chart should not be null even with empty trading record");
-    }
-
-    @Test
-    public void testChartWithSingleBar() {
-        BarSeries singleBarSeries = createSingleBarSeries();
-        // Create empty trading record for single bar (no trades within range)
-        TradingRecord emptyRecord = new BaseTradingRecord();
-        JFreeChart chart = chartMaker.createTradingRecordChart(singleBarSeries, "Test Strategy", emptyRecord);
-
-        assertNotNull(chart, "Chart should not be null even with single bar");
-    }
-
-    @Test
-    public void testChartWithDifferentTimePeriods() {
-        // Test with daily data
-        BarSeries dailySeries = createTestBarSeries();
-        TradingRecord dailyRecord = createTestTradingRecord(dailySeries);
-        JFreeChart dailyChart = chartMaker.createTradingRecordChart(dailySeries, "Daily Strategy", dailyRecord);
-        assertNotNull(dailyChart, "Daily chart should not be null");
-
-        // Test with intraday data (shorter duration)
-        BarSeries intradaySeries = createIntradayBarSeries();
-        TradingRecord intradayRecord = createTestTradingRecord(intradaySeries);
-        JFreeChart intradayChart = chartMaker.createTradingRecordChart(intradaySeries, "Intraday Strategy",
-                intradayRecord);
-        assertNotNull(intradayChart, "Intraday chart should not be null");
-    }
-
-    @Test
-    public void testChartWithMultipleAnalysisTypes() {
-        AnalysisType[] analysisTypes = { AnalysisType.MOVING_AVERAGE_10, AnalysisType.MOVING_AVERAGE_20,
-                AnalysisType.MOVING_AVERAGE_50 };
-
-        JFreeChart chart = chartMaker.createAnalysisChart(barSeries, analysisTypes);
-        assertNotNull(chart, "Chart should not be null");
-    }
-
-    @Test
-    public void testChartWithMultipleIndicators() {
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        SMAIndicator sma5 = new SMAIndicator(closePrice, 5);
-        SMAIndicator sma10 = new SMAIndicator(closePrice, 10);
-
-        @SuppressWarnings("unchecked")
-        Indicator<org.ta4j.core.num.Num>[] indicators = new Indicator[] { closePrice, sma5, sma10 };
-        JFreeChart chart = chartMaker.createIndicatorChart(barSeries, indicators);
-        assertNotNull(chart, "Chart should not be null");
-    }
+    // Chart title, empty record, single bar, time periods, and multiple analysis
+    // tests moved to TradingChartFactoryTest
 
     @Test
     public void testErrorHandlingWithInvalidData() {
@@ -434,53 +353,6 @@ public class ChartMakerTest {
                     .lowPrice(basePrice - 1)
                     .closePrice(basePrice + 1)
                     .volume(1000 + i * 100)
-                    .build());
-        }
-
-        return series;
-    }
-
-    /**
-     * Creates a single bar series for testing edge cases.
-     */
-    private BarSeries createSingleBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Single Bar").build();
-
-        Instant time = Instant.now();
-
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(time)
-                .openPrice(100.0)
-                .highPrice(105.0)
-                .lowPrice(99.0)
-                .closePrice(104.0)
-                .volume(1000.0)
-                .build());
-
-        return series;
-    }
-
-    /**
-     * Creates an intraday bar series for testing different time periods.
-     */
-    private BarSeries createIntradayBarSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("Intraday Series").build();
-
-        Instant startTime = Instant.now().minus(Duration.ofHours(5));
-
-        for (int i = 0; i < 5; i++) {
-            Instant time = startTime.plus(Duration.ofHours(i));
-            double basePrice = 100.0 + i * 0.5;
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofHours(1))
-                    .endTime(time)
-                    .openPrice(basePrice)
-                    .highPrice(basePrice + 1)
-                    .lowPrice(basePrice - 0.5)
-                    .closePrice(basePrice + 0.5)
-                    .volume(500 + i * 50)
                     .build());
         }
 

@@ -31,6 +31,14 @@ import java.util.Optional;
 
 /**
  * Strategy for persisting charts.
+ *
+ * <p>
+ * Implementations are responsible for saving chart images to a storage system.
+ * The default implementation {@link FileSystemChartStorage} saves charts as
+ * JPEG files to the filesystem.
+ * </p>
+ *
+ * @since 0.19
  */
 interface ChartStorage {
 
@@ -44,6 +52,7 @@ interface ChartStorage {
      * @param width      target image width
      * @param height     target image height
      * @return the optional path to the persisted image
+     * @since 0.19
      */
     Optional<Path> save(JFreeChart chart, BarSeries series, String chartTitle, int width, int height);
 
@@ -51,6 +60,7 @@ interface ChartStorage {
      * Creates a storage strategy that performs no persistence.
      *
      * @return a no-op storage strategy
+     * @since 0.19
      */
     static ChartStorage noOp() {
         return (chart, series, chartTitle, width, height) -> Optional.empty();
