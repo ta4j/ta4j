@@ -21,37 +21,38 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.analysis;
+package ta4jexamples.charting;
 
-import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.Strategy;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.charting.ChartMaker;
+import java.nio.file.Path;
+import java.util.Optional;
 
 /**
- * This class builds a graphical chart showing the buy/sell signals of a
- * strategy.
+ * Strategy for persisting charts.
  */
-public class BuyAndSellSignalsToChart {
+interface ChartStorage {
 
-    public static void main(String[] args) {
+    /**
+     * Persists the provided chart and returns the destination path if the operation
+     * succeeds.
+     *
+     * @param chart      the chart to persist
+     * @param series     the originating bar series
+     * @param chartTitle the descriptive chart title
+     * @param width      target image width
+     * @param height     target image height
+     * @return the optional path to the persisted image
+     */
+    Optional<Path> save(JFreeChart chart, BarSeries series, String chartTitle, int width, int height);
 
-        // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
-        // Building the trading strategy
-        Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
-
-        // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord = seriesManager.run(strategy);
-
-        // Displaying the chart using the shared ChartMaker utility
-        ChartMaker chartMaker = new ChartMaker();
-        String strategyName = strategy.getName() != null ? strategy.getName() : "Moving Momentum Strategy";
-        chartMaker.displayTradingRecordChart(series, strategyName, tradingRecord);
+    /**
+     * Creates a storage strategy that performs no persistence.
+     *
+     * @return a no-op storage strategy
+     */
+    static ChartStorage noOp() {
+        return (chart, series, chartTitle, width, height) -> Optional.empty();
     }
 }

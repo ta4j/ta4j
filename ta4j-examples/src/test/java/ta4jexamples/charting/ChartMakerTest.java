@@ -27,22 +27,23 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.ui.Layer;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.ui.Layer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 
-import java.awt.*;
+import java.util.Collection;
+import java.util.Comparator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Optional;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.Collection;
+import java.awt.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -96,7 +97,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateChartWithTradingRecord() {
-        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         assertNotNull(chart, "Chart should not be null");
         assertNotNull(chart.getTitle(), "Chart title should not be null");
@@ -105,12 +106,12 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateChartAddsTradeMarkers() {
-        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         XYPlot plot = chart.getXYPlot();
 
         assertTrue(plot.getDatasetCount() > 1, "Trade dataset should be present on the chart");
         assertNotNull(plot.getDataset(1), "Trade dataset should not be null");
-        assertTrue(plot.getRenderer(1) instanceof XYLineAndShapeRenderer,
+        assertInstanceOf(XYLineAndShapeRenderer.class, plot.getRenderer(1),
                 "Trade renderer should provide marker shapes");
 
         Collection<?> domainMarkers = plot.getDomainMarkers(Layer.BACKGROUND);
@@ -126,22 +127,25 @@ public class ChartMakerTest {
     @Test
     public void testGenerateChartWithNullSeries() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.generateChart(null, "Test Strategy", tradingRecord));
+                () -> chartMaker.createTradingRecordChart(null, "Test Strategy", tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithNullStrategyName() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.generateChart(barSeries, null, tradingRecord));
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createTradingRecordChart(barSeries, null, tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithEmptyStrategyName() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.generateChart(barSeries, "", tradingRecord));
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createTradingRecordChart(barSeries, "", tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithNullTradingRecord() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.generateChart(barSeries, "Test Strategy", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createTradingRecordChart(barSeries, "Test Strategy", null));
     }
 
     @Test
@@ -149,7 +153,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        JFreeChart chart = chartMaker.generateChart(barSeries, closePrice, sma);
+        JFreeChart chart = chartMaker.createIndicatorChart(barSeries, closePrice, sma);
 
         assertNotNull(chart, "Chart should not be null");
         assertNotNull(chart.getTitle(), "Chart title should not be null");
@@ -158,18 +162,25 @@ public class ChartMakerTest {
     @Test
     public void testGenerateChartWithNullSeriesForIndicators() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.generateChart(null, closePrice));
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.createIndicatorChart(null, closePrice));
     }
 
     @Test
     public void testGenerateChartWithNullIndicators() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.generateChart(barSeries, (Indicator<org.ta4j.core.num.Num>[]) null));
+                () -> chartMaker.createIndicatorChart(barSeries, (Indicator<org.ta4j.core.num.Num>[]) null));
+    }
+
+    @Test
+    public void testCreateIndicatorChartWithNullElement() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createIndicatorChart(barSeries, closePrice, null));
     }
 
     @Test
     public void testGenerateChartWithAnalysisTypes() {
-        JFreeChart chart = chartMaker.generateChart(barSeries, AnalysisType.MOVING_AVERAGE_10,
+        JFreeChart chart = chartMaker.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10,
                 AnalysisType.MOVING_AVERAGE_20);
 
         assertNotNull(chart, "Chart should not be null");
@@ -179,17 +190,24 @@ public class ChartMakerTest {
     @Test
     public void testGenerateChartWithNullSeriesForAnalysis() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.generateChart(null, AnalysisType.MOVING_AVERAGE_10));
+                () -> chartMaker.createAnalysisChart(null, AnalysisType.MOVING_AVERAGE_10));
     }
 
     @Test
     public void testGenerateChartWithNullAnalysisTypes() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.generateChart(barSeries, (AnalysisType[]) null));
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createAnalysisChart(barSeries, (AnalysisType[]) null));
+    }
+
+    @Test
+    public void testCreateAnalysisChartWithNullElement() {
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10, null));
     }
 
     @Test
     public void testGenerateChartAsBytes() {
-        byte[] chartBytes = chartMaker.generateChartAsBytes(barSeries, "Test Strategy", tradingRecord);
+        byte[] chartBytes = chartMaker.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
         assertNotNull(chartBytes, "Chart bytes should not be null");
         assertTrue(chartBytes.length > 0, "Chart bytes should not be empty");
@@ -202,7 +220,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGetChartAsByteArray() {
-        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         byte[] bytes = chartMaker.getChartAsByteArray(chart);
 
         assertNotNull(bytes, "Bytes should not be null");
@@ -211,33 +229,34 @@ public class ChartMakerTest {
 
     @Test
     public void testResolveDisplayScaleWithValidProperty() {
-        System.setProperty("ta4j.chart.displayScale", "0.5");
+        SwingChartDisplayer displayer = new SwingChartDisplayer();
+        System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "0.5");
         try {
-            assertEquals(0.5, chartMaker.resolveDisplayScale(), 1e-9,
+            assertEquals(0.5, displayer.resolveDisplayScale(), 1e-9,
                     "Display scale should reflect configured property");
         } finally {
-            System.clearProperty("ta4j.chart.displayScale");
+            System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         }
     }
 
     @Test
     public void testResolveDisplayScaleOnInvalidProperty() {
-        System.clearProperty("ta4j.chart.displayScale");
-        double defaultScale = chartMaker.resolveDisplayScale();
-        System.setProperty("ta4j.chart.displayScale", "invalid");
+        SwingChartDisplayer displayer = new SwingChartDisplayer();
+        System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
+        double defaultScale = displayer.resolveDisplayScale();
+        System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "invalid");
         try {
-            assertEquals(defaultScale, chartMaker.resolveDisplayScale(), 1e-9,
+            assertEquals(defaultScale, displayer.resolveDisplayScale(), 1e-9,
                     "Invalid property should fall back to default scale");
         } finally {
-            System.clearProperty("ta4j.chart.displayScale");
+            System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         }
     }
 
     @Test
     public void testGenerateAndSaveChartImageWithoutSaveDirectory() {
-        String result = chartMaker.generateAndSaveChartImage(barSeries, "Test Strategy", tradingRecord);
-
-        assertNull(result, "Result should be null when save directory is not configured");
+        assertTrue(chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord).isEmpty(),
+                "Result should be empty when save directory is not configured");
     }
 
     @Test
@@ -247,14 +266,8 @@ public class ChartMakerTest {
         try {
             ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
             TradingRecord emptyRecord = new BaseTradingRecord();
-            String result = makerWithSave.generateAndSaveChartImage(barSeries, "TestStrat", emptyRecord);
-
-            // The result may be null if file creation fails, but the method should complete
-            // without exception
-            // This is acceptable as it's an integration test with file system operations
-            if (result != null) {
-                assertFalse(result.isEmpty(), "Result should not be empty");
-            }
+            Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "TestStrat", emptyRecord);
+            result.ifPresent(path -> assertTrue(Files.exists(path), "Saved chart path should exist"));
         } finally {
             // Clean up
             if (Files.exists(tempDir)) {
@@ -272,7 +285,7 @@ public class ChartMakerTest {
     @Test
     public void testGenerateAndSaveChartImageWithNullParameters() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.generateAndSaveChartImage(null, "Test Strategy", tradingRecord));
+                () -> chartMaker.saveTradingRecordChart(null, "Test Strategy", tradingRecord));
     }
 
     @Test
@@ -280,7 +293,7 @@ public class ChartMakerTest {
         // This test just ensures the method doesn't throw an exception
         // In a real test environment, we might mock the display functionality
         try {
-            chartMaker.generateAndDisplayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            chartMaker.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
@@ -289,9 +302,14 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testDisplayChartWithNullChart() {
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayChart(null));
+    }
+
+    @Test
     public void testGenerateAndDisplayChartWithAnalysisTypes() {
         try {
-            chartMaker.generateAndDisplayChart(barSeries, AnalysisType.MOVING_AVERAGE_10);
+            chartMaker.displayAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
@@ -303,7 +321,7 @@ public class ChartMakerTest {
     public void testGenerateAndDisplayChartWithIndicators() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         try {
-            chartMaker.generateAndDisplayChart(barSeries, closePrice);
+            chartMaker.displayIndicatorChart(barSeries, closePrice);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
@@ -313,7 +331,7 @@ public class ChartMakerTest {
 
     @Test
     public void testChartTitleGeneration() {
-        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         String title = chart.getTitle().getText();
 
         assertNotNull(title, "Title should not be null");
@@ -324,7 +342,7 @@ public class ChartMakerTest {
     @Test
     public void testChartWithEmptyTradingRecord() {
         TradingRecord emptyRecord = new BaseTradingRecord();
-        JFreeChart chart = chartMaker.generateChart(barSeries, "Test Strategy", emptyRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", emptyRecord);
 
         assertNotNull(chart, "Chart should not be null even with empty trading record");
     }
@@ -334,7 +352,7 @@ public class ChartMakerTest {
         BarSeries singleBarSeries = createSingleBarSeries();
         // Create empty trading record for single bar (no trades within range)
         TradingRecord emptyRecord = new BaseTradingRecord();
-        JFreeChart chart = chartMaker.generateChart(singleBarSeries, "Test Strategy", emptyRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(singleBarSeries, "Test Strategy", emptyRecord);
 
         assertNotNull(chart, "Chart should not be null even with single bar");
     }
@@ -344,13 +362,14 @@ public class ChartMakerTest {
         // Test with daily data
         BarSeries dailySeries = createTestBarSeries();
         TradingRecord dailyRecord = createTestTradingRecord(dailySeries);
-        JFreeChart dailyChart = chartMaker.generateChart(dailySeries, "Daily Strategy", dailyRecord);
+        JFreeChart dailyChart = chartMaker.createTradingRecordChart(dailySeries, "Daily Strategy", dailyRecord);
         assertNotNull(dailyChart, "Daily chart should not be null");
 
         // Test with intraday data (shorter duration)
         BarSeries intradaySeries = createIntradayBarSeries();
         TradingRecord intradayRecord = createTestTradingRecord(intradaySeries);
-        JFreeChart intradayChart = chartMaker.generateChart(intradaySeries, "Intraday Strategy", intradayRecord);
+        JFreeChart intradayChart = chartMaker.createTradingRecordChart(intradaySeries, "Intraday Strategy",
+                intradayRecord);
         assertNotNull(intradayChart, "Intraday chart should not be null");
     }
 
@@ -359,7 +378,7 @@ public class ChartMakerTest {
         AnalysisType[] analysisTypes = { AnalysisType.MOVING_AVERAGE_10, AnalysisType.MOVING_AVERAGE_20,
                 AnalysisType.MOVING_AVERAGE_50 };
 
-        JFreeChart chart = chartMaker.generateChart(barSeries, analysisTypes);
+        JFreeChart chart = chartMaker.createAnalysisChart(barSeries, analysisTypes);
         assertNotNull(chart, "Chart should not be null");
     }
 
@@ -371,7 +390,7 @@ public class ChartMakerTest {
 
         @SuppressWarnings("unchecked")
         Indicator<org.ta4j.core.num.Num>[] indicators = new Indicator[] { closePrice, sma5, sma10 };
-        JFreeChart chart = chartMaker.generateChart(barSeries, indicators);
+        JFreeChart chart = chartMaker.createIndicatorChart(barSeries, indicators);
         assertNotNull(chart, "Chart should not be null");
     }
 
@@ -379,7 +398,7 @@ public class ChartMakerTest {
     public void testErrorHandlingWithInvalidData() {
         // Test with series that might cause issues
         BarSeries problematicSeries = createProblematicBarSeries();
-        JFreeChart chart = chartMaker.generateChart(problematicSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartMaker.createTradingRecordChart(problematicSeries, "Test Strategy", tradingRecord);
 
         // Should handle gracefully and return a chart (possibly empty)
         assertNotNull(chart, "Chart should not be null even with problematic data");
@@ -389,7 +408,8 @@ public class ChartMakerTest {
     public void testPathSanitizationSimple() {
         // Test that sanitization doesn't crash the system (without file creation)
         BarSeries seriesWithSpecialChars = createSeriesWithSpecialChars();
-        JFreeChart chart = chartMaker.generateChart(seriesWithSpecialChars, "Test Strategy", new BaseTradingRecord());
+        JFreeChart chart = chartMaker.createTradingRecordChart(seriesWithSpecialChars, "Test Strategy",
+                new BaseTradingRecord());
 
         assertNotNull(chart, "Chart should not be null even with special chars in series name");
     }

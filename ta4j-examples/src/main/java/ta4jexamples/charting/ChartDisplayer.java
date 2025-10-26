@@ -21,37 +21,25 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.analysis;
+package ta4jexamples.charting;
 
-import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeries;
-
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.charting.ChartMaker;
+import org.jfree.chart.JFreeChart;
 
 /**
- * This class builds a graphical chart showing the buy/sell signals of a
- * strategy.
+ * Display strategy for {@link JFreeChart} instances.
+ *
+ * <p>
+ * Implementations are responsible for presenting a chart to the user. The
+ * default implementation is {@link SwingChartDisplayer}, which renders a chart
+ * in a Swing {@code ApplicationFrame}.
+ * </p>
  */
-public class BuyAndSellSignalsToChart {
+public interface ChartDisplayer {
 
-    public static void main(String[] args) {
-
-        // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
-        // Building the trading strategy
-        Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
-
-        // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord = seriesManager.run(strategy);
-
-        // Displaying the chart using the shared ChartMaker utility
-        ChartMaker chartMaker = new ChartMaker();
-        String strategyName = strategy.getName() != null ? strategy.getName() : "Moving Momentum Strategy";
-        chartMaker.displayTradingRecordChart(series, strategyName, tradingRecord);
-    }
+    /**
+     * Presents the provided chart to the user.
+     *
+     * @param chart the chart to display
+     */
+    void display(JFreeChart chart);
 }

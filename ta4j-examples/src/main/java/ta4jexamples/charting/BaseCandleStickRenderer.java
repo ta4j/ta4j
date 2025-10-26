@@ -60,22 +60,17 @@ public class BaseCandleStickRenderer extends CandlestickRenderer {
     @Override
     public Paint getItemPaint(int row, int column) {
         XYDataset dataset = getPlot().getDataset();
-        if (!(dataset instanceof OHLCDataset)) {
+        if (!(dataset instanceof OHLCDataset highLowData)) {
             return super.getItemPaint(row, column);
         }
 
-        OHLCDataset highLowData = (OHLCDataset) dataset;
-        int series = row;
-        int item = column;
-
         // Check for valid indices
-        if (series < 0 || series >= highLowData.getSeriesCount() || item < 0
-                || item >= highLowData.getItemCount(series)) {
+        if (row < 0 || row >= highLowData.getSeriesCount() || column < 0 || column >= highLowData.getItemCount(row)) {
             return new Color(128, 128, 128); // Return neutral gray for invalid indices
         }
 
-        Number yOpen = highLowData.getOpen(series, item);
-        Number yClose = highLowData.getClose(series, item);
+        Number yOpen = highLowData.getOpen(row, column);
+        Number yClose = highLowData.getClose(row, column);
 
         if (yOpen == null || yClose == null) {
             return super.getItemPaint(row, column);
