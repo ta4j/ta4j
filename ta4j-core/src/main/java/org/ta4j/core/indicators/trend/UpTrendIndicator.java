@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     private static final int DEFAULT_UNSTABLE_BARS = 5;
+    private static final double DEFAULT_STRENGTH_THRESHOLD = 25;
 
     private final ADXIndicator directionStrengthIndicator;
     private final MinusDIIndicator minusDIIndicator;
@@ -45,7 +46,7 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
     }
 
     public UpTrendIndicator(final BarSeries series, int unstableBars) {
-        this(series, unstableBars, 25);
+        this(series, unstableBars, DEFAULT_STRENGTH_THRESHOLD);
     }
 
     public UpTrendIndicator(final BarSeries series, int unstableBars, double strengthThreshold) {
