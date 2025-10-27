@@ -23,33 +23,39 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.Collections;
-
 import org.junit.Test;
 import org.ta4j.core.Rule;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 public class VoteRuleTest {
 
     @Test
-    public void isSatisfied() {
+    public void testRequiredVotesZero() {
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(0, BooleanRule.TRUE));
+    }
+
+    @Test
+    public void testRulesIsEmpty() {
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, new Rule[] {}));
-        assertThrows(IllegalArgumentException.class, () -> new VoteRule(2, BooleanRule.TRUE));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new VoteRule(0, Collections.singletonList(BooleanRule.TRUE)));
+        List<Rule> rules = null;
+        assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, rules));
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, Collections.emptyList()));
-        assertThrows(IllegalArgumentException.class,
-                () -> new VoteRule(2, Collections.singletonList(BooleanRule.TRUE)));
+    }
 
-        assertTrue(new VoteRule(1, BooleanRule.TRUE).isSatisfied(0));
-        assertFalse(new VoteRule(1, BooleanRule.FALSE).isSatisfied(0));
+    @Test
+    public void testRequiredVotesExceedsRulesSize() {
+        assertThrows(IllegalArgumentException.class, () -> new VoteRule(2, BooleanRule.TRUE));
+    }
 
-        assertTrue(new VoteRule(1, BooleanRule.FALSE, BooleanRule.TRUE).isSatisfied(0));
-        assertFalse(new VoteRule(2, BooleanRule.FALSE, BooleanRule.TRUE).isSatisfied(0));
+    @Test
+    public void isSatisfied() {
+        Rule[] rules = { BooleanRule.TRUE, BooleanRule.FALSE, BooleanRule.TRUE };
+        assertTrue(new VoteRule(1, rules).isSatisfied(0));
+        assertTrue(new VoteRule(2, rules).isSatisfied(0));
+        assertFalse(new VoteRule(3, rules).isSatisfied(0));
     }
 }

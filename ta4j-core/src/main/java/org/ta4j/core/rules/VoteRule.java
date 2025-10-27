@@ -37,6 +37,8 @@ import org.ta4j.core.TradingRecord;
  *
  * <p>
  * <b>Warning:</b> Early termination if we already have enough votes.
+ *
+ * @since 0.19
  */
 public class VoteRule extends AbstractRule {
 
@@ -50,18 +52,7 @@ public class VoteRule extends AbstractRule {
      * @param rules         the rules to vote
      */
     public VoteRule(int requiredVotes, Rule... rules) {
-        if (requiredVotes < 1) {
-            throw new IllegalArgumentException("Required votes must be at least 1");
-        }
-        if (rules == null || rules.length == 0) {
-            throw new IllegalArgumentException("At least one rule is required");
-        }
-        if (requiredVotes > rules.length) {
-            throw new IllegalArgumentException("Required votes cannot exceed number of rules");
-        }
-
-        this.requiredVotes = requiredVotes;
-        this.rules = Arrays.asList(rules);
+        this(requiredVotes, Arrays.asList(rules));
     }
 
     /**
