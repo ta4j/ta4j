@@ -27,14 +27,12 @@ import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 
@@ -43,37 +41,52 @@ import ta4jexamples.strategies.CCICorrectionStrategy;
  */
 public class StrategyExecutionLogging {
 
-    private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader()
-            .getResource("logback-traces.xml");
+    private static final Logger LOGGER = Logger.getLogger(StrategyExecutionLogging.class.getName());
+    private static final URL LOG4J_CONFIGURATION = StrategyExecutionLogging.class.getClassLoader()
+            .getResource("log4j2-traces.xml");
+    private static String previousConfigurationFile;
 
     /**
-     * Loads the Logback configuration from a resource file. Only here to avoid
-     * polluting other examples with logs. Could be replaced by a simple logback.xml
+     * Loads the Log4j configuration from a resource file. Only here to avoid
+     * polluting other examples with logs. Could be replaced by a simple log4j2.xml
      * file in the resource folder.
      */
     private static void loadLoggerConfiguration() {
-        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-        context.reset();
+        if (LOG4J_CONFIGURATION == null) {
+            LOGGER.log(Level.WARNING, "Unable to locate log4j2-traces.xml on the classpath");
+            return;
+        }
 
-        JoranConfigurator configurator = new JoranConfigurator();
-        configurator.setContext(context);
+        if (previousConfigurationFile == null) {
+            previousConfigurationFile = System.getProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
+        }
+
+        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, LOG4J_CONFIGURATION.toString());
         try {
-            configurator.doConfigure(LOGBACK_CONF_FILE);
-        } catch (JoranException je) {
-            Logger.getLogger(StrategyExecutionLogging.class.getName())
-                    .log(Level.SEVERE, "Unable to load Logback configuration", je);
+            Configurator.reconfigure();
+        } catch (RuntimeException exception) {
+            LOGGER.log(Level.SEVERE, "Unable to load Log4j configuration", exception);
+            restorePreviousConfiguration();
         }
     }
 
     private static void unloadLoggerConfiguration() {
-        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-        context.reset();
-        JoranConfigurator configurator = new JoranConfigurator();
-        configurator.setContext(context);
+        restorePreviousConfiguration();
+    }
+
+    private static void restorePreviousConfiguration() {
+        if (previousConfigurationFile == null) {
+            System.clearProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY);
+        } else {
+            System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, previousConfigurationFile);
+        }
+
+        Configurator.reconfigure();
+        previousConfigurationFile = null;
     }
 
     public static void main(String[] args) {
-        // Loading the Logback configuration
+        // Loading the Log4j configuration
         loadLoggerConfiguration();
 
         // Getting the bar series
@@ -86,7 +99,7 @@ public class StrategyExecutionLogging {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         seriesManager.run(strategy);
 
-        // Unload the Logback configuration
+        // Unload the Log4j configuration
         unloadLoggerConfiguration();
     }
 }

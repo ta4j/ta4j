@@ -2,6 +2,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Changed
+- Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so the examples and tests share a single logging backend.
+
 
 ## 0.19
 
