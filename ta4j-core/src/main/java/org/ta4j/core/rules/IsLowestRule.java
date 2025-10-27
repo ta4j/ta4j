@@ -31,6 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Satisfied when the value of the {@link Indicator indicator} is the lowest
  * within the {@code barCount}.
+ *
+ * This rule does not use the {@code tradingRecord}.
  */
 public class IsLowestRule extends AbstractRule {
 

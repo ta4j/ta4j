@@ -283,7 +283,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link PreviousValueIndicator} of {@code this} with
      *         {@code barCount=1}
      */
-    public Indicator<Num> previous() {
+    public NumericIndicator previous() {
         return previous(1);
     }
 

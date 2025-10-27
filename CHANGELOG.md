@@ -1,5 +1,8 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## Unreleased
+
+
 ## 0.19
 
 ### Breaking
@@ -14,26 +17,43 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Clarify PnL criterion comments about trading costs
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
 - Fixed strict rules of `ConvergenceDivergenceIndicator`
+- Fixed calculation for `VersusEnterAndHoldCriterion`
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
+- The`BaseBarSeriesBuilder` automatically uses the `NumFactory` from given bars instead of the default one
+- Corrected the calculation of unstable bars of the SMA indicator
+- `PivotPointIndicatorTest` fixed to work also in java 25
+- Fixed bug in `MovingAverageCrossOverRangeBacktest` preventing successfully loading the test JSON bar data
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
 - `ReturnOverMaxDrawdownCriterion` now returns 0 instead of `NaN` for strategies that never operate, and returns the net profit instead of `NaN` for strategies with no drawdown
 - Changed snapshot distribution to Maven Central after OSSRH end-of-life
 - `StopGainRule` and `StopLossRule` now accept any price `Indicator` instead of only `ClosePriceIndicator`
+- [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
+- Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
+- Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
+- NumericIndicator's previous method return NumericIndicator
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
 
 ### Added
+- [#1187](https://github.com/ta4j/ta4j/issues/1187) Added `RenkoUpIndicator`, `RenkoDownIndicator` and `RenkoXIndicator` to detect Renko brick sequences
 - Bars can now be built by `beginTime` instead of `endTime`
 - Added `DurationBarBuilder` to aggregate Bars after a fixed duration.
 - Added tests for `DoubleNumFactory` and `DecimalNumFactory`
 - Added `AmountBarBuilder` to `bars`-package to aggregate bars after a fixed number of amount have been traded
 - Added `CumulativePnL` and `MaximumAbsoluteDrawdownCriterion` to calculate the max drawdown absolute value, and `MaximumDrawdownBarLengthCriterion` to calculate its length
 - Added `MonteCarloMaximumDrawdownCriterion` to estimate drawdown risk distribution by simulating different trade orders
+- Added `CommissionsCriterion` to total the commissions paid across positions and `CommissionsImpactPercentageCriterion` to express how much those costs eat into gross profit
+- Added `MaxConsecutiveLossCriterion`, `MaxConsecutiveProfitCriterion`, `MaxPositionNetLossCriterion` and `MaxPositionNetProfitCriterion` to report the worst loss streaks, best win streaks, and extreme per-position outcomes in a record
+- Added `InPositionPercentageCriterion` to calculate the percentage of the time that a strategy remains invested
+- Added new `NetMomentumIndicator` indicator class
+- New `substitute` helper function to `UnaryOperation`
+- Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
 
 ## 0.18 (released May 15, 2025)
 
