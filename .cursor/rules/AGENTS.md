@@ -6,13 +6,13 @@ AI assistants must discover, merge, and apply rules from all sources for consist
 
 # Rule Sources & Priority (lowest → highest):
 
-1. Root AGENTS.md (global defaults)
+1. Root AGENTS.md (workspace root - global defaults)
 2. .cursor/rules/*.md (project-level supplements)
 3. Nearest AGENTS.md (directory + subdirs recursively)
 
 # Behavior:
 
-- Search upward from current dir to root for all AGENTS.md files.
+- Search upward from current directory to workspace root for all AGENTS.md files (workspace root is the top-level directory where the workspace was opened).
 - Load .cursor/rules/*.md if directory exists.
 - Merge all applicable rules; deeper/local overrides broader/global.
 - Retain non-conflicting rules.
