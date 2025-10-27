@@ -334,4 +334,183 @@ public class ChartMakerTest {
         assertNotNull(chart, "Chart should not be null even with special chars in series name");
     }
 
+    // ========== Dual-Axis Chart Tests ==========
+
+    @Test
+    public void testCreateDualAxisChart() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = chartMaker.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        assertNotNull(chart, "Dual-axis chart should not be null");
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        assertTrue(chart.getTitle().getText().contains(barSeries.getName()) || barSeries.getName() == null,
+                "Chart title should contain series name");
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithCustomTitle() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = chartMaker.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA",
+                "Custom Chart Title");
+
+        assertNotNull(chart, "Dual-axis chart should not be null");
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        assertEquals("Custom Chart Title", chart.getTitle().getText(), "Chart title should match custom title");
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithNullSeries() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(null, closePrice, "Price", sma, "SMA"));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithNullPrimaryIndicator() {
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, null, "Price", sma, "SMA"));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithNullSecondaryIndicator() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", null, "SMA"));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithNullPrimaryLabel() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, closePrice, null, sma, "SMA"));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithEmptyPrimaryLabel() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "", sma, "SMA"));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithNullSecondaryLabel() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", sma, null));
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithEmptySecondaryLabel() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", sma, ""));
+    }
+
+    @Test
+    public void testDisplayDualAxisChart() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        // This test just ensures the method doesn't throw an exception
+        // In a real test environment, we might mock the display functionality
+        try {
+            chartMaker.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+        } catch (Exception e) {
+            // In headless environments, this might throw an exception, which is expected
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
+            // HeadlessException can have null message, which is also acceptable
+        }
+    }
+
+    @Test
+    public void testDisplayDualAxisChartWithCustomTitles() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        try {
+            chartMaker.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA", "Custom Chart",
+                    "Custom Window");
+        } catch (Exception e) {
+            // In headless environments, this might throw an exception, which is expected
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
+            // HeadlessException can have null message, which is also acceptable
+        }
+    }
+
+    @Test
+    public void testDisplayChartWithWindowTitle() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        try {
+            chartMaker.displayChart(chart, "Custom Window Title");
+        } catch (Exception e) {
+            // In headless environments, this might throw an exception, which is expected
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
+            // HeadlessException can have null message, which is also acceptable
+        }
+    }
+
+    @Test
+    public void testDisplayChartWithNullWindowTitle() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        try {
+            chartMaker.displayChart(chart, null);
+        } catch (Exception e) {
+            // In headless environments, this might throw an exception, which is expected
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
+            // HeadlessException can have null message, which is also acceptable
+        }
+    }
+
+    @Test
+    public void testDisplayChartWithEmptyWindowTitle() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        try {
+            chartMaker.displayChart(chart, "");
+        } catch (Exception e) {
+            // In headless environments, this might throw an exception, which is expected
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
+            // HeadlessException can have null message, which is also acceptable
+        }
+    }
+
 }

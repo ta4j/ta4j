@@ -45,4 +45,13 @@ public interface ChartDisplayer {
      * @since 0.19
      */
     void display(JFreeChart chart);
+
+    /**
+     * Presents the provided chart to the user with a custom window title.
+     *
+     * @param chart       the chart to display
+     * @param windowTitle the title for the window/frame
+     * @since 0.19
+     */
+    void display(JFreeChart chart, String windowTitle);
 }

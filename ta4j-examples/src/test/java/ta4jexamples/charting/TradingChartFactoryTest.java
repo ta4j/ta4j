@@ -252,4 +252,108 @@ class TradingChartFactoryTest {
         assertFalse(domainMarkers.isEmpty(), "Should have marker for open position");
     }
 
+    // ========== Dual-Axis Chart Tests ==========
+
+    @Test
+    void testCreateDualAxisChart() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        assertNotNull(chart, "Dual-axis chart should not be null");
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        assertTrue(chart.getTitle().getText().contains(barSeries.getName()) || barSeries.getName() == null,
+                "Chart title should contain series name");
+    }
+
+    @Test
+    void testCreateDualAxisChartWithCustomTitle() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA",
+                "Custom Title");
+
+        assertNotNull(chart, "Dual-axis chart should not be null");
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        assertEquals("Custom Title", chart.getTitle().getText(), "Chart title should match custom title");
+    }
+
+    @Test
+    void testCreateDualAxisChartHasSecondaryAxis() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertNotNull(plot.getRangeAxis(1), "Chart should have a secondary range axis");
+        assertNotNull(plot.getDataset(1), "Chart should have a secondary dataset");
+        // Verify that secondary dataset exists and is properly configured
+        assertTrue(plot.getDatasetCount() >= 2, "Chart should have at least 2 datasets");
+    }
+
+    @Test
+    void testCreateDualAxisChartHasTitlePaint() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        assertNotNull(chart.getTitle().getPaint(), "Chart title should have paint (color) configured");
+    }
+
+    @Test
+    void testCreateDualAxisChartStructure() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        // Verify we have primary dataset (index 0) and secondary dataset (index 1)
+        assertEquals(2, plot.getDatasetCount(), "Should have 2 datasets (primary and secondary)");
+        assertNotNull(plot.getDataset(0), "Primary dataset should not be null");
+        assertNotNull(plot.getDataset(1), "Secondary dataset should not be null");
+    }
+
+    @Test
+    void testCreateDualAxisChartRendererConfiguration() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertNotNull(plot.getRenderer(1), "Secondary renderer should be configured");
+    }
+
+    @Test
+    void testCreateDualAxisChartWithoutCustomTitleUsesSeriesName() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        assertNotNull(chart.getTitle(), "Chart should have a title");
+        if (barSeries.getName() != null) {
+            assertTrue(chart.getTitle().getText().contains(barSeries.getName()),
+                    "Chart title should contain series name when not customized");
+        }
+    }
+
+    @Test
+    void testCreateDualAxisChartWithoutCustomTitleUsesSeriesToString() {
+        BarSeries unnamedSeries = ChartingTestFixtures.dailySeries(null);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(unnamedSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(unnamedSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        assertNotNull(chart.getTitle(), "Chart should have a title even with unnamed series");
+        assertNotNull(chart.getTitle().getText(), "Chart title text should not be null");
+    }
+
 }

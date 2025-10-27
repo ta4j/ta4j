@@ -70,13 +70,19 @@ final class SwingChartDisplayer implements ChartDisplayer {
 
     @Override
     public void display(JFreeChart chart) {
+        display(chart, "Ta4j-examples");
+    }
+
+    @Override
+    public void display(JFreeChart chart, String windowTitle) {
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setDomainZoomable(true);
         panel.setPreferredSize(determineDisplaySize());
 
-        ApplicationFrame frame = new ApplicationFrame("Ta4j-examples");
+        String title = windowTitle != null && !windowTitle.trim().isEmpty() ? windowTitle : "Ta4j-examples";
+        ApplicationFrame frame = new ApplicationFrame(title);
         frame.setContentPane(panel);
         frame.pack();
         frame.setVisible(true);

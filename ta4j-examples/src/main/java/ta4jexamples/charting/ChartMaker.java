@@ -225,15 +225,126 @@ public class ChartMaker {
     }
 
     /**
+     * Builds a dual-axis chart with two indicators.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @return the dual-axis chart
+     * @since 0.19
+     */
+    public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel) {
+        return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null);
+    }
+
+    /**
+     * Builds a dual-axis chart with two indicators and a custom chart title.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @param chartTitle         the title for the chart (optional, uses series name
+     *                           if null)
+     * @return the dual-axis chart
+     * @since 0.19
+     */
+    public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle) {
+        validateSeries(series);
+        if (primaryIndicator == null) {
+            throw new IllegalArgumentException("Primary indicator cannot be null");
+        }
+        if (secondaryIndicator == null) {
+            throw new IllegalArgumentException("Secondary indicator cannot be null");
+        }
+        if (primaryLabel == null || primaryLabel.trim().isEmpty()) {
+            throw new IllegalArgumentException("Primary label cannot be null or empty");
+        }
+        if (secondaryLabel == null || secondaryLabel.trim().isEmpty()) {
+            throw new IllegalArgumentException("Secondary label cannot be null or empty");
+        }
+        return chartFactory.createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
+                secondaryLabel, chartTitle);
+    }
+
+    /**
+     * Displays a dual-axis chart with two indicators.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @since 0.19
+     */
+    public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel) {
+        displayDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel,
+                safeSeriesName(series), null);
+    }
+
+    /**
+     * Displays a dual-axis chart with two indicators, optional chart title, and
+     * optional window title.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @param chartTitle         the title for the chart (optional, uses series name
+     *                           if null)
+     * @param windowTitle        the title for the window/frame (optional, uses
+     *                           default if null)
+     * @since 0.19
+     */
+    public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, String windowTitle) {
+        try {
+            JFreeChart chart = createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
+                    secondaryLabel, chartTitle);
+            if (windowTitle != null && !windowTitle.trim().isEmpty()) {
+                chartDisplayer.display(chart, windowTitle);
+            } else {
+                chartDisplayer.display(chart);
+            }
+        } catch (Exception ex) {
+            LOG.error("Failed to display dual-axis chart for {}", safeSeriesName(series), ex);
+        }
+    }
+
+    /**
      * Displays a caller-provided chart using the configured displayer.
      *
      * @since 0.19
      */
     public void displayChart(JFreeChart chart) {
+        displayChart(chart, null);
+    }
+
+    /**
+     * Displays a caller-provided chart using the configured displayer with a custom
+     * window title.
+     *
+     * @param chart       the chart to display
+     * @param windowTitle the title for the window/frame (optional, uses default if
+     *                    null)
+     * @since 0.19
+     */
+    public void displayChart(JFreeChart chart, String windowTitle) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
-        chartDisplayer.display(chart);
+        if (windowTitle != null && !windowTitle.trim().isEmpty()) {
+            chartDisplayer.display(chart, windowTitle);
+        } else {
+            chartDisplayer.display(chart);
+        }
     }
 
     /**

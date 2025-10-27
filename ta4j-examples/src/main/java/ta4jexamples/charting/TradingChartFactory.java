@@ -33,6 +33,7 @@ import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.OHLCDataItem;
 import org.jfree.data.xy.XYDataset;
@@ -124,6 +125,38 @@ final class TradingChartFactory {
         return chart;
     }
 
+    JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel) {
+        return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null);
+    }
+
+    JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle) {
+        String effectiveTitle = chartTitle != null && !chartTitle.trim().isEmpty() ? chartTitle
+                : (series.getName() != null ? series.getName() : series.toString());
+        TimeSeriesCollection primaryDataset = createTimeSeriesDataset(series, primaryIndicator, primaryLabel);
+        TimeSeriesCollection secondaryDataset = createTimeSeriesDataset(series, secondaryIndicator, secondaryLabel);
+
+        JFreeChart chart = ChartFactory.createTimeSeriesChart(effectiveTitle, "Date", primaryLabel, primaryDataset,
+                true, true, false);
+
+        chart.setAntiAlias(true);
+        chart.setTextAntiAlias(true);
+        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
+
+        // Style the title to be visible on black background
+        if (chart.getTitle() != null) {
+            chart.getTitle().setPaint(Color.LIGHT_GRAY);
+        }
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        configureDualAxisPlot(plot, series.getFirstBar().getTimePeriod());
+        addSecondaryAxis(plot, secondaryDataset, secondaryLabel);
+
+        return chart;
+    }
+
     String buildChartTitle(String barSeriesName, String strategyName) {
         if (barSeriesName == null || barSeriesName.trim().isEmpty()) {
             return strategyName;
@@ -157,6 +190,11 @@ final class TradingChartFactory {
         chart.setTextAntiAlias(true);
         chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
         chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
+
+        // Style the title to be visible on black background
+        if (chart.getTitle() != null) {
+            chart.getTitle().setPaint(Color.LIGHT_GRAY);
+        }
 
         XYPlot plot = (XYPlot) chart.getPlot();
         configureDomainAxis(plot, duration);
@@ -417,5 +455,38 @@ final class TradingChartFactory {
         } catch (Exception ex) {
             LOG.error("Failed to add analysis lines to chart", ex);
         }
+    }
+
+    private org.jfree.data.time.TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
+            String seriesName) {
+        org.jfree.data.time.TimeSeries timeSeries = new org.jfree.data.time.TimeSeries(seriesName);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Bar bar = series.getBar(i);
+            Date barDate = Date.from(bar.getEndTime());
+            Num value = indicator.getValue(i);
+            if (value != null && !value.isNaN()) {
+                timeSeries.add(new org.jfree.data.time.Minute(barDate), value.doubleValue());
+            }
+        }
+        return new org.jfree.data.time.TimeSeriesCollection(timeSeries);
+    }
+
+    private void configureDualAxisPlot(XYPlot plot, Duration duration) {
+        configureDomainAxis(plot, duration);
+        configureRangeAxis(plot);
+        configurePlotAppearance(plot);
+    }
+
+    private void addSecondaryAxis(XYPlot plot, TimeSeriesCollection dataset, String label) {
+        NumberAxis secondaryAxis = new NumberAxis(label);
+        secondaryAxis.setAutoRangeIncludesZero(false);
+        secondaryAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        secondaryAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setRangeAxis(1, secondaryAxis);
+        plot.setDataset(1, dataset);
+        plot.mapDatasetToRangeAxis(1, 1);
+        StandardXYItemRenderer secondaryRenderer = new StandardXYItemRenderer();
+        secondaryRenderer.setSeriesPaint(0, Color.BLUE);
+        plot.setRenderer(1, secondaryRenderer);
     }
 }
