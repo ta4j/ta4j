@@ -125,8 +125,16 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         // Build series
         BaseBarSeries series = new BaseBarSeriesBuilder().withName("CoinbaseData").build();
-        for (CoinbaseBar bar : barList) {
-            bar.addToSeries(series);
+        Duration lastDuration = null;
+        for (int i = 0; i < barList.size(); i++) {
+            CoinbaseBar bar = barList.get(i);
+            Instant previousStart = i > 0 ? barList.get(i - 1).getStartInstant() : null;
+            Instant currentStart = bar.getStartInstant();
+            Instant nextStart = i + 1 < barList.size() ? barList.get(i + 1).getStartInstant() : null;
+            Duration duration = inferDuration(previousStart, currentStart, nextStart, lastDuration);
+            lastDuration = duration;
+            Instant endTime = currentStart.plus(duration);
+            bar.addToSeries(series, endTime, duration);
         }
 
         return series;
@@ -150,16 +158,54 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
 
         BaseBarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
 
+        List<BinanceBar> bars = new ArrayList<>();
         for (JsonElement barElement : ohlc) {
             JsonObject barObj = barElement.getAsJsonObject();
             BinanceBar bar = new BinanceBar(barObj.get("endTime").getAsLong(), barObj.get("openPrice").getAsNumber(),
                     barObj.get("highPrice").getAsNumber(), barObj.get("lowPrice").getAsNumber(),
                     barObj.get("closePrice").getAsNumber(), barObj.get("volume").getAsNumber(),
                     barObj.get("amount").getAsNumber());
-            bar.addToSeries(series);
+            bars.add(bar);
+        }
+
+        bars.sort(Comparator.comparingLong(BinanceBar::endTime));
+
+        Duration lastDuration = null;
+        for (int i = 0; i < bars.size(); i++) {
+            BinanceBar bar = bars.get(i);
+            Instant previousEnd = i > 0 ? bars.get(i - 1).getEndInstant() : null;
+            Instant currentEnd = bar.getEndInstant();
+            Instant nextEnd = i + 1 < bars.size() ? bars.get(i + 1).getEndInstant() : null;
+            Duration duration = inferDuration(previousEnd, currentEnd, nextEnd, lastDuration);
+            lastDuration = duration;
+            bar.addToSeries(series, currentEnd, duration);
         }
 
         return series;
+    }
+
+    private static Duration inferDuration(Instant previous, Instant current, Instant next, Duration fallback) {
+        Duration candidate = null;
+        if (next != null) {
+            candidate = Duration.between(current, next);
+        } else if (previous != null) {
+            candidate = Duration.between(previous, current);
+        }
+
+        if (candidate != null) {
+            if (candidate.isNegative()) {
+                candidate = candidate.negated();
+            }
+            if (!candidate.isZero()) {
+                return candidate;
+            }
+        }
+
+        if (fallback != null && !fallback.isZero() && !fallback.isNegative()) {
+            return fallback;
+        }
+
+        return Duration.ofSeconds(1);
     }
 
     // Lightweight data classes for internal use only
@@ -169,10 +215,13 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
             return Long.parseLong(start);
         }
 
-        public void addToSeries(BaseBarSeries series) {
-            Instant endTime = Instant.ofEpochSecond(getStartTime());
+        public Instant getStartInstant() {
+            return Instant.ofEpochSecond(getStartTime());
+        }
+
+        public void addToSeries(BaseBarSeries series, Instant endTime, Duration timePeriod) {
             series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
+                    .timePeriod(timePeriod)
                     .endTime(endTime)
                     .openPrice(open)
                     .highPrice(high)
@@ -186,10 +235,13 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
     private record BinanceBar(long endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
             Number volume, Number amount) {
 
-        public void addToSeries(BaseBarSeries series) {
-            Instant endTimeInstant = Instant.ofEpochMilli(endTime);
+        public Instant getEndInstant() {
+            return Instant.ofEpochMilli(endTime);
+        }
+
+        public void addToSeries(BaseBarSeries series, Instant endTimeInstant, Duration timePeriod) {
             series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
+                    .timePeriod(timePeriod)
                     .endTime(endTimeInstant)
                     .openPrice(openPrice)
                     .highPrice(highPrice)
