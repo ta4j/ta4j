@@ -38,6 +38,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
 - NumericIndicator's previous method return NumericIndicator
 - Added `TradingRecord` property to `TradingStatement` for more downstream flexibility around analytics
+- Remove magic number 25 in `UpTrendIndicator` and `DownTrendIndicator`
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
@@ -59,6 +60,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added new charting tools in ta4j-examples
 - Added new unit tests around indicator concurrency in preparation for future multithreading feature work
 - Added `AdaptiveJsonBarsSerializer` to support OHLC bar data from Coinbase or Binance
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
+- Added new `VoteRule` rule class
 
 ## 0.18 (released May 15, 2025)
 
