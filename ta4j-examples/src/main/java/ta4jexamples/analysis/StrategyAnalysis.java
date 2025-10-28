@@ -65,7 +65,7 @@ public class StrategyAnalysis {
 
         var netReturnCriterion = new NetReturnCriterion();
         var netReturn = netReturnCriterion.calculate(series, tradingRecord);
-        System.out.println("Gross return: " + netReturn);
+        System.out.println("Net return: " + netReturn);
 
         var numberOfBars = new NumberOfBarsCriterion().calculate(series, tradingRecord);
         System.out.println("Number of bars: " + numberOfBars);
