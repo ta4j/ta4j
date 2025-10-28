@@ -25,8 +25,8 @@ package ta4jexamples.charting;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 
 import java.nio.file.Paths;
@@ -49,7 +49,7 @@ import java.util.Objects;
  */
 final class FileSystemChartStorage implements ChartStorage {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FileSystemChartStorage.class);
+    private static final Logger LOG = LogManager.getLogger(FileSystemChartStorage.class);
 
     private final Path rootDirectory;
 

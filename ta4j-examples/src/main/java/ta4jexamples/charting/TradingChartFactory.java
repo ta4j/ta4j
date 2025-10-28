@@ -39,8 +39,8 @@ import org.jfree.data.xy.OHLCDataItem;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -71,7 +71,7 @@ import java.util.List;
  */
 final class TradingChartFactory {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TradingChartFactory.class);
+    private static final Logger LOG = LogManager.getLogger(TradingChartFactory.class);
 
     private static final Color CHART_BACKGROUND_COLOR = Color.BLACK;
     private static final float CHART_BACKGROUND_ALPHA = 0.85f;

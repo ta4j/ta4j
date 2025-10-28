@@ -31,9 +31,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 
@@ -47,6 +47,7 @@ import com.opencsv.exceptions.CsvValidationException;
  */
 public class CsvBarsLoader {
 
+    private static final Logger LOG = LogManager.getLogger(CsvBarsLoader.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
@@ -90,13 +91,12 @@ public class CsvBarsLoader {
                             .add();
                 }
             } catch (CsvValidationException e) {
-                Logger.getLogger(CsvBarsLoader.class.getName())
-                        .log(Level.SEVERE, "Unable to load bars from CSV. File is not valid csv.", e);
+                LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
             }
         } catch (IOException ioe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
+            LOG.error("Unable to load bars from CSV", ioe);
         } catch (NumberFormatException nfe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
+            LOG.error("Error while parsing value", nfe);
         }
         return series;
     }

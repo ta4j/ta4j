@@ -513,4 +513,74 @@ public class ChartMakerTest {
         }
     }
 
+    @Test
+    public void testChartLegendNotDuplicatedWhenReusingChartMaker() {
+        // Create a ChartMaker with save directory to enable save functionality
+        Path tempDir = null;
+        try {
+            tempDir = Files.createTempDirectory("chartmaker-test");
+            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+
+            // Create a chart
+            JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            // Count legend items before display
+            int legendItemCountBefore = countLegendItems(chart);
+
+            // Display the chart (this might modify it)
+            try {
+                makerWithSave.displayChart(chart);
+            } catch (Exception e) {
+                // Headless environment - that's OK for this test
+            }
+
+            // Count legend items after display
+            int legendItemCountAfter = countLegendItems(chart);
+
+            // The legend items should not have changed
+            assertEquals(legendItemCountBefore, legendItemCountAfter,
+                    "Legend items should not be duplicated when reusing ChartMaker instance");
+
+            // Save the chart image (which uses the same chart instance)
+            makerWithSave.saveChartImage(chart, barSeries, "Test Chart");
+
+            // Count legend items after save
+            int legendItemCountAfterSave = countLegendItems(chart);
+
+            // The legend items should still not have changed
+            assertEquals(legendItemCountBefore, legendItemCountAfterSave,
+                    "Legend items should not be duplicated after save operation");
+        } catch (IOException e) {
+            fail("Failed to create temporary directory: " + e.getMessage());
+        } finally {
+            // Clean up
+            if (tempDir != null && Files.exists(tempDir)) {
+                try {
+                    Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            // Ignore cleanup errors
+                        }
+                    });
+                } catch (IOException e) {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+    }
+
+    private int countLegendItems(JFreeChart chart) {
+        // Count subtitles which include legends in JFreeChart
+        int subtitleCount = chart.getSubtitleCount();
+        // Filter to count only LegendTitle instances
+        int legendCount = 0;
+        for (int i = 0; i < subtitleCount; i++) {
+            if (chart.getSubtitle(i) instanceof org.jfree.chart.title.LegendTitle) {
+                legendCount++;
+            }
+        }
+        return legendCount;
+    }
+
 }

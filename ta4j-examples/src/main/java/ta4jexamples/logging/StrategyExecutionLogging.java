@@ -24,9 +24,9 @@
 package ta4jexamples.logging;
 
 import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.ta4j.core.BarSeries;
@@ -41,7 +41,7 @@ import ta4jexamples.strategies.CCICorrectionStrategy;
  */
 public class StrategyExecutionLogging {
 
-    private static final Logger LOGGER = Logger.getLogger(StrategyExecutionLogging.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(StrategyExecutionLogging.class);
     private static final URL LOG4J_CONFIGURATION = StrategyExecutionLogging.class.getClassLoader()
             .getResource("log4j2-traces.xml");
     private static String previousConfigurationFile;
@@ -53,7 +53,7 @@ public class StrategyExecutionLogging {
      */
     private static void loadLoggerConfiguration() {
         if (LOG4J_CONFIGURATION == null) {
-            LOGGER.log(Level.WARNING, "Unable to locate log4j2-traces.xml on the classpath");
+            LOGGER.warn("Unable to locate log4j2-traces.xml on the classpath");
             return;
         }
 
@@ -65,7 +65,7 @@ public class StrategyExecutionLogging {
         try {
             Configurator.reconfigure();
         } catch (RuntimeException exception) {
-            LOGGER.log(Level.SEVERE, "Unable to load Log4j configuration", exception);
+            LOGGER.error("Unable to load Log4j configuration", exception);
             restorePreviousConfiguration();
         }
     }
