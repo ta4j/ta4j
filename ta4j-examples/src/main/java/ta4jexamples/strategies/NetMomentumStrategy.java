@@ -33,6 +33,7 @@ import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -52,9 +53,9 @@ public class NetMomentumStrategy {
 
     private static final Logger LOG = LogManager.getLogger(NetMomentumStrategy.class);
 
-    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 70;
+    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 550;
     private static final int DEFAULT_MOMENTUM_TIMEFRAME = 200;
-    private static final int DEFAULT_OVERSOLD_THRESHOLD = 30;
+    private static final int DEFAULT_OVERSOLD_THRESHOLD = -550;
     private static final int DEFAULT_RSI_BARCOUNT = 14;
 
     private static final int RSI_BARCOUNT_INCREMENT = 4;
@@ -168,11 +169,20 @@ public class NetMomentumStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("Gross return for the strategy: {}", grossReturn);
 
+        ATRIndicator atrIndicator = new ATRIndicator(series, 14);
+        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsi(new RSIIndicator(new ClosePriceIndicator(series), DEFAULT_RSI_BARCOUNT),
+                DEFAULT_MOMENTUM_TIMEFRAME);
+
         // Charting
         ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
+        JFreeChart atrIndicatorChart = chartMaker.createIndicatorChart(series, atrIndicator);
+        chartMaker.displayChart(atrIndicatorChart);
+
+        chartMaker.displayIndicatorChart(series, rsiM);
+
         JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, singleStrategy.getName(),
                 tradingRecord);
         chartMaker.displayChart(tradingRecordChart);
-        chartMaker.saveChartImage(tradingRecordChart, series, series.getName());
+        chartMaker.saveChartImage(tradingRecordChart, series);
     }
 }

@@ -353,15 +353,25 @@ public class ChartMaker {
      * @return an optional path to the stored chart
      * @since 0.19
      */
-    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartTitle) {
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
         validateSeries(series);
-        String effectiveTitle = (chartTitle != null && !chartTitle.trim().isEmpty()) ? chartTitle
+        String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
                 : (chart.getTitle() != null ? chart.getTitle().getText()
                         : chartFactory.buildChartTitle(series.getName(), ""));
-        return chartStorage.save(chart, series, effectiveTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+        return chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Saves a chart image to a file path.
+     * @param chart the JFreeChart object to be saved as an image
+     * @param series the BarSeries object containing chart data
+     * @return an Optional containing the Path where the chart image was saved, or empty if saving failed
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series) {
+        return saveChartImage(chart, series, null);
     }
 
     /**
