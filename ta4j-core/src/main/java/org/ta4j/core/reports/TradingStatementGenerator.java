@@ -62,6 +62,6 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
                 series);
         final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord,
                 series);
-        return new TradingStatement(strategy, positionStatsReport, performanceReport);
+        return new TradingStatement(strategy, tradingRecord, positionStatsReport, performanceReport);
     }
 }

@@ -23,22 +23,9 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.Arrays;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -48,6 +35,16 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -190,6 +187,64 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // (4996 + 4997 + 4998 + 4999 + 5) / 5
         assertNumEquals(3999, smaIndicator.getValue(barSeries.getEndIndex()));
 
+    }
+
+    @Test
+    public void concurrentAccessCachesSingleComputationPerIndex() throws InterruptedException {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+
+        int threads = 8;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        for (int i = 0; i < threads; i++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    indicator.getValue(4);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        assertEquals("Only one calculation should be performed for the requested index despite concurrent access.", 1,
+                indicator.getCalculationCount());
+    }
+
+    private final class CountingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+
+        private CountingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return numFactory.numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int getCalculationCount() {
+            return calculations.get();
+        }
     }
 
 }

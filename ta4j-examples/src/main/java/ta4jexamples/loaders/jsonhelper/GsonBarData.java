@@ -23,12 +23,13 @@
  */
 package ta4jexamples.loaders.jsonhelper;
 
-import java.time.Duration;
-import java.time.Instant;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
 
+import java.time.Duration;
+import java.time.Instant;
+
+@Deprecated(since = "0.19")
 public class GsonBarData {
     private long endTime;
     private Number openPrice;
