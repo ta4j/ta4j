@@ -71,8 +71,7 @@ final class FileSystemChartStorage implements ChartStorage {
         Objects.requireNonNull(chart, "Chart cannot be null");
         Objects.requireNonNull(series, "Series cannot be null");
 
-        Path targetPath = (chartTitle != null && !chartTitle.trim().isEmpty())
-                ? buildSavePath(series, chartTitle)
+        Path targetPath = (chartTitle != null && !chartTitle.trim().isEmpty()) ? buildSavePath(series, chartTitle)
                 : buildSavePath(series);
         try {
             Files.createDirectories(targetPath.getParent());

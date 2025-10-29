@@ -28,7 +28,9 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
+import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
@@ -104,13 +106,66 @@ final class TradingChartFactory {
 
     @SafeVarargs
     final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
-        DefaultOHLCDataset data = createChartDataset(series);
+        if (indicators == null || indicators.length == 0) {
+            // No indicators, return simple OHLC chart
+            DefaultOHLCDataset data = createChartDataset(series);
+            String chartTitle = series.toString();
+            if (series.getName() != null) {
+                chartTitle = series.getName();
+            }
+            return buildChart(chartTitle, series.getFirstBar().getTimePeriod(), data);
+        }
+
+        // Create shared domain axis (X-axis)
+        DateAxis domainAxis = new DateAxis("Date");
+        Duration duration = series.getFirstBar().getTimePeriod();
+        if (duration.toDays() >= 1) {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+        } else {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+        }
+        domainAxis.setAutoRange(true);
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
+        domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        domainAxis.setLabelPaint(Color.LIGHT_GRAY);
+
+        // Create combined plot
+        CombinedDomainXYPlot combinedPlot = new CombinedDomainXYPlot(domainAxis);
+        combinedPlot.setGap(10.0);
+        combinedPlot.setOrientation(PlotOrientation.VERTICAL);
+        combinedPlot.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+        combinedPlot.setBackgroundAlpha(CHART_BACKGROUND_ALPHA);
+        combinedPlot.setDomainGridlinePaint(GRIDLINE_COLOR);
+        combinedPlot.setRangeGridlinePaint(GRIDLINE_COLOR);
+
+        // Create main OHLC candlestick plot
+        DefaultOHLCDataset ohlcData = createChartDataset(series);
+        XYPlot mainPlot = createOHLCPlot(ohlcData, duration);
+        combinedPlot.add(mainPlot, calculateMainPlotWeight(indicators.length));
+
+        // Create a separate subplot for each indicator
+        for (Indicator<Num> indicator : indicators) {
+            XYPlot indicatorPlot = createIndicatorSubplot(series, indicator);
+            combinedPlot.add(indicatorPlot, calculateIndicatorPlotWeight(indicators.length));
+        }
+
+        // Create chart with combined plot
         String chartTitle = series.toString();
         if (series.getName() != null) {
             chartTitle = series.getName();
         }
-        JFreeChart chart = buildChart(chartTitle, series.getFirstBar().getTimePeriod(), data);
-        addIndicatorsToChart((XYPlot) chart.getPlot(), indicators);
+        JFreeChart chart = new JFreeChart(chartTitle, null, combinedPlot, true);
+        chart.setAntiAlias(true);
+        chart.setTextAntiAlias(true);
+        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
+
+        // Style the title to be visible on black background
+        if (chart.getTitle() != null) {
+            chart.getTitle().setPaint(Color.LIGHT_GRAY);
+        }
+
         return chart;
     }
 
@@ -414,30 +469,88 @@ final class TradingChartFactory {
         return indicatorSeries;
     }
 
-    @SafeVarargs
-    private final List<XYSeriesCollection> createDataSetsForIndicators(Indicator<Num>... indicators) {
-        List<XYSeriesCollection> dataSets = new ArrayList<>();
+    private XYPlot createOHLCPlot(DefaultOHLCDataset data, Duration duration) {
+        XYPlot plot = new XYPlot();
+        plot.setDataset(0, data);
 
-        for (Indicator<Num> indicator : indicators) {
-            XYSeriesCollection dataset = new XYSeriesCollection();
-            XYSeries indicatorSeries = createDataSeriesForIndicator(indicator);
-            dataset.addSeries(indicatorSeries);
-            dataSets.add(dataset);
+        // Configure domain axis
+        DateAxis domainAxis = new DateAxis("Date");
+        if (duration.toDays() >= 1) {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+        } else {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
         }
+        domainAxis.setAutoRange(true);
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
+        domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        domainAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setDomainAxis(domainAxis);
 
-        return dataSets;
+        // Configure range axis
+        NumberAxis rangeAxis = new NumberAxis("Price (USD)");
+        rangeAxis.setAutoRangeIncludesZero(false);
+        rangeAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        rangeAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setRangeAxis(rangeAxis);
+
+        // Configure candlestick renderer
+        configureCandlestickRenderer(plot);
+        configurePlotAppearance(plot);
+
+        return plot;
     }
 
-    @SafeVarargs
-    private final void addIndicatorsToChart(XYPlot plot, Indicator<Num>... indicators) {
-        List<XYSeriesCollection> dataSets = createDataSetsForIndicators(indicators);
+    private XYPlot createIndicatorSubplot(BarSeries series, Indicator<Num> indicator) {
+        XYSeriesCollection dataset = new XYSeriesCollection();
+        XYSeries indicatorSeries = createDataSeriesForIndicator(indicator);
+        dataset.addSeries(indicatorSeries);
 
-        int index = 1;
-        for (XYSeriesCollection dataSet : dataSets) {
-            plot.setDataset(index, dataSet);
-            plot.setRenderer(index, new StandardXYItemRenderer());
-            index++;
+        XYPlot plot = new XYPlot();
+        plot.setDataset(0, dataset);
+
+        // Configure domain axis (will be shared by CombinedDomainXYPlot, but we set it
+        // for consistency)
+        DateAxis domainAxis = new DateAxis();
+        Duration duration = series.getFirstBar().getTimePeriod();
+        if (duration.toDays() >= 1) {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+        } else {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
         }
+        domainAxis.setAutoRange(true);
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
+        domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        domainAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setDomainAxis(domainAxis);
+
+        // Configure range axis with indicator label
+        String indicatorLabel = indicator.toString();
+        NumberAxis rangeAxis = new NumberAxis(indicatorLabel);
+        rangeAxis.setAutoRangeIncludesZero(false);
+        rangeAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        rangeAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setRangeAxis(rangeAxis);
+
+        // Configure renderer
+        StandardXYItemRenderer renderer = new StandardXYItemRenderer();
+        plot.setRenderer(0, renderer);
+        configurePlotAppearance(plot);
+
+        return plot;
+    }
+
+    private int calculateMainPlotWeight(int indicatorCount) {
+        // Give main plot proportionally more space when there are more indicators
+        // Base weight of 50, scale down slightly with more indicators
+        return Math.max(30, 60 - (indicatorCount * 5));
+    }
+
+    private int calculateIndicatorPlotWeight(int indicatorCount) {
+        // Distribute remaining space evenly among indicators
+        // Each indicator gets equal weight
+        return Math.max(10, 40 / indicatorCount);
     }
 
     private void addAnalysisLinesToChart(XYPlot plot, DefaultOHLCDataset data, AnalysisType... analysisTypes) {

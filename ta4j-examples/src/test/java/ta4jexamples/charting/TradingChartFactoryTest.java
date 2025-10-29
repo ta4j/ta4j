@@ -26,6 +26,7 @@ package ta4jexamples.charting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
@@ -163,8 +164,9 @@ class TradingChartFactoryTest {
         JFreeChart chart = factory.createIndicatorChart(barSeries, sma5, sma10);
 
         assertNotNull(chart, "Chart should not be null");
-        XYPlot plot = (XYPlot) chart.getPlot();
-        assertEquals(3, plot.getDatasetCount(), "Should have OHLC dataset plus 2 indicator datasets");
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Plot should be a CombinedDomainXYPlot");
+        assertEquals(3, combinedPlot.getSubplots().size(), "Should have 1 main OHLC plot plus 2 indicator subplots");
     }
 
     @Test

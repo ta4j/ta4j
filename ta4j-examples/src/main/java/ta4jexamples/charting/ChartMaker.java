@@ -159,7 +159,8 @@ public class ChartMaker {
     }
 
     /**
-     * Builds an indicator overlay chart.
+     * Builds an indicator chart with the bar series in the main section and each
+     * indicator in its own section below, each with its own Y-axis.
      *
      * @since 0.19
      */
@@ -178,7 +179,8 @@ public class ChartMaker {
     }
 
     /**
-     * Displays an indicator overlay chart.
+     * Displays an indicator chart with the bar series in the main section and each
+     * indicator in its own section below, each with its own Y-axis.
      *
      * @since 0.19
      */
@@ -361,14 +363,17 @@ public class ChartMaker {
         String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
                 : (chart.getTitle() != null ? chart.getTitle().getText()
                         : chartFactory.buildChartTitle(series.getName(), ""));
-        return chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+        return chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
+                DEFAULT_CHART_IMAGE_HEIGHT);
     }
 
     /**
      * Saves a chart image to a file path.
-     * @param chart the JFreeChart object to be saved as an image
+     *
+     * @param chart  the JFreeChart object to be saved as an image
      * @param series the BarSeries object containing chart data
-     * @return an Optional containing the Path where the chart image was saved, or empty if saving failed
+     * @return an Optional containing the Path where the chart image was saved, or
+     *         empty if saving failed
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series) {
         return saveChartImage(chart, series, null);
