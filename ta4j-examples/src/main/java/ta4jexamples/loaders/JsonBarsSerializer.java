@@ -32,6 +32,13 @@ import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 import java.io.*;
 
+/**
+ * @deprecated // TODO: Remove in 0.20
+ *             <p>
+ *             Use {@link AdaptiveJsonBarsSerializer} instead.
+ *             </p>
+ */
+@Deprecated(since = "0.19")
 public class JsonBarsSerializer {
 
     private static final Logger LOG = LoggerFactory.getLogger(JsonBarsSerializer.class);
@@ -87,12 +94,17 @@ public class JsonBarsSerializer {
      * BarSeries object. If the input stream is null or parsing fails, appropriate
      * warning or error messages are logged and null is returned.
      *
+     * @deprecated
+     *             <p>
+     *             Use {@link AdaptiveJsonBarsSerializer#loadSeries(String)}
+     *             instead.
+     *
      * @param inputStream the input stream containing JSON data to be parsed into a
      *                    BarSeries
      * @return the loaded BarSeries object, or null if loading fails or input stream
      *         is null
-     * @since 0.19
      */
+    @Deprecated(since = "0.19")
     public static BarSeries loadSeries(InputStream inputStream) {
         if (inputStream == null) {
             LOG.warn("Input stream is null, returning null");

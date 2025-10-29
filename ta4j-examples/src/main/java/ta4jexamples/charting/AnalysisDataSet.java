@@ -21,38 +21,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.charting;
 
-import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-
-import java.io.InputStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.jfree.data.xy.DefaultOHLCDataset;
+import org.jfree.data.xy.XYDataset;
 
 /**
- * Test class for JsonBarsSerializer to verify both Binance and Coinbase format
- * support.
+ * Interface for creating analysis datasets from OHLC data for chart
+ * visualization.
+ *
+ * <p>
+ * Implementations of this interface should provide methods to transform OHLC
+ * (Open, High, Low, Close) data into datasets suitable for charting technical
+ * analysis indicators or overlays.
+ * </p>
+ *
+ * @see MovingAverageAnalysisDataSet
  */
-public class JsonBarsSerializerTest {
+public interface AnalysisDataSet {
 
-    @Test
-    public void testLoadBinanceFormat() {
-        // Test loading Binance format JSON (if available)
-        String binanceJsonPath = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(binanceJsonPath);
+    /**
+     * Creates an analysis dataset from the provided OHLC data.
+     *
+     * @param data the OHLC dataset to analyze
+     * @return a XYDataset containing the analysis data
+     * @throws IllegalArgumentException if data is null
+     */
+    XYDataset getAnalysis(DefaultOHLCDataset data);
 
-        if (inputStream != null) {
-            BarSeries series = JsonBarsSerializer.loadSeries(inputStream);
-
-            assertNotNull(series, "BarSeries should be loaded successfully");
-            assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
-        }
-    }
-
-    @Test
-    public void testLoadNullInputStream() {
-        BarSeries series = JsonBarsSerializer.loadSeries((InputStream) null);
-        assertNull(series, "Should return null for null input stream");
-    }
 }

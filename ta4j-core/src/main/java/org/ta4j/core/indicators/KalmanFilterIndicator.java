@@ -101,26 +101,43 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         }
 
         final var numFactory = getBarSeries().numFactory();
+
+        // Check if the current value is NaN - if so, return NaN immediately
+        double currentMeasurement = this.indicator.getValue(index).doubleValue();
+        if (Double.isNaN(currentMeasurement) || Double.isInfinite(currentMeasurement)) {
+            return NaN.NaN;
+        }
+
         for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
-            filter.predict();
             double measurement = this.indicator.getValue(i).doubleValue();
-            filter.correct(new double[] { measurement });
+
+            filter.predict();
+            // Skip NaN or infinite values - only process valid measurements
+            if (!Double.isNaN(measurement) && !Double.isInfinite(measurement)) {
+                filter.correct(new double[] { measurement });
+            }
 
             lastProcessedIndex = i;
         }
 
-        return numFactory.numOf(filter.getStateEstimation()[0]);
+        Double value = filter.getStateEstimation()[0];
+        if (value.isNaN()) {
+            return NaN.NaN;
+        }
+
+        return numFactory.numOf(value);
     }
 
     /**
-     * Returns the number of unstable bars for this indicator. Since the Kalman
-     * filter is a stateful algorithm, there are no unstable bars.
+     * Returns the number of bars up to which this indicator calculates unstable
+     * values. This typically corresponds to the number of bars required for the
+     * underlying indicator to produce reliable results.
      *
-     * @return 0, as there are no unstable bars for this indicator
+     * @return the number of unstable bars
      */
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return indicator.getCountOfUnstableBars();
     }
 
     private void initializeFilter() {

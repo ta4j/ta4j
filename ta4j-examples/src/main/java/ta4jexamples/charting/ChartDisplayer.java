@@ -21,38 +21,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.charting;
 
-import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-
-import java.io.InputStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.jfree.chart.JFreeChart;
 
 /**
- * Test class for JsonBarsSerializer to verify both Binance and Coinbase format
- * support.
+ * Display strategy for {@link JFreeChart} instances.
+ *
+ * <p>
+ * Implementations are responsible for presenting a chart to the user. The
+ * default implementation is {@link SwingChartDisplayer}, which renders a chart
+ * in a Swing {@code ApplicationFrame}.
+ * </p>
+ *
+ * @since 0.19
  */
-public class JsonBarsSerializerTest {
+public interface ChartDisplayer {
 
-    @Test
-    public void testLoadBinanceFormat() {
-        // Test loading Binance format JSON (if available)
-        String binanceJsonPath = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(binanceJsonPath);
+    /**
+     * Presents the provided chart to the user.
+     *
+     * @param chart the chart to display
+     * @since 0.19
+     */
+    void display(JFreeChart chart);
 
-        if (inputStream != null) {
-            BarSeries series = JsonBarsSerializer.loadSeries(inputStream);
-
-            assertNotNull(series, "BarSeries should be loaded successfully");
-            assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
-        }
-    }
-
-    @Test
-    public void testLoadNullInputStream() {
-        BarSeries series = JsonBarsSerializer.loadSeries((InputStream) null);
-        assertNull(series, "Should return null for null input stream");
-    }
+    /**
+     * Presents the provided chart to the user with a custom window title.
+     *
+     * @param chart       the chart to display
+     * @param windowTitle the title for the window/frame
+     * @since 0.19
+     */
+    void display(JFreeChart chart, String windowTitle);
 }

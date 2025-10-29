@@ -21,38 +21,48 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.charting;
 
-import org.junit.jupiter.api.Test;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 
-import java.io.InputStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.nio.file.Path;
+import java.util.Optional;
 
 /**
- * Test class for JsonBarsSerializer to verify both Binance and Coinbase format
- * support.
+ * Strategy for persisting charts.
+ *
+ * <p>
+ * Implementations are responsible for saving chart images to a storage system.
+ * The default implementation {@link FileSystemChartStorage} saves charts as
+ * JPEG files to the filesystem.
+ * </p>
+ *
+ * @since 0.19
  */
-public class JsonBarsSerializerTest {
+interface ChartStorage {
 
-    @Test
-    public void testLoadBinanceFormat() {
-        // Test loading Binance format JSON (if available)
-        String binanceJsonPath = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(binanceJsonPath);
+    /**
+     * Persists the provided chart and returns the destination path if the operation
+     * succeeds.
+     *
+     * @param chart      the chart to persist
+     * @param series     the originating bar series
+     * @param chartTitle the descriptive chart title
+     * @param width      target image width
+     * @param height     target image height
+     * @return the optional path to the persisted image
+     * @since 0.19
+     */
+    Optional<Path> save(JFreeChart chart, BarSeries series, String chartTitle, int width, int height);
 
-        if (inputStream != null) {
-            BarSeries series = JsonBarsSerializer.loadSeries(inputStream);
-
-            assertNotNull(series, "BarSeries should be loaded successfully");
-            assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
-        }
-    }
-
-    @Test
-    public void testLoadNullInputStream() {
-        BarSeries series = JsonBarsSerializer.loadSeries((InputStream) null);
-        assertNull(series, "Should return null for null input stream");
+    /**
+     * Creates a storage strategy that performs no persistence.
+     *
+     * @return a no-op storage strategy
+     * @since 0.19
+     */
+    static ChartStorage noOp() {
+        return (chart, series, chartTitle, width, height) -> Optional.empty();
     }
 }
