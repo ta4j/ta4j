@@ -29,13 +29,15 @@ import org.jfree.chart.JFreeChart;
 import org.ta4j.core.*;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import ta4jexamples.backtesting.MultiStrategyBacktest;
@@ -52,27 +54,27 @@ public class NetMomentumStrategy {
 
     private static final Logger LOG = LogManager.getLogger(NetMomentumStrategy.class);
 
-    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 600;
+    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 700;
     private static final int DEFAULT_MOMENTUM_TIMEFRAME = 200;
     private static final int DEFAULT_OVERSOLD_THRESHOLD = -600;
     private static final int DEFAULT_RSI_BARCOUNT = 14;
-    private static final Number DEFAULT_DECAY_FACTOR = 0.95;
+    private static final Number DEFAULT_DECAY_FACTOR = 0.995;
 
-    private static final int RSI_BARCOUNT_INCREMENT = 4;
-    private static final int RSI_BARCOUNT_MIN = 3;
-    private static final int RSI_BARCOUNT_MAX = 50;
+    private static final int RSI_BARCOUNT_INCREMENT = 7;
+    private static final int RSI_BARCOUNT_MIN = 7;
+    private static final int RSI_BARCOUNT_MAX = 49;
 
-    private static final int MOMENTUM_TIMEFRAME_INCREMENT = 25;
+    private static final int MOMENTUM_TIMEFRAME_INCREMENT = 100;
     private static final int MOMENTUM_TIMEFRAME_MIN = 100;
-    private static final int MOMENTUM_TIMEFRAME_MAX = 300;
+    private static final int MOMENTUM_TIMEFRAME_MAX = 400;
 
-    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 10;
-    private static final int OVERBOUGHT_THRESHOLD_MIN = 70;
-    private static final int OVERBOUGHT_THRESHOLD_MAX = 150;
+    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 300;
+    private static final int OVERBOUGHT_THRESHOLD_MIN = 0;
+    private static final int OVERBOUGHT_THRESHOLD_MAX = 1500;
 
-    private static final int OVERSOLD_THRESHOLD_INCREMENT = 10;
-    private static final int OVERSOLD_THRESHOLD_MIN = -130;
-    private static final int OVERSOLD_THRESHOLD_MAX = 30;
+    private static final int OVERSOLD_THRESHOLD_INCREMENT = 200;
+    private static final int OVERSOLD_THRESHOLD_MIN = -2000;
+    private static final int OVERSOLD_THRESHOLD_MAX = 0;
 
     private static List<Strategy> buildStrategies(BarSeries series) {
         List<Strategy> strategies = new ArrayList<>();
@@ -81,15 +83,16 @@ public class NetMomentumStrategy {
             for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
                 for (int oversoldThreshold = OVERSOLD_THRESHOLD_MIN; oversoldThreshold <= OVERSOLD_THRESHOLD_MAX; oversoldThreshold += OVERSOLD_THRESHOLD_INCREMENT) {
                     for (int overboughtThreshold = OVERBOUGHT_THRESHOLD_MIN; overboughtThreshold <= OVERBOUGHT_THRESHOLD_MAX; overboughtThreshold += OVERBOUGHT_THRESHOLD_INCREMENT) {
-                        // Check that oversoldThreshold is less than overboughtThreshold to create a
-                        // valid strategy
                         if (oversoldThreshold < overboughtThreshold) {
                             try {
-                                Strategy strategy = buildStrategy(series, rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold);
+                                Strategy strategy = buildStrategy(series, rsiBarCount, timeFrame, oversoldThreshold,
+                                        overboughtThreshold);
                                 strategies.add(strategy);
                             } catch (Exception e) {
                                 // Skip invalid strategy combinations
-                                LOG.debug("Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}: {}", rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, e.getMessage());
+                                LOG.debug(
+                                        "Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}: {}",
+                                        rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, e.getMessage());
                             }
                         }
                     }
@@ -100,7 +103,8 @@ public class NetMomentumStrategy {
         return strategies;
     }
 
-    private static Strategy buildStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold, int overboughtThreshold) {
+    private static Strategy buildStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold,
+            int overboughtThreshold) {
         Objects.requireNonNull(series, "Series cannot be null");
 
         if (rsiBarCount <= 0) {
@@ -111,24 +115,29 @@ public class NetMomentumStrategy {
         }
 
         final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, DEFAULT_DECAY_FACTOR);
+        NetMomentumIndicator rsiM = NetMomentumIndicator
+                .forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, DEFAULT_DECAY_FACTOR);
         Rule entryRule = new CrossedUpIndicatorRule(rsiM, oversoldThreshold);
         Rule exitRule = new CrossedDownIndicatorRule(rsiM, overboughtThreshold);
 
-        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + "}";
+        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame
+                + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount
+                + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + "}";
 
         return new BaseStrategy(strategyName, entryRule, exitRule);
     }
 
     private static Strategy buildStrategy(BarSeries series) {
-        return buildStrategy(series, DEFAULT_RSI_BARCOUNT, DEFAULT_MOMENTUM_TIMEFRAME, 0, 0);
+        return buildStrategy(series, DEFAULT_RSI_BARCOUNT, DEFAULT_MOMENTUM_TIMEFRAME, DEFAULT_OVERSOLD_THRESHOLD,
+                DEFAULT_OVERBOUGHT_THRESHOLD);
     }
 
     public static void main(String[] args) {
-        String jsonOhlcResourceFile = "Coinbase-ETH-USD-Daily-2025-10-28.json";
+        String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
 
         BarSeries series = null;
-        try (InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader().getResourceAsStream(jsonOhlcResourceFile)) {
+        try (InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader()
+                .getResourceAsStream(jsonOhlcResourceFile)) {
             series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
@@ -136,35 +145,48 @@ public class NetMomentumStrategy {
 
         Objects.requireNonNull(series, "Bar series was null");
 
-        // Building the trading strategy
-        List<Strategy> permutatedStrategies = buildStrategies(series);
-        Strategy singleStrategy = buildStrategy(series);
-
         // Running the strategy
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02), new ZeroCostModel(), new TradeOnNextOpenModel());
-//        List<TradingStatement> tradingStatements = backtestExecutor.execute(permutatedStrategies, DecimalNum.valueOf(1_000),
-//                Trade.TradeType.BUY);
+        runMultiStrategy(series);
 
+    }
+
+    private static void runSingleStrategy(BarSeries series) {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord = seriesManager.run(singleStrategy);
+
+        Strategy strategy = buildStrategy(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
         LOG.debug("Number of positions for the strategy: {}", tradingRecord.getPositionCount());
 
-        // Analysis
-        var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        LOG.debug("Gross return for the strategy: {}", grossReturn);
+        var netProfitLoss = new NetProfitLossCriterion().calculate(series, tradingRecord);
+        LOG.debug("Net Profit Loss for the strategy: {}", netProfitLoss);
 
         RSIIndicator rsiIndicator = new RSIIndicator(new ClosePriceIndicator(series), DEFAULT_RSI_BARCOUNT);
-        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsiWithDecay(new RSIIndicator(new ClosePriceIndicator(series), DEFAULT_RSI_BARCOUNT), DEFAULT_MOMENTUM_TIMEFRAME, DEFAULT_DECAY_FACTOR);
+        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsiWithDecay(
+                new RSIIndicator(new ClosePriceIndicator(series), DEFAULT_RSI_BARCOUNT), DEFAULT_MOMENTUM_TIMEFRAME,
+                DEFAULT_DECAY_FACTOR);
 
         // Charting
         ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
         JFreeChart indicatorChart = chartMaker.createIndicatorChart(series, rsiIndicator, rsiM);
         chartMaker.displayChart(indicatorChart);
 
-        chartMaker.saveChartImage(indicatorChart, series, "RSI+NetMomentumIndicators");
+        chartMaker.saveChartImage(indicatorChart, series, "NetMomentumStrategy-Indicators");
 
-        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, singleStrategy.getName(), tradingRecord);
+        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
         chartMaker.displayChart(tradingRecordChart);
         chartMaker.saveChartImage(tradingRecordChart, series);
+    }
+
+    private static void runMultiStrategy(BarSeries series) {
+        BacktestExecutor backtestExecutor = new BacktestExecutor(series, new LinearTransactionCostModel(0.02),
+                new ZeroCostModel(), new TradeOnNextOpenModel());
+
+        List<Strategy> strategies = buildStrategies(series);
+        BacktestExecutionResult executionResult = backtestExecutor.executeWithRuntimeReport(strategies,
+                DecimalNum.valueOf(1_000), Trade.TradeType.BUY);
+        LOG.info("Strategy count: {}", executionResult.runtimeReport().strategyCount());
+        LOG.info("Total runtime: {}", executionResult.runtimeReport().overallRuntime());
+        LOG.info("Total runtime: {}", executionResult.runtimeReport().overallRuntime());
+        LOG.info("Total runtime: {}", executionResult.runtimeReport().overallRuntime());
     }
 }

@@ -33,8 +33,9 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.time.Duration;
+import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Allows backtesting multiple strategies and comparing them to find out which
@@ -106,9 +107,102 @@ public class BacktestExecutor {
      * @return a list of TradingStatements
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
-        return strategies.parallelStream().map(strategy -> {
+        return executeWithRuntimeReport(strategies, amount, tradeType).tradingStatements();
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
+     * statements.
+     *
+     * @param strategies the strategies
+     * @param amount     the amount used to open/close the position
+     * @return execution result with trading statements and runtime report
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount) {
+        return executeWithRuntimeReport(strategies, amount, Trade.TradeType.BUY);
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
+     * statements.
+     *
+     * @param strategies the strategies
+     * @param amount     the amount used to open/close the position
+     * @param tradeType  the {@link Trade.TradeType} used to open the position
+     * @return execution result with trading statements and runtime report
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
+            Trade.TradeType tradeType) {
+        Objects.requireNonNull(strategies, "strategies must not be null");
+        Objects.requireNonNull(amount, "amount must not be null");
+        Objects.requireNonNull(tradeType, "tradeType must not be null");
+
+        if (strategies.isEmpty()) {
+            return new BacktestExecutionResult(new ArrayList<>(), BacktestRuntimeReport.empty());
+        }
+
+        Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
+        int strategyCount = strategyArray.length;
+        TradingStatement[] statements = new TradingStatement[strategyCount];
+        long[] durations = new long[strategyCount];
+
+        long overallStart = System.nanoTime();
+
+        IntStream indexStream = IntStream.range(0, strategyCount);
+        if (strategyCount > 1) {
+            indexStream = indexStream.parallel();
+        }
+
+        indexStream.forEach(index -> {
+            Strategy strategy = strategyArray[index];
+            long strategyStart = System.nanoTime();
             TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
-            return tradingStatementGenerator.generate(strategy, tradingRecord, seriesManager.getBarSeries());
-        }).collect(Collectors.toList());
+            TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
+                    seriesManager.getBarSeries());
+            statements[index] = statement;
+            durations[index] = System.nanoTime() - strategyStart;
+        });
+
+        Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
+
+        List<TradingStatement> tradingStatements = new ArrayList<>(strategyCount);
+        for (TradingStatement statement : statements) {
+            tradingStatements.add(statement);
+        }
+
+        List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(strategyCount);
+        for (int i = 0; i < strategyCount; i++) {
+            strategyRuntimes
+                    .add(new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
+        }
+
+        BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
+        return new BacktestExecutionResult(tradingStatements, runtimeReport);
+    }
+
+    private BacktestRuntimeReport buildRuntimeReport(long[] durations, Duration overallRuntime,
+            List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes) {
+        LongSummaryStatistics summaryStatistics = Arrays.stream(durations).summaryStatistics();
+        if (summaryStatistics.getCount() == 0) {
+            return new BacktestRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    strategyRuntimes);
+        }
+
+        long[] sortedDurations = durations.clone();
+        Arrays.sort(sortedDurations);
+        int midPoint = sortedDurations.length / 2;
+        long medianNanos;
+        if (sortedDurations.length % 2 == 0) {
+            medianNanos = (sortedDurations[midPoint - 1] + sortedDurations[midPoint]) / 2;
+        } else {
+            medianNanos = sortedDurations[midPoint];
+        }
+
+        Duration min = Duration.ofNanos(summaryStatistics.getMin());
+        Duration max = Duration.ofNanos(summaryStatistics.getMax());
+        Duration average = Duration.ofNanos(Math.round(summaryStatistics.getAverage()));
+        Duration median = Duration.ofNanos(medianNanos);
+
+        return new BacktestRuntimeReport(overallRuntime, min, max, average, median, strategyRuntimes);
     }
 }
