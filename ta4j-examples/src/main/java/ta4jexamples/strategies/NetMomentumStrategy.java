@@ -184,9 +184,6 @@ public class NetMomentumStrategy {
         List<Strategy> strategies = buildStrategies(series);
         BacktestExecutionResult executionResult = backtestExecutor.executeWithRuntimeReport(strategies,
                 DecimalNum.valueOf(1_000), Trade.TradeType.BUY);
-        LOG.info("Strategy count: {}", executionResult.runtimeReport().strategyCount());
-        LOG.info("Total runtime: {}", executionResult.runtimeReport().overallRuntime());
-        LOG.info("Average strategy runtime: {}", executionResult.runtimeReport().averageStrategyRuntime());
-        LOG.info("Median strategy runtime: {}", executionResult.runtimeReport().medianStrategyRuntime());
+        LOG.info("Backtest Execution Result Performance: {}", executionResult);
     }
 }

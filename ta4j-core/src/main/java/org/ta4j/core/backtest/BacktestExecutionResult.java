@@ -23,14 +23,22 @@
  */
 package org.ta4j.core.backtest;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.serialization.DurationTypeAdapter;
+
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-
-import org.ta4j.core.reports.TradingStatement;
 
 /**
  * Wraps the outcome of a {@link BacktestExecutor} run including runtime
  * metrics.
+ *
+ * @since 0.19
  */
 public record BacktestExecutionResult(List<TradingStatement> tradingStatements, BacktestRuntimeReport runtimeReport) {
 
@@ -44,5 +52,15 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
     public BacktestExecutionResult {
         tradingStatements = Objects.requireNonNull(tradingStatements, "tradingStatements must not be null");
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
+    }
+
+    @Override
+    public String toString() {
+        Gson gson = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter()).create();
+
+        JsonObject json = new JsonObject();
+        json.addProperty("tradingStatementsCount", tradingStatements.size());
+        json.add("runtimeReport", JsonParser.parseString(runtimeReport.toString()).getAsJsonObject());
+        return gson.toJson(json);
     }
 }

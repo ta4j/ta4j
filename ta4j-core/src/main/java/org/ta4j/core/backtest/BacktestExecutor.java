@@ -117,6 +117,8 @@ public class BacktestExecutor {
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
      * @return execution result with trading statements and runtime report
+     *
+     * @since 0.19
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount) {
         return executeWithRuntimeReport(strategies, amount, Trade.TradeType.BUY);
@@ -130,6 +132,8 @@ public class BacktestExecutor {
      * @param amount     the amount used to open/close the position
      * @param tradeType  the {@link Trade.TradeType} used to open the position
      * @return execution result with trading statements and runtime report
+     *
+     * @since 0.19
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
             Trade.TradeType tradeType) {
