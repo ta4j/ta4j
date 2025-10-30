@@ -23,6 +23,8 @@
  */
 package ta4jexamples.backtest;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -59,6 +61,8 @@ import java.util.List;
  */
 public class TopStrategiesExample {
 
+    private static final Logger LOG = LogManager.getLogger(TopStrategiesExample.class);
+
     public static void main(String[] args) {
         // Load the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
@@ -66,13 +70,13 @@ public class TopStrategiesExample {
         // Create multiple strategies to test
         List<Strategy> strategies = createStrategies(series);
 
-        System.out.println("Testing " + strategies.size() + " strategies...");
+        LOG.debug("Testing {} strategies...", strategies.size());
 
         // Run backtest on all strategies
         BacktestExecutor executor = new BacktestExecutor(series);
         BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1));
 
-        System.out.println("Backtest complete. Execution time: " + result.runtimeReport().overallRuntime());
+        LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 
         // Get the top 20 strategies sorted by NetProfit first, then Expectancy for
         // ties
@@ -82,7 +86,7 @@ public class TopStrategiesExample {
         List<TradingStatement> topStrategies = result.getTopStrategies(20, netProfitCriterion, expectancyCriterion);
 
         // Display the top strategies
-        System.out.println("\n=== Top " + topStrategies.size() + " Strategies ===");
+        LOG.debug("=== Top {} Strategies ===", topStrategies.size());
         for (int i = 0; i < topStrategies.size(); i++) {
             TradingStatement statement = topStrategies.get(i);
             Strategy strategy = statement.getStrategy();
@@ -90,10 +94,10 @@ public class TopStrategiesExample {
             Num netProfit = netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord());
             Num expectancy = expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord());
 
-            System.out.printf("%2d. %s%n", (i + 1), strategy.getName());
-            System.out.printf("    Net Profit: %s%n", netProfit);
-            System.out.printf("    Expectancy: %s%n", expectancy);
-            System.out.printf("    Positions:  %d%n%n", statement.getTradingRecord().getPositionCount());
+            LOG.debug("{}. {}", (i + 1), strategy.getName());
+            LOG.debug("    Net Profit: {}", netProfit);
+            LOG.debug("    Expectancy: {}", expectancy);
+            LOG.debug("    Positions:  {}", statement.getTradingRecord().getPositionCount());
         }
     }
 

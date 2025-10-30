@@ -35,7 +35,6 @@ import org.ta4j.core.serialization.DurationTypeAdapter;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Wraps the outcome of a {@link BacktestExecutor} run including runtime
@@ -86,6 +85,11 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     /**
      * Returns the top strategies sorted by the provided analysis criteria in order
      * of importance.
+     * <p>
+     * Performance: Uses a hybrid approach that selects the optimal algorithm based
+     * on the limit size relative to the total number of strategies. For small
+     * limits (< 25% of total), uses a heap-based partial sort O(n log k). For
+     * larger limits, uses a full sort O(n log n) which is more cache-friendly.
      *
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
@@ -103,9 +107,16 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             throw new IllegalArgumentException("limit must not be negative");
         }
 
-        // Pre-calculate criterion values for all statements to avoid recalculation
-        // during sorting
-        Map<TradingStatement, List<Num>> criterionValuesMap = new HashMap<>();
+        // Early returns for edge cases
+        if (limit == 0 || tradingStatements.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        int effectiveLimit = Math.min(limit, tradingStatements.size());
+
+        // Pre-calculate criterion values for all statements using IdentityHashMap
+        // (faster than HashMap for object identity)
+        Map<TradingStatement, List<Num>> criterionValuesMap = new IdentityHashMap<>(tradingStatements.size());
         for (TradingStatement statement : tradingStatements) {
             List<Num> values = new ArrayList<>(criteria.size());
             for (AnalysisCriterion criterion : criteria) {
@@ -115,8 +126,28 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             criterionValuesMap.put(statement, values);
         }
 
-        // Sort by criteria in order of importance
-        Comparator<TradingStatement> comparator = (statement1, statement2) -> {
+        Comparator<TradingStatement> comparator = createComparator(criteria, criterionValuesMap);
+
+        // Use heap-based partial sort for small limits (more efficient O(n log k))
+        // Use full sort for large limits (more cache-friendly)
+        if (effectiveLimit < tradingStatements.size() / 4) {
+            return selectTopKWithHeap(tradingStatements, effectiveLimit, comparator);
+        } else {
+            return selectTopKWithSort(tradingStatements, effectiveLimit, comparator);
+        }
+    }
+
+    /**
+     * Creates a comparator that sorts trading statements by multiple criteria in
+     * order of importance.
+     *
+     * @param criteria           the analysis criteria to sort by
+     * @param criterionValuesMap pre-calculated criterion values for each statement
+     * @return a comparator for trading statements
+     */
+    private Comparator<TradingStatement> createComparator(List<AnalysisCriterion> criteria,
+            Map<TradingStatement, List<Num>> criterionValuesMap) {
+        return (statement1, statement2) -> {
             List<Num> values1 = criterionValuesMap.get(statement1);
             List<Num> values2 = criterionValuesMap.get(statement2);
 
@@ -135,8 +166,49 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             }
             return 0; // All criteria equal
         };
+    }
 
-        return tradingStatements.stream().sorted(comparator).limit(limit).collect(Collectors.toList());
+    /**
+     * Selects top k strategies using a min-heap (priority queue). Efficient for
+     * small k relative to n: O(n log k).
+     *
+     * @param statements the trading statements to select from
+     * @param k          the number of top strategies to return
+     * @param comparator the comparator to determine ranking
+     * @return a list of the top k trading statements
+     */
+    private List<TradingStatement> selectTopKWithHeap(List<TradingStatement> statements, int k,
+            Comparator<TradingStatement> comparator) {
+        // Use a min-heap with reversed comparator (so worst of the top-k is at root)
+        PriorityQueue<TradingStatement> heap = new PriorityQueue<>(k + 1, comparator.reversed());
+
+        for (TradingStatement statement : statements) {
+            heap.offer(statement);
+            if (heap.size() > k) {
+                heap.poll(); // Remove the worst element from top-k
+            }
+        }
+
+        // Extract results and sort them in correct order (best-first)
+        List<TradingStatement> result = new ArrayList<>(heap);
+        result.sort(comparator);
+        return result;
+    }
+
+    /**
+     * Selects top k strategies using full sort. Efficient for large k relative to
+     * n: O(n log n).
+     *
+     * @param statements the trading statements to select from
+     * @param k          the number of top strategies to return
+     * @param comparator the comparator to determine ranking
+     * @return a list of the top k trading statements
+     */
+    private List<TradingStatement> selectTopKWithSort(List<TradingStatement> statements, int k,
+            Comparator<TradingStatement> comparator) {
+        List<TradingStatement> sorted = new ArrayList<>(statements);
+        sorted.sort(comparator);
+        return sorted.subList(0, k);
     }
 
     @Override
