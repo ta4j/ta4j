@@ -79,8 +79,7 @@ public class TopStrategiesExample {
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
 
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 20, netProfitCriterion,
-                expectancyCriterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(20, netProfitCriterion, expectancyCriterion);
 
         // Display the top strategies
         System.out.println("\n=== Top " + topStrategies.size() + " Strategies ===");
@@ -88,8 +87,8 @@ public class TopStrategiesExample {
             TradingStatement statement = topStrategies.get(i);
             Strategy strategy = statement.getStrategy();
 
-            Num netProfit = netProfitCriterion.calculate(series, statement.getTradingRecord());
-            Num expectancy = expectancyCriterion.calculate(series, statement.getTradingRecord());
+            Num netProfit = netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord());
+            Num expectancy = expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord());
 
             System.out.printf("%2d. %s%n", (i + 1), strategy.getName());
             System.out.printf("    Net Profit: %s%n", netProfit);

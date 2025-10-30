@@ -43,16 +43,19 @@ import java.util.stream.Collectors;
  *
  * @since 0.19
  */
-public record BacktestExecutionResult(List<TradingStatement> tradingStatements, BacktestRuntimeReport runtimeReport) {
+public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement> tradingStatements,
+        BacktestRuntimeReport runtimeReport) {
 
     /**
-     * Ensures collection properties are non-null.
+     * Ensures properties are non-null.
      *
+     * @param barSeries         the bar series used for backtesting
      * @param tradingStatements produced trading statements in the order of the
      *                          supplied strategies
      * @param runtimeReport     runtime statistics for the execution
      */
     public BacktestExecutionResult {
+        barSeries = Objects.requireNonNull(barSeries, "barSeries must not be null");
         tradingStatements = Objects.requireNonNull(tradingStatements, "tradingStatements must not be null");
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
     }
@@ -61,16 +64,14 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
      * Returns the top strategies sorted by the provided analysis criteria in order
      * of importance.
      *
-     * @param series   the bar series used for backtesting, not null
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
      *                 (first criterion is primary, second breaks ties, etc.)
      * @return a list of the top trading statements sorted by the criteria
-     * @throws NullPointerException     if series or criteria is null
+     * @throws NullPointerException     if criteria is null
      * @throws IllegalArgumentException if criteria is empty or limit is negative
      */
-    public List<TradingStatement> getTopStrategies(BarSeries series, int limit, AnalysisCriterion... criteria) {
-        Objects.requireNonNull(series, "series must not be null");
+    public List<TradingStatement> getTopStrategies(int limit, AnalysisCriterion... criteria) {
         Objects.requireNonNull(criteria, "criteria must not be null");
         if (criteria.length == 0) {
             throw new IllegalArgumentException("At least one criterion must be provided");
@@ -79,23 +80,21 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
             throw new IllegalArgumentException("limit must not be negative");
         }
 
-        return getTopStrategies(series, limit, Arrays.asList(criteria));
+        return getTopStrategies(limit, Arrays.asList(criteria));
     }
 
     /**
      * Returns the top strategies sorted by the provided analysis criteria in order
      * of importance.
      *
-     * @param series   the bar series used for backtesting, not null
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
      *                 (first criterion is primary, second breaks ties, etc.)
      * @return a list of the top trading statements sorted by the criteria
-     * @throws NullPointerException     if series or criteria is null
+     * @throws NullPointerException     if criteria is null
      * @throws IllegalArgumentException if criteria is empty or limit is negative
      */
-    public List<TradingStatement> getTopStrategies(BarSeries series, int limit, List<AnalysisCriterion> criteria) {
-        Objects.requireNonNull(series, "series must not be null");
+    public List<TradingStatement> getTopStrategies(int limit, List<AnalysisCriterion> criteria) {
         Objects.requireNonNull(criteria, "criteria must not be null");
         if (criteria.isEmpty()) {
             throw new IllegalArgumentException("At least one criterion must be provided");
@@ -110,7 +109,7 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
         for (TradingStatement statement : tradingStatements) {
             List<Num> values = new ArrayList<>(criteria.size());
             for (AnalysisCriterion criterion : criteria) {
-                Num value = criterion.calculate(series, statement.getTradingRecord());
+                Num value = criterion.calculate(barSeries, statement.getTradingRecord());
                 values.add(value);
             }
             criterionValuesMap.put(statement, values);
@@ -145,6 +144,7 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
         Gson gson = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter()).create();
 
         JsonObject json = new JsonObject();
+        json.addProperty("barSeriesName", barSeries.getName());
         json.addProperty("tradingStatementsCount", tradingStatements.size());
         json.add("runtimeReport", JsonParser.parseString(runtimeReport.toString()).getAsJsonObject());
         return gson.toJson(json);

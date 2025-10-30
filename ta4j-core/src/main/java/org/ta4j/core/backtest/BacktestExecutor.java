@@ -142,7 +142,8 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradeType, "tradeType must not be null");
 
         if (strategies.isEmpty()) {
-            return new BacktestExecutionResult(new ArrayList<>(), BacktestRuntimeReport.empty());
+            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
+                    BacktestRuntimeReport.empty());
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
@@ -181,7 +182,7 @@ public class BacktestExecutor {
         }
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
-        return new BacktestExecutionResult(tradingStatements, runtimeReport);
+        return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport);
     }
 
     private BacktestRuntimeReport buildRuntimeReport(long[] durations, Duration overallRuntime,

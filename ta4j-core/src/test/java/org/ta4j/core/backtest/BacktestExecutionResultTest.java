@@ -71,6 +71,10 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
 
         JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 
+        assertTrue("JSON should contain barSeriesName", json.has("barSeriesName"));
+        assertEquals("barSeriesName should match series name", series.getName(),
+                json.get("barSeriesName").getAsString());
+
         assertTrue("JSON should contain tradingStatementsCount", json.has("tradingStatementsCount"));
         assertEquals("tradingStatementsCount should match actual count", strategies.size(),
                 json.get("tradingStatementsCount").getAsInt());
@@ -132,14 +136,14 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
 
         // Get top 2 strategies by net profit
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 2, netProfitCriterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(2, netProfitCriterion);
 
         assertEquals("Should return 2 strategies", 2, topStrategies.size());
 
         // Verify the strategies are sorted by profit (strategy3 should be best, then
         // strategy2)
-        Num profit1 = netProfitCriterion.calculate(series, topStrategies.get(0).getTradingRecord());
-        Num profit2 = netProfitCriterion.calculate(series, topStrategies.get(1).getTradingRecord());
+        Num profit1 = netProfitCriterion.calculate(result.barSeries(), topStrategies.get(0).getTradingRecord());
+        Num profit2 = netProfitCriterion.calculate(result.barSeries(), topStrategies.get(1).getTradingRecord());
         assertTrue("First strategy should have better or equal profit than second",
                 netProfitCriterion.betterThan(profit1, profit2) || profit1.equals(profit2));
     }
@@ -163,15 +167,15 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         // Sort by number of positions first, then by expectancy for ties
         AnalysisCriterion positionsCriterion = new NumberOfPositionsCriterion();
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 3, positionsCriterion,
-                expectancyCriterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(3, positionsCriterion, expectancyCriterion);
 
         assertEquals("Should return all 3 strategies", 3, topStrategies.size());
 
         // Verify ordering by primary criterion
         for (int i = 0; i < topStrategies.size() - 1; i++) {
-            Num positions1 = positionsCriterion.calculate(series, topStrategies.get(i).getTradingRecord());
-            Num positions2 = positionsCriterion.calculate(series, topStrategies.get(i + 1).getTradingRecord());
+            Num positions1 = positionsCriterion.calculate(result.barSeries(), topStrategies.get(i).getTradingRecord());
+            Num positions2 = positionsCriterion.calculate(result.barSeries(),
+                    topStrategies.get(i + 1).getTradingRecord());
 
             // First criterion should be better or equal
             assertTrue("Strategies should be sorted by primary criterion",
@@ -179,8 +183,10 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
 
             // If equal on first criterion, second criterion should be better or equal
             if (positions1.equals(positions2)) {
-                Num expectancy1 = expectancyCriterion.calculate(series, topStrategies.get(i).getTradingRecord());
-                Num expectancy2 = expectancyCriterion.calculate(series, topStrategies.get(i + 1).getTradingRecord());
+                Num expectancy1 = expectancyCriterion.calculate(result.barSeries(),
+                        topStrategies.get(i).getTradingRecord());
+                Num expectancy2 = expectancyCriterion.calculate(result.barSeries(),
+                        topStrategies.get(i + 1).getTradingRecord());
                 assertTrue("Strategies with equal primary criterion should be sorted by secondary criterion",
                         expectancyCriterion.betterThan(expectancy1, expectancy2) || expectancy1.equals(expectancy2));
             }
@@ -200,7 +206,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
 
         AnalysisCriterion criterion = new NetProfitCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 5, criterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(5, criterion);
 
         assertEquals("Should return only 5 strategies even though 10 were provided", 5, topStrategies.size());
     }
@@ -218,7 +224,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
 
         AnalysisCriterion criterion = new NetProfitCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 100, criterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(100, criterion);
 
         assertEquals("Should return all available strategies when limit exceeds count", 2, topStrategies.size());
     }
@@ -233,21 +239,9 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
 
         AnalysisCriterion criterion = new NetProfitCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 0, criterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(0, criterion);
 
         assertTrue("Should return empty list when limit is 0", topStrategies.isEmpty());
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void getTopStrategiesThrowsExceptionWhenSeriesIsNull() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
-
-        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
-
-        result.getTopStrategies(null, 1, new NetProfitCriterion());
     }
 
     @Test(expected = NullPointerException.class)
@@ -260,7 +254,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
 
         AnalysisCriterion[] nullCriteria = null;
-        result.getTopStrategies(series, 1, nullCriteria);
+        result.getTopStrategies(1, nullCriteria);
     }
 
     @Test(expected = NullPointerException.class)
@@ -273,7 +267,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
 
         List<AnalysisCriterion> nullCriteria = null;
-        result.getTopStrategies(series, 1, nullCriteria);
+        result.getTopStrategies(1, nullCriteria);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -285,7 +279,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutor executor = new BacktestExecutor(series);
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
 
-        result.getTopStrategies(series, 1, new ArrayList<>());
+        result.getTopStrategies(1, new ArrayList<>());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -297,7 +291,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutor executor = new BacktestExecutor(series);
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
 
-        result.getTopStrategies(series, -1, new NetProfitCriterion());
+        result.getTopStrategies(-1, new NetProfitCriterion());
     }
 
     @Test
@@ -319,11 +313,10 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
 
         // Call with varargs
-        List<TradingStatement> varargsResult = result.getTopStrategies(series, 2, netProfitCriterion,
-                expectancyCriterion);
+        List<TradingStatement> varargsResult = result.getTopStrategies(2, netProfitCriterion, expectancyCriterion);
 
         // Call with List
-        List<TradingStatement> listResult = result.getTopStrategies(series, 2,
+        List<TradingStatement> listResult = result.getTopStrategies(2,
                 Arrays.asList(netProfitCriterion, expectancyCriterion));
 
         assertEquals("Varargs and List methods should return same number of results", varargsResult.size(),
@@ -344,7 +337,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numOf(1));
 
         AnalysisCriterion criterion = new NetProfitCriterion();
-        List<TradingStatement> topStrategies = result.getTopStrategies(series, 10, criterion);
+        List<TradingStatement> topStrategies = result.getTopStrategies(10, criterion);
 
         assertTrue("Should return empty list when no trading statements exist", topStrategies.isEmpty());
     }
