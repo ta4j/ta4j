@@ -28,12 +28,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -92,5 +95,69 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().maxStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().averageStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().medianStrategyRuntime());
+    }
+
+    @Test
+    public void executeWithProgressCallback() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+
+        Strategy strategyOne = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy strategyTwo = new BaseStrategy(new FixedRule(1, 3), new FixedRule(2, 4));
+        Strategy strategyThree = new BaseStrategy(new FixedRule(0, 4), new FixedRule(1, 2));
+
+        List<Strategy> strategies = List.of(strategyOne, strategyTwo, strategyThree);
+        AtomicInteger callbackCount = new AtomicInteger(0);
+        AtomicInteger lastCompletedCount = new AtomicInteger(0);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                completed -> {
+                    callbackCount.incrementAndGet();
+                    lastCompletedCount.set(completed);
+                });
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+        assertEquals(strategies.size(), callbackCount.get());
+        assertEquals(strategies.size(), lastCompletedCount.get());
+    }
+
+    @Test
+    public void executeWithLargeStrategyCountUsesBatchProcessing() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+
+        // Create more than PARALLEL_THRESHOLD (1000) strategies to trigger batched
+        // processing
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 1500; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        AtomicInteger progressUpdateCount = new AtomicInteger(0);
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                completed -> progressUpdateCount.incrementAndGet());
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+        assertEquals(strategies.size(), progressUpdateCount.get());
+    }
+
+    @Test
+    public void executeWithCustomBatchSize() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+
+        // Create more than PARALLEL_THRESHOLD strategies
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 1500; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        int customBatchSize = 250;
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                null, customBatchSize);
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
     }
 }
