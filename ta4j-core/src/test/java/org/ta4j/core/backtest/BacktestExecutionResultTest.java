@@ -26,15 +26,22 @@ package org.ta4j.core.backtest;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.ExpectancyCriterion;
+import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -100,5 +107,245 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         assertEquals("tradingStatementsCount should be 0 for empty list", 0,
                 json.get("tradingStatementsCount").getAsInt());
         assertTrue("JSON should contain runtimeReport", json.has("runtimeReport"));
+    }
+
+    @Test
+    public void getTopStrategiesWithSingleCriterionSortsCorrectly() {
+        // Create a bar series with price movement
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 115, 120, 125, 130, 135, 140, 145)
+                .build();
+
+        // Strategy 1: Buy at 0, sell at 5 (profit from 100 to 125)
+        Strategy strategy1 = new BaseStrategy("Strategy1", new FixedRule(0), new FixedRule(5));
+
+        // Strategy 2: Buy at 2, sell at 7 (profit from 110 to 135)
+        Strategy strategy2 = new BaseStrategy("Strategy2", new FixedRule(2), new FixedRule(7));
+
+        // Strategy 3: Buy at 4, sell at 9 (profit from 120 to 145)
+        Strategy strategy3 = new BaseStrategy("Strategy3", new FixedRule(4), new FixedRule(9));
+
+        List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        // Get top 2 strategies by net profit
+        AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 2, netProfitCriterion);
+
+        assertEquals("Should return 2 strategies", 2, topStrategies.size());
+
+        // Verify the strategies are sorted by profit (strategy3 should be best, then
+        // strategy2)
+        Num profit1 = netProfitCriterion.calculate(series, topStrategies.get(0).getTradingRecord());
+        Num profit2 = netProfitCriterion.calculate(series, topStrategies.get(1).getTradingRecord());
+        assertTrue("First strategy should have better or equal profit than second",
+                netProfitCriterion.betterThan(profit1, profit2) || profit1.equals(profit2));
+    }
+
+    @Test
+    public void getTopStrategiesWithMultipleCriteriaSortsByPriorityAndTieBreaks() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 115, 120, 125, 130, 135, 140, 145)
+                .build();
+
+        // Create strategies with different trading patterns
+        Strategy strategy1 = new BaseStrategy("Strategy1", new FixedRule(0, 5), new FixedRule(2, 7));
+        Strategy strategy2 = new BaseStrategy("Strategy2", new FixedRule(1, 6), new FixedRule(3, 8));
+        Strategy strategy3 = new BaseStrategy("Strategy3", new FixedRule(2), new FixedRule(7));
+
+        List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        // Sort by number of positions first, then by expectancy for ties
+        AnalysisCriterion positionsCriterion = new NumberOfPositionsCriterion();
+        AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 3, positionsCriterion,
+                expectancyCriterion);
+
+        assertEquals("Should return all 3 strategies", 3, topStrategies.size());
+
+        // Verify ordering by primary criterion
+        for (int i = 0; i < topStrategies.size() - 1; i++) {
+            Num positions1 = positionsCriterion.calculate(series, topStrategies.get(i).getTradingRecord());
+            Num positions2 = positionsCriterion.calculate(series, topStrategies.get(i + 1).getTradingRecord());
+
+            // First criterion should be better or equal
+            assertTrue("Strategies should be sorted by primary criterion",
+                    positionsCriterion.betterThan(positions1, positions2) || positions1.equals(positions2));
+
+            // If equal on first criterion, second criterion should be better or equal
+            if (positions1.equals(positions2)) {
+                Num expectancy1 = expectancyCriterion.calculate(series, topStrategies.get(i).getTradingRecord());
+                Num expectancy2 = expectancyCriterion.calculate(series, topStrategies.get(i + 1).getTradingRecord());
+                assertTrue("Strategies with equal primary criterion should be sorted by secondary criterion",
+                        expectancyCriterion.betterThan(expectancy1, expectancy2) || expectancy1.equals(expectancy2));
+            }
+        }
+    }
+
+    @Test
+    public void getTopStrategiesRespectsLimit() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 140).build();
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            strategies.add(new BaseStrategy("Strategy" + i, new FixedRule(0), new FixedRule(2)));
+        }
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        AnalysisCriterion criterion = new NetProfitCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 5, criterion);
+
+        assertEquals("Should return only 5 strategies even though 10 were provided", 5, topStrategies.size());
+    }
+
+    @Test
+    public void getTopStrategiesWithLimitLargerThanResultsReturnsAll() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build();
+
+        Strategy strategy1 = new BaseStrategy("Strategy1", new FixedRule(0), new FixedRule(1));
+        Strategy strategy2 = new BaseStrategy("Strategy2", new FixedRule(0), new FixedRule(2));
+
+        List<Strategy> strategies = List.of(strategy1, strategy2);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        AnalysisCriterion criterion = new NetProfitCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 100, criterion);
+
+        assertEquals("Should return all available strategies when limit exceeds count", 2, topStrategies.size());
+    }
+
+    @Test
+    public void getTopStrategiesWithZeroLimitReturnsEmpty() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        AnalysisCriterion criterion = new NetProfitCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 0, criterion);
+
+        assertTrue("Should return empty list when limit is 0", topStrategies.isEmpty());
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void getTopStrategiesThrowsExceptionWhenSeriesIsNull() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        result.getTopStrategies(null, 1, new NetProfitCriterion());
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void getTopStrategiesThrowsExceptionWhenCriteriaVarargsIsNull() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        AnalysisCriterion[] nullCriteria = null;
+        result.getTopStrategies(series, 1, nullCriteria);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void getTopStrategiesThrowsExceptionWhenCriteriaListIsNull() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        List<AnalysisCriterion> nullCriteria = null;
+        result.getTopStrategies(series, 1, nullCriteria);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getTopStrategiesThrowsExceptionWhenCriteriaIsEmpty() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        result.getTopStrategies(series, 1, new ArrayList<>());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getTopStrategiesThrowsExceptionWhenLimitIsNegative() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+
+        result.getTopStrategies(series, -1, new NetProfitCriterion());
+    }
+
+    @Test
+    public void getTopStrategiesVarargsAndListMethodsProduceSameResults() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 115, 120, 125, 130, 135)
+                .build();
+
+        Strategy strategy1 = new BaseStrategy("Strategy1", new FixedRule(0), new FixedRule(4));
+        Strategy strategy2 = new BaseStrategy("Strategy2", new FixedRule(1), new FixedRule(5));
+        Strategy strategy3 = new BaseStrategy("Strategy3", new FixedRule(2), new FixedRule(6));
+
+        List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+        AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
+
+        // Call with varargs
+        List<TradingStatement> varargsResult = result.getTopStrategies(series, 2, netProfitCriterion,
+                expectancyCriterion);
+
+        // Call with List
+        List<TradingStatement> listResult = result.getTopStrategies(series, 2,
+                Arrays.asList(netProfitCriterion, expectancyCriterion));
+
+        assertEquals("Varargs and List methods should return same number of results", varargsResult.size(),
+                listResult.size());
+
+        // Verify same strategies in same order
+        for (int i = 0; i < varargsResult.size(); i++) {
+            assertEquals("Varargs and List methods should return same strategies in same order",
+                    varargsResult.get(i).getStrategy().getName(), listResult.get(i).getStrategy().getName());
+        }
+    }
+
+    @Test
+    public void getTopStrategiesHandlesEmptyTradingStatements() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numOf(1));
+
+        AnalysisCriterion criterion = new NetProfitCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(series, 10, criterion);
+
+        assertTrue("Should return empty list when no trading statements exist", topStrategies.isEmpty());
     }
 }

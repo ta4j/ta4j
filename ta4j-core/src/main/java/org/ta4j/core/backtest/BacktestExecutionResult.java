@@ -27,12 +27,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.serialization.DurationTypeAdapter;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Wraps the outcome of a {@link BacktestExecutor} run including runtime
@@ -52,6 +55,89 @@ public record BacktestExecutionResult(List<TradingStatement> tradingStatements, 
     public BacktestExecutionResult {
         tradingStatements = Objects.requireNonNull(tradingStatements, "tradingStatements must not be null");
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
+    }
+
+    /**
+     * Returns the top strategies sorted by the provided analysis criteria in order
+     * of importance.
+     *
+     * @param series   the bar series used for backtesting, not null
+     * @param limit    the maximum number of strategies to return
+     * @param criteria the analysis criteria to sort by, in order of importance
+     *                 (first criterion is primary, second breaks ties, etc.)
+     * @return a list of the top trading statements sorted by the criteria
+     * @throws NullPointerException     if series or criteria is null
+     * @throws IllegalArgumentException if criteria is empty or limit is negative
+     */
+    public List<TradingStatement> getTopStrategies(BarSeries series, int limit, AnalysisCriterion... criteria) {
+        Objects.requireNonNull(series, "series must not be null");
+        Objects.requireNonNull(criteria, "criteria must not be null");
+        if (criteria.length == 0) {
+            throw new IllegalArgumentException("At least one criterion must be provided");
+        }
+        if (limit < 0) {
+            throw new IllegalArgumentException("limit must not be negative");
+        }
+
+        return getTopStrategies(series, limit, Arrays.asList(criteria));
+    }
+
+    /**
+     * Returns the top strategies sorted by the provided analysis criteria in order
+     * of importance.
+     *
+     * @param series   the bar series used for backtesting, not null
+     * @param limit    the maximum number of strategies to return
+     * @param criteria the analysis criteria to sort by, in order of importance
+     *                 (first criterion is primary, second breaks ties, etc.)
+     * @return a list of the top trading statements sorted by the criteria
+     * @throws NullPointerException     if series or criteria is null
+     * @throws IllegalArgumentException if criteria is empty or limit is negative
+     */
+    public List<TradingStatement> getTopStrategies(BarSeries series, int limit, List<AnalysisCriterion> criteria) {
+        Objects.requireNonNull(series, "series must not be null");
+        Objects.requireNonNull(criteria, "criteria must not be null");
+        if (criteria.isEmpty()) {
+            throw new IllegalArgumentException("At least one criterion must be provided");
+        }
+        if (limit < 0) {
+            throw new IllegalArgumentException("limit must not be negative");
+        }
+
+        // Pre-calculate criterion values for all statements to avoid recalculation
+        // during sorting
+        Map<TradingStatement, List<Num>> criterionValuesMap = new HashMap<>();
+        for (TradingStatement statement : tradingStatements) {
+            List<Num> values = new ArrayList<>(criteria.size());
+            for (AnalysisCriterion criterion : criteria) {
+                Num value = criterion.calculate(series, statement.getTradingRecord());
+                values.add(value);
+            }
+            criterionValuesMap.put(statement, values);
+        }
+
+        // Sort by criteria in order of importance
+        Comparator<TradingStatement> comparator = (statement1, statement2) -> {
+            List<Num> values1 = criterionValuesMap.get(statement1);
+            List<Num> values2 = criterionValuesMap.get(statement2);
+
+            for (int i = 0; i < criteria.size(); i++) {
+                AnalysisCriterion criterion = criteria.get(i);
+                Num value1 = values1.get(i);
+                Num value2 = values2.get(i);
+
+                // Use criterion's betterThan method to determine order
+                if (criterion.betterThan(value1, value2)) {
+                    return -1; // statement1 is better, should come first
+                } else if (criterion.betterThan(value2, value1)) {
+                    return 1; // statement2 is better, should come first
+                }
+                // If equal, continue to next criterion
+            }
+            return 0; // All criteria equal
+        };
+
+        return tradingStatements.stream().sorted(comparator).limit(limit).collect(Collectors.toList());
     }
 
     @Override
