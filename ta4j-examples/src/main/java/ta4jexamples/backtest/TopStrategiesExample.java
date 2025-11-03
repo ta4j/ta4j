@@ -96,7 +96,8 @@ public class TopStrategiesExample {
         String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
 
         BarSeries series = null;
-        try (InputStream resourceStream = TopStrategiesExample.class.getClassLoader().getResourceAsStream(jsonOhlcResourceFile)) {
+        try (InputStream resourceStream = TopStrategiesExample.class.getClassLoader()
+                .getResourceAsStream(jsonOhlcResourceFile)) {
             series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
@@ -110,13 +111,15 @@ public class TopStrategiesExample {
         LOG.debug("Testing {} strategies...", strategies.size());
 
         // Run backtest on all strategies
-        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies, DecimalNum.valueOf(1), Trade.TradeType.BUY, completed -> {
-            // Report progress every 100 strategies or at key milestones
-            if (completed % 100 == 0 || completed == strategies.size()) {
-                int percentComplete = (int) (completed * 100.0) / strategies.size();
-                LOG.debug("Progress: {}/{} strategies completed ({}%)", completed, strategies.size(), percentComplete);
-            }
-        });
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
+                DecimalNum.valueOf(1), Trade.TradeType.BUY, completed -> {
+                    // Report progress every 100 strategies or at key milestones
+                    if (completed % 100 == 0 || completed == strategies.size()) {
+                        int percentComplete = (int) (completed * 100.0) / strategies.size();
+                        LOG.debug("Progress: {}/{} strategies completed ({}%)", completed, strategies.size(),
+                                percentComplete);
+                    }
+                });
 
         LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 
@@ -160,11 +163,15 @@ public class TopStrategiesExample {
                         if (oversoldThreshold < overboughtThreshold) {
                             for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
                                 try {
-                                    Strategy strategy = createStrategy(series, rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor);
+                                    Strategy strategy = createStrategy(series, rsiBarCount, timeFrame,
+                                            oversoldThreshold, overboughtThreshold, decayFactor);
                                     strategies.add(strategy);
                                 } catch (Exception e) {
                                     // Skip invalid strategy combinations
-                                    LOG.debug("Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}, decayFactor={}: {}", rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor, e.getMessage());
+                                    LOG.debug(
+                                            "Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}, decayFactor={}: {}",
+                                            rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor,
+                                            e.getMessage());
                                 }
                             }
                         }
@@ -176,7 +183,8 @@ public class TopStrategiesExample {
         return strategies;
     }
 
-    private static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold, int overboughtThreshold, double decayFactor) {
+    private static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold,
+            int overboughtThreshold, double decayFactor) {
         Objects.requireNonNull(series, "Series cannot be null");
 
         if (rsiBarCount <= 0) {
@@ -187,11 +195,15 @@ public class TopStrategiesExample {
         }
 
         final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, decayFactor);
+        NetMomentumIndicator rsiM = NetMomentumIndicator
+                .forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, decayFactor);
         Rule entryRule = new CrossedUpIndicatorRule(rsiM, oversoldThreshold);
         Rule exitRule = new CrossedDownIndicatorRule(rsiM, overboughtThreshold);
 
-        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + ", decayFactor=" + decayFactor + "}";
+        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame
+                + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount
+                + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + ", decayFactor="
+                + decayFactor + "}";
 
         return new BaseStrategy(strategyName, entryRule, exitRule);
     }

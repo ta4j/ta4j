@@ -119,6 +119,20 @@ public class ChartMaker {
     }
 
     /**
+     * Builds a chart that overlays a trading record on top of OHLC data and appends
+     * indicator subplots.
+     *
+     * @since 0.19
+     */
+    @SafeVarargs
+    public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            Indicator<Num>... indicators) {
+        validateTradingInputs(series, strategyName, tradingRecord);
+        validateIndicators(indicators);
+        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+    }
+
+    /**
      * Persists a trading record chart if persistence is configured.
      *
      * @return an optional path to the stored chart
@@ -127,6 +141,24 @@ public class ChartMaker {
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
         JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+        String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
+                : chartFactory.buildChartTitle(series.getName(), strategyName);
+        return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Persists a trading record chart with indicator subplots if persistence is
+     * configured.
+     *
+     * @return an optional path to the stored chart
+     * @since 0.19
+     */
+    @SafeVarargs
+    public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, Indicator<Num>... indicators) {
+        validateTradingInputs(series, strategyName, tradingRecord);
+        validateIndicators(indicators);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
         String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
                 : chartFactory.buildChartTitle(series.getName(), strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
@@ -148,6 +180,25 @@ public class ChartMaker {
     }
 
     /**
+     * Displays a trading record chart with indicator subplots, logging any
+     * presentation exceptions.
+     *
+     * @since 0.19
+     */
+    @SafeVarargs
+    public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            Indicator<Num>... indicators) {
+        validateTradingInputs(series, strategyName, tradingRecord);
+        validateIndicators(indicators);
+        try {
+            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+            displayChart(chart);
+        } catch (Exception ex) {
+            LOG.error("Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series), ex);
+        }
+    }
+
+    /**
      * Produces a PNG representation of a trading record chart.
      *
      * @since 0.19
@@ -155,6 +206,21 @@ public class ChartMaker {
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         validateTradingInputs(series, strategyName, tradingRecord);
         JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+        return getChartAsByteArray(chart);
+    }
+
+    /**
+     * Produces a PNG representation of a trading record chart with indicator
+     * subplots.
+     *
+     * @since 0.19
+     */
+    @SafeVarargs
+    public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, Indicator<Num>... indicators) {
+        validateTradingInputs(series, strategyName, tradingRecord);
+        validateIndicators(indicators);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
         return getChartAsByteArray(chart);
     }
 
@@ -167,14 +233,7 @@ public class ChartMaker {
     @SafeVarargs
     public final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
         validateSeries(series);
-        if (indicators == null) {
-            throw new IllegalArgumentException("Indicators cannot be null");
-        }
-        for (Indicator<Num> indicator : indicators) {
-            if (indicator == null) {
-                throw new IllegalArgumentException("Indicators cannot contain null values");
-            }
-        }
+        validateIndicators(indicators);
         return chartFactory.createIndicatorChart(series, indicators);
     }
 
@@ -492,6 +551,17 @@ public class ChartMaker {
         }
         if (tradingRecord == null) {
             throw new IllegalArgumentException("Trading record cannot be null");
+        }
+    }
+
+    private void validateIndicators(Indicator<Num>[] indicators) {
+        if (indicators == null) {
+            throw new IllegalArgumentException("Indicators cannot be null");
+        }
+        for (Indicator<Num> indicator : indicators) {
+            if (indicator == null) {
+                throw new IllegalArgumentException("Indicators cannot contain null values");
+            }
         }
     }
 

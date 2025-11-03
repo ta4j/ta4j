@@ -105,6 +105,37 @@ final class TradingChartFactory {
     }
 
     @SafeVarargs
+    final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            Indicator<Num>... indicators) {
+        if (indicators == null || indicators.length == 0) {
+            return createTradingRecordChart(series, strategyName, tradingRecord);
+        }
+
+        JFreeChart chart = createIndicatorChart(series, indicators);
+        String chartTitle = buildChartTitle(series.getName(), strategyName);
+        if (chart.getTitle() != null) {
+            chart.getTitle().setText(chartTitle);
+        } else {
+            chart.setTitle(chartTitle);
+            if (chart.getTitle() != null) {
+                chart.getTitle().setPaint(Color.LIGHT_GRAY);
+            }
+        }
+
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            @SuppressWarnings("unchecked")
+            List<XYPlot> subplots = combinedPlot.getSubplots();
+            if (subplots != null && !subplots.isEmpty()) {
+                addTradingRecordToChart(subplots.get(0), series, tradingRecord);
+            }
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            addTradingRecordToChart(plot, series, tradingRecord);
+        }
+
+        return chart;
+    }
+
+    @SafeVarargs
     final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
         if (indicators == null || indicators.length == 0) {
             // No indicators, return simple OHLC chart

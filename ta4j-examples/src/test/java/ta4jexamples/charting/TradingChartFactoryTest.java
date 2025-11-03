@@ -23,17 +23,20 @@
  */
 package ta4jexamples.charting;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 
@@ -94,6 +97,45 @@ class TradingChartFactoryTest {
         assertFalse(domainMarkers.isEmpty(), "Should have position markers");
         assertTrue(domainMarkers.stream().anyMatch(marker -> marker instanceof IntervalMarker),
                 "Should use IntervalMarker for positions");
+    }
+
+    @Test
+    void testCreateTradingRecordChartWithIndicatorsAddsTradingOverlay() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
+
+        assertNotNull(chart.getTitle(), "Combined chart should have a title");
+        assertEquals("Test Strategy@" + barSeries.getName().split(" ")[0], chart.getTitle().getText(),
+                "Combined chart should reuse trading record title format");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(), "Combined domain plot expected");
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertEquals(3, combinedPlot.getSubplots().size(), "Main subplot plus two indicator panels expected");
+
+        XYPlot mainPlot = combinedPlot.getSubplots().get(0);
+        assertTrue(mainPlot.getDatasetCount() > 1,
+                "Trading dataset should be attached to the main subplot alongside OHLC data");
+        assertInstanceOf(XYLineAndShapeRenderer.class, mainPlot.getRenderer(1),
+                "Trading dataset should use marker renderer");
+        assertTrue(mainPlot.getAnnotations().stream().anyMatch(XYTextAnnotation.class::isInstance),
+                "Trade annotations should be present on the main subplot");
+        Collection<?> domainMarkers = mainPlot.getDomainMarkers(Layer.BACKGROUND);
+        assertNotNull(domainMarkers, "Position shading should still be applied to the main subplot");
+        assertFalse(domainMarkers.isEmpty(), "Position shading should not be empty");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCreateTradingRecordChartWithIndicatorsFallsBackWhenEmpty() {
+        JFreeChart baseline = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        Indicator<Num>[] empty = (Indicator<Num>[]) new Indicator<?>[0];
+        JFreeChart viaNewMethod = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, empty);
+
+        assertInstanceOf(XYPlot.class, baseline.getPlot(), "Baseline chart should be a single XY plot");
+        assertInstanceOf(XYPlot.class, viaNewMethod.getPlot(), "Empty indicator array should fall back to base chart");
+        assertEquals(baseline.getTitle().getText(), viaNewMethod.getTitle().getText(),
+                "Titles should remain consistent when falling back");
     }
 
     @Test
