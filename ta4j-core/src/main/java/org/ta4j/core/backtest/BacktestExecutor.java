@@ -37,7 +37,8 @@ import org.ta4j.core.reports.TradingStatementGenerator;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -318,7 +319,7 @@ public class BacktestExecutor {
                 Comparator.comparing(ts -> criterion.calculate(seriesManager.getBarSeries(), ts.getTradingRecord())));
 
         ConcurrentLinkedQueue<TradingStatement> batchResults = new ConcurrentLinkedQueue<>();
-        AtomicInteger completedCount = new AtomicInteger(0);
+        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
         long overallStart = System.nanoTime();
 
@@ -352,9 +353,8 @@ public class BacktestExecutor {
 
                 batchResults.add(statement);
 
-                if (progressCallback != null) {
-                    int completed = completedCount.incrementAndGet();
-                    progressCallback.accept(completed);
+                if (progressTracker != null) {
+                    progressTracker.reportCompletion();
                 }
             });
 
@@ -414,7 +414,7 @@ public class BacktestExecutor {
     private void executeUnbounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations, Num amount,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback) {
         int strategyCount = strategyArray.length;
-        AtomicInteger completedCount = new AtomicInteger(0);
+        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
         IntStream indexStream = IntStream.range(0, strategyCount);
         if (strategyCount > 1) {
@@ -430,9 +430,8 @@ public class BacktestExecutor {
             statements[index] = statement;
             durations[index] = System.nanoTime() - strategyStart;
 
-            if (progressCallback != null) {
-                int completed = completedCount.incrementAndGet();
-                progressCallback.accept(completed);
+            if (progressTracker != null) {
+                progressTracker.reportCompletion();
             }
         });
     }
@@ -445,7 +444,7 @@ public class BacktestExecutor {
     private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations, Num amount,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
         int strategyCount = strategyArray.length;
-        AtomicInteger completedCount = new AtomicInteger(0);
+        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
         for (int batchStart = 0; batchStart < strategyCount; batchStart += batchSize) {
             int batchEnd = Math.min(batchStart + batchSize, strategyCount);
@@ -461,9 +460,8 @@ public class BacktestExecutor {
                 statements[globalIndex] = statement;
                 durations[globalIndex] = System.nanoTime() - strategyStart;
 
-                if (progressCallback != null) {
-                    int completed = completedCount.incrementAndGet();
-                    progressCallback.accept(completed);
+                if (progressTracker != null) {
+                    progressTracker.reportCompletion();
                 }
             });
 
@@ -479,6 +477,51 @@ public class BacktestExecutor {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
+                }
+            }
+        }
+    }
+
+    private static final class ProgressTracker {
+
+        private final Consumer<Integer> callback;
+        private final ReentrantLock lock = new ReentrantLock();
+        private final Condition ready = lock.newCondition();
+        private int completedCount = 0;
+        private int nextToReport = 1;
+
+        private ProgressTracker(Consumer<Integer> callback) {
+            this.callback = callback;
+        }
+
+        static ProgressTracker create(Consumer<Integer> callback) {
+            return callback == null ? null : new ProgressTracker(callback);
+        }
+
+        void reportCompletion() {
+            int completionOrder;
+            lock.lock();
+            try {
+                completionOrder = ++completedCount;
+                while (completionOrder != nextToReport) {
+                    ready.await();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while reporting progress", e);
+            } finally {
+                lock.unlock();
+            }
+
+            try {
+                callback.accept(completionOrder);
+            } finally {
+                lock.lock();
+                try {
+                    nextToReport++;
+                    ready.signalAll();
+                } finally {
+                    lock.unlock();
                 }
             }
         }

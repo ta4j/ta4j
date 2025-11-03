@@ -113,6 +113,14 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
                 completed -> {
                     callbackCount.incrementAndGet();
+                    if (completed == 2) {
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("Interrupted while simulating callback delay", e);
+                        }
+                    }
                     lastCompletedCount.set(completed);
                 });
 
