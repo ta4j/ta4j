@@ -108,4 +108,3 @@ public class VoteRule extends AbstractRule {
         return requiredVotes;
     }
 }
-

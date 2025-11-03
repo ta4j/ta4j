@@ -59,4 +59,3 @@ public class VoteRuleTest {
         assertFalse(new VoteRule(3, rules).isSatisfied(0));
     }
 }
-
