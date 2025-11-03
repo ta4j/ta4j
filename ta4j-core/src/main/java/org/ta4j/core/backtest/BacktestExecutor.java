@@ -390,7 +390,7 @@ public class BacktestExecutor {
         // Extract top strategies in descending order
         List<TradingStatement> resultStatements = new ArrayList<>(topStrategies.size());
         while (!topStrategies.isEmpty()) {
-            resultStatements.add(0, topStrategies.poll()); // Insert at front to reverse order
+            resultStatements.addFirst(topStrategies.poll()); // Insert at front to reverse order
         }
 
         // Build runtime report (approximate, since we don't track all individual times)

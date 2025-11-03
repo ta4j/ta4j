@@ -25,26 +25,26 @@ package ta4jexamples.backtest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.indicators.averages.EMAIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Demonstrates how to use the getTopStrategies API to find and rank the best
@@ -61,11 +61,48 @@ import java.util.List;
  */
 public class TopStrategiesExample {
 
+    // PERFORMANCE NOTE: The current ranges generate ~20,000+ strategies.
+    // BacktestExecutor automatically uses batch processing for large strategy
+    // counts (>1000)
+    // to prevent memory exhaustion. If execution is still too slow, consider:
+    // 1. Increasing INCREMENT values to reduce grid density
+    // 2. Narrowing MIN/MAX ranges based on preliminary results
+    // 3. Using coarser increments for initial exploration, then fine-tuning
+    // promising regions
+    private static final int RSI_BARCOUNT_INCREMENT = 7;
+    private static final int RSI_BARCOUNT_MIN = 7;
+    private static final int RSI_BARCOUNT_MAX = 49;
+
+    private static final int MOMENTUM_TIMEFRAME_INCREMENT = 100;
+    private static final int MOMENTUM_TIMEFRAME_MIN = 100;
+    private static final int MOMENTUM_TIMEFRAME_MAX = 400;
+
+    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 300;
+    private static final int OVERBOUGHT_THRESHOLD_MIN = 0;
+    private static final int OVERBOUGHT_THRESHOLD_MAX = 1300;
+
+    private static final int OVERSOLD_THRESHOLD_INCREMENT = 200;
+    private static final int OVERSOLD_THRESHOLD_MIN = -2000;
+    private static final int OVERSOLD_THRESHOLD_MAX = 0;
+
+    private static final double DECAY_FACTOR_INCREMENT = 0.02;
+    private static final double DECAY_FACTOR_MIN = 0.9;
+    private static final double DECAY_FACTOR_MAX = 1;
+
     private static final Logger LOG = LogManager.getLogger(TopStrategiesExample.class);
 
     public static void main(String[] args) {
         // Load the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
+
+        BarSeries series = null;
+        try (InputStream resourceStream = TopStrategiesExample.class.getClassLoader().getResourceAsStream(jsonOhlcResourceFile)) {
+            series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+        } catch (IOException ex) {
+            LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
+        }
+
+        Objects.requireNonNull(series, "Bar series was null");
 
         // Create multiple strategies to test
         List<Strategy> strategies = createStrategies(series);
@@ -73,8 +110,13 @@ public class TopStrategiesExample {
         LOG.debug("Testing {} strategies...", strategies.size());
 
         // Run backtest on all strategies
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1));
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies, DecimalNum.valueOf(1), Trade.TradeType.BUY, completed -> {
+            // Report progress every 100 strategies or at key milestones
+            if (completed % 100 == 0 || completed == strategies.size()) {
+                int percentComplete = (int) (completed * 100.0) / strategies.size();
+                LOG.debug("Progress: {}/{} strategies completed ({}%)", completed, strategies.size(), percentComplete);
+            }
+        });
 
         LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 
@@ -110,36 +152,47 @@ public class TopStrategiesExample {
      */
     private static List<Strategy> createStrategies(BarSeries series) {
         List<Strategy> strategies = new ArrayList<>();
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
 
-        // Test various combinations of short and long moving averages
-        int[] shortPeriods = { 5, 8, 10, 12, 15, 20 };
-        int[] longPeriods = { 20, 25, 30, 40, 50, 60 };
-
-        for (int shortPeriod : shortPeriods) {
-            for (int longPeriod : longPeriods) {
-                if (shortPeriod >= longPeriod) {
-                    continue; // Skip if short period is not actually shorter
+        for (int rsiBarCount = RSI_BARCOUNT_MIN; rsiBarCount <= RSI_BARCOUNT_MAX; rsiBarCount += RSI_BARCOUNT_INCREMENT) {
+            for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
+                for (int oversoldThreshold = OVERSOLD_THRESHOLD_MIN; oversoldThreshold <= OVERSOLD_THRESHOLD_MAX; oversoldThreshold += OVERSOLD_THRESHOLD_INCREMENT) {
+                    for (int overboughtThreshold = OVERBOUGHT_THRESHOLD_MIN; overboughtThreshold <= OVERBOUGHT_THRESHOLD_MAX; overboughtThreshold += OVERBOUGHT_THRESHOLD_INCREMENT) {
+                        if (oversoldThreshold < overboughtThreshold) {
+                            for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
+                                try {
+                                    Strategy strategy = createStrategy(series, rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor);
+                                    strategies.add(strategy);
+                                } catch (Exception e) {
+                                    // Skip invalid strategy combinations
+                                    LOG.debug("Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}, decayFactor={}: {}", rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor, e.getMessage());
+                                }
+                            }
+                        }
+                    }
                 }
-
-                // Create SMA crossover strategy
-                SMAIndicator shortSma = new SMAIndicator(closePrice, shortPeriod);
-                SMAIndicator longSma = new SMAIndicator(closePrice, longPeriod);
-
-                Strategy smaStrategy = new BaseStrategy(String.format("SMA(%d,%d)", shortPeriod, longPeriod),
-                        new CrossedUpIndicatorRule(shortSma, longSma), new CrossedDownIndicatorRule(shortSma, longSma));
-                strategies.add(smaStrategy);
-
-                // Create EMA crossover strategy
-                EMAIndicator shortEma = new EMAIndicator(closePrice, shortPeriod);
-                EMAIndicator longEma = new EMAIndicator(closePrice, longPeriod);
-
-                Strategy emaStrategy = new BaseStrategy(String.format("EMA(%d,%d)", shortPeriod, longPeriod),
-                        new CrossedUpIndicatorRule(shortEma, longEma), new CrossedDownIndicatorRule(shortEma, longEma));
-                strategies.add(emaStrategy);
             }
         }
 
         return strategies;
+    }
+
+    private static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold, int overboughtThreshold, double decayFactor) {
+        Objects.requireNonNull(series, "Series cannot be null");
+
+        if (rsiBarCount <= 0) {
+            throw new IllegalArgumentException("rsiBarCount should be positive");
+        }
+        if (timeFrame <= 0) {
+            throw new IllegalArgumentException("timeFrame should be positive");
+        }
+
+        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        NetMomentumIndicator rsiM = NetMomentumIndicator.forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, decayFactor);
+        Rule entryRule = new CrossedUpIndicatorRule(rsiM, oversoldThreshold);
+        Rule exitRule = new CrossedDownIndicatorRule(rsiM, overboughtThreshold);
+
+        String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + ", decayFactor=" + decayFactor + "}";
+
+        return new BaseStrategy(strategyName, entryRule, exitRule);
     }
 }
