@@ -57,6 +57,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
 - Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function
+- Added `MACDVIndicator` to volume-weight MACD calculations
 - Added new charting tools in ta4j-examples
 - Added new unit tests around indicator concurrency in preparation for future multithreading feature work
 - Added `AdaptiveJsonBarsSerializer` to support OHLC bar data from Coinbase or Binance
