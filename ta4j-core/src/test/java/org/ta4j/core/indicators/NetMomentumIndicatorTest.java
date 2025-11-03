@@ -23,19 +23,16 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.*;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.num.DecimalNumFactory;
+
 import static org.junit.Assert.*;
 
 public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -91,8 +88,6 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testRsiUnstableNaNsAreIgnored() {
-        Assume.assumeFalse("DecimalNum cannot represent NaN values", numFactory instanceof DecimalNumFactory);
-
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
         NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
         NetMomentumIndicator decayed = NetMomentumIndicator.forRsiWithDecay(rsi, 5, 0.9);
@@ -107,7 +102,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testGeneralConstructor() {
         // Create a simple oscillating indicator for testing
-        CachedIndicator<Num> oscillator = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -128,7 +123,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testPositiveAndNegativeBalance() {
         // Create an indicator that alternates above and below neutral
-        CachedIndicator<Num> alternatingIndicator = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> alternatingIndicator = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -161,7 +156,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testCachedValues() {
         // Use a stable oscillator without NaN to exercise caching
-        CachedIndicator<Num> oscillator = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -184,7 +179,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testTrendDetection() {
         // Create a trending indicator (consistently above neutral)
-        CachedIndicator<Num> trendingUp = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> trendingUp = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -206,7 +201,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testWithDifferentNeutralPivots() {
         // Use a non-NaN oscillator to compare pivot sensitivity
-        CachedIndicator<Num> oscillator = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -233,7 +228,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testExplicitDecayFactorOfOneMatchesDefault() {
-        CachedIndicator<Num> oscillator = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -255,7 +250,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testDecayFactorPullsTowardNeutral() {
-        CachedIndicator<Num> constantAbove = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> constantAbove = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -297,7 +292,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testDecayFactorZeroBehavesLikeInstantaneousDelta() {
-        CachedIndicator<Num> varying = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> varying = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -331,7 +326,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testConstructorNullIndicator() {
         // Current implementation will throw a NullPointerException when passing null
-        assertThrows(NullPointerException.class, () -> new NetMomentumIndicator((Indicator<Num>) null, 5, 50));
+        assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(null, 5, 50));
 
         assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(closePrice, 5, null));
         assertThrows(NullPointerException.class, () -> new NetMomentumIndicator(closePrice, 5, 50, null));
@@ -361,7 +356,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void testTimeframeOneNeutralZero() {
         // Oscillator constantly equals pivot (50). With timeframe=1, balance should be
         // zero.
-        CachedIndicator<Num> constant50 = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> constant50 = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -384,7 +379,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testTimeframeOneSignMatchesOscillatorMinusPivot() {
         // Oscillator always above pivot
-        CachedIndicator<Num> constantAbove = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> constantAbove = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -397,7 +392,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         };
 
         // Oscillator always below pivot
-        CachedIndicator<Num> constantBelow = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> constantBelow = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -421,7 +416,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testUnstableBarsEqualsOscillatorUnstableWhenZero() {
         // Create oscillator with zero unstable bars
-        CachedIndicator<Num> osc = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> osc = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -439,7 +434,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testFractionalNeutralPivotProducesExpectedValues() {
-        CachedIndicator<Num> constant = new CachedIndicator<Num>(closePrice) {
+        CachedIndicator<Num> constant = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -492,7 +487,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     private CachedIndicator<Num> buildOscillator() {
-        return new CachedIndicator<Num>(closePrice) {
+        return new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
                 return 0;

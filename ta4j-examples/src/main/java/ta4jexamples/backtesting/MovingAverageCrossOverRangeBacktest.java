@@ -37,7 +37,7 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.JsonBarsSerializer;
+import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -54,7 +54,7 @@ public class MovingAverageCrossOverRangeBacktest {
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String resourceName = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        String resourceName = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
         InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
                 .getResourceAsStream(resourceName);
         if (resourceStream == null) {
@@ -62,7 +62,7 @@ public class MovingAverageCrossOverRangeBacktest {
             return;
         }
 
-        BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
         if (series == null || series.isEmpty()) {
             LOG.error("Bar series was null or empty: {}", series);
             return;
