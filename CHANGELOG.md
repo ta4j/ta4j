@@ -2,8 +2,20 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Breaking
+- Converted `TradingStatement` into an interface implemented by `BaseTradingStatement`, exposing the underlying `Strategy` and `TradingRecord` for follow-on analysis and requiring downstream callers to swap instantiations.
+
+### Added
+- Introduced `BacktestExecutionResult`/`BacktestRuntimeReport` and new `BacktestExecutor` entry points that capture per-strategy runtimes, support progress callbacks, and stream top-k selection for large strategy grids.
+- Added a Gson `DurationTypeAdapter`, `BasePerformanceReport`, and revised `TradingStatementGenerator` so generated statements always carry their source strategy and trading record.
+- Expanded charting utilities to overlay indicators with trading records, added `NetMomentumStrategy`/`TopStrategiesExample`, and bundled a Coinbase ETH/USD sample data set to demonstrate the new APIs.
+- Added Log4j 2 configurations for modules and tests to back the consolidated logging stack.
+
 ### Changed
 - Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so the examples and tests share a single logging backend.
+
+### Fixed
+- Guarded `KalmanFilterIndicator` against NaN/Infinity measurements to keep the Kalman state consistent.
 
 
 ## 0.19
