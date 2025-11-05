@@ -69,6 +69,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @return a list of the top trading statements sorted by the criteria
      * @throws NullPointerException     if criteria is null
      * @throws IllegalArgumentException if criteria is empty or limit is negative
+     * @since 0.19
      */
     public List<TradingStatement> getTopStrategies(int limit, AnalysisCriterion... criteria) {
         Objects.requireNonNull(criteria, "criteria must not be null");
@@ -97,6 +98,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @return a list of the top trading statements sorted by the criteria
      * @throws NullPointerException     if criteria is null
      * @throws IllegalArgumentException if criteria is empty or limit is negative
+     * @since 0.19
      */
     public List<TradingStatement> getTopStrategies(int limit, List<AnalysisCriterion> criteria) {
         Objects.requireNonNull(criteria, "criteria must not be null");

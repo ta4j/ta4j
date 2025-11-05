@@ -26,7 +26,10 @@ package org.ta4j.core.reports;
 import org.ta4j.core.num.Num;
 
 /**
- * Represents a report that contains performance statistics.
+ * Base implementation of {@link PerformanceReport} containing profit/loss
+ * statistics.
+ *
+ * @since 0.19
  */
 public class BasePerformanceReport implements PerformanceReport {
 
@@ -43,10 +46,10 @@ public class BasePerformanceReport implements PerformanceReport {
     public final Num totalLoss;
 
     /**
-     * Constructor.
+     * Constructs a new performance report with the specified profit/loss metrics.
      *
-     * @param totalProfitLoss           the total PnL
-     * @param totalProfitLossPercentage the total PnL in percent
+     * @param totalProfitLoss           the total profit/loss
+     * @param totalProfitLossPercentage the total profit/loss as a percentage
      * @param totalProfit               the total profit
      * @param totalLoss                 the total loss
      */
@@ -87,8 +90,13 @@ public class BasePerformanceReport implements PerformanceReport {
     }
 
     /**
-     * @param o
-     * @return
+     * Compares this report to another based on total profit/loss.
+     *
+     * @param o the other performance report to compare
+     * @return a negative integer, zero, or a positive integer as this report's
+     *         total profit/loss is less than, equal to, or greater than the other
+     * @throws ClassCastException if the other report is not a
+     *                            {@code BasePerformanceReport}
      */
     @Override
     public int compareTo(PerformanceReport o) {

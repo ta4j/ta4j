@@ -79,6 +79,7 @@ public record BacktestRuntimeReport(Duration overallRuntime, Duration minStrateg
      * Creates an empty runtime report.
      *
      * @return runtime report with zeroed statistics
+     * @since 0.19
      */
     public static BacktestRuntimeReport empty() {
         return new BacktestRuntimeReport(Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO,
@@ -89,6 +90,7 @@ public record BacktestRuntimeReport(Duration overallRuntime, Duration minStrateg
      * Provides the number of strategies that were evaluated.
      *
      * @return strategy runtime count
+     * @since 0.19
      */
     public int strategyCount() {
         return strategyRuntimes.size();
@@ -114,6 +116,7 @@ public record BacktestRuntimeReport(Duration overallRuntime, Duration minStrateg
      *
      * @param strategy strategy instance that was evaluated
      * @param runtime  elapsed time for the evaluation
+     * @since 0.19
      */
     public record StrategyRuntime(Strategy strategy, Duration runtime) {
     }

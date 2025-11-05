@@ -28,8 +28,10 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Represents a trading statement report containing position and performance
- * statistics.
+ * Base implementation of {@link TradingStatement} containing position
+ * statistics, performance metrics, trading record, and strategy.
+ *
+ * @since 0.19
  */
 public class BaseTradingStatement implements TradingStatement {
 
@@ -39,8 +41,8 @@ public class BaseTradingStatement implements TradingStatement {
     public final Strategy strategy;
 
     /**
-     * Constructs a BaseTradingStatement with the specified strategy, trading
-     * record, position statistics report, and performance report.
+     * Constructs a trading statement with strategy, trading record, position
+     * statistics, and performance report.
      *
      * @param strategy            the trading strategy used to generate the
      *                            statement
@@ -57,9 +59,8 @@ public class BaseTradingStatement implements TradingStatement {
     }
 
     /**
-     * Constructs a BaseTradingStatement with the specified strategy, position
-     * statistics report, and performance report. The trading record is set to null
-     * by default.
+     * Constructs a trading statement with strategy, position statistics, and
+     * performance report. The trading record is set to null.
      *
      * @param strategy            the trading strategy used to generate the
      *                            statement
@@ -72,14 +73,18 @@ public class BaseTradingStatement implements TradingStatement {
     }
 
     /**
-     * @return {@link #strategy}
+     * Returns the trading strategy.
+     *
+     * @return the strategy used to generate this statement
      */
     public Strategy getStrategy() {
         return strategy;
     }
 
     /**
-     * @return {@link #positionStatsReport}
+     * Returns the position statistics report.
+     *
+     * @return the position statistics report
      */
     @Override
     public PositionStatsReport getPositionStatsReport() {
@@ -87,7 +92,9 @@ public class BaseTradingStatement implements TradingStatement {
     }
 
     /**
-     * @return {@link #performanceReport}
+     * Returns the performance report.
+     *
+     * @return the performance report
      */
     @Override
     public BasePerformanceReport getPerformanceReport() {
@@ -95,7 +102,9 @@ public class BaseTradingStatement implements TradingStatement {
     }
 
     /**
-     * @return {@link #tradingRecord}
+     * Returns the trading record.
+     *
+     * @return the trading record, or null if not provided
      */
     @Override
     public TradingRecord getTradingRecord() {
