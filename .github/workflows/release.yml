@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g. 0.19)'
+        required: false
+      next_version:
+        description: 'Next snapshot version (e.g. 0.20-SNAPSHOT)'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          server-id: ossrh
+          server-username: OSSRH_USERNAME
+          server-password: OSSRH_PASSWORD
+          gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+
+      - name: Configure Git
+        env:
+          RELEASE_GIT_NAME: ${{ secrets.RELEASE_GIT_NAME }}
+          RELEASE_GIT_EMAIL: ${{ secrets.RELEASE_GIT_EMAIL }}
+        run: |
+          git config user.name "${RELEASE_GIT_NAME:-${GITHUB_ACTOR}}"
+          git config user.email "${RELEASE_GIT_EMAIL:-${GITHUB_ACTOR}@users.noreply.github.com}"
+
+      - name: Prepare release
+        id: prepare_release
+        shell: bash
+        env:
+          INPUT_RELEASE_VERSION: ${{ github.event.inputs.release_version }}
+          INPUT_NEXT_VERSION: ${{ github.event.inputs.next_version }}
+        run: |
+          set -eo pipefail
+          args=()
+          if [[ -n "${INPUT_RELEASE_VERSION}" ]]; then
+            args+=(--release-version "${INPUT_RELEASE_VERSION}")
+          fi
+          if [[ -n "${INPUT_NEXT_VERSION}" ]]; then
+            args+=(--next-version "${INPUT_NEXT_VERSION}")
+          fi
+          eval "$(scripts/prepare-release.sh release "${args[@]}")"
+          echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
+          echo "next_version=${next_version}" >> "$GITHUB_OUTPUT"
+          echo "release_notes_file=${release_notes_file}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release branch
+        run: git checkout -b "release/${{ steps.prepare_release.outputs.release_version }}"
+
+      - name: Commit release changes
+        run: |
+          git add .
+          if git diff --cached --quiet; then
+            echo "No release changes detected" >&2
+            exit 1
+          fi
+          git commit -m "chore: release ${{ steps.prepare_release.outputs.release_version }}"
+
+      - name: Push release branch
+        env:
+          RELEASE_BRANCH: release/${{ steps.prepare_release.outputs.release_version }}
+        run: git push --set-upstream origin "$RELEASE_BRANCH"
+
+      - name: Build and deploy artifacts
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
+          GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
+        run: mvn -B clean license:format formatter:format deploy -P sonatype-oss-release
+
+      - name: Collect release artifacts
+        run: |
+          mkdir -p release-artifacts
+          while IFS= read -r file; do
+            dest="release-artifacts/${file#./}"
+            mkdir -p "$(dirname "$dest")"
+            cp "$file" "$dest"
+          done < <(find . -type f \( -path '*/target/*.jar' -o -path '*/target/*.pom' \))
+          cp "${{ steps.prepare_release.outputs.release_notes_file }}" release-artifacts/RELEASE_NOTES.md
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ta4j-${{ steps.prepare_release.outputs.release_version }}
+          path: release-artifacts
+
+      - name: Create annotated tag
+        env:
+          RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
+        run: |
+          git tag -a "v${RELEASE_VERSION}" -m "ta4j ${RELEASE_VERSION}"
+          git push origin "v${RELEASE_VERSION}"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.prepare_release.outputs.release_version }}
+          name: ta4j ${{ steps.prepare_release.outputs.release_version }}
+          body_path: ${{ steps.prepare_release.outputs.release_notes_file }}
+          files: |
+            release-artifacts/**/*.jar
+            release-artifacts/**/*.pom
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare next snapshot on master
+        id: prepare_snapshot
+        shell: bash
+        env:
+          NEXT_VERSION: ${{ steps.prepare_release.outputs.next_version }}
+        run: |
+          set -eo pipefail
+          git checkout master
+          git pull --ff-only origin master
+          git clean -fdx
+          eval "$(scripts/prepare-release.sh snapshot --next-version "${NEXT_VERSION}")"
+          if git diff --quiet; then
+            echo "snapshot_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            git add .
+            echo "snapshot_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request for next snapshot
+        if: steps.prepare_snapshot.outputs.snapshot_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/${{ steps.prepare_release.outputs.next_version }}-prep
+          title: |
+            chore: prepare for ${{ steps.prepare_release.outputs.next_version }}
+          body: |
+            ## Summary
+            - bump project version to ${{ steps.prepare_release.outputs.next_version }}
+            - reset the changelog to "Unreleased"
+          commit-message: |
+            chore: prepare for next development iteration
+          delete-branch: true
