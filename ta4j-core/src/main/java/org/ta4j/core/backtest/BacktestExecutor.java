@@ -323,9 +323,23 @@ public class BacktestExecutor {
         int effectiveTopK = Math.min(topK, strategyCount);
 
         // Use min-heap to track only top K strategies
-        // (min element at head, so we can quickly discard worse performers)
+        // (worst element at head, so we can quickly discard worse performers)
+        // Create a comparator that uses the criterion's betterThan logic, then reverse
+        // it
+        // so that the worst element (according to the criterion) is at the head
+        Comparator<TradingStatement> criterionComparator = (ts1, ts2) -> {
+            Num value1 = criterion.calculate(seriesManager.getBarSeries(), ts1.getTradingRecord());
+            Num value2 = criterion.calculate(seriesManager.getBarSeries(), ts2.getTradingRecord());
+            if (criterion.betterThan(value1, value2)) {
+                return -1; // ts1 is better, should come first in normal ordering
+            } else if (criterion.betterThan(value2, value1)) {
+                return 1; // ts2 is better, should come first in normal ordering
+            }
+            return 0; // Equal
+        };
+        // Reverse the comparator so worst element is at head (min-heap behavior)
         PriorityQueue<TradingStatement> topStrategies = new PriorityQueue<>(effectiveTopK + 1,
-                Comparator.comparing(ts -> criterion.calculate(seriesManager.getBarSeries(), ts.getTradingRecord())));
+                criterionComparator.reversed());
 
         ConcurrentLinkedQueue<TradingStatement> batchResults = new ConcurrentLinkedQueue<>();
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
@@ -378,7 +392,7 @@ public class BacktestExecutor {
                     TradingStatement worst = topStrategies.peek();
                     if (worst != null) {
                         Num worstValue = criterion.calculate(seriesManager.getBarSeries(), worst.getTradingRecord());
-                        if (criterionValue.isGreaterThan(worstValue)) {
+                        if (criterion.betterThan(criterionValue, worstValue)) {
                             topStrategies.poll(); // Remove worst
                             topStrategies.offer(statement); // Add new
                         }
@@ -396,11 +410,9 @@ public class BacktestExecutor {
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
 
-        // Extract top strategies in descending order
-        List<TradingStatement> resultStatements = new ArrayList<>(topStrategies.size());
-        while (!topStrategies.isEmpty()) {
-            resultStatements.addFirst(topStrategies.poll()); // Insert at front to reverse order
-        }
+        // Extract top strategies and sort them in correct order (best first)
+        List<TradingStatement> resultStatements = new ArrayList<>(topStrategies);
+        resultStatements.sort(criterionComparator); // Sort using non-reversed comparator (best first)
 
         // Build runtime report (approximate, since we don't track all individual times)
         List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(resultStatements.size());
