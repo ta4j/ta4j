@@ -39,13 +39,13 @@ import org.ta4j.core.num.NumFactory;
 
 public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public BollingerBandFacadeTest(NumFactory numFactory) {
+    public BollingerBandFacadeTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
     public void testCreation() {
-        final var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        final var data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
         final int barCount = 3;
@@ -64,7 +64,7 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void testNumericFacadesSameAsDefaultIndicators() {
-        final var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        final var data = new MockBarSeriesBuilder().withNumFactory(this.numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
         final var closePriceIndicator = new ClosePriceIndicator(data);
@@ -72,7 +72,7 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
         final var sma = new SMAIndicator(closePriceIndicator, 3);
 
         final var middleBB = new BollingerBandsMiddleIndicator(sma);
-        final var standardDeviation = new StandardDeviationIndicator(closePriceIndicator, barCount);
+        final var standardDeviation = StandardDeviationIndicator.ofSample(closePriceIndicator, barCount);
         final var lowerBB = new BollingerBandsLowerIndicator(middleBB, standardDeviation);
         final var upperBB = new BollingerBandsUpperIndicator(middleBB, standardDeviation);
         final var pcb = new PercentBIndicator(new ClosePriceIndicator(data), 5, 2);

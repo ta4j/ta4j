@@ -139,10 +139,10 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         var indicator = new SqueezeProIndicator(series, 20);
 
-        for (int i = 20; i < 38; i++) {
+        for (int i = 20; i < 39; i++) {
             assertFalse("No squeeze should be detected at index " + i, indicator.getValue(i));
         }
-        for (int i = 38; i < 100; i++) {
+        for (int i = 39; i < 100; i++) {
             assertTrue("Squeeze should be detected at index " + i, indicator.getValue(i));
         }
     }

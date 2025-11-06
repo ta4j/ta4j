@@ -43,15 +43,15 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     private Indicator<Num> close, volume;
 
-    public CorrelationCoefficientIndicatorTest(NumFactory numFactory) {
+    public CorrelationCoefficientIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
         int i = 20;
-        var now = Instant.now();
-        BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final var now = Instant.now();
+        final BarSeries data = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
 
         // close, volume
         data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(6).volume(100).add();
@@ -75,13 +75,13 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         data.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(110).add();
         data.barBuilder().endTime(now.minusSeconds(i)).closePrice(10).volume(95).add();
 
-        close = new ClosePriceIndicator(data);
-        volume = new VolumeIndicator(data, 2);
+        this.close = new ClosePriceIndicator(data);
+        this.volume = new VolumeIndicator(data, 2);
     }
 
     @Test
     public void usingBarCount5UsingClosePriceAndVolume() {
-        var coef = new CorrelationCoefficientIndicator(close, volume, 5);
+        final var coef = CorrelationCoefficientIndicator.ofPopulation(this.close, this.volume, 5);
 
         assertTrue(coef.getValue(0).isNaN());
 

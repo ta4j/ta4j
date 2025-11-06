@@ -41,27 +41,27 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     private BarSeries mockBarSeries;
 
-    public RelativeVolumeStandardDeviationIndicatorTest(NumFactory numFunction) {
+    public RelativeVolumeStandardDeviationIndicatorTest(final NumFactory numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        mockBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(9).highPrice(10).lowPrice(9).volume(10).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(11).highPrice(11).lowPrice(10).volume(11).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).volume(12).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(12).highPrice(12).lowPrice(10).volume(13).add();
-        mockBarSeries.barBuilder().openPrice(9).closePrice(12).highPrice(12).lowPrice(9).volume(11).add();
-        mockBarSeries.barBuilder().openPrice(9).closePrice(8).highPrice(9).lowPrice(8).volume(10).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(8).highPrice(11).lowPrice(8).volume(12).add();
-        mockBarSeries.barBuilder().openPrice(10).closePrice(13).highPrice(13).lowPrice(9).volume(15).add();
-        mockBarSeries.barBuilder().openPrice(11).closePrice(2).highPrice(11).lowPrice(2).volume(12).add();
+        this.mockBarSeries = new MockBarSeriesBuilder().withNumFactory(this.numFactory).build();
+        this.mockBarSeries.barBuilder().openPrice(10).closePrice(9).highPrice(10).lowPrice(9).volume(10).add();
+        this.mockBarSeries.barBuilder().openPrice(10).closePrice(11).highPrice(11).lowPrice(10).volume(11).add();
+        this.mockBarSeries.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).volume(12).add();
+        this.mockBarSeries.barBuilder().openPrice(10).closePrice(12).highPrice(12).lowPrice(10).volume(13).add();
+        this.mockBarSeries.barBuilder().openPrice(9).closePrice(12).highPrice(12).lowPrice(9).volume(11).add();
+        this.mockBarSeries.barBuilder().openPrice(9).closePrice(8).highPrice(9).lowPrice(8).volume(10).add();
+        this.mockBarSeries.barBuilder().openPrice(11).closePrice(8).highPrice(11).lowPrice(8).volume(12).add();
+        this.mockBarSeries.barBuilder().openPrice(10).closePrice(13).highPrice(13).lowPrice(9).volume(15).add();
+        this.mockBarSeries.barBuilder().openPrice(11).closePrice(2).highPrice(11).lowPrice(2).volume(12).add();
     }
 
     @Test
     public void givenBarCount_whenGetValueForIndexWithinBarCount_thenReturnNaN() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 5);
+        final var subject = RelativeVolumeStandardDeviationIndicator.ofPopulation(this.mockBarSeries, 5);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());
@@ -73,7 +73,7 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf2_whenGetValue_thenReturnCorrectValue() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 2);
+        final var subject = RelativeVolumeStandardDeviationIndicator.ofPopulation(this.mockBarSeries, 2);
 
         assertTrue(subject.getValue(0).isNaN());
         assertNumEquals(NaN, subject.getValue(1));
@@ -88,7 +88,7 @@ public class RelativeVolumeStandardDeviationIndicatorTest extends AbstractIndica
 
     @Test
     public void givenBarCountOf3_whenGetValue_thenReturnCorrectValue() {
-        var subject = new RelativeVolumeStandardDeviationIndicator(mockBarSeries, 3);
+        final var subject = RelativeVolumeStandardDeviationIndicator.ofPopulation(this.mockBarSeries, 3);
 
         assertTrue(subject.getValue(0).isNaN());
         assertTrue(subject.getValue(1).isNaN());

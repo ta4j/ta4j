@@ -49,20 +49,21 @@ public class PercentBIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      * @param k         the K multiplier (usually 2.0)
      */
-    public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {
+    public PercentBIndicator(final Indicator<Num> indicator, final int barCount, final double k) {
         super(indicator);
         this.indicator = indicator;
-        BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, barCount);
+        final BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(
+                new SMAIndicator(indicator, barCount));
+        final var sd = StandardDeviationIndicator.ofSample(indicator, barCount);
         this.bbu = new BollingerBandsUpperIndicator(bbm, sd, getBarSeries().numFactory().numOf(k));
         this.bbl = new BollingerBandsLowerIndicator(bbm, sd, getBarSeries().numFactory().numOf(k));
     }
 
     @Override
-    protected Num calculate(int index) {
-        Num value = indicator.getValue(index);
-        Num upValue = bbu.getValue(index);
-        Num lowValue = bbl.getValue(index);
+    protected Num calculate(final int index) {
+        final Num value = this.indicator.getValue(index);
+        final Num upValue = this.bbu.getValue(index);
+        final Num lowValue = this.bbl.getValue(index);
         return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
     }
 

@@ -83,7 +83,7 @@ public class IndicatorsToCsv {
         // Average true range
         ATRIndicator atr = new ATRIndicator(series, 20);
         // Standard deviation
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(closePrice, 14);
+        StandardDeviationIndicator sd = StandardDeviationIndicator.ofSample(closePrice, 14);
 
         /*
          * Building header
