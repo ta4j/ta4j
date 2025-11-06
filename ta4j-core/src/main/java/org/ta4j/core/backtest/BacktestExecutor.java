@@ -89,11 +89,11 @@ public class BacktestExecutor {
     /**
      * Constructor.
      *
-     * @param series                 the bar series
-     * @param transactionCostModel   the cost model for transactions of the asset
-     * @param holdingCostModel       the cost model for holding the asset (e.g.
-     *                               borrowing)
-     * @param tradeExecutionModel    the trade execution model
+     * @param series               the bar series
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding the asset (e.g.
+     *                             borrowing)
+     * @param tradeExecutionModel  the trade execution model
      */
     public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {

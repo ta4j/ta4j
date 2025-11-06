@@ -31,6 +31,7 @@ import org.ta4j.core.TradingRecord;
  * performance metrics, trading records, and the strategy used during trading.
  * This interface defines methods to retrieve key components of a trading
  * statement for analysis and reporting purposes.
+ *
  * @since 0.19
  */
 public interface TradingStatement {
