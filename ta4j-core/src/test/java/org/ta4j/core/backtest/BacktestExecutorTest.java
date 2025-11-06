@@ -33,10 +33,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
@@ -47,6 +50,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.num.NaN;
 
 public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -342,6 +346,63 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         // Should return all strategies (min of topK and strategy count)
         assertEquals(strategies.size(), result.tradingStatements().size());
+    }
+
+    @Test
+    public void executeAndKeepTopKSkipsNaNStrategies() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+
+        Strategy strategyWithOneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy strategyWithTwoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy strategyWithoutTrades = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        List<Strategy> strategies = List.of(strategyWithOneTrade, strategyWithTwoTrades, strategyWithoutTrades);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        AnalysisCriterion criterion = new NaNPenalizingCriterion();
+
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, numOf(1), Trade.TradeType.BUY,
+                criterion, 2, null);
+
+        assertEquals(2, result.tradingStatements().size());
+
+        Num firstScore = criterion.calculate(series, result.tradingStatements().get(0).getTradingRecord());
+        Num secondScore = criterion.calculate(series, result.tradingStatements().get(1).getTradingRecord());
+
+        assertFalse(firstScore.isNaN());
+        assertFalse(secondScore.isNaN());
+        assertTrue(firstScore.isGreaterThanOrEqual(secondScore));
+    }
+
+    private static final class NaNPenalizingCriterion implements AnalysisCriterion {
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            if (!position.isClosed()) {
+                return NaN.NaN;
+            }
+            return series.numFactory().numOf(2);
+        }
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            int tradeCount = tradingRecord.getTrades().size();
+            if (tradeCount == 0) {
+                return NaN.NaN;
+            }
+            return series.numFactory().numOf(tradeCount);
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+            if (criterionValue1.isNaN()) {
+                return false;
+            }
+            if (criterionValue2.isNaN()) {
+                return true;
+            }
+            return criterionValue1.isGreaterThan(criterionValue2);
+        }
     }
 
 }

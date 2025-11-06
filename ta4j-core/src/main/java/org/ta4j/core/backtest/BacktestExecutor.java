@@ -322,26 +322,11 @@ public class BacktestExecutor {
         int strategyCount = strategies.size();
         int effectiveTopK = Math.min(topK, strategyCount);
 
-        // Use min-heap to track only top K strategies
-        // (worst element at head, so we can quickly discard worse performers)
-        // Create a comparator that uses the criterion's betterThan logic, then reverse
-        // it
-        // so that the worst element (according to the criterion) is at the head
-        Comparator<TradingStatement> criterionComparator = (ts1, ts2) -> {
-            Num value1 = criterion.calculate(seriesManager.getBarSeries(), ts1.getTradingRecord());
-            Num value2 = criterion.calculate(seriesManager.getBarSeries(), ts2.getTradingRecord());
-            if (criterion.betterThan(value1, value2)) {
-                return -1; // ts1 is better, should come first in normal ordering
-            } else if (criterion.betterThan(value2, value1)) {
-                return 1; // ts2 is better, should come first in normal ordering
-            }
-            return 0; // Equal
-        };
-        // Reverse the comparator so worst element is at head (min-heap behavior)
-        PriorityQueue<TradingStatement> topStrategies = new PriorityQueue<>(effectiveTopK + 1,
-                criterionComparator.reversed());
+        Comparator<StrategyEvaluation> bestFirstComparator = createBestFirstComparator(criterion);
+        PriorityQueue<StrategyEvaluation> topStrategies = new PriorityQueue<>(effectiveTopK + 1,
+                bestFirstComparator.reversed());
 
-        ConcurrentLinkedQueue<TradingStatement> batchResults = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<StrategyEvaluation> batchResults = new ConcurrentLinkedQueue<>();
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
         long overallStart = System.nanoTime();
@@ -350,7 +335,7 @@ public class BacktestExecutor {
         int batchSize = strategyCount > LARGE_COUNT_THRESHOLD ? SMALL_BATCH_SIZE : DEFAULT_BATCH_SIZE;
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
-        List<Duration> allDurations = new ArrayList<>(strategyCount);
+        long[] durationNanos = new long[strategyCount];
 
         // Process in batches
         for (int batchStart = 0; batchStart < strategyCount; batchStart += batchSize) {
@@ -369,12 +354,9 @@ public class BacktestExecutor {
                 TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
                         seriesManager.getBarSeries());
                 long duration = System.nanoTime() - strategyStart;
-
-                synchronized (allDurations) {
-                    allDurations.add(Duration.ofNanos(duration));
-                }
-
-                batchResults.add(statement);
+                durationNanos[globalIndex] = duration;
+                Num criterionValue = criterion.calculate(seriesManager.getBarSeries(), statement.getTradingRecord());
+                batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
 
                 if (progressTracker != null) {
                     progressTracker.reportCompletion();
@@ -382,19 +364,16 @@ public class BacktestExecutor {
             });
 
             // Merge batch results into top-K heap
-            for (TradingStatement statement : batchResults) {
-                Num criterionValue = criterion.calculate(seriesManager.getBarSeries(), statement.getTradingRecord());
-
+            for (StrategyEvaluation evaluation : batchResults) {
                 if (topStrategies.size() < effectiveTopK) {
-                    topStrategies.offer(statement);
+                    topStrategies.offer(evaluation);
                 } else {
                     // Heap is full - compare with worst strategy
-                    TradingStatement worst = topStrategies.peek();
+                    StrategyEvaluation worst = topStrategies.peek();
                     if (worst != null) {
-                        Num worstValue = criterion.calculate(seriesManager.getBarSeries(), worst.getTradingRecord());
-                        if (criterion.betterThan(criterionValue, worstValue)) {
+                        if (bestFirstComparator.compare(evaluation, worst) < 0) {
                             topStrategies.poll(); // Remove worst
-                            topStrategies.offer(statement); // Add new
+                            topStrategies.offer(evaluation); // Add new
                         }
                     }
                 }
@@ -411,22 +390,83 @@ public class BacktestExecutor {
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
 
         // Extract top strategies and sort them in correct order (best first)
-        List<TradingStatement> resultStatements = new ArrayList<>(topStrategies);
-        resultStatements.sort(criterionComparator); // Sort using non-reversed comparator (best first)
+        List<StrategyEvaluation> sortedEvaluations = new ArrayList<>(topStrategies);
+        sortedEvaluations.sort(bestFirstComparator); // Sort using non-reversed comparator (best first)
+        List<TradingStatement> resultStatements = new ArrayList<>(sortedEvaluations.size());
+        for (StrategyEvaluation evaluation : sortedEvaluations) {
+            resultStatements.add(evaluation.statement());
+        }
 
         // Build runtime report (approximate, since we don't track all individual times)
-        List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(resultStatements.size());
-        for (int i = 0; i < resultStatements.size(); i++) {
-            Duration approxDuration = i < allDurations.size() ? allDurations.get(i) : Duration.ZERO;
-            strategyRuntimes.add(
-                    new BacktestRuntimeReport.StrategyRuntime(resultStatements.get(i).getStrategy(), approxDuration));
+        List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(sortedEvaluations.size());
+        for (StrategyEvaluation evaluation : sortedEvaluations) {
+            Duration runtime = Duration.ofNanos(durationNanos[evaluation.index()]);
+            strategyRuntimes
+                    .add(new BacktestRuntimeReport.StrategyRuntime(evaluation.statement().getStrategy(), runtime));
         }
 
         // Calculate summary statistics from saved durations
-        long[] durationArray = allDurations.stream().mapToLong(Duration::toNanos).toArray();
-        BacktestRuntimeReport runtimeReport = buildRuntimeReport(durationArray, overallRuntime, strategyRuntimes);
+        BacktestRuntimeReport runtimeReport = buildRuntimeReport(durationNanos, overallRuntime, strategyRuntimes);
 
         return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport);
+    }
+
+    private Comparator<StrategyEvaluation> createBestFirstComparator(AnalysisCriterion criterion) {
+        return (left, right) -> {
+            Num leftValue = left.criterionValue();
+            Num rightValue = right.criterionValue();
+
+            boolean leftNaN = leftValue.isNaN();
+            boolean rightNaN = rightValue.isNaN();
+            if (leftNaN && rightNaN) {
+                return Integer.compare(left.index(), right.index());
+            }
+            if (leftNaN) {
+                return 1;
+            }
+            if (rightNaN) {
+                return -1;
+            }
+
+            if (criterion.betterThan(leftValue, rightValue)) {
+                return -1;
+            }
+            if (criterion.betterThan(rightValue, leftValue)) {
+                return 1;
+            }
+
+            int naturalComparison = leftValue.compareTo(rightValue);
+            if (naturalComparison != 0) {
+                return naturalComparison;
+            }
+
+            return Integer.compare(left.index(), right.index());
+        };
+    }
+
+    private static final class StrategyEvaluation {
+
+        private final TradingStatement statement;
+        private final Num criterionValue;
+        private final int index;
+
+        private StrategyEvaluation(TradingStatement statement, Num criterionValue, int index) {
+            this.statement = statement;
+            this.criterionValue = criterionValue;
+            this.index = index;
+        }
+
+        private TradingStatement statement() {
+            return statement;
+        }
+
+        private Num criterionValue() {
+            return criterionValue;
+        }
+
+        private int index() {
+            return index;
+        }
     }
 
     /**
