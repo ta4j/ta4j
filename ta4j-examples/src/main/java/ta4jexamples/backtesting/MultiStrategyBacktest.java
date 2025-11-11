@@ -23,8 +23,8 @@
  */
 package ta4jexamples.backtesting;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.*;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -35,7 +35,8 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.PerformanceReport;
+import org.ta4j.core.reports.BasePerformanceReport;
+import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -56,7 +57,7 @@ import java.util.StringJoiner;
  */
 public class MultiStrategyBacktest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MultiStrategyBacktest.class);
+    private static final Logger LOG = LogManager.getLogger(MultiStrategyBacktest.class);
     private static final int DEFAULT_DECIMAL_PRECISION = 16;
 
     /**
@@ -75,16 +76,16 @@ public class MultiStrategyBacktest {
         new MultiStrategyBacktest().runBacktest(jsonOhlcResourceFile);
     }
 
-    private static String printReport(List<TradingStatement> tradingStatements) {
+    private static String printReport(List<BaseTradingStatement> baseTradingStatements) {
         StringJoiner resultJoiner = new StringJoiner(System.lineSeparator());
-        for (TradingStatement statement : tradingStatements) {
+        for (BaseTradingStatement statement : baseTradingStatements) {
             resultJoiner.add(printStatementReport(statement).toString());
         }
 
         return resultJoiner.toString();
     }
 
-    private static StringBuilder printStatementReport(TradingStatement statement) {
+    private static StringBuilder printStatementReport(BaseTradingStatement statement) {
         StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("######### ")
                 .append(statement.getStrategy().getName())
@@ -98,21 +99,21 @@ public class MultiStrategyBacktest {
         return resultBuilder;
     }
 
-    private static StringBuilder printPerformanceReport(PerformanceReport report) {
+    private static StringBuilder printPerformanceReport(BasePerformanceReport report) {
         StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("--------- performance report ---------")
                 .append(System.lineSeparator())
                 .append("total loss: ")
-                .append(report.getTotalLoss())
+                .append(report.totalLoss)
                 .append(System.lineSeparator())
                 .append("total profit: ")
-                .append(report.getTotalProfit())
+                .append(report.totalProfit)
                 .append(System.lineSeparator())
                 .append("total profit loss: ")
-                .append(report.getTotalProfitLoss())
+                .append(report.totalProfitLoss)
                 .append(System.lineSeparator())
                 .append("total profit loss percentage: ")
-                .append(report.getTotalProfitLossPercentage())
+                .append(report.totalProfitLossPercentage)
                 .append(System.lineSeparator())
                 .append("---------------------------");
         return resultBuilder;
@@ -166,7 +167,7 @@ public class MultiStrategyBacktest {
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
-//      LOG.info(printReport(tradingStatements));
+//      LOG.debug(printReport(baseTradingStatements));
     }
 
     private List<Strategy> buildStrategies(BarSeries series) {

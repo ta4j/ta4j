@@ -23,11 +23,12 @@
  */
 package ta4jexamples.charting;
 
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.JFreeChart;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.num.Num;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -131,6 +133,80 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testCreateTradingRecordChartWithIndicators() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
+                sma);
+
+        assertNotNull(chart, "Chart should not be null");
+        assertNotNull(chart.getTitle(), "Chart title should not be null");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(), "Combined plot expected for mixed chart");
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertEquals(1 + 2, combinedPlot.getSubplots().size(),
+                "Main OHLC subplot plus each indicator subplot should be present");
+        XYPlot mainPlot = combinedPlot.getSubplots().get(0);
+        assertTrue(mainPlot.getDatasetCount() > 1, "Trading markers should be attached to main subplot");
+        assertInstanceOf(XYLineAndShapeRenderer.class, mainPlot.getRenderer(1),
+                "Trading markers should use line-and-shape renderer");
+        assertTrue(mainPlot.getAnnotations().stream().anyMatch(XYTextAnnotation.class::isInstance),
+                "Combined chart should display trade annotations");
+    }
+
+    @Test
+    public void testCreateTradingRecordChartWithIndicatorsRejectsNullVarargs() {
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
+    }
+
+    @Test
+    public void testCreateTradingRecordChartWithIndicatorsRejectsNullElement() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, null));
+    }
+
+    @Test
+    public void testSaveTradingRecordChartWithIndicatorsRejectsNullVarargs() {
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveTradingRecordChart(barSeries, "Test Strategy",
+                tradingRecord, (Indicator<Num>[]) null));
+    }
+
+    @Test
+    public void testSaveTradingRecordChartWithIndicatorsRejectsNullElement() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, null));
+    }
+
+    @Test
+    public void testCreateTradingRecordChartBytesWithIndicatorsRejectsNullVarargs() {
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChartBytes(barSeries,
+                "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
+    }
+
+    @Test
+    public void testCreateTradingRecordChartBytesWithIndicatorsRejectsNullElement() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChartBytes(barSeries,
+                "Test Strategy", tradingRecord, closePrice, null));
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartWithIndicatorsRejectsNullVarargs() {
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartWithIndicatorsRejectsNullElement() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, closePrice, null));
+    }
+
+    @Test
     public void testGenerateChartWithNullSeries() {
         assertThrows(IllegalArgumentException.class,
                 () -> chartMaker.createTradingRecordChart(null, "Test Strategy", tradingRecord));
@@ -174,7 +250,7 @@ public class ChartMakerTest {
     @Test
     public void testGenerateChartWithNullIndicators() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createIndicatorChart(barSeries, (Indicator<org.ta4j.core.num.Num>[]) null));
+                () -> chartMaker.createIndicatorChart(barSeries, (Indicator<Num>[]) null));
     }
 
     @Test
@@ -220,6 +296,18 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testGenerateChartAsBytesWithIndicators() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        byte[] chartBytes = chartMaker.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+                closePrice, sma);
+
+        assertNotNull(chartBytes, "Chart bytes should not be null");
+        assertTrue(chartBytes.length > 0, "Chart bytes should not be empty");
+    }
+
+    @Test
     public void testGenerateChartAsBytesWithNullChart() {
         assertThrows(IllegalArgumentException.class, () -> chartMaker.getChartAsByteArray(null));
     }
@@ -239,6 +327,13 @@ public class ChartMakerTest {
     public void testGenerateAndSaveChartImageWithoutSaveDirectory() {
         assertTrue(chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord).isEmpty(),
                 "Result should be empty when save directory is not configured");
+    }
+
+    @Test
+    public void testSaveTradingRecordChartWithIndicatorsWithoutSaveDirectory() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertTrue(chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice).isEmpty(),
+                "No-op storage should still return empty optional for indicator overload");
     }
 
     @Test
@@ -265,6 +360,32 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testSaveTradingRecordChartWithIndicators() throws IOException {
+        Path tempDir = Files.createTempDirectory("chartmaker-indicator-save");
+        try {
+            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+            SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+            Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "Strategy", tradingRecord,
+                    closePrice, sma);
+
+            assertTrue(result.isPresent(), "Combined chart should be persisted when storage is configured");
+            result.ifPresent(path -> assertTrue(Files.exists(path), "Persisted chart file should exist"));
+        } finally {
+            if (Files.exists(tempDir)) {
+                Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ignored) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
     public void testGenerateAndSaveChartImageWithNullParameters() {
         assertThrows(IllegalArgumentException.class,
                 () -> chartMaker.saveTradingRecordChart(null, "Test Strategy", tradingRecord));
@@ -280,6 +401,22 @@ public class ChartMakerTest {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
                     "Exception should be related to display functionality");
+        }
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartWithIndicators() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        try {
+            chartMaker.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
+        } catch (Exception e) {
+            String message = e.getMessage();
+            if (message != null) {
+                assertTrue(message.contains("headless") || message.contains("display"),
+                        "Exception should be related to display functionality");
+            }
         }
     }
 
@@ -511,6 +648,76 @@ public class ChartMakerTest {
             }
             // HeadlessException can have null message, which is also acceptable
         }
+    }
+
+    @Test
+    public void testChartLegendNotDuplicatedWhenReusingChartMaker() {
+        // Create a ChartMaker with save directory to enable save functionality
+        Path tempDir = null;
+        try {
+            tempDir = Files.createTempDirectory("chartmaker-test");
+            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+
+            // Create a chart
+            JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            // Count legend items before display
+            int legendItemCountBefore = countLegendItems(chart);
+
+            // Display the chart (this might modify it)
+            try {
+                makerWithSave.displayChart(chart);
+            } catch (Exception e) {
+                // Headless environment - that's OK for this test
+            }
+
+            // Count legend items after display
+            int legendItemCountAfter = countLegendItems(chart);
+
+            // The legend items should not have changed
+            assertEquals(legendItemCountBefore, legendItemCountAfter,
+                    "Legend items should not be duplicated when reusing ChartMaker instance");
+
+            // Save the chart image (which uses the same chart instance)
+            makerWithSave.saveChartImage(chart, barSeries, "Test Chart");
+
+            // Count legend items after save
+            int legendItemCountAfterSave = countLegendItems(chart);
+
+            // The legend items should still not have changed
+            assertEquals(legendItemCountBefore, legendItemCountAfterSave,
+                    "Legend items should not be duplicated after save operation");
+        } catch (IOException e) {
+            fail("Failed to create temporary directory: " + e.getMessage());
+        } finally {
+            // Clean up
+            if (tempDir != null && Files.exists(tempDir)) {
+                try {
+                    Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            // Ignore cleanup errors
+                        }
+                    });
+                } catch (IOException e) {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+    }
+
+    private int countLegendItems(JFreeChart chart) {
+        // Count subtitles which include legends in JFreeChart
+        int subtitleCount = chart.getSubtitleCount();
+        // Filter to count only LegendTitle instances
+        int legendCount = 0;
+        for (int i = 0; i < subtitleCount; i++) {
+            if (chart.getSubtitle(i) instanceof org.jfree.chart.title.LegendTitle) {
+                legendCount++;
+            }
+        }
+        return legendCount;
     }
 
 }

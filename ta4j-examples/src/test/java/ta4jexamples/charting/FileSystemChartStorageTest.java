@@ -112,20 +112,24 @@ class FileSystemChartStorageTest {
     void testPathSanitizationWithNullSeriesName() {
         BarSeries seriesWithNullName = new MockBarSeriesBuilder().build();
 
-        Optional<Path> result = storage.save(chart, seriesWithNullName, "Test Strategy", 800, 600);
+        String chartTitle = "Test Strategy";
+        Optional<Path> result = storage.save(chart, seriesWithNullName, chartTitle, 800, 600);
 
         assertTrue(result.isPresent());
-        assertTrue(result.get().toString().contains("unknown"), "Should use 'unknown' for null series name");
+        assertTrue(result.get().toString().endsWith(chartTitle.replaceAll(" ", "_") + ".jpg"),
+                "Should use chart title for null series name");
     }
 
     @Test
     void testPathSanitizationWithEmptySeriesName() {
         BarSeries seriesWithEmptyName = new MockBarSeriesBuilder().withName("").build();
 
-        Optional<Path> result = storage.save(chart, seriesWithEmptyName, "Test Strategy", 800, 600);
+        String chartTitle = "Test Strategy";
+        Optional<Path> result = storage.save(chart, seriesWithEmptyName, chartTitle, 800, 600);
 
         assertTrue(result.isPresent());
-        assertTrue(result.get().toString().contains("unknown"), "Should use 'unknown' for empty series name");
+        assertTrue(result.get().toString().endsWith(chartTitle.replaceAll(" ", "_") + ".jpg"),
+                "Should use chart title for empty series name");
     }
 
     @Test

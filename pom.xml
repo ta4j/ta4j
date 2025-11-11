@@ -77,7 +77,7 @@
         <gson.version>2.13.2</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
         <junit-jupiter.version>6.0.0</junit-jupiter.version>
-        <logback.version>1.5.19</logback.version>
+        <log4j2.version>2.24.1</log4j2.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.4.1</poi.version>
         <slf4j.version>2.0.17</slf4j.version>
@@ -86,9 +86,19 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>${logback.version}</version>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j2-impl</artifactId>
+                <version>${log4j2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${log4j2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j2.version}</version>
             </dependency>
 
             <dependency>
@@ -236,6 +246,9 @@
                     <parameters>true</parameters>
                     <showDeprecation>true</showDeprecation>
                     <showWarnings>true</showWarnings>
+                    <compilerArgs>
+                        <arg>-proc:full</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
