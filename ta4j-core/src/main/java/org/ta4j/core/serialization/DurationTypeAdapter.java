@@ -21,38 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package org.ta4j.core.serialization;
 
-import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-import java.io.InputStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.io.IOException;
+import java.time.Duration;
 
 /**
- * Test class for JsonBarsSerializer to verify both Binance and Coinbase format
- * support.
+ * Custom Gson TypeAdapter for serializing and deserializing {@link Duration}
+ * objects. Serializes Duration to its ISO-8601 string representation (e.g.,
+ * "PT1H30M") and deserializes it back.
+ *
+ * @since 0.19
  */
-public class JsonBarsSerializerTest {
+public class DurationTypeAdapter extends TypeAdapter<Duration> {
 
-    @Test
-    public void testLoadBinanceFormat() {
-        // Test loading Binance format JSON (if available)
-        String binanceJsonPath = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(binanceJsonPath);
-
-        if (inputStream != null) {
-            BarSeries series = JsonBarsSerializer.loadSeries(inputStream);
-
-            assertNotNull(series, "BarSeries should be loaded successfully");
-            assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
+    @Override
+    public void write(JsonWriter out, Duration value) throws IOException {
+        if (value == null) {
+            out.nullValue();
+        } else {
+            out.value(value.toString());
         }
     }
 
-    @Test
-    public void testLoadNullInputStream() {
-        BarSeries series = JsonBarsSerializer.loadSeries((InputStream) null);
-        assertNull(series, "Should return null for null input stream");
+    @Override
+    public Duration read(JsonReader in) throws IOException {
+        if (in.peek() == com.google.gson.stream.JsonToken.NULL) {
+            in.nextNull();
+            return null;
+        }
+        String durationString = in.nextString();
+        return Duration.parse(durationString);
     }
 }

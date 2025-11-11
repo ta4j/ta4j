@@ -23,33 +23,27 @@
  */
 package ta4jexamples.backtesting;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.PerformanceReport;
+import org.ta4j.core.reports.BasePerformanceReport;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
 import ta4jexamples.loaders.CsvBarsLoader;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimpleMovingAverageRangeBacktest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
+    private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageRangeBacktest.class);
 
     public static void main(String[] args) {
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
@@ -108,20 +102,21 @@ public class SimpleMovingAverageRangeBacktest {
         return resultBuilder;
     }
 
-    private static StringBuilder printPerformanceReport(PerformanceReport report) {
+    private static StringBuilder printPerformanceReport(BasePerformanceReport report) {
         StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("--------- performance report ---------")
                 .append(System.lineSeparator())
                 .append("total loss: ")
-                .append(report.getTotalLoss())
+                .append(report.totalLoss)
                 .append(System.lineSeparator())
                 .append("total profit: ")
-                .append(report.getTotalProfit())
+                .append(report.totalProfit)
                 .append(System.lineSeparator())
-                .append("total profit loss: " + report.getTotalProfitLoss())
+                .append("total profit loss: ")
+                .append(report.totalProfitLoss)
                 .append(System.lineSeparator())
                 .append("total profit loss percentage: ")
-                .append(report.getTotalProfitLossPercentage())
+                .append(report.totalProfitLossPercentage)
                 .append(System.lineSeparator())
                 .append("---------------------------");
         return resultBuilder;

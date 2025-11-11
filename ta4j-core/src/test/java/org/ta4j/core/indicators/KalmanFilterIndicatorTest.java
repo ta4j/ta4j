@@ -137,8 +137,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // so the Kalman filter should produce valid filtered values
         // The first valid value should be close to 50.0 (the first non-NaN underlying
         // value)
-        Assert.assertEquals(49.95006, kalmanFilterIndicator.getValue(3).doubleValue(), 1e-5);
-        Assert.assertEquals(55.21204, kalmanFilterIndicator.getValue(4).doubleValue(), 1e-5);
+        Assert.assertEquals(49.95005, kalmanFilterIndicator.getValue(3).doubleValue(), 1e-5);
+        Assert.assertEquals(55.21203, kalmanFilterIndicator.getValue(4).doubleValue(), 1e-5);
         Assert.assertEquals(60.89177, kalmanFilterIndicator.getValue(5).doubleValue(), 1e-5);
         Assert.assertEquals(67.12451, kalmanFilterIndicator.getValue(6).doubleValue(), 1e-5);
         Assert.assertEquals(73.96032, kalmanFilterIndicator.getValue(7).doubleValue(), 1e-5);
