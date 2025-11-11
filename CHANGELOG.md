@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added a Gson `DurationTypeAdapter`, `BasePerformanceReport`, and revised `TradingStatementGenerator` so generated statements always carry their source strategy and trading record.
 - Expanded charting utilities to overlay indicators with trading records, added `NetMomentumStrategy`/`TopStrategiesExample`, and bundled a Coinbase ETH/USD sample data set to demonstrate the new APIs.
 - Added Log4j 2 configurations for modules and tests to back the consolidated logging stack.
+- Added release GitHub workflow to automatically version, build, and publish artifacts to Maven Central. 
 
 ### Changed
 - Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so the examples and tests share a single logging backend.
