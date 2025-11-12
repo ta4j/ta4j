@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -106,7 +106,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
             increaseLengthTo(removedBarsCount, maximumResultCount);
             highestResultIndex = removedBarsCount;
-            result = results.get(0);
+            result = results.getFirst();
             if (result == null) {
                 // It should be "result = calculate(removedBarsCount);".
                 // We use "result = calculate(0);" as a workaround
@@ -178,7 +178,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // Removing old results
             final int nbResultsToRemove = resultCount - maximumResultCount;
             if (nbResultsToRemove == 1) {
-                results.remove(0);
+                results.removeFirst();
             } else {
                 results.subList(0, nbResultsToRemove).clear();
             }

@@ -24,43 +24,43 @@
 package org.ta4j.core.reports;
 
 import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 
 /**
- * Represents a trading statement report containing position and performance
- * statistics.
+ * Represents a trading statement that provides access to position statistics,
+ * performance metrics, trading records, and the strategy used during trading.
+ * This interface defines methods to retrieve key components of a trading
+ * statement for analysis and reporting purposes.
+ *
+ * @since 0.19
  */
-public class TradingStatement {
-
-    private final Strategy strategy;
-    private final PositionStatsReport positionStatsReport;
-    private final PerformanceReport performanceReport;
+public interface TradingStatement {
 
     /**
-     * Constructor.
+     * Returns the position statistics report.
      *
-     * @param strategy            the {@link Strategy}
-     * @param positionStatsReport the {@link PositionStatsReport}
-     * @param performanceReport   the {@link PerformanceReport}
+     * @return the position statistics report
      */
-    public TradingStatement(Strategy strategy, PositionStatsReport positionStatsReport,
-            PerformanceReport performanceReport) {
-        this.strategy = strategy;
-        this.positionStatsReport = positionStatsReport;
-        this.performanceReport = performanceReport;
-    }
+    public PositionStatsReport getPositionStatsReport();
 
-    /** @return {@link #strategy} */
-    public Strategy getStrategy() {
-        return strategy;
-    }
+    /**
+     * Returns the performance report.
+     *
+     * @return the performance report
+     */
+    public BasePerformanceReport getPerformanceReport();
 
-    /** @return {@link #positionStatsReport} */
-    public PositionStatsReport getPositionStatsReport() {
-        return positionStatsReport;
-    }
+    /**
+     * Returns the trading record.
+     *
+     * @return the trading record, or null if not provided
+     */
+    public TradingRecord getTradingRecord();
 
-    /** @return {@link #performanceReport} */
-    public PerformanceReport getPerformanceReport() {
-        return performanceReport;
-    }
+    /**
+     * Returns the trading strategy.
+     *
+     * @return the strategy used to generate this statement
+     */
+    public Strategy getStrategy();
 }

@@ -2,11 +2,26 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Breaking
+- Converted `TradingStatement` into an interface implemented by `BaseTradingStatement`, exposing the underlying `Strategy` and `TradingRecord` for follow-on analysis and requiring downstream callers to swap instantiations.
+
 ### Added
+- Introduced `BacktestExecutionResult`/`BacktestRuntimeReport` and new `BacktestExecutor` entry points that capture per-strategy runtimes, support progress callbacks, and stream top-k selection for large strategy grids.
+- Added a Gson `DurationTypeAdapter`, `BasePerformanceReport`, and revised `TradingStatementGenerator` so generated statements always carry their source strategy and trading record.
+- Expanded charting utilities to overlay indicators with trading records, added `NetMomentumStrategy`/`TopStrategiesExample`, and bundled a Coinbase ETH/USD sample data set to demonstrate the new APIs.
+- Added Log4j 2 configurations for modules and tests to back the consolidated logging stack.
 - Introduced `StrategySerialization` with `Strategy#toJson()`/`Strategy#fromJson(BarSeries, String)` helpers for sharing
   strategy descriptors alongside entry and exit rules.
 - [#1349](https://github.com/ta4j/ta4j/issues/1349) Enabled `NamedStrategy` serialization/deserialization with compact labels
   (for example `ToggleNamedStrategy_true_false_u3`) so clients can persist strategy presets alongside their parameters.
+
+
+### Changed
+- Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so the examples and tests share a single logging backend.
+
+### Fixed
+- Guarded `KalmanFilterIndicator` against NaN/Infinity measurements to keep the Kalman state consistent.
+
 
 ## 0.19
 
@@ -22,6 +37,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Clarify PnL criterion comments about trading costs
 - Refactor ProfitLossPercentageCriterion to calculate aggregated return
 - Fixed strict rules of `ConvergenceDivergenceIndicator`
+- Fixed calculation for `VersusEnterAndHoldCriterion`
 - Fixed calculation of `ReturnOverMaxDrawdownCriterion`
 - swapped parameter naming in  `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)`
 - Aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder`
@@ -29,6 +45,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Corrected the calculation of unstable bars of the SMA indicator
 - `PivotPointIndicatorTest` fixed to work also in java 25
 - Fixed bug in `MovingAverageCrossOverRangeBacktest` preventing successfully loading the test JSON bar data
+- Fixed bug in `KalmanFilterIndicator` when underlying indicator values are NaN
+- Fixed recursion bug in `RecursiveCachedIndicator` leading to SO in certain situations
 
 ### Changed
 - Use `NetReturnCriterion` in `AverageReturnPerBarCriterion`, `EnterAndHoldCriterion` and `ReturnOverMaxDrawdownCriterion` to avoid optimistic bias of `GrossReturnCriterion`
@@ -38,6 +56,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - [#1399](https://github.com/ta4j/ta4j/issues/1399) Refresh dependencies, plugins, and build tooling while enforcing Java 21 and Maven 3.9+.
 - Reworked `RecentSwingHighIndicator` and `RecentSwingLowIndicator` with plateau-aware, NaN-safe logic and exposed `getLatestSwingIndex` for downstream analysis.
 - Reduced default DecimalNum precision from 32 to 16 however allows clients to configure precision based on their needs
+- NumericIndicator's previous method return NumericIndicator
+- Added `TradingRecord` property to `TradingStatement` for more downstream flexibility around analytics
+- Remove magic number 25 in `UpTrendIndicator` and `DownTrendIndicator`
 
 ### Removed/Deprecated
 - TransformIndicator and CombineIndicator
@@ -55,9 +76,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added new `NetMomentumIndicator` indicator class
 - New `substitute` helper function to `UnaryOperation`
 - Added `DecimalNumPrecisionPerformanceTest` as a quick and dirty demonstration of DecimalNum precision vs performance trade-offs
+- Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function
+- Added `MACDVIndicator` to volume-weight MACD calculations
+- Added new charting tools in ta4j-examples
+- Added new unit tests around indicator concurrency in preparation for future multithreading feature work
+- Added `AdaptiveJsonBarsSerializer` to support OHLC bar data from Coinbase or Binance
 - Added new `JsonBarsSerializer.loadSeries(InputStream)` overload helper function 
-- Rules now expose configurable display names via new `Rule#getName()` / `Rule#setName(String)` APIs; defaults are JSON payloads like `{"type":"AndRule"}` and composites include their child names for easier serialization
-
+- Added new `VoteRule` rule class
 
 ## 0.18 (released May 15, 2025)
 
