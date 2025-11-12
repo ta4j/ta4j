@@ -2,6 +2,7 @@
 
 ### Added
 - Introduced a thread-safe `ConcurrentBarSeries` with a dedicated builder and comprehensive concurrency tests for simultaneous reads and writes.
+- Added streaming bar ingestion helpers to `ConcurrentBarSeries` so Coinbase WebSocket candles can populate a series without pulling in the XChange projects.
 
 ### Removed
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
