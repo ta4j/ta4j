@@ -82,7 +82,7 @@ update_changelog_for_release() {
   local dry_run="$3"
 
   if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would update CHANGELOG.md: move 'Unreleased' to '${release_version}' section."
+    echo "[DRY-RUN] Would update CHANGELOG.md: move 'Unreleased' to '${release_version}' section." >&2
     return
   fi
 
@@ -130,7 +130,7 @@ PY
 ensure_unreleased_placeholder() {
   local dry_run="$1"
   if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would ensure CHANGELOG.md contains placeholder under 'Unreleased'."
+    echo "[DRY-RUN] Would ensure CHANGELOG.md contains placeholder under 'Unreleased'." >&2
     return
   fi
 
@@ -149,7 +149,7 @@ PY
 update_readme_versions() {
   local dry_run="$1"
   if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would update README.md version references."
+    echo "[DRY-RUN] Would update README.md version references." >&2
     return
   fi
 
@@ -184,32 +184,29 @@ run_release() {
   local snapshot_version="${next_version}-SNAPSHOT"
   local release_notes_file="target/release-notes.md"
 
-  echo "Preparing release:"
-  echo "  Release version: $release_version"
-  echo "  Next version:    $snapshot_version"
-  [[ "$dry_run" == "true" ]] && echo "  Mode:            DRY-RUN (no changes applied)"
-  echo
+  echo "Preparing release:" >&2
+  echo "  Release version: $release_version" >&2
+  echo "  Next version:    $snapshot_version" >&2
+  [[ "$dry_run" == "true" ]] && echo "  Mode:            DRY-RUN (no changes applied)" >&2
+  echo >&2
 
   if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would set Maven version to $release_version, update changelog, and then bump to $snapshot_version."
+    echo "[DRY-RUN] Would set Maven version to $release_version and update changelog/README." >&2
+    echo "[DRY-RUN] Snapshot bump to $snapshot_version is handled separately by CI workflow." >&2
   else
-    mvn -B versions:set -DnewVersion="$release_version"
-    mvn -B versions:commit
+    mvn -B versions:set -DnewVersion="$release_version" >&2
+    mvn -B versions:commit >&2
   fi
 
   export RELEASE_VERSION="$release_version" SNAPSHOT_VERSION="$snapshot_version"
   update_changelog_for_release "$release_version" "$release_notes_file" "$dry_run"
   update_readme_versions "$dry_run"
 
-  if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would set Maven version to $snapshot_version for next iteration."
-  else
-    mvn -B versions:set -DnewVersion="$snapshot_version"
-    mvn -B versions:commit
-    ensure_unreleased_placeholder "$dry_run"
-  fi
+  # Note: The snapshot version bump is handled separately by the CI workflow
+  # after the release branch is created, committed, tagged, and deployed.
+  # This ensures the release branch and tag contain the release version.
 
-  echo
+  echo >&2
   echo "release_version=${release_version}"
   echo "next_version=${snapshot_version}"
   echo "release_notes_file=${release_notes_file}"
@@ -232,19 +229,19 @@ run_snapshot() {
   local current="$(trim "$(current_project_version)")"
   [[ -z "$next_version" ]] && next_version="$(increment_version "${current%-SNAPSHOT}")-SNAPSHOT"
 
-  echo "Preparing next snapshot: $next_version"
-  [[ "$dry_run" == "true" ]] && echo "  Mode: DRY-RUN (no changes applied)"
-  echo
+  echo "Preparing next snapshot: $next_version" >&2
+  [[ "$dry_run" == "true" ]] && echo "  Mode: DRY-RUN (no changes applied)" >&2
+  echo >&2
 
   if [[ "$dry_run" == "true" ]]; then
-    echo "[DRY-RUN] Would bump Maven version to $next_version and ensure CHANGELOG placeholder."
+    echo "[DRY-RUN] Would bump Maven version to $next_version and ensure CHANGELOG placeholder." >&2
   else
-    mvn -B versions:set -DnewVersion="$next_version"
-    mvn -B versions:commit
+    mvn -B versions:set -DnewVersion="$next_version" >&2
+    mvn -B versions:commit >&2
     ensure_unreleased_placeholder "$dry_run"
   fi
 
-  echo
+  echo >&2
   echo "next_version=${next_version}"
 }
 
