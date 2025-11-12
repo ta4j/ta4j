@@ -29,6 +29,8 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
@@ -227,6 +229,85 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         } finally {
             this.writeLock.unlock();
         }
+    }
+
+    /**
+     * Ingests a single streaming bar (e.g., one emitted from an exchange WebSocket
+     * candles) and appends or replaces the matching interval.
+     *
+     * <p>
+     * Unlike {@link #addBar(Bar, boolean)}, this method can replace historical bars
+     * when exchanges replay snapshots that include prior intervals.
+     *
+     * @param bar streaming bar payload
+     *
+     * @since 0.19
+     */
+    public void ingestStreamingBar(final Bar bar) {
+        Objects.requireNonNull(bar, "bar");
+        this.writeLock.lock();
+        try {
+            addStreamingBarUnsafe(bar);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
+     * Bulk-ingests streaming bars. Incoming payloads are sorted by their end time
+     * to gracefully handle candle snapshots that are emitted with the most recent
+     * intervals first.
+     *
+     * @param bars streaming bars to ingest
+     *
+     * @since 0.19
+     */
+    public void ingestStreamingBars(final Collection<Bar> bars) {
+        if (bars == null || bars.isEmpty()) {
+            return;
+        }
+        final List<Bar> ordered = new ArrayList<>(bars);
+        ordered.removeIf(Objects::isNull);
+        if (ordered.isEmpty()) {
+            return;
+        }
+        ordered.sort(Comparator.comparing(Bar::getEndTime));
+        this.writeLock.lock();
+        try {
+            ordered.forEach(this::addStreamingBarUnsafe);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    private void addStreamingBarUnsafe(final Bar newBar) {
+        final List<Bar> internal = super.getBarData();
+        if (internal.isEmpty()) {
+            super.addBar(newBar, false);
+            return;
+        }
+        final Bar lastBar = internal.get(internal.size() - 1);
+        if (lastBar.getEndTime().equals(newBar.getEndTime())) {
+            super.addBar(newBar, true);
+            return;
+        }
+        if (lastBar.getEndTime().isBefore(newBar.getEndTime())) {
+            super.addBar(newBar, false);
+            return;
+        }
+        for (int idx = internal.size() - 2; idx >= 0; idx--) {
+            final Bar candidate = internal.get(idx);
+            if (candidate.getEndTime().equals(newBar.getEndTime())) {
+                internal.set(idx, newBar);
+                return;
+            }
+            if (candidate.getEndTime().isBefore(newBar.getEndTime())) {
+                break;
+            }
+        }
+        throw new IllegalArgumentException(
+                String.format("Cannot insert streaming bar ending at %s because series end time is %s",
+                        newBar.getEndTime(), lastBar.getEndTime()));
     }
 
     @Override

@@ -761,6 +761,81 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(operationCount, series.getBarCount());
     }
 
+    // ==================== Streaming Bar Integration Tests ====================
+
+    @Test
+    public void ingestStreamingBarAppendsBar() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
+
+        assertEquals(1, series.getBarCount());
+        var bar = series.getLastBar();
+        assertEquals(start.plus(period), bar.getEndTime());
+        assertEquals(numOf(105), bar.getClosePrice());
+        assertEquals(numOf(90), bar.getLowPrice());
+        assertEquals(numOf(5), bar.getVolume());
+    }
+
+    @Test
+    public void ingestStreamingBarReplacesLatestInterval() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
+        series.ingestStreamingBar(streamingBar(period, start, 105, 120, 95, 115, 8));
+
+        assertEquals(1, series.getBarCount());
+        var bar = series.getLastBar();
+        assertEquals(numOf(115), bar.getClosePrice());
+        assertEquals(numOf(8), bar.getVolume());
+    }
+
+    @Test
+    public void ingestStreamingBarUpdatesOlderInterval() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+        var second = start.plus(period);
+
+        series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
+        series.ingestStreamingBar(streamingBar(period, second, 105, 120, 95, 115, 8));
+
+        series.ingestStreamingBar(streamingBar(period, start, 200, 210, 190, 205, 15));
+
+        assertEquals(2, series.getBarCount());
+        assertEquals(numOf(205), series.getBar(0).getClosePrice());
+        assertEquals(numOf(115), series.getBar(1).getClosePrice());
+    }
+
+    @Test
+    public void ingestStreamingBarsSortNewestFirstPayloads() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var first = Instant.parse("2024-01-01T00:00:00Z");
+        var second = first.plus(period);
+
+        var newestFirst = List.of(streamingBar(period, second, 105, 115, 95, 110, 8),
+                streamingBar(period, first, 100, 110, 90, 105, 5));
+
+        series.ingestStreamingBars(newestFirst);
+
+        assertEquals(2, series.getBarCount());
+        assertEquals(first.plus(period), series.getBar(0).getEndTime());
+        assertEquals(second.plus(period), series.getBar(1).getEndTime());
+    }
+
     // ==================== Legacy Tests (from original implementation)
     // ====================
 
@@ -864,5 +939,18 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         assertEquals(barsToProduce, series.getBarCount());
         assertEquals(series.getBarCount() - 1, series.getEndIndex());
+    }
+
+    private Bar streamingBar(final Duration period, final Instant start, final double open, final double high,
+            final double low, final double close, final double volume) {
+        return new TimeBarBuilder(numFactory).timePeriod(period)
+                .beginTime(start)
+                .endTime(start.plus(period))
+                .openPrice(open)
+                .highPrice(high)
+                .lowPrice(low)
+                .closePrice(close)
+                .volume(volume)
+                .build();
     }
 }
