@@ -108,7 +108,8 @@ Preparing release:
   Next version:    1.6.0-SNAPSHOT
   Mode:            DRY-RUN (no changes applied)
 
-[DRY-RUN] Would set Maven version to 1.5.0, update changelog, and then bump to 1.6.0-SNAPSHOT.
+[DRY-RUN] Would set Maven version to 1.5.0 and update changelog/README.
+[DRY-RUN] Snapshot bump to 1.6.0-SNAPSHOT is handled separately by CI workflow.
 [DRY-RUN] Would update CHANGELOG.md: move 'Unreleased' to '1.5.0' section.
 [DRY-RUN] Would update README.md version references.
 
