@@ -23,17 +23,9 @@
  */
 package ta4jexamples.backtesting;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -43,7 +35,14 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+
 public class SimpleMovingAverageBacktest {
+
+    private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageBacktest.class);
 
     public static void main(String[] args) throws InterruptedException {
         BarSeries series = createBarSeries();
@@ -53,19 +52,19 @@ public class SimpleMovingAverageBacktest {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Trade.TradeType.BUY,
                 DecimalNum.valueOf(50));
-        System.out.println(tradingRecord3DaySma);
+        LOG.debug(tradingRecord3DaySma.toString());
 
         Strategy strategy2DaySma = create2DaySmaStrategy(series);
         TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Trade.TradeType.BUY,
                 DecimalNum.valueOf(50));
-        System.out.println(tradingRecord2DaySma);
+        LOG.debug(tradingRecord2DaySma.toString());
 
         var criterion = new GrossReturnCriterion();
         Num calculate3DaySma = criterion.calculate(series, tradingRecord3DaySma);
         Num calculate2DaySma = criterion.calculate(series, tradingRecord2DaySma);
 
-        System.out.println(calculate3DaySma);
-        System.out.println(calculate2DaySma);
+        LOG.debug(calculate3DaySma.toString());
+        LOG.debug(calculate2DaySma.toString());
     }
 
     private static BarSeries createBarSeries() {

@@ -25,8 +25,8 @@ package ta4jexamples.loaders;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
@@ -41,7 +41,7 @@ import java.io.*;
 @Deprecated(since = "0.19")
 public class JsonBarsSerializer {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JsonBarsSerializer.class);
+    private static final Logger LOG = LogManager.getLogger(JsonBarsSerializer.class);
 
     public static void persistSeries(BarSeries series, String filename) {
         GsonBarSeries exportableSeries = GsonBarSeries.from(series);

@@ -33,17 +33,17 @@ import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Generates a {@link PerformanceReport} based on the provided trading record
- * and bar series.
+ * Generates a {@link BasePerformanceReport} based on the provided trading
+ * record and bar series.
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class PerformanceReportGenerator implements ReportGenerator<BasePerformanceReport> {
 
     @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+    public BasePerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
         final Num pnl = new NetProfitLossCriterion().calculate(series, tradingRecord);
         final Num pnlPercentage = new NetProfitLossPercentageCriterion().calculate(series, tradingRecord);
         final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
         final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+        return new BasePerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
     }
 }

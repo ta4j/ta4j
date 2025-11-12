@@ -26,13 +26,17 @@ package ta4jexamples.charting;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ui.ApplicationFrame;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
 import java.awt.Rectangle;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 /**
  * Swing-based {@link ChartDisplayer} that renders charts in an
@@ -66,7 +70,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
     private static final int MIN_DISPLAY_WIDTH = 800;
     private static final int MIN_DISPLAY_HEIGHT = 600;
 
-    private static final Logger LOG = LoggerFactory.getLogger(SwingChartDisplayer.class);
+    private static final Logger LOG = LogManager.getLogger(SwingChartDisplayer.class);
 
     @Override
     public void display(JFreeChart chart) {
@@ -75,7 +79,21 @@ final class SwingChartDisplayer implements ChartDisplayer {
 
     @Override
     public void display(JFreeChart chart, String windowTitle) {
-        ChartPanel panel = new ChartPanel(chart);
+        // Serialize and deserialize the chart to create a deep copy that prevents
+        // ChartPanel from modifying the original
+        JFreeChart chartClone;
+        try {
+            chartClone = deepCopyChart(chart);
+        } catch (Exception e) {
+            LOG.debug("Failed to deep copy chart, falling back to shallow clone", e);
+            try {
+                chartClone = (JFreeChart) chart.clone();
+            } catch (CloneNotSupportedException cloneEx) {
+                LOG.debug("Failed to clone chart, using original chart for display", cloneEx);
+                chartClone = chart;
+            }
+        }
+        ChartPanel panel = new ChartPanel(chartClone);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setDomainZoomable(true);
@@ -121,13 +139,23 @@ final class SwingChartDisplayer implements ChartDisplayer {
                 if (parsedValue > 0.1 && parsedValue <= 1.0) {
                     return parsedValue;
                 }
-                LOG.warn("Ignoring display scale property {} outside accepted range (0.1, 1.0]: {}",
+                LOG.debug("Ignoring display scale property {} outside accepted range (0.1, 1.0]: {}",
                         DISPLAY_SCALE_PROPERTY, configuredScale);
             } catch (NumberFormatException numberFormatException) {
-                LOG.warn("Unable to parse display scale property {} value: {}", DISPLAY_SCALE_PROPERTY, configuredScale,
-                        numberFormatException);
+                LOG.debug("Unable to parse display scale property {} value: {}", DISPLAY_SCALE_PROPERTY,
+                        configuredScale, numberFormatException);
             }
         }
         return DEFAULT_DISPLAY_SCALE;
+    }
+
+    private JFreeChart deepCopyChart(JFreeChart chart) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(chart);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            return (JFreeChart) ois.readObject();
+        }
     }
 }

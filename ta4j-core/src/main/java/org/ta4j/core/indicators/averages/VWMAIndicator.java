@@ -23,10 +23,13 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -53,11 +56,35 @@ public class VWMAIndicator extends CachedIndicator<Num> {
      * @param barCount       the time frame
      */
     public VWMAIndicator(Indicator<Num> priceIndicator, int barCount) {
+        this(priceIndicator, new VolumeIndicator(priceIndicator.getBarSeries()), barCount, SMAIndicator::new);
+    }
+
+    /**
+     * Constructor allowing custom averaging strategies.
+     *
+     * @param priceIndicator  price based indicator
+     * @param volumeIndicator volume based indicator
+     * @param barCount        the time frame
+     * @param averageFactory  factory creating moving-average indicators for the
+     *                        provided {@link Indicator} and {@code barCount}
+     * @since 0.19
+     */
+    public VWMAIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> averageFactory) {
         super(priceIndicator.getBarSeries());
-        final var volumeIndicator = new VolumeIndicator(priceIndicator.getBarSeries());
+        Objects.requireNonNull(volumeIndicator, "volumeIndicator must not be null");
+        Objects.requireNonNull(averageFactory, "averageFactory must not be null");
+        if (priceIndicator.getBarSeries() != volumeIndicator.getBarSeries()) {
+            throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
+        }
+
         final var weightedPriceSum = BinaryOperation.product(priceIndicator, volumeIndicator);
-        this.volumeWeightedIndicator = BinaryOperation.quotient(new SMAIndicator(weightedPriceSum, barCount),
-                new SMAIndicator(volumeIndicator, barCount));
+        final var weightedPriceAverage = Objects.requireNonNull(averageFactory.apply(weightedPriceSum, barCount),
+                "averageFactory must return a price-volume average");
+        final var volumeAverage = Objects.requireNonNull(averageFactory.apply(volumeIndicator, barCount),
+                "averageFactory must return a volume average");
+
+        this.volumeWeightedIndicator = BinaryOperation.quotient(weightedPriceAverage, volumeAverage);
         this.barCount = barCount;
     }
 

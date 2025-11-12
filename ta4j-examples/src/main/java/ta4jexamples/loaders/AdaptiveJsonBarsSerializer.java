@@ -26,8 +26,8 @@ package ta4jexamples.loaders;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import ta4jexamples.loaders.jsonhelper.AdaptiveBarSeriesTypeAdapter;
 
@@ -49,7 +49,7 @@ public class AdaptiveJsonBarsSerializer {
     private static final Gson TYPEADAPTER_GSON = new GsonBuilder()
             .registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter())
             .create();
-    private static final Logger LOG = LoggerFactory.getLogger(AdaptiveJsonBarsSerializer.class);
+    private static final Logger LOG = LogManager.getLogger(AdaptiveJsonBarsSerializer.class);
 
     /**
      * Loads a BarSeries from the provided input stream containing JSON data. The

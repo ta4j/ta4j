@@ -27,9 +27,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.PPOIndicator;
@@ -49,6 +49,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * This class builds a CSV file containing values from indicators.
  */
 public class IndicatorsToCsv {
+
+    private static final Logger LOG = LogManager.getLogger(IndicatorsToCsv.class);
 
     public static void main(String[] args) {
 
@@ -134,7 +136,7 @@ public class IndicatorsToCsv {
             writer = new BufferedWriter(new FileWriter(new File("target", "indicators.csv")));
             writer.write(sb.toString());
         } catch (IOException ioe) {
-            Logger.getLogger(IndicatorsToCsv.class.getName()).log(Level.SEVERE, "Unable to write CSV file", ioe);
+            LOG.error("Unable to write CSV file", ioe);
         } finally {
             try {
                 if (writer != null) {

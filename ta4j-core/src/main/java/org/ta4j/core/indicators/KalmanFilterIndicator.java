@@ -111,9 +111,9 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
             double measurement = this.indicator.getValue(i).doubleValue();
 
-            filter.predict();
             // Skip NaN or infinite values - only process valid measurements
             if (!Double.isNaN(measurement) && !Double.isInfinite(measurement)) {
+                filter.predict();
                 filter.correct(new double[] { measurement });
             }
 

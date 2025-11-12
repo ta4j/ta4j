@@ -30,9 +30,9 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -41,6 +41,8 @@ import org.ta4j.core.num.Num;
  * This class builds a Ta4j bar series from a CSV file containing trades.
  */
 public class CsvTradesLoader {
+
+    private static final Logger LOG = LogManager.getLogger(CsvTradesLoader.class);
 
     /**
      * @return the bar series from Bitstamp (bitcoin exchange) trades
@@ -56,7 +58,7 @@ public class CsvTradesLoader {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
         } catch (Exception ioe) {
-            Logger.getLogger(CsvTradesLoader.class.getName()).log(Level.SEVERE, "Unable to load trades from CSV", ioe);
+            LOG.error("Unable to load trades from CSV", ioe);
         }
 
         var series = new BaseBarSeriesBuilder().build();
