@@ -268,6 +268,74 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void namedStrategyUnstableMismatchThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(7, 8, 9).build();
+        NamedStrategyFixture.resetConstructionCounters();
+        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
+
+        ComponentDescriptor descriptor = strategy.toDescriptor();
+        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
+        parameters.put("unstableBars", 5);
+
+        ComponentDescriptor mutated = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel(descriptor.getLabel())
+                .withParameters(parameters)
+                .build();
+
+        String json = ComponentSerialization.toJson(mutated);
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unstable bar mismatch between label and descriptor");
+    }
+
+    @Test
+    public void namedStrategyLabelArgumentMismatchThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(3, 6, 9).build();
+        NamedStrategyFixture.resetConstructionCounters();
+        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
+
+        ComponentDescriptor descriptor = strategy.toDescriptor();
+        ComponentDescriptor mutated = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel("NamedStrategyFixture_override_u1")
+                .withParameters(descriptor.getParameters())
+                .build();
+
+        String json = ComponentSerialization.toJson(mutated);
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Named strategy argument tokens mismatch between label and descriptor");
+    }
+
+    @Test
+    public void namedStrategyFallsBackToLabelArgumentsWhenArgsMissing() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(1, 2, 3, 4).build();
+        NamedStrategyFixture.resetConstructionCounters();
+        NamedStrategyFixture original = NamedStrategyFixture.create(series, series.numFactory().numOf(42), 3);
+
+        ComponentDescriptor descriptor = original.toDescriptor();
+        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
+        parameters.remove("args");
+
+        ComponentDescriptor mutated = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel(descriptor.getLabel())
+                .withParameters(parameters)
+                .build();
+
+        Strategy restored = Strategy.fromJson(series, ComponentSerialization.toJson(mutated));
+
+        assertThat(restored).isInstanceOf(NamedStrategyFixture.class);
+        NamedStrategyFixture reconstructed = (NamedStrategyFixture) restored;
+        assertThat(reconstructed.getThreshold().doubleValue()).isEqualTo(42.0);
+        assertThat(reconstructed.getUnstableBars()).isEqualTo(original.getUnstableBars());
+        assertThat(reconstructed.toString()).isEqualTo(original.toString());
+    }
+
+    @Test
     public void namedStrategyLabelFormatMismatchThrows() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(5, 10, 15).build();
         NamedStrategyFixture.resetConstructionCounters();
