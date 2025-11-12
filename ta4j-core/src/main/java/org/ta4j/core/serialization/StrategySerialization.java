@@ -464,6 +464,10 @@ public final class StrategySerialization {
                 throw new IllegalArgumentException("Named strategy argument count mismatch: " + descriptorArgs.size()
                         + " vs " + labelArguments.size());
             }
+            if (!labelArguments.isEmpty() && !descriptorArgs.equals(labelArguments)) {
+                throw new IllegalArgumentException(
+                        "Named strategy argument tokens mismatch between label and descriptor");
+            }
             constructorArguments = descriptorArgs;
         } else {
             constructorArguments = labelArguments;
