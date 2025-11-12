@@ -204,7 +204,8 @@ public class StrategySerializationTest {
 
     @Test
     public void roundTripNamedStrategyFixture() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(3, 6, 9, 12, 15)
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(3, 6, 9, 12, 15)
                 .build();
         NamedStrategyFixture.resetConstructionCounters();
 
@@ -246,7 +247,9 @@ public class StrategySerializationTest {
 
     @Test
     public void namedStrategyArgumentMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(2, 4, 6).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(2, 4, 6)
+                .build();
         NamedStrategyFixture.resetConstructionCounters();
         NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
 
@@ -262,14 +265,15 @@ public class StrategySerializationTest {
 
         String json = ComponentSerialization.toJson(mutated);
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, json))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Named strategy argument count mismatch");
     }
 
     @Test
     public void namedStrategyUnstableMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(7, 8, 9).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(7, 8, 9)
+                .build();
         NamedStrategyFixture.resetConstructionCounters();
         NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
 
@@ -285,14 +289,15 @@ public class StrategySerializationTest {
 
         String json = ComponentSerialization.toJson(mutated);
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, json))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unstable bar mismatch between label and descriptor");
     }
 
     @Test
     public void namedStrategyLabelArgumentMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(3, 6, 9).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(3, 6, 9)
+                .build();
         NamedStrategyFixture.resetConstructionCounters();
         NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
 
@@ -305,14 +310,15 @@ public class StrategySerializationTest {
 
         String json = ComponentSerialization.toJson(mutated);
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, json))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Named strategy argument tokens mismatch between label and descriptor");
     }
 
     @Test
     public void namedStrategyFallsBackToLabelArgumentsWhenArgsMissing() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(1, 2, 3, 4).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2, 3, 4)
+                .build();
         NamedStrategyFixture.resetConstructionCounters();
         NamedStrategyFixture original = NamedStrategyFixture.create(series, series.numFactory().numOf(42), 3);
 
@@ -337,7 +343,9 @@ public class StrategySerializationTest {
 
     @Test
     public void namedStrategyLabelFormatMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(5, 10, 15).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(5, 10, 15)
+                .build();
         NamedStrategyFixture.resetConstructionCounters();
         NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
 
@@ -350,8 +358,7 @@ public class StrategySerializationTest {
 
         String json = ComponentSerialization.toJson(mutated);
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, json))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Descriptor label does not match strategy type");
     }
 
@@ -380,8 +387,8 @@ public class StrategySerializationTest {
 
     private abstract static class AbstractToggleNamedStrategy extends NamedStrategy {
 
-        protected AbstractToggleNamedStrategy(BarSeries series, String name, boolean entrySatisfied, boolean exitSatisfied,
-                int unstableBars) {
+        protected AbstractToggleNamedStrategy(BarSeries series, String name, boolean entrySatisfied,
+                boolean exitSatisfied, int unstableBars) {
             super(name, new SerializableRule(entrySatisfied), new SerializableRule(exitSatisfied), unstableBars,
                     List.of(Boolean.toString(entrySatisfied), Boolean.toString(exitSatisfied)));
         }
