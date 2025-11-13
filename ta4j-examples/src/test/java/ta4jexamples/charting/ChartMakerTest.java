@@ -720,4 +720,390 @@ public class ChartMakerTest {
         return legendCount;
     }
 
+    // ========== saveChartImage with custom directory tests ==========
+
+    @Test
+    public void testSaveChartImageWithPathDirectory() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, customDir);
+
+            assertTrue(result.isPresent(), "Chart should be saved to custom directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified directory");
+            assertTrue(Files.isRegularFile(result.get()), "Saved path should be a file");
+            assertTrue(result.get().toString().endsWith(".jpg"), "Saved file should have .jpg extension");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathDirectoryCreatesDirectories() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path nestedDir = customDir.resolve("nested").resolve("subdirectory");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, nestedDir);
+
+            assertTrue(result.isPresent(), "Chart should be saved even to nested directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(Files.exists(nestedDir), "Nested directories should be created");
+            assertTrue(result.get().startsWith(nestedDir), "Chart should be saved in the nested directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathDirectoryUsesCustomDirectoryNotConstructorDirectory() throws IOException {
+        Path constructorDir = Files.createTempDirectory("chartmaker-constructor-dir");
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            ChartMaker makerWithConstructorDir = new ChartMaker(constructorDir.toString());
+            JFreeChart chart = makerWithConstructorDir.createTradingRecordChart(barSeries, "Test Strategy",
+                    tradingRecord);
+
+            // Save to custom directory (not constructor directory)
+            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, customDir);
+
+            assertTrue(result.isPresent(), "Chart should be saved");
+            assertTrue(result.get().startsWith(customDir),
+                    "Chart should be saved in custom directory, not constructor directory");
+            assertFalse(result.get().startsWith(constructorDir), "Chart should NOT be saved in constructor directory");
+        } finally {
+            if (Files.exists(constructorDir)) {
+                Files.walk(constructorDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathDirectoryWorksWithoutConstructorDirectory() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            // ChartMaker created without save directory
+            ChartMaker makerWithoutDir = new ChartMaker();
+            JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            // Should still work with custom directory parameter
+            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, customDir);
+
+            assertTrue(result.isPresent(), "Chart should be saved even when ChartMaker has no constructor directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified custom directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathDirectoryRejectsNullPath() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, (Path) null),
+                "Should reject null Path directory");
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectory() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, null, customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved to custom directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified directory");
+            assertTrue(Files.isRegularFile(result.get()), "Saved path should be a file");
+            assertTrue(result.get().toString().endsWith(".jpg"), "Saved file should have .jpg extension");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryAndFileName() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            String customFileName = "MyCustomChart";
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, customFileName, customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved to custom directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified directory");
+            assertTrue(result.get().toString().contains(customFileName), "Saved file should contain custom filename");
+            assertTrue(result.get().toString().endsWith(".jpg"), "Saved file should have .jpg extension");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryUsesCustomDirectoryNotConstructorDirectory() throws IOException {
+        Path constructorDir = Files.createTempDirectory("chartmaker-constructor-dir");
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            ChartMaker makerWithConstructorDir = new ChartMaker(constructorDir.toString());
+            JFreeChart chart = makerWithConstructorDir.createTradingRecordChart(barSeries, "Test Strategy",
+                    tradingRecord);
+
+            // Save to custom directory (not constructor directory)
+            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, null,
+                    customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved");
+            assertTrue(result.get().startsWith(customDir),
+                    "Chart should be saved in custom directory, not constructor directory");
+            assertFalse(result.get().startsWith(constructorDir), "Chart should NOT be saved in constructor directory");
+        } finally {
+            if (Files.exists(constructorDir)) {
+                Files.walk(constructorDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryWorksWithoutConstructorDirectory() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            // ChartMaker created without save directory
+            ChartMaker makerWithoutDir = new ChartMaker();
+            JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            // Should still work with custom directory parameter
+            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, null, customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved even when ChartMaker has no constructor directory");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified custom directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryRejectsNullDirectory() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class,
+                () -> chartMaker.saveChartImage(chart, barSeries, null, (String) null),
+                "Should reject null String directory");
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryRejectsEmptyDirectory() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, null, ""),
+                "Should reject empty String directory");
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryRejectsBlankDirectory() {
+        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, null, "   "),
+                "Should reject blank String directory");
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryRejectsNullChart() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            assertThrows(IllegalArgumentException.class,
+                    () -> chartMaker.saveChartImage(null, barSeries, null, customDir.toString()),
+                    "Should reject null chart");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryRejectsNullSeries() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            assertThrows(IllegalArgumentException.class,
+                    () -> chartMaker.saveChartImage(chart, null, null, customDir.toString()),
+                    "Should reject null series");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryAutoGeneratesFileNameWhenNull() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, null, customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved even with null filename");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            // When filename is null, it should use chart title or series name
+            String fileName = result.get().getFileName().toString();
+            assertTrue(fileName.endsWith(".jpg"), "File should have .jpg extension");
+            assertFalse(fileName.isEmpty(), "File should have a generated name");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithStringDirectoryUsesProvidedFileName() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            String expectedFileName = "MyCustomChartName";
+            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, expectedFileName, customDir.toString());
+
+            assertTrue(result.isPresent(), "Chart should be saved");
+            assertTrue(Files.exists(result.get()), "Saved chart file should exist");
+            String actualFileName = result.get().getFileName().toString();
+            assertTrue(actualFileName.contains(expectedFileName), "File should contain the provided filename");
+            assertTrue(actualFileName.endsWith(".jpg"), "File should have .jpg extension");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathAndStringDirectoryProduceSameResult() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart1 = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart2 = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            Optional<Path> resultPath = chartMaker.saveChartImage(chart1, barSeries, customDir);
+            Optional<Path> resultString = chartMaker.saveChartImage(chart2, barSeries, null, customDir.toString());
+
+            assertTrue(resultPath.isPresent(), "Path version should save chart");
+            assertTrue(resultString.isPresent(), "String version should save chart");
+            assertTrue(Files.exists(resultPath.get()), "Path version file should exist");
+            assertTrue(Files.exists(resultString.get()), "String version file should exist");
+            // Both should save to the same directory
+            assertEquals(resultPath.get().getParent(), resultString.get().getParent(),
+                    "Both methods should save to the same directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
 }
