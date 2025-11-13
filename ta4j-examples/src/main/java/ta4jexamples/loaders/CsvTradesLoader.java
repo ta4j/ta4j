@@ -128,9 +128,9 @@ public class CsvTradesLoader {
     public static void main(String[] args) {
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tNumber of trades: "
-                + series.getBar(0).getTrades() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+        LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
+        LOG.debug("Number of bars: {}", series.getBarCount());
+        LOG.debug("First bar: \n\tVolume: {}\n\tNumber of trades: {}\n\tClose price: {}", series.getBar(0).getVolume(),
+                series.getBar(0).getTrades(), series.getBar(0).getClosePrice());
     }
 }

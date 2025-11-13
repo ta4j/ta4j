@@ -23,6 +23,8 @@
  */
 package ta4jexamples.strategies;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -46,6 +48,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class CCICorrectionStrategy {
 
+    private static final Logger LOG = LogManager.getLogger(CCICorrectionStrategy.class);
+
     /**
      * @param series a bar series
      * @return a CCI correction strategy
@@ -66,7 +70,8 @@ public class CCICorrectionStrategy {
         Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
 
-        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+        String strategyName = "CCICorrectionStrategy";
+        Strategy strategy = new BaseStrategy(strategyName, entryRule, exitRule);
         strategy.setUnstableBars(5);
         return strategy;
     }
@@ -82,10 +87,11 @@ public class CCICorrectionStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
     }
 }

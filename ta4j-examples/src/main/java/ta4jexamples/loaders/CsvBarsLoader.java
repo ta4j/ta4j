@@ -104,9 +104,9 @@ public class CsvBarsLoader {
     public static void main(String[] args) {
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
-                + series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+        LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
+        LOG.debug("Number of bars: {}", series.getBarCount());
+        LOG.debug("First bar: \n\tVolume: {}\n\tOpen price: {}\n\tClose price: {}", series.getBar(0).getVolume(),
+                series.getBar(0).getOpenPrice(), series.getBar(0).getClosePrice());
     }
 }

@@ -27,6 +27,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.Stream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
@@ -43,6 +45,8 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 
 public class UnstableIndicatorStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(UnstableIndicatorStrategy.class);
 
     public static final Duration MINUTE = Duration.ofMinutes(1);
 
@@ -96,7 +100,7 @@ public class UnstableIndicatorStrategy {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 
-        System.out.println(name + " " + tradingRecord.getPositions());
+        LOG.debug("{} {}", name, tradingRecord.getPositions());
     }
 
 }

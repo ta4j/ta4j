@@ -23,11 +23,9 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.adx.ADXIndicator;
@@ -49,6 +47,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
 public class ADXStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(ADXStrategy.class);
 
     /**
      * @param series a bar series
@@ -91,11 +91,11 @@ public class ADXStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println(strategy.toJson());
-        System.out.println(strategy.getName() + "'s number of positions: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println(strategy.getName() + "'s gross return: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
     }
 }

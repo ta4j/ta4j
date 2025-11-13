@@ -23,6 +23,8 @@
  */
 package ta4jexamples.strategies;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
@@ -42,6 +44,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * Strategies which compares current price to global extrema over a week.
  */
 public class GlobalExtremaStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(GlobalExtremaStrategy.class);
 
     // We assume that there were at least one position every 5 minutes during the
     // whole
@@ -74,7 +78,8 @@ public class GlobalExtremaStrategy {
         final var upWeek = BinaryOperation.product(weekHighPrice, 0.996);
         final var sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
-        return new BaseStrategy(buyingRule, sellingRule);
+        String strategyName = "GlobalExtremaStrategy";
+        return new BaseStrategy(strategyName, buyingRule, sellingRule);
     }
 
     public static void main(final String[] args) {
@@ -88,10 +93,11 @@ public class GlobalExtremaStrategy {
         // Running the strategy
         final var seriesManager = new BarSeriesManager(series);
         final var tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         final var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
     }
 }

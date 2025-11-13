@@ -23,6 +23,8 @@
  */
 package ta4jexamples.strategies;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -47,6 +49,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
  */
 public class RSI2Strategy {
+
+    private static final Logger LOG = LogManager.getLogger(RSI2Strategy.class);
 
     /**
      * @param series a bar series
@@ -77,9 +81,8 @@ public class RSI2Strategy {
                 .and(new CrossedUpIndicatorRule(rsi, 95)) // Signal 1
                 .and(new UnderIndicatorRule(shortSma, closePrice)); // Signal 2
 
-        // TODO: Finalize the strategy
-
-        return new BaseStrategy(entryRule, exitRule);
+        String strategyName = "RSI2Strategy";
+        return new BaseStrategy(strategyName, entryRule, exitRule);
     }
 
     public static void main(String[] args) {
@@ -93,11 +96,12 @@ public class RSI2Strategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
     }
 
 }
