@@ -144,6 +144,65 @@ public final class RuleSerialization {
         }
 
         ComponentDescriptor descriptor = builder.build();
+
+        // Check if the rule has a custom name set via setName()
+        // The rule's getName() returns either:
+        // 1. A custom name (set via setName()) - which could be any string
+        // 2. The default name - which is a JSON representation (either type-only or
+        // with components)
+        String currentName = rule.getName();
+
+        // Try to determine if currentName is the default name
+        // Default names are JSON strings that start with "{"
+        boolean hasCustomName = true;
+        if (currentName != null && currentName.trim().startsWith("{")) {
+            // Current name looks like JSON - try to parse it
+            try {
+                ComponentDescriptor currentDescriptor = ComponentSerialization.parse(currentName);
+                if (currentDescriptor != null) {
+                    // Successfully parsed - check if it matches our descriptor structure
+                    // For default names, the type should match
+                    String currentType = currentDescriptor.getType();
+                    String descriptorType = descriptor.getType();
+                    if (currentType != null && currentType.equals(descriptorType)) {
+                        // Types match - this is likely the default name
+                        // Check if it's a type-only name (no components/parameters except __customName)
+                        boolean isTypeOnly = currentDescriptor.getComponents().isEmpty()
+                                && (currentDescriptor.getParameters().isEmpty() || currentDescriptor.getParameters()
+                                        .keySet()
+                                        .stream()
+                                        .allMatch(k -> k.startsWith("__")));
+                        if (isTypeOnly) {
+                            // Type-only default name - this is the default, not a custom name
+                            hasCustomName = false;
+                        } else {
+                            // Has components/parameters - compare more carefully
+                            // Remove __customName from both for comparison
+                            hasCustomName = !descriptorsEqualIgnoringLabel(currentDescriptor, descriptor);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Parsing failed - treat as custom name
+                hasCustomName = true;
+            }
+        }
+        // If currentName doesn't start with "{", it's definitely a custom name
+
+        if (hasCustomName) {
+            // Rule has a custom name - preserve it
+            // Store it in __customName parameter so it's preserved even when applyLabel()
+            // is called
+            Map<String, Object> params = new LinkedHashMap<>(descriptor.getParameters());
+            params.put("__customName", currentName);
+            builder.withParameters(params);
+            // Also set as label for top-level rules (if label not already set)
+            if (descriptor.getLabel() == null) {
+                builder.withLabel(currentName);
+            }
+            descriptor = builder.build();
+        }
+
         visited.put(rule, descriptor);
         return descriptor;
     }
@@ -188,7 +247,30 @@ public final class RuleSerialization {
 
         try {
             match.constructor.setAccessible(true);
-            return match.constructor.newInstance(match.arguments);
+            Rule rule = match.constructor.newInstance(match.arguments);
+
+            // Restore custom name if present
+            // Custom names can be stored either as:
+            // 1. The label (for top-level rules)
+            // 2. The "__customName" parameter (for child rules, where label is used for
+            // matching)
+            String customName = null;
+            Map<String, Object> params = descriptor.getParameters();
+            if (params.containsKey("__customName")) {
+                customName = String.valueOf(params.get("__customName"));
+            } else {
+                String label = descriptor.getLabel();
+                if (label != null && !isSimpleIdentifier(label)) {
+                    // Label is not a simple identifier, so it's likely a custom name
+                    customName = label;
+                }
+            }
+
+            if (customName != null) {
+                rule.setName(customName);
+            }
+
+            return rule;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw new IllegalStateException("Failed to construct rule: " + ruleType.getName(), ex);
         }
@@ -1204,7 +1286,69 @@ public final class RuleSerialization {
         for (ComponentDescriptor component : descriptor.getComponents()) {
             builder.addComponent(component);
         }
-        return builder.build();
+        ComponentDescriptor result = builder.build();
+
+        // Preserve __customName if it exists in the original descriptor
+        // (it was set by describe() when the rule had a custom name)
+        if (descriptor.getParameters().containsKey("__customName")) {
+            Map<String, Object> params = new LinkedHashMap<>(result.getParameters());
+            params.put("__customName", descriptor.getParameters().get("__customName"));
+            builder.withParameters(params);
+            result = builder.build();
+        }
+
+        return result;
+    }
+
+    /**
+     * Checks if a string is a simple identifier (like "rule1", "entry", "exit")
+     * used for parameter matching, as opposed to a custom name.
+     */
+    private static boolean isSimpleIdentifier(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        // Simple identifiers are typically: start with letter, followed by
+        // letters/digits
+        // and don't contain special characters like '{', '[', etc. that appear in JSON
+        return str.matches("^[a-zA-Z][a-zA-Z0-9]*$") && !str.startsWith("{") && !str.startsWith("[");
+    }
+
+    /**
+     * Compares two ComponentDescriptor objects for equality, ignoring the label
+     * field. Used to determine if a rule's name matches the default name.
+     */
+    private static boolean descriptorsEqualIgnoringLabel(ComponentDescriptor d1, ComponentDescriptor d2) {
+        if (d1 == d2) {
+            return true;
+        }
+        if (d1 == null || d2 == null) {
+            return false;
+        }
+        // Compare type
+        if (!Objects.equals(d1.getType(), d2.getType())) {
+            return false;
+        }
+        // Compare parameters (ignoring __customName which we add)
+        Map<String, Object> params1 = new LinkedHashMap<>(d1.getParameters());
+        params1.remove("__customName");
+        Map<String, Object> params2 = new LinkedHashMap<>(d2.getParameters());
+        params2.remove("__customName");
+        if (!Objects.equals(params1, params2)) {
+            return false;
+        }
+        // Compare components (recursively, ignoring labels)
+        List<ComponentDescriptor> comps1 = d1.getComponents();
+        List<ComponentDescriptor> comps2 = d2.getComponents();
+        if (comps1.size() != comps2.size()) {
+            return false;
+        }
+        for (int i = 0; i < comps1.size(); i++) {
+            if (!descriptorsEqualIgnoringLabel(comps1.get(i), comps2.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static final class FieldExtractor {

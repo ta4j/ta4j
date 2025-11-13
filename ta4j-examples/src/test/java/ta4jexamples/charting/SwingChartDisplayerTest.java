@@ -24,6 +24,7 @@
 package ta4jexamples.charting;
 
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,14 +44,16 @@ class SwingChartDisplayerTest {
     @BeforeEach
     void setUp() {
         displayer = new SwingChartDisplayer();
-        // Clear any existing property
+        // Clear any existing properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
+        System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
     }
 
     @AfterEach
     void tearDown() {
         // Clean up properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
+        System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
     }
 
     @Test
@@ -167,5 +170,102 @@ class SwingChartDisplayerTest {
         System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "0.5");
         Dimension size = displayer.determineDisplaySize();
         assertTrue(size.width >= 800 && size.height >= 600, "Dimensions should respect minimum bounds");
+    }
+
+    // ========== Mouseover functionality tests ==========
+
+    @Test
+    void testDefaultHoverDelay() {
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(SwingChartDisplayer.DEFAULT_HOVER_DELAY_MS, delay,
+                "Default hover delay should be " + SwingChartDisplayer.DEFAULT_HOVER_DELAY_MS + "ms");
+    }
+
+    @Test
+    void testHoverDelayFromValidProperty() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "500");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(500, delay, "Hover delay should reflect configured property");
+    }
+
+    @Test
+    void testHoverDelayFromZeroProperty() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "0");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(0, delay, "Hover delay should accept zero value");
+    }
+
+    @Test
+    void testHoverDelayFromLargeProperty() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "5000");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(5000, delay, "Hover delay should accept large values");
+    }
+
+    @Test
+    void testHoverDelayIgnoresNegativeValue() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "-100");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(SwingChartDisplayer.DEFAULT_HOVER_DELAY_MS, delay,
+                "Negative values should be ignored and fall back to default");
+    }
+
+    @Test
+    void testHoverDelayHandlesInvalidPropertyValue() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "invalid");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(SwingChartDisplayer.DEFAULT_HOVER_DELAY_MS, delay,
+                "Invalid property value should fall back to default");
+    }
+
+    @Test
+    void testHoverDelayHandlesEmptyPropertyValue() {
+        System.setProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY, "");
+        int delay = displayer.resolveHoverDelay();
+        assertEquals(SwingChartDisplayer.DEFAULT_HOVER_DELAY_MS, delay, "Empty property should fall back to default");
+    }
+
+    @Test
+    void testChartMouseoverListenerCreation() {
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        ChartPanel panel = new ChartPanel(chart);
+        javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
+        int hoverDelay = 1000;
+
+        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(chart,
+                panel, infoLabel, hoverDelay);
+        assertNotNull(listener, "Listener should be created successfully");
+    }
+
+    @Test
+    void testChartMouseoverListenerCreationWithDifferentDelays() {
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        ChartPanel panel = new ChartPanel(chart);
+        javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
+
+        // Test with different delay values
+        SwingChartDisplayer.ChartMouseoverListener listener1 = new SwingChartDisplayer.ChartMouseoverListener(chart,
+                panel, infoLabel, 0);
+        assertNotNull(listener1, "Listener should be created with zero delay");
+
+        SwingChartDisplayer.ChartMouseoverListener listener2 = new SwingChartDisplayer.ChartMouseoverListener(chart,
+                panel, infoLabel, 5000);
+        assertNotNull(listener2, "Listener should be created with large delay");
+    }
+
+    @Test
+    void testChartMouseoverListenerHandlesClick() {
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        ChartPanel panel = new ChartPanel(chart);
+        javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
+        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(chart,
+                panel, infoLabel, 1000);
+
+        // Verify listener was created
+        assertNotNull(listener, "Listener should be created successfully");
+        // The click handler should not throw - this tests the method signature
+        // Note: We can't easily test with actual ChartMouseEvent without complex
+        // mocking,
+        // but the method exists and is part of the ChartMouseListener interface
     }
 }

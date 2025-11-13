@@ -140,4 +140,3 @@ public class RuleSerializationCustomNameTest {
         assertThat(restored.getName()).isEqualTo(originalName);
     }
 }
-
