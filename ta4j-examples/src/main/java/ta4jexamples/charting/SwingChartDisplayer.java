@@ -102,7 +102,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
      *
      * @since 0.19
      */
-    static final int DEFAULT_HOVER_DELAY_MS = 1000;
+    static final int DEFAULT_HOVER_DELAY_MS = 100;
 
     private static final Logger LOG = LogManager.getLogger(SwingChartDisplayer.class);
 
@@ -131,6 +131,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setDomainZoomable(true);
+        panel.setDisplayToolTips(false);
         panel.setPreferredSize(determineDisplaySize());
 
         // Create info panel for mouseover data
@@ -348,11 +349,10 @@ final class SwingChartDisplayer implements ChartDisplayer {
                     if (series != null && itemIndex < series.getItemCount()) {
                         double x = series.getX(itemIndex).doubleValue();
                         double y = series.getY(itemIndex).doubleValue();
-                        String seriesName = series.getKey().toString();
                         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         DecimalFormat valueFormat = new DecimalFormat("#,##0.00###");
-                        return String.format("%s | Date: %s | Value: %s", seriesName,
-                                dateFormat.format(new Date((long) x)), valueFormat.format(y));
+                        return String.format("Date: %s | Value: %s", dateFormat.format(new Date((long) x)),
+                                valueFormat.format(y));
                     }
                 } catch (Exception ex) {
                     LOG.debug("Error extracting indicator data", ex);
