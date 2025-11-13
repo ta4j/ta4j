@@ -23,27 +23,21 @@
  */
 package org.ta4j.core.strategy.named;
 
-import java.lang.StackWalker;
-import java.lang.StackWalker.Option;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 
+import java.lang.StackWalker.Option;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Base class for strategies that can be reconstructed from compact name tokens.
  *
- * @since 0.19-SNAPSHOT
+ * @since 0.19
  */
 public abstract class NamedStrategy extends BaseStrategy {
 
@@ -69,8 +63,8 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     private NamedStrategy(Specification specification) {
-        this(specification.getName(), specification.getEntryRule(), specification.getExitRule(),
-                specification.getUnstableBars(), specification.getArguments());
+        this(specification.name(), specification.entryRule(), specification.exitRule(), specification.unstableBars(),
+                specification.arguments());
     }
 
     /**
@@ -79,7 +73,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param series     backing bar series
      * @param parameters constructor parameters, where the last element encodes the
      *                   unstable bar count
-     * @since 0.19-SNAPSHOT
+     * @since 0.19
      */
     public NamedStrategy(BarSeries series, String... parameters) {
         this(resolveSpecification(series, parameters));
@@ -94,15 +88,15 @@ public abstract class NamedStrategy extends BaseStrategy {
         List<String> tokens = List.of(parameters);
         Specification specification = parser.parse(series, Collections.unmodifiableList(tokens));
         Objects.requireNonNull(specification, "parser returned null specification");
-        if (specification.getExpectedTokenCount() != tokens.size()) {
+        if (specification.expectedTokenCount() != tokens.size()) {
             throw new IllegalArgumentException(
-                    "Expected " + specification.getExpectedTokenCount() + " parameters but received " + tokens.size());
+                    "Expected " + specification.expectedTokenCount() + " parameters but received " + tokens.size());
         }
         if (tokens.isEmpty()) {
             throw new IllegalArgumentException("Named strategies require at least one token for unstable bars");
         }
         String unstableToken = tokens.get(tokens.size() - 1);
-        String expectedUnstable = Integer.toString(specification.getUnstableBars());
+        String expectedUnstable = Integer.toString(specification.unstableBars());
         if (!expectedUnstable.equals(unstableToken)) {
             throw new IllegalArgumentException(
                     "Unstable bar token mismatch: expected " + expectedUnstable + " but received " + unstableToken);
@@ -147,49 +141,6 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
-     * Returns the immutable argument token list supplied by the subclass.
-     *
-     * @return argument tokens, excluding the unstable bar counter
-     */
-    protected List<String> getArguments() {
-        return arguments;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.19-SNAPSHOT
-     */
-    @Override
-    public String toJson() {
-        return ComponentSerialization.toJson(toDescriptor());
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.19-SNAPSHOT
-     */
-    @Override
-    public ComponentDescriptor toDescriptor() {
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(getClass().getName())
-                .withLabel(compactName);
-        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>();
-        if (!arguments.isEmpty()) {
-            parameters.put("args", arguments);
-        }
-        parameters.put("unstableBars", getUnstableBars());
-        builder.withParameters(parameters);
-        return builder.build();
-    }
-
-    @Override
-    public String toString() {
-        return compactName;
-    }
-
-    /**
      * Creates a specification for the typed constructor.
      *
      * @param name         strategy name
@@ -221,6 +172,49 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
+     * Returns the immutable argument token list supplied by the subclass.
+     *
+     * @return argument tokens, excluding the unstable bar counter
+     */
+    protected List<String> getArguments() {
+        return arguments;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
+    @Override
+    public String toJson() {
+        return ComponentSerialization.toJson(toDescriptor());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.19
+     */
+    @Override
+    public ComponentDescriptor toDescriptor() {
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
+                .withType(getClass().getName())
+                .withLabel(compactName);
+        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>();
+        if (!arguments.isEmpty()) {
+            parameters.put("args", arguments);
+        }
+        parameters.put("unstableBars", getUnstableBars());
+        builder.withParameters(parameters);
+        return builder.build();
+    }
+
+    @Override
+    public String toString() {
+        return compactName;
+    }
+
+    /**
      * Parser responsible for transforming raw string tokens into strategy
      * specifications.
      */
@@ -232,20 +226,14 @@ public abstract class NamedStrategy extends BaseStrategy {
     /**
      * Immutable specification returned by {@link StrategyParser}s.
      */
-    protected static final class Specification {
+    protected record Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments,
+            int expectedTokenCount) {
 
-        private final String name;
-        private final Rule entryRule;
-        private final Rule exitRule;
-        private final int unstableBars;
-        private final List<String> arguments;
-        private final int expectedTokenCount;
-
-        private Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments) {
+        protected Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments) {
             this(name, entryRule, exitRule, unstableBars, arguments, arguments == null ? 1 : arguments.size() + 1);
         }
 
-        private Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments,
+        protected Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments,
                 int expectedTokenCount) {
             this.name = Objects.requireNonNull(name, "name");
             this.entryRule = Objects.requireNonNull(entryRule, "entryRule");
@@ -267,30 +255,6 @@ public abstract class NamedStrategy extends BaseStrategy {
 
         public Specification withExpectedTokenCount(int expectedTokenCount) {
             return new Specification(name, entryRule, exitRule, unstableBars, arguments, expectedTokenCount);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Rule getEntryRule() {
-            return entryRule;
-        }
-
-        public Rule getExitRule() {
-            return exitRule;
-        }
-
-        public int getUnstableBars() {
-            return unstableBars;
-        }
-
-        public List<String> getArguments() {
-            return arguments;
-        }
-
-        public int getExpectedTokenCount() {
-            return expectedTokenCount;
         }
     }
 }

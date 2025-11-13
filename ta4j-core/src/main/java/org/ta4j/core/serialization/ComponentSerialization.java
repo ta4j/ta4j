@@ -103,6 +103,44 @@ public final class ComponentSerialization {
         private static final String FIELD_RULES = "rules";
         private static final String FIELD_CHILDREN = "children";
 
+        /**
+         * Determines the field name for children based on the component type. Uses
+         * class name substring detection: - "Indicator" or "Rule" → "children" -
+         * "Strategy" → "rules"
+         */
+        private static String getChildrenFieldName(ComponentDescriptor descriptor) {
+            String type = descriptor.getType();
+            if (type != null) {
+                if (type.contains("Strategy")) {
+                    return FIELD_RULES;
+                } else if (type.contains("Indicator") || type.contains("Rule")) {
+                    return FIELD_CHILDREN;
+                }
+            }
+            // Default to "children" if type is unknown
+            return FIELD_CHILDREN;
+        }
+
+        /**
+         * Determines if a descriptor represents an indicator (for label serialization).
+         * Indicators should not serialize labels, even when nested in rules. Rules
+         * contain "Rule" in their name, so check for "Rule" first to avoid false
+         * positives.
+         */
+        private static boolean isIndicator(ComponentDescriptor descriptor) {
+            String type = descriptor.getType();
+            if (type == null) {
+                return false;
+            }
+            // Rules contain "Rule" in their name, so if it contains "Rule", it's not an
+            // indicator
+            if (type.contains("Rule")) {
+                return false;
+            }
+            // If it contains "Indicator" but not "Rule", it's an indicator
+            return type.contains("Indicator");
+        }
+
         @Override
         public JsonElement serialize(ComponentDescriptor src, Type typeOfSrc, JsonSerializationContext context) {
             if (src == null) {
@@ -112,7 +150,11 @@ public final class ComponentSerialization {
             if (src.getType() != null) {
                 object.addProperty(FIELD_TYPE, src.getType());
             }
-            if (src.getLabel() != null) {
+            // Serialize label right after type (for consistent JSON ordering)
+            // Only for rules/strategies, not for indicators.
+            // Indicators (even with labels for matching) don't serialize labels in JSON.
+            // Matching during deserialization uses position-based matching for indicators.
+            if (src.getLabel() != null && !isIndicator(src)) {
                 object.addProperty(FIELD_LABEL, src.getLabel());
             }
             if (!src.getParameters().isEmpty()) {
@@ -127,7 +169,10 @@ public final class ComponentSerialization {
                         array.add(serialize(child, typeOfSrc, context));
                     }
                 }
-                object.add(FIELD_RULES, array);
+                // Determine field name based on component type (Indicator/Rule → "children",
+                // Strategy → "rules")
+                String childrenFieldName = getChildrenFieldName(src);
+                object.add(childrenFieldName, array);
             }
             return object;
         }
@@ -173,11 +218,17 @@ public final class ComponentSerialization {
         }
 
         private JsonElement resolveRulesElement(JsonObject object) {
+            // Check for rules (strategies), then children (indicators/rules), then legacy
+            // field names
             if (object.has(FIELD_RULES)) {
                 return object.get(FIELD_RULES);
             }
             if (object.has(FIELD_CHILDREN)) {
                 return object.get(FIELD_CHILDREN);
+            }
+            // Legacy support for "baseIndicators"
+            if (object.has("baseIndicators")) {
+                return object.get("baseIndicators");
             }
             return null;
         }

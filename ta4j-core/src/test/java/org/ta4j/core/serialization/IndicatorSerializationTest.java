@@ -23,19 +23,29 @@
  */
 package org.ta4j.core.serialization;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferencePercentageIndicator;
-import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+
 public class IndicatorSerializationTest {
+
+    @Test
+    public void serializeIndicator() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
+
+        String json = closePriceIndicator.toJson();
+        assertEquals("{\"type\":\"ClosePriceIndicator\"}", json);
+    }
 
     @Test
     public void serializeCompositeIndicator() {
@@ -48,9 +58,14 @@ public class IndicatorSerializationTest {
         assertThat(descriptor.getType()).isEqualTo("SMAIndicator");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 3);
         assertThat(descriptor.getChildren()).anySatisfy(child -> {
-            assertThat(child.getLabel()).isEqualTo("indicator");
+            assertThat(child.getLabel()).isNull();
             assertThat(child.getType()).isEqualTo("ClosePriceIndicator");
         });
+
+        String json = indicator.toJson();
+        assertEquals(
+                "{\"type\":\"SMAIndicator\",\"parameters\":{\"barCount\":3},\"children\":[{\"type\":\"ClosePriceIndicator\"}]}",
+                json);
     }
 
     @Test

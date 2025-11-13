@@ -77,7 +77,7 @@ public class ADXStrategy {
         final UnderIndicatorRule closePriceUnderSma = new UnderIndicatorRule(closePriceIndicator, smaIndicator);
         final Rule exitRule = adxOver20Rule.and(plusDICrossedDownMinusDI).and(closePriceUnderSma);
 
-        return new BaseStrategy("ADX", entryRule, exitRule, adxBarCount);
+        return new BaseStrategy("ADXStrategy", entryRule, exitRule, adxBarCount);
     }
 
     public static void main(String[] args) {
@@ -91,10 +91,11 @@ public class ADXStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println(strategy.toJson());
+        System.out.println(strategy.getName() + "'s number of positions: " + tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        System.out.println(strategy.getName() + "'s gross return: " + grossReturn);
     }
 }

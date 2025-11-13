@@ -196,11 +196,18 @@ public final class StrategySerialization {
         if (descriptor == null) {
             throw new IllegalArgumentException("Rule descriptor cannot be null");
         }
+
+        // Check if this is a rule by type name (contains "Rule")
+        String type = descriptor.getType();
+        if (type != null && type.contains("Rule")) {
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
+
+        // Legacy check for __args (for backwards compatibility)
         if (descriptor.getParameters().containsKey("__args")) {
             return RuleSerialization.fromDescriptor(series, descriptor);
         }
 
-        String type = descriptor.getType();
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Rule descriptor missing type: " + descriptor);
         }

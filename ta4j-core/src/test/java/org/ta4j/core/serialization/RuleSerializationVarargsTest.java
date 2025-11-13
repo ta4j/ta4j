@@ -65,14 +65,9 @@ public class RuleSerializationVarargsTest {
         List<Integer> indexes = (List<Integer>) arrayValues;
         assertThat(indexes).containsExactly(1, 3, 5);
 
-        Object rawMetadata = descriptor.getParameters().get("__args");
-        assertThat(rawMetadata).isInstanceOf(List.class);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> metadata = (List<Map<String, Object>>) rawMetadata;
-        assertThat(metadata).anySatisfy(entry -> {
-            assertThat(entry.get("kind")).isEqualTo("INT_ARRAY");
-            assertThat(entry.get("target")).isEqualTo(int[].class.getName());
-        });
+        // __args metadata is no longer serialized - check that parameters contain the
+        // array values
+        assertThat(descriptor.getParameters()).containsKey("indexes");
 
         Rule reconstructed = RuleSerialization.fromDescriptor(new MockBarSeriesBuilder().build(), descriptor);
         assertThat(reconstructed).isInstanceOf(FixedRule.class);
@@ -95,15 +90,9 @@ public class RuleSerializationVarargsTest {
 
         ComponentDescriptor descriptor = RuleSerialization.describe(rule);
 
-        Object rawMetadata = descriptor.getParameters().get("__args");
-        assertThat(rawMetadata).isInstanceOf(List.class);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> metadata = (List<Map<String, Object>>) rawMetadata;
-        assertThat(metadata).anySatisfy(entry -> {
-            assertThat(entry.get("kind")).isEqualTo("ENUM_ARRAY");
-            assertThat(entry.get("target")).isEqualTo(DayOfWeek[].class.getName());
-            assertThat(entry.get("enumType")).isEqualTo(DayOfWeek.class.getName());
-        });
+        // __args metadata is no longer serialized - check that parameters contain the
+        // enum array values
+        assertThat(descriptor.getParameters()).containsKey("daysOfWeek");
 
         List<String> days = null;
         for (Map.Entry<String, Object> entry : descriptor.getParameters().entrySet()) {

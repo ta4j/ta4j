@@ -66,8 +66,36 @@ import org.ta4j.core.num.Num;
 public final class RuleSerialization {
 
     private static final String ARGUMENTS_KEY = "__args";
+    private static final String CORE_PACKAGE = "org.ta4j.core";
+    private static final String RULE_PACKAGE = "org.ta4j.core.rules";
+    private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
+    private static final String NUM_PACKAGE = "org.ta4j.core.num";
+    private static final String JAVA_LANG_PACKAGE = "java.lang";
 
     private RuleSerialization() {
+    }
+
+    /**
+     * Simplifies class names for common types to reduce JSON size. Rules,
+     * Indicators, and common java.lang types use simple names.
+     *
+     * @param clazz the class to simplify
+     * @return simplified class name or fully qualified name if not a common type
+     */
+    private static String simplifyClassName(Class<?> clazz) {
+        if (clazz.isPrimitive() || clazz.isArray() && clazz.getComponentType().isPrimitive()) {
+            return clazz.getName();
+        }
+        String packageName = clazz.getPackageName();
+        if (packageName == null) {
+            return clazz.getName();
+        }
+        if (packageName.equals(CORE_PACKAGE) || packageName.equals(RULE_PACKAGE)
+                || packageName.equals(INDICATOR_PACKAGE) || packageName.equals(NUM_PACKAGE)
+                || packageName.equals(JAVA_LANG_PACKAGE)) {
+            return clazz.getSimpleName();
+        }
+        return clazz.getName();
     }
 
     /**
@@ -93,18 +121,21 @@ public final class RuleSerialization {
                     + ": no supported constructor signature found");
         }
 
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(rule.getClass().getName());
+        Class<?> ruleClass = rule.getClass();
+        String typeName = ruleClass.getPackageName().equals("org.ta4j.core.rules") ? ruleClass.getSimpleName()
+                : ruleClass.getName();
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(typeName);
 
         Map<String, Object> parameters = new LinkedHashMap<>();
         List<ComponentDescriptor> children = new ArrayList<>();
 
-        List<Map<String, Object>> metadata = new ArrayList<>();
-        ArgumentContext context = new ArgumentContext(parameters, children, metadata, visited);
+        ArgumentContext context = new ArgumentContext(parameters, children, visited);
         for (Argument argument : match.arguments) {
             argument.serialize(rule, context);
         }
 
-        parameters.put(ARGUMENTS_KEY, metadata);
+        // No longer serialize __args metadata - deserialization will infer from
+        // children and parameters
         if (!parameters.isEmpty()) {
             builder.withParameters(parameters);
         }
@@ -151,86 +182,291 @@ public final class RuleSerialization {
         @SuppressWarnings("unchecked")
         Class<? extends Rule> ruleType = (Class<? extends Rule>) clazz;
 
-        Object argsMeta = descriptor.getParameters().get(ARGUMENTS_KEY);
-        if (!(argsMeta instanceof List<?> rawList)) {
-            throw new IllegalArgumentException("Rule descriptor missing argument metadata: " + descriptor);
-        }
-
-        List<Map<String, Object>> metadata = new ArrayList<>(rawList.size());
-        for (Object element : rawList) {
-            if (!(element instanceof Map<?, ?> map)) {
-                throw new IllegalArgumentException("Invalid argument metadata entry: " + element);
-            }
-            Map<String, Object> entry = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                if (e.getKey() != null) {
-                    entry.put(String.valueOf(e.getKey()), e.getValue());
-                }
-            }
-            metadata.add(entry);
-        }
-
+        // Infer constructor signature from children and parameters
         ReconstructionContext context = new ReconstructionContext(series, descriptor);
-        Object[] arguments = new Object[metadata.size()];
-        Class<?>[] parameterTypes = new Class<?>[metadata.size()];
-
-        for (int i = 0; i < metadata.size(); i++) {
-            Map<String, Object> entry = metadata.get(i);
-            ArgumentKind kind = ArgumentKind.valueOf(String.valueOf(entry.get("kind")));
-            String name = (String) entry.get("name");
-            String targetType = (String) entry.get("target");
-            parameterTypes[i] = context.resolveClass(targetType);
-            arguments[i] = context.resolveArgument(kind, name, entry, parameterTypes[i]);
-        }
+        DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
 
         try {
-            Constructor<? extends Rule> constructor = locateConstructor(ruleType, parameterTypes);
-            constructor.setAccessible(true);
-            return constructor.newInstance(arguments);
+            match.constructor.setAccessible(true);
+            return match.constructor.newInstance(match.arguments);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw new IllegalStateException("Failed to construct rule: " + ruleType.getName(), ex);
         }
     }
 
-    private static Constructor<? extends Rule> locateConstructor(Class<? extends Rule> type,
-            Class<?>[] parameterTypes) {
-        try {
-            return type.getDeclaredConstructor(parameterTypes);
-        } catch (NoSuchMethodException ex) {
-            for (Constructor<?> constructor : type.getDeclaredConstructors()) {
-                Class<?>[] declared = constructor.getParameterTypes();
-                if (declared.length != parameterTypes.length) {
+    private static final class DeserializationMatch {
+        final Constructor<? extends Rule> constructor;
+        final Object[] arguments;
+        final Class<?>[] parameterTypes;
+
+        DeserializationMatch(Constructor<? extends Rule> constructor, Object[] arguments, Class<?>[] parameterTypes) {
+            this.constructor = constructor;
+            this.arguments = arguments;
+            this.parameterTypes = parameterTypes;
+        }
+    }
+
+    /**
+     * Infers the constructor signature from children and parameters. Matches
+     * children (indicators/rules) and parameters (numbers, strings, etc.) to
+     * constructor parameters.
+     */
+    private static DeserializationMatch inferConstructor(Class<? extends Rule> ruleType, ComponentDescriptor descriptor,
+            ReconstructionContext context) {
+        List<ComponentDescriptor> children = descriptor.getChildren();
+        Map<String, Object> parameters = descriptor.getParameters();
+
+        // Filter out internal metadata parameters (enum types, etc.)
+        Map<String, Object> filteredParams = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            if (!entry.getKey().startsWith("__")) {
+                filteredParams.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // Try each constructor to find a match
+        Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
+        for (Constructor<?> constructor : constructors) {
+            Class<?>[] paramTypes = constructor.getParameterTypes();
+            java.lang.reflect.Parameter[] params = constructor.getParameters();
+
+            // Check if first parameter is BarSeries (common pattern)
+            int startIndex = 0;
+            if (paramTypes.length > 0 && paramTypes[0].equals(BarSeries.class)) {
+                startIndex = 1;
+            }
+
+            // Try to match remaining parameters
+            DeserializationMatch match = tryMatchConstructor(constructor, paramTypes, params, startIndex, children,
+                    filteredParams, context);
+            if (match != null) {
+                @SuppressWarnings("unchecked")
+                Constructor<? extends Rule> ruleConstructor = (Constructor<? extends Rule>) constructor;
+                return new DeserializationMatch(ruleConstructor, match.arguments, match.parameterTypes);
+            }
+        }
+
+        throw new IllegalStateException("No compatible constructor found for rule type: " + ruleType.getName()
+                + " with " + children.size() + " children and " + filteredParams.size() + " parameters");
+    }
+
+    private static DeserializationMatch tryMatchConstructor(Constructor<?> constructor, Class<?>[] paramTypes,
+            java.lang.reflect.Parameter[] params, int startIndex, List<ComponentDescriptor> children,
+            Map<String, Object> parameters, ReconstructionContext context) {
+        int paramCount = paramTypes.length - startIndex;
+        int totalArgs = children.size() + parameters.size();
+
+        // Must match total argument count
+        if (paramCount != totalArgs) {
+            return null;
+        }
+
+        Object[] arguments = new Object[paramTypes.length];
+        Class<?>[] argumentTypes = new Class<?>[paramTypes.length];
+
+        // Set BarSeries if present
+        if (startIndex > 0) {
+            arguments[0] = context.series;
+            argumentTypes[0] = BarSeries.class;
+        }
+
+        // Track which children and parameters we've used
+        boolean[] childrenUsed = new boolean[children.size()];
+        java.util.Set<String> paramsUsed = new java.util.HashSet<>();
+
+        // Try to match each constructor parameter
+        for (int i = startIndex; i < paramTypes.length; i++) {
+            Class<?> paramType = paramTypes[i];
+            String paramName = params[i].getName();
+
+            // Try to match from children first (indicators/rules)
+            boolean matched = false;
+            for (int j = 0; j < children.size(); j++) {
+                if (childrenUsed[j]) {
                     continue;
                 }
-                boolean matches = true;
-                for (int i = 0; i < declared.length; i++) {
-                    if (!declared[i].isAssignableFrom(parameterTypes[i])) {
-                        matches = false;
+                ComponentDescriptor child = children.get(j);
+                if (child == null) {
+                    continue;
+                }
+
+                // Check if child type matches parameter type
+                if (isAssignableFrom(paramType, child, context)) {
+                    Object childValue = resolveChild(child, paramType, context);
+                    if (childValue != null) {
+                        arguments[i] = childValue;
+                        argumentTypes[i] = paramType;
+                        childrenUsed[j] = true;
+                        matched = true;
                         break;
                     }
                 }
-                if (matches) {
-                    @SuppressWarnings("unchecked")
-                    Constructor<? extends Rule> result = (Constructor<? extends Rule>) constructor;
-                    return result;
+            }
+
+            // If not matched from children, try parameters
+            if (!matched) {
+                // Try exact parameter name match first
+                if (parameters.containsKey(paramName)) {
+                    Object paramValue = resolveParameter(parameters.get(paramName), paramType, paramName, parameters,
+                            context);
+                    if (paramValue != null) {
+                        arguments[i] = paramValue;
+                        argumentTypes[i] = paramType;
+                        paramsUsed.add(paramName);
+                        matched = true;
+                    }
+                } else {
+                    // Try to match by type from remaining parameters
+                    for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+                        if (paramsUsed.contains(entry.getKey())) {
+                            continue;
+                        }
+                        Object paramValue = resolveParameter(entry.getValue(), paramType, entry.getKey(), parameters,
+                                context);
+                        if (paramValue != null) {
+                            arguments[i] = paramValue;
+                            argumentTypes[i] = paramType;
+                            paramsUsed.add(entry.getKey());
+                            matched = true;
+                            break;
+                        }
+                    }
                 }
             }
-            throw new IllegalStateException("No compatible constructor found for rule type: " + type.getName());
+
+            if (!matched) {
+                return null; // Can't match this constructor
+            }
         }
+
+        // Verify all children and parameters were used
+        for (boolean used : childrenUsed) {
+            if (!used) {
+                return null;
+            }
+        }
+        if (paramsUsed.size() != parameters.size()) {
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        Constructor<? extends Rule> ruleConstructor = (Constructor<? extends Rule>) constructor;
+        return new DeserializationMatch(ruleConstructor, arguments, argumentTypes);
+    }
+
+    private static boolean isAssignableFrom(Class<?> paramType, ComponentDescriptor child,
+            ReconstructionContext context) {
+        String childType = child.getType();
+        if (childType == null) {
+            return false;
+        }
+
+        // Check if child is an Indicator and paramType is Indicator
+        if (childType.contains("Indicator") && !childType.contains("Rule")) {
+            return Indicator.class.isAssignableFrom(paramType);
+        }
+
+        // Check if child is a Rule and paramType is Rule
+        if (childType.contains("Rule")) {
+            return Rule.class.isAssignableFrom(paramType);
+        }
+
+        return false;
+    }
+
+    private static Object resolveChild(ComponentDescriptor child, Class<?> paramType, ReconstructionContext context) {
+        try {
+            if (Indicator.class.isAssignableFrom(paramType)) {
+                // Resolve indicator (position-based if no label)
+                if (child.getLabel() == null) {
+                    return context.resolveIndicatorByPosition();
+                } else {
+                    return context.resolveIndicator(child.getLabel());
+                }
+            } else if (Rule.class.isAssignableFrom(paramType)) {
+                // Resolve rule (by label)
+                if (child.getLabel() == null) {
+                    throw new IllegalArgumentException("Rule child missing label: " + child);
+                }
+                return context.resolveRule(child.getLabel());
+            }
+        } catch (Exception e) {
+            return null; // Can't resolve, try next match
+        }
+        return null;
+    }
+
+    private static Object resolveParameter(Object value, Class<?> paramType, String paramName,
+            Map<String, Object> allParams, ReconstructionContext context) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            // Handle BarSeries (shouldn't happen here, but just in case)
+            if (paramType.equals(BarSeries.class)) {
+                return context.series;
+            }
+
+            // Handle Boolean first (before primitive check, since boolean is primitive)
+            if (paramType.equals(Boolean.class) || paramType.equals(boolean.class)) {
+                return context.resolveBoolean(paramName);
+            }
+
+            // Handle Num
+            if (paramType.equals(Num.class)) {
+                return context.resolveNum(paramName);
+            }
+
+            // Handle numbers (but not boolean, which is already handled above)
+            if (Number.class.isAssignableFrom(paramType)
+                    || (paramType.isPrimitive() && !paramType.equals(boolean.class))) {
+                return context.resolveNumber(paramName, paramType);
+            }
+
+            // Handle String
+            if (paramType.equals(String.class)) {
+                return context.resolveString(paramName);
+            }
+
+            // Handle Enum
+            if (paramType.isEnum()) {
+                String enumTypeKey = "__enumType_" + paramName;
+                String enumTypeName = allParams.containsKey(enumTypeKey) ? String.valueOf(allParams.get(enumTypeKey))
+                        : paramType.getName();
+                return context.resolveEnum(paramName, enumTypeName, paramType);
+            }
+
+            // Handle arrays
+            if (paramType.isArray()) {
+                Class<?> componentType = paramType.getComponentType();
+                if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
+                    return context.resolveNumberArray(paramName, paramType);
+                } else if (componentType.isEnum()) {
+                    String enumTypeKey = "__enumType_" + paramName;
+                    String enumTypeName = allParams.containsKey(enumTypeKey)
+                            ? String.valueOf(allParams.get(enumTypeKey))
+                            : componentType.getName();
+                    return context.resolveEnumArray(paramName, enumTypeName, paramType);
+                }
+            }
+        } catch (Exception e) {
+            return null; // Can't resolve, try next match
+        }
+
+        return null;
     }
 
     private static final class ArgumentContext {
 
         private final Map<String, Object> parameters;
         private final List<ComponentDescriptor> children;
-        private final List<Map<String, Object>> metadata;
         private final IdentityHashMap<Rule, ComponentDescriptor> visited;
 
         private ArgumentContext(Map<String, Object> parameters, List<ComponentDescriptor> children,
-                List<Map<String, Object>> metadata, IdentityHashMap<Rule, ComponentDescriptor> visited) {
+                IdentityHashMap<Rule, ComponentDescriptor> visited) {
             this.parameters = parameters;
             this.children = children;
-            this.metadata = metadata;
             this.visited = visited;
         }
     }
@@ -240,20 +476,30 @@ public final class RuleSerialization {
         private final BarSeries series;
         private final ComponentDescriptor descriptor;
         private final Map<String, ComponentDescriptor> childrenByLabel;
+        private final List<ComponentDescriptor> childrenByIndex;
+        private int indicatorMatchIndex = 0; // Track position for matching indicators without labels
 
         private ReconstructionContext(BarSeries series, ComponentDescriptor descriptor) {
             this.series = series;
             this.descriptor = descriptor;
             if (descriptor.getChildren().isEmpty()) {
                 this.childrenByLabel = Collections.emptyMap();
+                this.childrenByIndex = Collections.emptyList();
             } else {
                 Map<String, ComponentDescriptor> map = new LinkedHashMap<>();
+                List<ComponentDescriptor> indexList = new ArrayList<>();
                 for (ComponentDescriptor child : descriptor.getChildren()) {
-                    if (child != null && child.getLabel() != null) {
-                        map.put(child.getLabel(), child);
+                    if (child != null) {
+                        indexList.add(child);
+                        if (child.getLabel() != null) {
+                            map.put(child.getLabel(), child);
+                        }
+                    } else {
+                        indexList.add(null);
                     }
                 }
                 this.childrenByLabel = map;
+                this.childrenByIndex = indexList;
             }
         }
 
@@ -314,6 +560,25 @@ public final class RuleSerialization {
             return IndicatorSerialization.fromDescriptor(series, child);
         }
 
+        /**
+         * Resolves an indicator by position (for indicators without labels). Finds the
+         * next unused indicator child without a label.
+         */
+        private Indicator<?> resolveIndicatorByPosition() {
+            for (int i = indicatorMatchIndex; i < childrenByIndex.size(); i++) {
+                ComponentDescriptor candidate = childrenByIndex.get(i);
+                if (candidate != null && candidate.getLabel() == null) {
+                    // Check if this is an indicator (type contains "Indicator" but not "Rule")
+                    String type = candidate.getType();
+                    if (type != null && type.contains("Indicator") && !type.contains("Rule")) {
+                        indicatorMatchIndex = i + 1; // Mark as used
+                        return IndicatorSerialization.fromDescriptor(series, candidate);
+                    }
+                }
+            }
+            throw new IllegalArgumentException("Missing child indicator descriptor (position-based match failed)");
+        }
+
         private Num resolveNum(String name) {
             Object value = descriptor.getParameters().get(name);
             if (value == null) {
@@ -345,6 +610,19 @@ public final class RuleSerialization {
             return array;
         }
 
+        private String resolveString(String name) {
+            Object value = descriptor.getParameters().get(name);
+            return value == null ? null : String.valueOf(value);
+        }
+
+        private Boolean resolveBoolean(String name) {
+            Object value = descriptor.getParameters().get(name);
+            if (value == null) {
+                throw new IllegalArgumentException("Missing boolean parameter: " + name);
+            }
+            return (Boolean) convertBoolean(value);
+        }
+
         private Object resolveEnum(String name, String enumClassName, Class<?> targetType) {
             Object raw = descriptor.getParameters().get(name);
             if (raw == null) {
@@ -352,10 +630,10 @@ public final class RuleSerialization {
             }
             try {
                 @SuppressWarnings({ "unchecked", "rawtypes" })
-                Class<? extends Enum> enumType = (Class<? extends Enum>) Class.forName(enumClassName);
+                Class<? extends Enum> enumType = (Class<? extends Enum>) resolveClass(enumClassName);
                 String label = String.valueOf(raw);
                 return Enum.valueOf(enumType, label);
-            } catch (ClassNotFoundException ex) {
+            } catch (IllegalStateException ex) {
                 throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
             }
         }
@@ -367,7 +645,7 @@ public final class RuleSerialization {
             }
             try {
                 @SuppressWarnings({ "unchecked", "rawtypes" })
-                Class<? extends Enum> enumType = (Class<? extends Enum>) Class.forName(enumClassName);
+                Class<? extends Enum> enumType = (Class<? extends Enum>) resolveClass(enumClassName);
                 Object array = Array.newInstance(enumType, list.size());
                 for (int i = 0; i < list.size(); i++) {
                     Object element = list.get(i);
@@ -375,7 +653,7 @@ public final class RuleSerialization {
                     Array.set(array, i, value);
                 }
                 return array;
-            } catch (ClassNotFoundException ex) {
+            } catch (IllegalStateException ex) {
                 throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
             }
         }
@@ -392,8 +670,19 @@ public final class RuleSerialization {
             case "char" -> char.class;
             default -> {
                 try {
+                    // Try as-is first (for fully qualified names or already resolved simple names)
                     yield Class.forName(typeName);
                 } catch (ClassNotFoundException ex) {
+                    // Try common packages for simple names
+                    String[] packages = { CORE_PACKAGE, RULE_PACKAGE, INDICATOR_PACKAGE, NUM_PACKAGE,
+                            JAVA_LANG_PACKAGE };
+                    for (String pkg : packages) {
+                        try {
+                            yield Class.forName(pkg + "." + typeName);
+                        } catch (ClassNotFoundException ignored) {
+                            // Continue to next package
+                        }
+                    }
                     throw new IllegalStateException("Unable to resolve argument type: " + typeName, ex);
                 }
             }
@@ -807,25 +1096,24 @@ public final class RuleSerialization {
         }
 
         private void serialize(Rule owner, ArgumentContext context) {
-            Map<String, Object> metadata = new LinkedHashMap<>();
-            metadata.put("kind", kind.name());
-            metadata.put("name", name);
-            metadata.put("target", targetType.getName());
-
+            // No longer create metadata - just serialize children and parameters
+            // Deserialization will infer constructor signature from these
             switch (kind) {
             case SERIES:
+                // Series is passed implicitly, not serialized
                 break;
             case RULE:
                 Rule rule = (Rule) value;
                 ComponentDescriptor ruleDescriptor = RuleSerialization.describe(rule, context.visited);
                 context.children.add(applyLabel(ruleDescriptor, label));
-                metadata.put("label", label);
                 break;
             case INDICATOR:
                 Indicator<?> indicator = (Indicator<?>) value;
                 ComponentDescriptor indicatorDescriptor = IndicatorSerialization.describe(indicator);
-                context.children.add(applyLabel(indicatorDescriptor, label));
-                metadata.put("label", label);
+                // Indicators nested in rules need labels for matching during deserialization
+                // but we'll serialize them without labels in the JSON
+                ComponentDescriptor labeledDescriptor = applyLabel(indicatorDescriptor, label);
+                context.children.add(labeledDescriptor);
                 break;
             case NUM:
                 context.parameters.put(name, value == null ? null : String.valueOf(value));
@@ -833,7 +1121,8 @@ public final class RuleSerialization {
             case ENUM:
                 Enum<?> enumValue = (Enum<?>) value;
                 context.parameters.put(name, enumValue == null ? null : enumValue.name());
-                metadata.put("enumType", targetType.getName());
+                // Store enum type in parameter name with special prefix for deserialization
+                context.parameters.put("__enumType_" + name, simplifyClassName(targetType));
                 break;
             case STRING:
                 context.parameters.put(name, value);
@@ -854,17 +1143,18 @@ public final class RuleSerialization {
                 context.parameters.put(name, serializeNumberArray(value));
                 break;
             case ENUM_ARRAY:
-                context.parameters.put(name, serializeEnumArray(value));
+                // Value is an array, not a List
+                List<String> serialized = serializeEnumArray(value);
+                context.parameters.put(name, serialized);
+                // Store enum type in parameter name with special prefix for deserialization
                 Class<?> componentType = targetType.getComponentType();
                 if (componentType != null) {
-                    metadata.put("enumType", componentType.getName());
+                    context.parameters.put("__enumType_" + name, simplifyClassName(componentType));
                 }
                 break;
             default:
                 throw new IllegalStateException("Unsupported argument kind: " + kind);
             }
-
-            context.metadata.add(metadata);
         }
 
         private static Object serializeNumber(Object value) {

@@ -75,9 +75,10 @@ public class StrategySerializationTest {
         assertThat(descriptor.getChildren()).hasSize(2);
         assertThat(descriptor.getChildren()).anySatisfy(child -> {
             assertThat(child.getLabel()).isEqualTo("entry");
+            // SerializableRule is an inner class, so it uses fully qualified name
             assertThat(child.getType()).isEqualTo(SerializableRule.class.getName());
             assertThat(child.getParameters()).containsEntry("satisfied", true);
-            assertThat(child.getParameters()).containsKey("__args");
+            // __args metadata is no longer serialized
         });
     }
 
@@ -116,7 +117,7 @@ public class StrategySerializationTest {
 
         assertThat(json).isEqualTo(
                 """
-                        {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"org.ta4j.core.rules.CrossedUpIndicatorRule","label":"entry","parameters":{"__args":[{"kind":"INDICATOR","name":"first","target":"org.ta4j.core.Indicator","label":"low"},{"kind":"INDICATOR","name":"second","target":"org.ta4j.core.Indicator","label":"up"}]},"rules":[{"type":"SMAIndicator","label":"low","parameters":{"barCount":2},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]},{"type":"SMAIndicator","label":"up","parameters":{"barCount":3},"rules":[{"type":"ClosePriceIndicator","label":"indicator"}]}]},{"type":"org.ta4j.core.rules.StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5","__args":[{"kind":"INDICATOR","name":"priceIndicator","target":"org.ta4j.core.Indicator","label":"priceIndicator"},{"kind":"NUMBER","name":"lossPercentage","target":"java.lang.Number"}]},"rules":[{"type":"ClosePriceIndicator","label":"priceIndicator"}]}]}""");
+                        {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","children":[{"type":"SMAIndicator","parameters":{"barCount":2},"children":[{"type":"ClosePriceIndicator"}]},{"type":"SMAIndicator","parameters":{"barCount":3},"children":[{"type":"ClosePriceIndicator"}]}]},{"type":"StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5"},"children":[{"type":"ClosePriceIndicator"}]}]}""");
     }
 
     @Test
@@ -373,7 +374,7 @@ public class StrategySerializationTest {
         @Override
         protected String createDefaultName() {
             ComponentDescriptor descriptor = ComponentDescriptor.builder()
-                    .withType(getClass().getName())
+                    .withType(getClass().getSimpleName())
                     .withParameters(Map.of("satisfied", satisfied))
                     .build();
             return ComponentSerialization.toJson(descriptor);

@@ -143,28 +143,13 @@ public final class IndicatorSerialization {
         List<ChildView> childIndicators = extractChildIndicators(indicator);
         for (ChildView child : childIndicators) {
             ComponentDescriptor childDescriptor = describe(child.indicator(), visited);
-            builder.addChild(applyLabel(childDescriptor, child.label()));
+            // Indicators don't use labels - add child directly without label
+            builder.addChild(childDescriptor);
         }
 
         ComponentDescriptor descriptor = builder.build();
         visited.put(indicator, descriptor);
         return descriptor;
-    }
-
-    private static ComponentDescriptor applyLabel(ComponentDescriptor descriptor, String label) {
-        if (label == null || label.isBlank()) {
-            return descriptor;
-        }
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel(label);
-        if (!descriptor.getParameters().isEmpty()) {
-            builder.withParameters(descriptor.getParameters());
-        }
-        for (ComponentDescriptor child : descriptor.getChildren()) {
-            builder.addChild(child);
-        }
-        return builder.build();
     }
 
     private static Indicator<?> instantiate(BarSeries series, ComponentDescriptor descriptor) {

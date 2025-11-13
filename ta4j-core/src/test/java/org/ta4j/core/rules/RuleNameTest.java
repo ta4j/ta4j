@@ -61,18 +61,19 @@ public class RuleNameTest {
         exitRule.setName("Exit");
 
         Rule andRule = new AndRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"AndRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+        assertEquals("{\"type\":\"AndRule\",\"children\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
                 andRule.getName());
 
         Rule orRule = new OrRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"OrRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}", orRule.getName());
+        assertEquals("{\"type\":\"OrRule\",\"children\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+                orRule.getName());
 
         Rule xorRule = new XorRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"XorRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+        assertEquals("{\"type\":\"XorRule\",\"children\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
                 xorRule.getName());
 
         Rule notRule = new NotRule(entryRule);
-        assertEquals("{\"type\":\"NotRule\",\"rules\":[{\"label\":\"Entry\"}]}", notRule.getName());
+        assertEquals("{\"type\":\"NotRule\",\"children\":[{\"label\":\"Entry\"}]}", notRule.getName());
     }
 
     @Test
@@ -88,7 +89,7 @@ public class RuleNameTest {
         Rule outerOr = new OrRule(innerAnd, notExit);
 
         assertEquals(
-                "{\"type\":\"OrRule\",\"rules\":[{\"type\":\"AndRule\",\"rules\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]},{\"type\":\"NotRule\",\"rules\":[{\"label\":\"Exit\"}]}]}",
+                "{\"type\":\"OrRule\",\"children\":[{\"type\":\"AndRule\",\"children\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]},{\"type\":\"NotRule\",\"children\":[{\"label\":\"Exit\"}]}]}",
                 outerOr.getName());
     }
 }
