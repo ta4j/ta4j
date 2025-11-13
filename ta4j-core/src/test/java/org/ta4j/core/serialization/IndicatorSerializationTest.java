@@ -26,6 +26,7 @@ package org.ta4j.core.serialization;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -122,5 +123,43 @@ public class IndicatorSerializationTest {
 
         assertThat(reconstructed).isInstanceOf(ParabolicSarIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
+    }
+
+    @Test
+    public void transientFieldsNotSerialized() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+        KalmanFilterIndicator indicator = new KalmanFilterIndicator(base, 1e-4, 1e-3);
+
+        // Use the indicator to populate stateful fields (filter and lastProcessedIndex)
+        indicator.getValue(series.getEndIndex());
+
+        ComponentDescriptor descriptor = indicator.toDescriptor();
+
+        // Verify the indicator type is correct
+        assertThat(descriptor.getType()).isEqualTo("KalmanFilterIndicator");
+
+        // Verify that only constructor parameters are serialized
+        assertThat(descriptor.getParameters()).containsEntry("processNoise", "0.0001");
+        assertThat(descriptor.getParameters()).containsEntry("measurementNoise", "0.001");
+
+        // Verify that transient stateful fields are NOT serialized
+        assertThat(descriptor.getParameters()).doesNotContainKey("lastProcessedIndex");
+        assertThat(descriptor.getParameters()).doesNotContainKey("filter");
+
+        // Verify only the expected parameters are present
+        assertThat(descriptor.getParameters()).hasSize(2);
+
+        // Verify round-trip deserialization works
+        String json = indicator.toJson();
+        Indicator<?> reconstructed = Indicator.fromJson(series, json);
+
+        assertThat(reconstructed).isInstanceOf(KalmanFilterIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
+
+        // Verify the reconstructed indicator produces the same values
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(reconstructed.getValue(i)).isEqualTo(indicator.getValue(i));
+        }
     }
 }

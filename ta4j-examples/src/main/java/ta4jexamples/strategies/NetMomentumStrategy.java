@@ -97,12 +97,7 @@ public class NetMomentumStrategy {
         Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_OVERSOLD_THRESHOLD);
         Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_OVERBOUGHT_THRESHOLD);
 
-        String strategyName = "Entry Crossed Up: {rsiBarCount=" + DEFAULT_RSI_BARCOUNT + ", timeFrame="
-                + DEFAULT_MOMENTUM_TIMEFRAME + ", oversoldThreshold=" + DEFAULT_OVERSOLD_THRESHOLD
-                + "}, Exit Crossed Down: {rsiBarCount=" + DEFAULT_RSI_BARCOUNT + ", timeFrame="
-                + DEFAULT_MOMENTUM_TIMEFRAME + ", overboughtThreshold=" + DEFAULT_OVERBOUGHT_THRESHOLD
-                + ", decayFactor=" + DEFAULT_DECAY_FACTOR + "}";
-        return new BaseStrategy(strategyName, entryRule, exitRule);
+        return new BaseStrategy(NetMomentumStrategy.class.getSimpleName(), entryRule, exitRule);
     }
 
 }

@@ -463,7 +463,8 @@ public final class IndicatorSerialization {
                 && type != RecursiveCachedIndicator.class) {
             Field[] declared = type.getDeclaredFields();
             for (Field field : declared) {
-                if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+                if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()
+                        || Modifier.isTransient(field.getModifiers())) {
                     continue;
                 }
                 field.setAccessible(true);
