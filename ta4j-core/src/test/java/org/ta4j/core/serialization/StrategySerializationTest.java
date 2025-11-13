@@ -72,8 +72,8 @@ public class StrategySerializationTest {
         assertThat(descriptor.getType()).isEqualTo("BaseStrategy");
         assertThat(descriptor.getLabel()).isEqualTo("Serializable");
         assertThat(descriptor.getParameters()).containsEntry("unstableBars", 3);
-        assertThat(descriptor.getChildren()).hasSize(2);
-        assertThat(descriptor.getChildren()).anySatisfy(child -> {
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents()).anySatisfy(child -> {
             assertThat(child.getLabel()).isEqualTo("entry");
             // SerializableRule is an inner class, so it uses fully qualified name
             assertThat(child.getType()).isEqualTo(SerializableRule.class.getName());
@@ -117,7 +117,7 @@ public class StrategySerializationTest {
 
         assertThat(json).isEqualTo(
                 """
-                        {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","children":[{"type":"SMAIndicator","parameters":{"barCount":2},"children":[{"type":"ClosePriceIndicator"}]},{"type":"SMAIndicator","parameters":{"barCount":3},"children":[{"type":"ClosePriceIndicator"}]}]},{"type":"StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5"},"children":[{"type":"ClosePriceIndicator"}]}]}""");
+                        {"type":"BaseStrategy","label":"SMA Cross","parameters":{"unstableBars":1},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"SMAIndicator","parameters":{"barCount":2},"components":[{"type":"ClosePriceIndicator"}]},{"type":"SMAIndicator","parameters":{"barCount":3},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"StopLossRule","label":"exit","parameters":{"lossPercentage":"1.5"},"components":[{"type":"ClosePriceIndicator"}]}]}""");
     }
 
     @Test
@@ -177,7 +177,7 @@ public class StrategySerializationTest {
         assertThat(descriptor.getLabel()).isEqualTo("ToggleNamedStrategy_true_false_u4");
         assertThat(descriptor.getParameters()).containsEntry("unstableBars", 4);
         assertThat(descriptor.getParameters()).containsEntry("args", List.of("true", "false"));
-        assertThat(descriptor.getChildren()).isEmpty();
+        assertThat(descriptor.getComponents()).isEmpty();
     }
 
     @Test

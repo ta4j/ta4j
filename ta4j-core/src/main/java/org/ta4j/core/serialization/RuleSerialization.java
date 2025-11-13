@@ -127,20 +127,20 @@ public final class RuleSerialization {
         ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(typeName);
 
         Map<String, Object> parameters = new LinkedHashMap<>();
-        List<ComponentDescriptor> children = new ArrayList<>();
+        List<ComponentDescriptor> components = new ArrayList<>();
 
-        ArgumentContext context = new ArgumentContext(parameters, children, visited);
+        ArgumentContext context = new ArgumentContext(parameters, components, visited);
         for (Argument argument : match.arguments) {
             argument.serialize(rule, context);
         }
 
         // No longer serialize __args metadata - deserialization will infer from
-        // children and parameters
+        // components and parameters
         if (!parameters.isEmpty()) {
             builder.withParameters(parameters);
         }
-        for (ComponentDescriptor child : children) {
-            builder.addChild(child);
+        for (ComponentDescriptor component : components) {
+            builder.addComponent(component);
         }
 
         ComponentDescriptor descriptor = builder.build();
@@ -207,13 +207,13 @@ public final class RuleSerialization {
     }
 
     /**
-     * Infers the constructor signature from children and parameters. Matches
-     * children (indicators/rules) and parameters (numbers, strings, etc.) to
+     * Infers the constructor signature from components and parameters. Matches
+     * components (indicators/rules) and parameters (numbers, strings, etc.) to
      * constructor parameters.
      */
     private static DeserializationMatch inferConstructor(Class<? extends Rule> ruleType, ComponentDescriptor descriptor,
             ReconstructionContext context) {
-        List<ComponentDescriptor> children = descriptor.getChildren();
+        List<ComponentDescriptor> components = descriptor.getComponents();
         Map<String, Object> parameters = descriptor.getParameters();
 
         // Filter out internal metadata parameters (enum types, etc.)
@@ -237,7 +237,7 @@ public final class RuleSerialization {
             }
 
             // Try to match remaining parameters
-            DeserializationMatch match = tryMatchConstructor(constructor, paramTypes, params, startIndex, children,
+            DeserializationMatch match = tryMatchConstructor(constructor, paramTypes, params, startIndex, components,
                     filteredParams, context);
             if (match != null) {
                 @SuppressWarnings("unchecked")
@@ -247,14 +247,14 @@ public final class RuleSerialization {
         }
 
         throw new IllegalStateException("No compatible constructor found for rule type: " + ruleType.getName()
-                + " with " + children.size() + " children and " + filteredParams.size() + " parameters");
+                + " with " + components.size() + " components and " + filteredParams.size() + " parameters");
     }
 
     private static DeserializationMatch tryMatchConstructor(Constructor<?> constructor, Class<?>[] paramTypes,
-            java.lang.reflect.Parameter[] params, int startIndex, List<ComponentDescriptor> children,
+            java.lang.reflect.Parameter[] params, int startIndex, List<ComponentDescriptor> components,
             Map<String, Object> parameters, ReconstructionContext context) {
         int paramCount = paramTypes.length - startIndex;
-        int totalArgs = children.size() + parameters.size();
+        int totalArgs = components.size() + parameters.size();
 
         // Must match total argument count
         if (paramCount != totalArgs) {
@@ -270,8 +270,8 @@ public final class RuleSerialization {
             argumentTypes[0] = BarSeries.class;
         }
 
-        // Track which children and parameters we've used
-        boolean[] childrenUsed = new boolean[children.size()];
+        // Track which components and parameters we've used
+        boolean[] componentsUsed = new boolean[components.size()];
         java.util.Set<String> paramsUsed = new java.util.HashSet<>();
 
         // Try to match each constructor parameter
@@ -279,31 +279,31 @@ public final class RuleSerialization {
             Class<?> paramType = paramTypes[i];
             String paramName = params[i].getName();
 
-            // Try to match from children first (indicators/rules)
+            // Try to match from components first (indicators/rules)
             boolean matched = false;
-            for (int j = 0; j < children.size(); j++) {
-                if (childrenUsed[j]) {
+            for (int j = 0; j < components.size(); j++) {
+                if (componentsUsed[j]) {
                     continue;
                 }
-                ComponentDescriptor child = children.get(j);
-                if (child == null) {
+                ComponentDescriptor component = components.get(j);
+                if (component == null) {
                     continue;
                 }
 
-                // Check if child type matches parameter type
-                if (isAssignableFrom(paramType, child, context)) {
-                    Object childValue = resolveChild(child, paramType, context);
-                    if (childValue != null) {
-                        arguments[i] = childValue;
+                // Check if component type matches parameter type
+                if (isAssignableFrom(paramType, component, context)) {
+                    Object componentValue = resolveComponent(component, paramType, context);
+                    if (componentValue != null) {
+                        arguments[i] = componentValue;
                         argumentTypes[i] = paramType;
-                        childrenUsed[j] = true;
+                        componentsUsed[j] = true;
                         matched = true;
                         break;
                     }
                 }
             }
 
-            // If not matched from children, try parameters
+            // If not matched from components, try parameters
             if (!matched) {
                 // Try exact parameter name match first
                 if (parameters.containsKey(paramName)) {
@@ -339,8 +339,8 @@ public final class RuleSerialization {
             }
         }
 
-        // Verify all children and parameters were used
-        for (boolean used : childrenUsed) {
+        // Verify all components and parameters were used
+        for (boolean used : componentsUsed) {
             if (!used) {
                 return null;
             }
@@ -374,21 +374,22 @@ public final class RuleSerialization {
         return false;
     }
 
-    private static Object resolveChild(ComponentDescriptor child, Class<?> paramType, ReconstructionContext context) {
+    private static Object resolveComponent(ComponentDescriptor component, Class<?> paramType,
+            ReconstructionContext context) {
         try {
             if (Indicator.class.isAssignableFrom(paramType)) {
                 // Resolve indicator (position-based if no label)
-                if (child.getLabel() == null) {
+                if (component.getLabel() == null) {
                     return context.resolveIndicatorByPosition();
                 } else {
-                    return context.resolveIndicator(child.getLabel());
+                    return context.resolveIndicator(component.getLabel());
                 }
             } else if (Rule.class.isAssignableFrom(paramType)) {
                 // Resolve rule (by label)
-                if (child.getLabel() == null) {
-                    throw new IllegalArgumentException("Rule child missing label: " + child);
+                if (component.getLabel() == null) {
+                    throw new IllegalArgumentException("Rule component missing label: " + component);
                 }
-                return context.resolveRule(child.getLabel());
+                return context.resolveRule(component.getLabel());
             }
         } catch (Exception e) {
             return null; // Can't resolve, try next match
@@ -460,13 +461,13 @@ public final class RuleSerialization {
     private static final class ArgumentContext {
 
         private final Map<String, Object> parameters;
-        private final List<ComponentDescriptor> children;
+        private final List<ComponentDescriptor> components;
         private final IdentityHashMap<Rule, ComponentDescriptor> visited;
 
-        private ArgumentContext(Map<String, Object> parameters, List<ComponentDescriptor> children,
+        private ArgumentContext(Map<String, Object> parameters, List<ComponentDescriptor> components,
                 IdentityHashMap<Rule, ComponentDescriptor> visited) {
             this.parameters = parameters;
-            this.children = children;
+            this.components = components;
             this.visited = visited;
         }
     }
@@ -475,31 +476,31 @@ public final class RuleSerialization {
 
         private final BarSeries series;
         private final ComponentDescriptor descriptor;
-        private final Map<String, ComponentDescriptor> childrenByLabel;
-        private final List<ComponentDescriptor> childrenByIndex;
+        private final Map<String, ComponentDescriptor> componentsByLabel;
+        private final List<ComponentDescriptor> componentsByIndex;
         private int indicatorMatchIndex = 0; // Track position for matching indicators without labels
 
         private ReconstructionContext(BarSeries series, ComponentDescriptor descriptor) {
             this.series = series;
             this.descriptor = descriptor;
-            if (descriptor.getChildren().isEmpty()) {
-                this.childrenByLabel = Collections.emptyMap();
-                this.childrenByIndex = Collections.emptyList();
+            if (descriptor.getComponents().isEmpty()) {
+                this.componentsByLabel = Collections.emptyMap();
+                this.componentsByIndex = Collections.emptyList();
             } else {
                 Map<String, ComponentDescriptor> map = new LinkedHashMap<>();
                 List<ComponentDescriptor> indexList = new ArrayList<>();
-                for (ComponentDescriptor child : descriptor.getChildren()) {
-                    if (child != null) {
-                        indexList.add(child);
-                        if (child.getLabel() != null) {
-                            map.put(child.getLabel(), child);
+                for (ComponentDescriptor component : descriptor.getComponents()) {
+                    if (component != null) {
+                        indexList.add(component);
+                        if (component.getLabel() != null) {
+                            map.put(component.getLabel(), component);
                         }
                     } else {
                         indexList.add(null);
                     }
                 }
-                this.childrenByLabel = map;
-                this.childrenByIndex = indexList;
+                this.componentsByLabel = map;
+                this.componentsByIndex = indexList;
             }
         }
 
@@ -545,28 +546,28 @@ public final class RuleSerialization {
         }
 
         private Rule resolveRule(String label) {
-            ComponentDescriptor child = childrenByLabel.get(label);
-            if (child == null) {
-                throw new IllegalArgumentException("Missing child rule descriptor: " + label);
+            ComponentDescriptor component = componentsByLabel.get(label);
+            if (component == null) {
+                throw new IllegalArgumentException("Missing rule component descriptor: " + label);
             }
-            return RuleSerialization.fromDescriptor(series, child);
+            return RuleSerialization.fromDescriptor(series, component);
         }
 
         private Indicator<?> resolveIndicator(String label) {
-            ComponentDescriptor child = childrenByLabel.get(label);
-            if (child == null) {
-                throw new IllegalArgumentException("Missing child indicator descriptor: " + label);
+            ComponentDescriptor component = componentsByLabel.get(label);
+            if (component == null) {
+                throw new IllegalArgumentException("Missing indicator component descriptor: " + label);
             }
-            return IndicatorSerialization.fromDescriptor(series, child);
+            return IndicatorSerialization.fromDescriptor(series, component);
         }
 
         /**
          * Resolves an indicator by position (for indicators without labels). Finds the
-         * next unused indicator child without a label.
+         * next unused indicator component without a label.
          */
         private Indicator<?> resolveIndicatorByPosition() {
-            for (int i = indicatorMatchIndex; i < childrenByIndex.size(); i++) {
-                ComponentDescriptor candidate = childrenByIndex.get(i);
+            for (int i = indicatorMatchIndex; i < componentsByIndex.size(); i++) {
+                ComponentDescriptor candidate = componentsByIndex.get(i);
                 if (candidate != null && candidate.getLabel() == null) {
                     // Check if this is an indicator (type contains "Indicator" but not "Rule")
                     String type = candidate.getType();
@@ -576,7 +577,7 @@ public final class RuleSerialization {
                     }
                 }
             }
-            throw new IllegalArgumentException("Missing child indicator descriptor (position-based match failed)");
+            throw new IllegalArgumentException("Missing indicator component descriptor (position-based match failed)");
         }
 
         private Num resolveNum(String name) {
@@ -1096,7 +1097,7 @@ public final class RuleSerialization {
         }
 
         private void serialize(Rule owner, ArgumentContext context) {
-            // No longer create metadata - just serialize children and parameters
+            // No longer create metadata - just serialize components and parameters
             // Deserialization will infer constructor signature from these
             switch (kind) {
             case SERIES:
@@ -1105,7 +1106,7 @@ public final class RuleSerialization {
             case RULE:
                 Rule rule = (Rule) value;
                 ComponentDescriptor ruleDescriptor = RuleSerialization.describe(rule, context.visited);
-                context.children.add(applyLabel(ruleDescriptor, label));
+                context.components.add(applyLabel(ruleDescriptor, label));
                 break;
             case INDICATOR:
                 Indicator<?> indicator = (Indicator<?>) value;
@@ -1113,7 +1114,7 @@ public final class RuleSerialization {
                 // Indicators nested in rules need labels for matching during deserialization
                 // but we'll serialize them without labels in the JSON
                 ComponentDescriptor labeledDescriptor = applyLabel(indicatorDescriptor, label);
-                context.children.add(labeledDescriptor);
+                context.components.add(labeledDescriptor);
                 break;
             case NUM:
                 context.parameters.put(name, value == null ? null : String.valueOf(value));
@@ -1200,8 +1201,8 @@ public final class RuleSerialization {
         if (!descriptor.getParameters().isEmpty()) {
             builder.withParameters(descriptor.getParameters());
         }
-        for (ComponentDescriptor child : descriptor.getChildren()) {
-            builder.addChild(child);
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
         }
         return builder.build();
     }

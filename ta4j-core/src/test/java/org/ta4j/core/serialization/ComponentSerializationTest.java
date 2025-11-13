@@ -35,15 +35,15 @@ public class ComponentSerializationTest {
 
         assertThat(descriptor.getLabel()).isEqualTo("Entry");
         assertThat(descriptor.getType()).isNull();
-        assertThat(descriptor.getChildren()).isEmpty();
+        assertThat(descriptor.getComponents()).isEmpty();
     }
 
     @Test
     public void serializeAndParseRoundTrip() {
         ComponentDescriptor descriptor = ComponentDescriptor.builder()
                 .withType("AndRule")
-                .addChild(ComponentDescriptor.labelOnly("Entry"))
-                .addChild(ComponentDescriptor.typeOnly("FixedRule"))
+                .addComponent(ComponentDescriptor.labelOnly("Entry"))
+                .addComponent(ComponentDescriptor.typeOnly("FixedRule"))
                 .build();
 
         String json = ComponentSerialization.toJson(descriptor);
@@ -59,11 +59,11 @@ public class ComponentSerializationTest {
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
 
         assertThat(descriptor.getType()).isEqualTo("OrRule");
-        assertThat(descriptor.getChildren()).hasSize(3);
-        assertThat(descriptor.getChildren().get(0).getLabel()).isEqualTo("Entry");
-        assertThat(descriptor.getChildren().get(1)).isNull();
-        assertThat(descriptor.getChildren().get(2).getType()).isEqualTo("NotRule");
-        assertThat(descriptor.getChildren().get(2).getChildren()).hasSize(1);
-        assertThat(descriptor.getChildren().get(2).getChildren().get(0).getLabel()).isEqualTo("Exit");
+        assertThat(descriptor.getComponents()).hasSize(3);
+        assertThat(descriptor.getComponents().get(0).getLabel()).isEqualTo("Entry");
+        assertThat(descriptor.getComponents().get(1)).isNull();
+        assertThat(descriptor.getComponents().get(2).getType()).isEqualTo("NotRule");
+        assertThat(descriptor.getComponents().get(2).getComponents()).hasSize(1);
+        assertThat(descriptor.getComponents().get(2).getComponents().get(0).getLabel()).isEqualTo("Exit");
     }
 }

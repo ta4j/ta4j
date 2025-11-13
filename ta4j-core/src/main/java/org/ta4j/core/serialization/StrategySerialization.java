@@ -95,10 +95,10 @@ public final class StrategySerialization {
         builder.withParameters(parameters);
 
         if (entryDescriptor != null) {
-            builder.addChild(applyLabel(entryDescriptor, ENTRY_LABEL));
+            builder.addComponent(applyLabel(entryDescriptor, ENTRY_LABEL));
         }
         if (exitDescriptor != null) {
-            builder.addChild(applyLabel(exitDescriptor, EXIT_LABEL));
+            builder.addComponent(applyLabel(exitDescriptor, EXIT_LABEL));
         }
 
         return builder.build();
@@ -153,16 +153,16 @@ public final class StrategySerialization {
         if (!descriptor.getParameters().isEmpty()) {
             builder.withParameters(descriptor.getParameters());
         }
-        for (ComponentDescriptor child : descriptor.getChildren()) {
-            builder.addChild(child);
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
         }
         return builder.build();
     }
 
     private static ComponentDescriptor extractChild(ComponentDescriptor descriptor, String label) {
-        for (ComponentDescriptor child : descriptor.getChildren()) {
-            if (label.equals(child.getLabel())) {
-                return cloneWithoutLabel(child);
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            if (label.equals(component.getLabel())) {
+                return cloneWithoutLabel(component);
             }
         }
         throw new IllegalArgumentException("Missing strategy " + label + " rule descriptor");
@@ -176,8 +176,8 @@ public final class StrategySerialization {
         if (!descriptor.getParameters().isEmpty()) {
             builder.withParameters(descriptor.getParameters());
         }
-        for (ComponentDescriptor child : descriptor.getChildren()) {
-            builder.addChild(child);
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
         }
         return builder.build();
     }
@@ -223,12 +223,12 @@ public final class StrategySerialization {
             return instance.get();
         }
 
-        if (!descriptor.getChildren().isEmpty()) {
-            List<Rule> children = new ArrayList<>(descriptor.getChildren().size());
-            for (ComponentDescriptor child : descriptor.getChildren()) {
-                children.add(instantiateRule(series, child));
+        if (!descriptor.getComponents().isEmpty()) {
+            List<Rule> components = new ArrayList<>(descriptor.getComponents().size());
+            for (ComponentDescriptor component : descriptor.getComponents()) {
+                components.add(instantiateRule(series, component));
             }
-            Optional<Rule> composite = tryCompositeConstructor(ruleType, children);
+            Optional<Rule> composite = tryCompositeConstructor(ruleType, components);
             if (composite.isPresent()) {
                 return composite.get();
             }
@@ -267,11 +267,11 @@ public final class StrategySerialization {
         return Optional.empty();
     }
 
-    private static Optional<Rule> tryCompositeConstructor(Class<? extends Rule> ruleType, List<Rule> children) {
+    private static Optional<Rule> tryCompositeConstructor(Class<? extends Rule> ruleType, List<Rule> components) {
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
         for (Constructor<?> constructor : constructors) {
             Class<?>[] parameterTypes = constructor.getParameterTypes();
-            if (parameterTypes.length != children.size()) {
+            if (parameterTypes.length != components.size()) {
                 continue;
             }
             boolean matches = true;
@@ -286,7 +286,7 @@ public final class StrategySerialization {
             }
             try {
                 constructor.setAccessible(true);
-                return Optional.of((Rule) constructor.newInstance(children.toArray()));
+                return Optional.of((Rule) constructor.newInstance(components.toArray()));
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
                 throw new IllegalStateException("Failed to construct composite rule: " + ruleType.getName(), ex);
             }

@@ -33,9 +33,9 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, Num> {
+public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOperationIndicator, Num> {
 
-    public BinaryOperationTest(NumFactory numFactory) {
+    public BinaryOperationIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -45,7 +45,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var left = new ClosePriceIndicator(series);
         var right = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.sum(left, right);
+        var result = BinaryOperationIndicator.sum(left, right);
 
         assertNumEquals(2, result.getValue(0));
         assertNumEquals(4, result.getValue(1));
@@ -59,7 +59,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.sum(indicator, 10);
+        var result = BinaryOperationIndicator.sum(indicator, 10);
 
         assertNumEquals(11, result.getValue(0));
         assertNumEquals(12, result.getValue(1));
@@ -75,7 +75,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.difference(left, right);
+        var result = BinaryOperationIndicator.difference(left, right);
 
         assertNumEquals(4, result.getValue(0));
         assertNumEquals(4, result.getValue(1));
@@ -89,7 +89,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 25, 30).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.difference(indicator, 5);
+        var result = BinaryOperationIndicator.difference(indicator, 5);
 
         assertNumEquals(5, result.getValue(0));
         assertNumEquals(10, result.getValue(1));
@@ -105,7 +105,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 1, 2, 3).build();
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.product(left, right);
+        var result = BinaryOperationIndicator.product(left, right);
 
         assertNumEquals(6, result.getValue(0));
         assertNumEquals(6, result.getValue(1));
@@ -119,7 +119,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.product(indicator, 2.5);
+        var result = BinaryOperationIndicator.product(indicator, 2.5);
 
         assertNumEquals(2.5, result.getValue(0));
         assertNumEquals(5.0, result.getValue(1));
@@ -135,7 +135,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.quotient(left, right);
+        var result = BinaryOperationIndicator.quotient(left, right);
 
         assertNumEquals(5, result.getValue(0));
         assertNumEquals(5, result.getValue(1));
@@ -149,7 +149,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 25, 30).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.quotient(indicator, 5);
+        var result = BinaryOperationIndicator.quotient(indicator, 5);
 
         assertNumEquals(2, result.getValue(0));
         assertNumEquals(3, result.getValue(1));
@@ -165,7 +165,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 6, 4, 7).build();
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.max(left, right);
+        var result = BinaryOperationIndicator.max(left, right);
 
         assertNumEquals(3, result.getValue(0));
         assertNumEquals(5, result.getValue(1));
@@ -179,7 +179,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.max(indicator, 3);
+        var result = BinaryOperationIndicator.max(indicator, 3);
 
         assertNumEquals(3, result.getValue(0));
         assertNumEquals(3, result.getValue(1));
@@ -195,7 +195,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 6, 4, 7).build();
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.min(left, right);
+        var result = BinaryOperationIndicator.min(left, right);
 
         assertNumEquals(1, result.getValue(0));
         assertNumEquals(2, result.getValue(1));
@@ -209,7 +209,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var indicator = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.min(indicator, 3);
+        var result = BinaryOperationIndicator.min(indicator, 3);
 
         assertNumEquals(1, result.getValue(0));
         assertNumEquals(2, result.getValue(1));
@@ -225,7 +225,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var left = new ClosePriceIndicator(series1);
         var right = new ClosePriceIndicator(series2);
 
-        var result = BinaryOperation.sum(left, right);
+        var result = BinaryOperationIndicator.sum(left, right);
 
         assertEquals(0, result.getCountOfUnstableBars());
     }
@@ -236,7 +236,7 @@ public class BinaryOperationTest extends AbstractIndicatorTest<BinaryOperation, 
         var left = new ClosePriceIndicator(series);
         var right = new ClosePriceIndicator(series);
 
-        var result = BinaryOperation.sum(left, right);
+        var result = BinaryOperationIndicator.sum(left, right);
 
         assertEquals(series, result.getBarSeries());
     }

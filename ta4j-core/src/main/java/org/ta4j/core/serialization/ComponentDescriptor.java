@@ -41,7 +41,7 @@ public final class ComponentDescriptor {
     private final String type;
     private final String label;
     private final Map<String, Object> parameters;
-    private final List<ComponentDescriptor> children;
+    private final List<ComponentDescriptor> components;
 
     private ComponentDescriptor(Builder builder) {
         this.type = builder.type;
@@ -51,10 +51,10 @@ public final class ComponentDescriptor {
         } else {
             this.parameters = Collections.unmodifiableMap(new LinkedHashMap<>(builder.parameters));
         }
-        if (builder.children == null || builder.children.isEmpty()) {
-            this.children = Collections.emptyList();
+        if (builder.components == null || builder.components.isEmpty()) {
+            this.components = Collections.emptyList();
         } else {
-            this.children = Collections.unmodifiableList(new ArrayList<>(builder.children));
+            this.components = Collections.unmodifiableList(new ArrayList<>(builder.components));
         }
     }
 
@@ -80,10 +80,11 @@ public final class ComponentDescriptor {
     }
 
     /**
-     * @return child component descriptors, never {@code null}
+     * @return component descriptors (indicators/rules used by this component),
+     *         never {@code null}
      */
-    public List<ComponentDescriptor> getChildren() {
-        return children;
+    public List<ComponentDescriptor> getComponents() {
+        return components;
     }
 
     @Override
@@ -96,12 +97,12 @@ public final class ComponentDescriptor {
         }
         ComponentDescriptor that = (ComponentDescriptor) o;
         return Objects.equals(type, that.type) && Objects.equals(label, that.label)
-                && Objects.equals(parameters, that.parameters) && Objects.equals(children, that.children);
+                && Objects.equals(parameters, that.parameters) && Objects.equals(components, that.components);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, label, parameters, children);
+        return Objects.hash(type, label, parameters, components);
     }
 
     /**
@@ -139,7 +140,7 @@ public final class ComponentDescriptor {
         private String type;
         private String label;
         private Map<String, Object> parameters;
-        private List<ComponentDescriptor> children;
+        private List<ComponentDescriptor> components;
 
         private Builder() {
         }
@@ -182,16 +183,16 @@ public final class ComponentDescriptor {
         }
 
         /**
-         * Appends a child descriptor.
+         * Appends a component descriptor.
          *
-         * @param child child descriptor, may be {@code null}
+         * @param component component descriptor, may be {@code null}
          * @return the builder
          */
-        public Builder addChild(ComponentDescriptor child) {
-            if (children == null) {
-                children = new ArrayList<>();
+        public Builder addComponent(ComponentDescriptor component) {
+            if (components == null) {
+                components = new ArrayList<>();
             }
-            children.add(child);
+            components.add(component);
             return this;
         }
 

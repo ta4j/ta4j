@@ -57,14 +57,14 @@ public class IndicatorSerializationTest {
 
         assertThat(descriptor.getType()).isEqualTo("SMAIndicator");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 3);
-        assertThat(descriptor.getChildren()).anySatisfy(child -> {
+        assertThat(descriptor.getComponents()).anySatisfy(child -> {
             assertThat(child.getLabel()).isNull();
             assertThat(child.getType()).isEqualTo("ClosePriceIndicator");
         });
 
         String json = indicator.toJson();
         assertEquals(
-                "{\"type\":\"SMAIndicator\",\"parameters\":{\"barCount\":3},\"children\":[{\"type\":\"ClosePriceIndicator\"}]}",
+                "{\"type\":\"SMAIndicator\",\"parameters\":{\"barCount\":3},\"components\":[{\"type\":\"ClosePriceIndicator\"}]}",
                 json);
     }
 

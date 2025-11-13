@@ -103,9 +103,9 @@ public abstract class AbstractRule implements Rule {
         if (childNames != null && childNames.length > 0) {
             for (String child : childNames) {
                 if (child == null) {
-                    builder.addChild(null);
+                    builder.addComponent(null);
                 } else {
-                    builder.addChild(ComponentSerialization.parse(child));
+                    builder.addComponent(ComponentSerialization.parse(child));
                 }
             }
         }

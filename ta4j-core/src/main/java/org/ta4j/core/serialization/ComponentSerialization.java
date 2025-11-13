@@ -101,24 +101,24 @@ public final class ComponentSerialization {
         private static final String FIELD_LABEL = "label";
         private static final String FIELD_PARAMETERS = "parameters";
         private static final String FIELD_RULES = "rules";
-        private static final String FIELD_CHILDREN = "children";
+        private static final String FIELD_COMPONENTS = "components";
 
         /**
-         * Determines the field name for children based on the component type. Uses
-         * class name substring detection: - "Indicator" or "Rule" → "children" -
+         * Determines the field name for components based on the component type. Uses
+         * class name substring detection: - "Indicator" or "Rule" → "components" -
          * "Strategy" → "rules"
          */
-        private static String getChildrenFieldName(ComponentDescriptor descriptor) {
+        private static String getComponentsFieldName(ComponentDescriptor descriptor) {
             String type = descriptor.getType();
             if (type != null) {
                 if (type.contains("Strategy")) {
                     return FIELD_RULES;
                 } else if (type.contains("Indicator") || type.contains("Rule")) {
-                    return FIELD_CHILDREN;
+                    return FIELD_COMPONENTS;
                 }
             }
-            // Default to "children" if type is unknown
-            return FIELD_CHILDREN;
+            // Default to "components" if type is unknown
+            return FIELD_COMPONENTS;
         }
 
         /**
@@ -160,19 +160,19 @@ public final class ComponentSerialization {
             if (!src.getParameters().isEmpty()) {
                 object.add(FIELD_PARAMETERS, context.serialize(src.getParameters(), MAP_TYPE));
             }
-            if (!src.getChildren().isEmpty()) {
+            if (!src.getComponents().isEmpty()) {
                 JsonArray array = new JsonArray();
-                for (ComponentDescriptor child : src.getChildren()) {
-                    if (child == null) {
+                for (ComponentDescriptor component : src.getComponents()) {
+                    if (component == null) {
                         array.add(JsonNull.INSTANCE);
                     } else {
-                        array.add(serialize(child, typeOfSrc, context));
+                        array.add(serialize(component, typeOfSrc, context));
                     }
                 }
-                // Determine field name based on component type (Indicator/Rule → "children",
+                // Determine field name based on component type (Indicator/Rule → "components",
                 // Strategy → "rules")
-                String childrenFieldName = getChildrenFieldName(src);
-                object.add(childrenFieldName, array);
+                String componentsFieldName = getComponentsFieldName(src);
+                object.add(componentsFieldName, array);
             }
             return object;
         }
@@ -205,28 +205,31 @@ public final class ComponentSerialization {
             JsonElement rulesElement = resolveRulesElement(object);
             if (rulesElement != null && rulesElement.isJsonArray()) {
                 JsonArray array = rulesElement.getAsJsonArray();
-                List<ComponentDescriptor> children = new ArrayList<>(array.size());
+                List<ComponentDescriptor> components = new ArrayList<>(array.size());
                 for (JsonElement element : array) {
-                    ComponentDescriptor child = deserialize(element, typeOfT, context);
-                    children.add(child);
+                    ComponentDescriptor component = deserialize(element, typeOfT, context);
+                    components.add(component);
                 }
-                for (ComponentDescriptor child : children) {
-                    builder.addChild(child);
+                for (ComponentDescriptor component : components) {
+                    builder.addComponent(component);
                 }
             }
             return builder.build();
         }
 
         private JsonElement resolveRulesElement(JsonObject object) {
-            // Check for rules (strategies), then children (indicators/rules), then legacy
+            // Check for rules (strategies), then components (indicators/rules), then legacy
             // field names
             if (object.has(FIELD_RULES)) {
                 return object.get(FIELD_RULES);
             }
-            if (object.has(FIELD_CHILDREN)) {
-                return object.get(FIELD_CHILDREN);
+            if (object.has(FIELD_COMPONENTS)) {
+                return object.get(FIELD_COMPONENTS);
             }
-            // Legacy support for "baseIndicators"
+            // Legacy support for "children" and "baseIndicators"
+            if (object.has("children")) {
+                return object.get("children");
+            }
             if (object.has("baseIndicators")) {
                 return object.get("baseIndicators");
             }

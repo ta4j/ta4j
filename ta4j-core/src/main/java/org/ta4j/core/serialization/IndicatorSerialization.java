@@ -143,8 +143,8 @@ public final class IndicatorSerialization {
         List<ChildView> childIndicators = extractChildIndicators(indicator);
         for (ChildView child : childIndicators) {
             ComponentDescriptor childDescriptor = describe(child.indicator(), visited);
-            // Indicators don't use labels - add child directly without label
-            builder.addChild(childDescriptor);
+            // Indicators don't use labels - add component directly without label
+            builder.addComponent(childDescriptor);
         }
 
         ComponentDescriptor descriptor = builder.build();
@@ -157,20 +157,20 @@ public final class IndicatorSerialization {
         if (type == null) {
             throw new IllegalArgumentException("Unknown indicator type: " + descriptor.getType());
         }
-        List<Indicator<?>> children = new ArrayList<>();
-        for (ComponentDescriptor childDescriptor : descriptor.getChildren()) {
-            children.add(instantiate(series, childDescriptor));
+        List<Indicator<?>> components = new ArrayList<>();
+        for (ComponentDescriptor componentDescriptor : descriptor.getComponents()) {
+            components.add(instantiate(series, componentDescriptor));
         }
 
         Map<String, Object> parameters = descriptor.getParameters();
-        Object instance = tryInstantiate(type, series, children, parameters);
+        Object instance = tryInstantiate(type, series, components, parameters);
         if (!(instance instanceof Indicator<?> indicator)) {
             throw new IllegalStateException("Constructed type does not implement Indicator: " + type.getName());
         }
         return indicator;
     }
 
-    private static Object tryInstantiate(Class<?> type, BarSeries series, List<Indicator<?>> children,
+    private static Object tryInstantiate(Class<?> type, BarSeries series, List<Indicator<?>> components,
             Map<String, Object> parameters) {
         Constructor<?>[] constructors = type.getDeclaredConstructors();
         Arrays.sort(constructors,
@@ -180,7 +180,7 @@ public final class IndicatorSerialization {
             if (Modifier.isPrivate(constructor.getModifiers())) {
                 continue;
             }
-            Optional<Object> instance = tryInvoke(constructor, series, children, parameterValues);
+            Optional<Object> instance = tryInvoke(constructor, series, components, parameterValues);
             if (instance.isPresent()) {
                 return instance.get();
             }
@@ -188,12 +188,12 @@ public final class IndicatorSerialization {
         throw new IllegalStateException("Unable to instantiate indicator: " + type.getName());
     }
 
-    private static Optional<Object> tryInvoke(Constructor<?> constructor, BarSeries series, List<Indicator<?>> children,
-            Map<String, Object> parameters) {
+    private static Optional<Object> tryInvoke(Constructor<?> constructor, BarSeries series,
+            List<Indicator<?>> components, Map<String, Object> parameters) {
         Class<?>[] parameterTypes = constructor.getParameterTypes();
         Parameter[] parameterMetadata = constructor.getParameters();
         Object[] args = new Object[parameterTypes.length];
-        int childIndex = 0;
+        int componentIndex = 0;
         LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
                 : new LinkedHashMap<>(parameters);
         List<NumericParameterRequest> numericRequests = new ArrayList<>();
@@ -204,27 +204,28 @@ public final class IndicatorSerialization {
             if (BarSeries.class.isAssignableFrom(parameterType)) {
                 args[i] = series;
             } else if (Indicator.class.isAssignableFrom(parameterType)) {
-                if (childIndex >= children.size()) {
+                if (componentIndex >= components.size()) {
                     return Optional.empty();
                 }
-                Indicator<?> child = children.get(childIndex++);
-                if (!parameterType.isInstance(child)) {
+                Indicator<?> component = components.get(componentIndex++);
+                if (!parameterType.isInstance(component)) {
                     return Optional.empty();
                 }
-                args[i] = child;
+                args[i] = component;
             } else if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
-                Indicator<?>[] remaining = children.subList(childIndex, children.size()).toArray(Indicator[]::new);
-                for (Indicator<?> child : remaining) {
-                    if (!parameterType.getComponentType().isInstance(child)) {
+                Indicator<?>[] remaining = components.subList(componentIndex, components.size())
+                        .toArray(Indicator[]::new);
+                for (Indicator<?> component : remaining) {
+                    if (!parameterType.getComponentType().isInstance(component)) {
                         return Optional.empty();
                     }
                 }
                 args[i] = remaining;
-                childIndex = children.size();
+                componentIndex = components.size();
             } else if (List.class.isAssignableFrom(parameterType)) {
-                List<Indicator<?>> remaining = new ArrayList<>(children.subList(childIndex, children.size()));
+                List<Indicator<?>> remaining = new ArrayList<>(components.subList(componentIndex, components.size()));
                 args[i] = remaining;
-                childIndex = children.size();
+                componentIndex = components.size();
             } else {
                 numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
             }

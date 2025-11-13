@@ -78,10 +78,11 @@ public class NetMomentumStrategy {
         Strategy strategy = createStrategy(rsiM);
 
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        LOG.debug("Number of positions for the strategy: {}", tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         var netProfitLoss = new NetProfitLossCriterion().calculate(series, tradingRecord);
-        LOG.debug("Net Profit Loss for the strategy: {}", netProfitLoss);
+        LOG.debug("{}'s net profit/loss: {}", strategy.getName(), netProfitLoss);
 
         // Charting
         ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");

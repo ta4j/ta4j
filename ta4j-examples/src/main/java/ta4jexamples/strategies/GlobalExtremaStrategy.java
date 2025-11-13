@@ -36,7 +36,7 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.ChartMaker;
@@ -73,11 +73,11 @@ public class GlobalExtremaStrategy {
         final var weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the low price
-        final var downWeek = BinaryOperation.product(weekLowPrice, 1.004);
+        final var downWeek = BinaryOperationIndicator.product(weekLowPrice, 1.004);
         final var buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
         // Going short if the close price goes above the high price
-        final var upWeek = BinaryOperation.product(weekHighPrice, 0.996);
+        final var upWeek = BinaryOperationIndicator.product(weekHighPrice, 0.996);
         final var sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
         String strategyName = "GlobalExtremaStrategy";
