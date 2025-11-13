@@ -23,11 +23,13 @@
  */
 package ta4jexamples.charting;
 
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.JFreeChart;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.awt.Dimension;
+import java.awt.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -144,7 +146,7 @@ class SwingChartDisplayerTest {
     @Test
     void testDisplayHandlesHeadlessEnvironment() {
         // In headless environment, display should fail gracefully
-        org.jfree.chart.JFreeChart chart = org.jfree.chart.ChartFactory.createLineChart("Test", "X", "Y", null);
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
 
         // This will throw HeadlessException in headless environment
         // but we should handle it gracefully
