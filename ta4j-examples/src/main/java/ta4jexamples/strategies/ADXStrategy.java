@@ -102,7 +102,6 @@ public class ADXStrategy {
 
         // Charting
         ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
-
         JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
         chartMaker.displayChart(tradingRecordChart);
         chartMaker.saveChartImage(tradingRecordChart, series);

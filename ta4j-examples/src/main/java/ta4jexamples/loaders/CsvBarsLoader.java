@@ -52,6 +52,7 @@ public class CsvBarsLoader {
 
     /**
      * Loads the default Apple Inc. bar series from the predefined CSV file.
+     *
      * @return the bar series containing Apple Inc. stock data
      */
     public static BarSeries loadAppleIncSeries() {
@@ -60,20 +61,25 @@ public class CsvBarsLoader {
 
     /**
      * Loads Apple Inc. bar series from the specified CSV file.
-     * @param appleBarsCsvFile the path to the CSV file containing Apple Inc. stock data
-     * @return the bar series containing Apple Inc. stock data loaded from the specified CSV file
+     *
+     * @param appleBarsCsvFile the path to the CSV file containing Apple Inc. stock
+     *                         data
+     * @return the bar series containing Apple Inc. stock data loaded from the
+     *         specified CSV file
      */
     public static BarSeries loadAppleIncSeries(String appleBarsCsvFile) {
         return loadCsvSeries(appleBarsCsvFile);
     }
 
     /**
-     * Loads a bar series from a CSV file with the specified filename.
-     * The CSV file is expected to contain stock market data with the following columns:
-     * date, open price, high price, low price, close price, and volume.
-     * The date format is expected to match the predefined DATE_FORMAT.
+     * Loads a bar series from a CSV file with the specified filename. The CSV file
+     * is expected to contain stock market data with the following columns: date,
+     * open price, high price, low price, close price, and volume. The date format
+     * is expected to match the predefined DATE_FORMAT.
+     *
      * @param filename the name of the CSV file to load
-     * @return the bar series containing stock data loaded from the specified CSV file
+     * @return the bar series containing stock data loaded from the specified CSV
+     *         file
      */
     public static BarSeries loadCsvSeries(String filename) {
 

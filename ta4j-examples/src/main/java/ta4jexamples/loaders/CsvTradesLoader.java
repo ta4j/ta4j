@@ -46,9 +46,10 @@ public class CsvTradesLoader {
     private static final String DEFAULT_BITSTAMP_FILE = "bitstamp_trades_from_20131125_usd.csv";
 
     /**
-     * Loads a bar series from the default Bitstamp CSV file.
-     * The method reads trade data from a CSV file containing Bitstamp exchange trades
-     * and converts it into a bar series format suitable for technical analysis.
+     * Loads a bar series from the default Bitstamp CSV file. The method reads trade
+     * data from a CSV file containing Bitstamp exchange trades and converts it into
+     * a bar series format suitable for technical analysis.
+     *
      * @return the bar series from Bitstamp (bitcoin exchange) trades
      */
     public static BarSeries loadBitstampSeries() {
@@ -56,10 +57,12 @@ public class CsvTradesLoader {
     }
 
     /**
-     * Loads a bar series from a specified Bitstamp CSV file.
-     * The method reads trade data from a CSV file containing Bitstamp exchange trades
-     * and converts it into a bar series format suitable for technical analysis.
-     * @param bitstampCsvFile the path to the CSV file containing Bitstamp trade data
+     * Loads a bar series from a specified Bitstamp CSV file. The method reads trade
+     * data from a CSV file containing Bitstamp exchange trades and converts it into
+     * a bar series format suitable for technical analysis.
+     *
+     * @param bitstampCsvFile the path to the CSV file containing Bitstamp trade
+     *                        data
      * @return the bar series built from the Bitstamp trades data
      */
     public static BarSeries loadBitstampSeries(String bitstampCsvFile) {

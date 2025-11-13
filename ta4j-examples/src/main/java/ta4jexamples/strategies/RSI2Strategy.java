@@ -25,6 +25,7 @@ package ta4jexamples.strategies;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -39,6 +40,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import ta4jexamples.charting.ChartMaker;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -102,6 +104,12 @@ public class RSI2Strategy {
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
+
+        // Charting
+        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
+        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
+        chartMaker.displayChart(tradingRecordChart);
+        chartMaker.saveChartImage(tradingRecordChart, series);
     }
 
 }
