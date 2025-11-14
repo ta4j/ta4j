@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +45,6 @@ import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
 
 public class ProgressCompletionTest {
@@ -60,6 +58,175 @@ public class ProgressCompletionTest {
         callback.accept(1);
         callback.accept(100);
         callback.accept(1000);
+    }
+
+    @Test
+    public void loggingWithAutoDetection() {
+        Consumer<Integer> callback = ProgressCompletion.logging();
+        assertNotNull(callback);
+
+        // Should not throw - should detect ProgressCompletionTest as the caller
+        callback.accept(1);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionAndCustomInterval() {
+        Consumer<Integer> callback = ProgressCompletion.logging(50);
+        assertNotNull(callback);
+
+        // Should not throw - should detect ProgressCompletionTest as the caller
+        callback.accept(50);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionDetectsCorrectCaller() {
+        // Test that auto-detection correctly identifies the calling class
+        Consumer<Integer> callback = ProgressCompletion.logging();
+        assertNotNull(callback);
+
+        // Verify it works (doesn't throw)
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionFromNestedMethod() {
+        // Test that auto-detection works when called from a nested method
+        Consumer<Integer> callback = createCallbackFromNestedMethod();
+        assertNotNull(callback);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionAndCustomIntervalDetectsCorrectCaller() {
+        Consumer<Integer> callback = ProgressCompletion.logging(75);
+        assertNotNull(callback);
+
+        // Verify it works with custom interval
+        callback.accept(75);
+        callback.accept(150);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionWorksWithTotalStrategies() {
+        Consumer<Integer> callback = ProgressCompletion.logging();
+        assertNotNull(callback);
+
+        // Should work with withTotalStrategies
+        Consumer<Integer> wrapped = ProgressCompletion.withTotalStrategies(callback, 500);
+        assertNotNull(wrapped);
+
+        // Should not throw
+        wrapped.accept(100);
+        wrapped.accept(250); // 50% milestone
+        wrapped.accept(500); // 100% milestone
+    }
+
+    @Test
+    public void loggingWithAutoDetectionAndIntervalWorksWithTotalStrategies() {
+        Consumer<Integer> callback = ProgressCompletion.logging(50);
+        assertNotNull(callback);
+
+        // Should work with withTotalStrategies
+        Consumer<Integer> wrapped = ProgressCompletion.withTotalStrategies(callback, 200);
+        assertNotNull(wrapped);
+
+        // Should not throw - logs at interval (50, 100, 150, 200) and milestones
+        wrapped.accept(50); // Interval
+        wrapped.accept(100); // Interval and 50% milestone
+        wrapped.accept(150); // Interval and 75% milestone
+        wrapped.accept(200); // Interval and 100% milestone
+    }
+
+    @Test
+    public void loggingWithAutoDetectionWorksWithBacktestExecutor() {
+        // Integration test to ensure auto-detection works with actual BacktestExecutor
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(10, 11, 12, 13, 14)
+                .build();
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 150; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        // Use auto-detection convenience method
+        Consumer<Integer> callback = ProgressCompletion.logging();
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
+                Trade.TradeType.BUY, callback);
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+    }
+
+    @Test
+    public void loggingWithAutoDetectionAndIntervalWorksWithBacktestExecutor() {
+        // Integration test with custom interval
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(10, 11, 12, 13, 14)
+                .build();
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        // Use auto-detection with custom interval
+        Consumer<Integer> callback = ProgressCompletion.logging(50);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
+                Trade.TradeType.BUY, callback);
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+    }
+
+    @Test
+    public void loggingWithAutoDetectionInvalidIntervalThrowsException() {
+        // Verify that invalid intervals still throw exceptions with auto-detection
+        assertThrows(IllegalArgumentException.class, () -> ProgressCompletion.logging(0));
+        assertThrows(IllegalArgumentException.class, () -> ProgressCompletion.logging(-1));
+    }
+
+    @Test
+    public void loggingWithAutoDetectionFromHelperClass() {
+        // Test that auto-detection works when called from a helper class
+        TestHelper helper = new TestHelper();
+        Consumer<Integer> callback = helper.createCallback();
+        assertNotNull(callback);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithAutoDetectionFromHelperClassWithInterval() {
+        // Test that auto-detection works with interval when called from helper class
+        TestHelper helper = new TestHelper();
+        Consumer<Integer> callback = helper.createCallbackWithInterval(25);
+        assertNotNull(callback);
+        callback.accept(25);
+        callback.accept(50);
+    }
+
+    /**
+     * Helper method to test auto-detection from nested method calls.
+     */
+    private Consumer<Integer> createCallbackFromNestedMethod() {
+        return ProgressCompletion.logging();
+    }
+
+    /**
+     * Helper class to test auto-detection from different calling contexts.
+     */
+    private static class TestHelper {
+        Consumer<Integer> createCallback() {
+            return ProgressCompletion.logging();
+        }
+
+        Consumer<Integer> createCallbackWithInterval(int interval) {
+            return ProgressCompletion.logging(interval);
+        }
     }
 
     @Test

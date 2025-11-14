@@ -35,6 +35,11 @@ import java.util.function.Consumer;
  * Provides factory methods for common progress reporting patterns:
  * <ul>
  * <li>{@link #noOp()} - No-op callback that does nothing
+ * <li>{@link #logging()} - Logs progress using a logger for the calling class
+ * (convenience method with automatic caller detection)
+ * <li>{@link #logging(int)} - Logs progress using a logger for the calling
+ * class at the specified interval (convenience method with automatic caller
+ * detection)
  * <li>{@link #logging(String)} - Logs progress to a logger identified by the
  * given name
  * <li>{@link #logging(Class)} - Logs progress to a logger for the given class
@@ -48,12 +53,16 @@ import java.util.function.Consumer;
  * completions, at 25%, 50%, 75%, and 100% completion) to avoid log spam while
  * providing useful feedback. Progress is logged at TRACE level for minimal
  * performance impact when trace logging is disabled.
+ *
+ * @since 0.19
  */
 public final class ProgressCompletion {
 
     /**
      * Default interval for logging progress updates. Progress is logged every
      * {@value #DEFAULT_LOG_INTERVAL} completions.
+     *
+     * @since 0.19
      */
     public static final int DEFAULT_LOG_INTERVAL = 100;
 
@@ -65,11 +74,53 @@ public final class ProgressCompletion {
      * Returns a no-op progress completion callback that does nothing.
      *
      * @return a Consumer that ignores all progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> noOp() {
         return completed -> {
             // No-op
         };
+    }
+
+    /**
+     * Returns a progress completion callback that logs progress using a logger for
+     * the calling class. This is a convenience method that automatically detects
+     * the caller class.
+     * <p>
+     * Progress is logged at milestones: every {@value #DEFAULT_LOG_INTERVAL}
+     * completions, and at completion milestones (25%, 50%, 75%, 100%).
+     * <p>
+     * <b>Note:</b> Caller detection uses stack trace analysis and may not work
+     * correctly in all environments (e.g., with proxies, AOP frameworks, or certain
+     * JVM optimizations). For maximum reliability, use {@link #logging(Class)} or
+     * {@link #logging(String)} to explicitly specify the logger.
+     *
+     * @return a Consumer that logs progress updates
+     * @since 0.19
+     */
+    public static Consumer<Integer> logging() {
+        return logging(detectCallerClass());
+    }
+
+    /**
+     * Returns a progress completion callback that logs progress using a logger for
+     * the calling class, at the specified interval. This is a convenience method
+     * that automatically detects the caller class.
+     * <p>
+     * Progress is logged every {@code interval} completions, and at completion
+     * milestones (25%, 50%, 75%, 100%).
+     * <p>
+     * <b>Note:</b> Caller detection uses stack trace analysis and may not work
+     * correctly in all environments (e.g., with proxies, AOP frameworks, or certain
+     * JVM optimizations). For maximum reliability, use {@link #logging(Class, int)}
+     * or {@link #logging(String, int)} to explicitly specify the logger.
+     *
+     * @param interval the number of completions between log messages
+     * @return a Consumer that logs progress updates
+     * @since 0.19
+     */
+    public static Consumer<Integer> logging(int interval) {
+        return logging(detectCallerClass(), interval);
     }
 
     /**
@@ -81,6 +132,7 @@ public final class ProgressCompletion {
      *
      * @param loggerName the name of the logger to use (e.g., class name)
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(String loggerName) {
         return logging(LoggerFactory.getLogger(loggerName));
@@ -95,6 +147,7 @@ public final class ProgressCompletion {
      *
      * @param clazz the class whose logger to use
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(Class<?> clazz) {
         return logging(LoggerFactory.getLogger(clazz));
@@ -109,6 +162,7 @@ public final class ProgressCompletion {
      *
      * @param logger the logger to use for progress updates
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(Logger logger) {
         return logging(logger, DEFAULT_LOG_INTERVAL);
@@ -124,6 +178,7 @@ public final class ProgressCompletion {
      * @param loggerName the name of the logger to use (e.g., class name)
      * @param interval   the number of completions between log messages
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(String loggerName, int interval) {
         return logging(LoggerFactory.getLogger(loggerName), interval);
@@ -139,6 +194,7 @@ public final class ProgressCompletion {
      * @param clazz    the class whose logger to use
      * @param interval the number of completions between log messages
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(Class<?> clazz, int interval) {
         return logging(LoggerFactory.getLogger(clazz), interval);
@@ -154,6 +210,7 @@ public final class ProgressCompletion {
      * @param logger   the logger to use for progress updates
      * @param interval the number of completions between log messages
      * @return a Consumer that logs progress updates
+     * @since 0.19
      */
     public static Consumer<Integer> logging(Logger logger, int interval) {
         if (logger == null) {
@@ -164,6 +221,41 @@ public final class ProgressCompletion {
         }
 
         return new LoggingProgressCallback(logger, interval);
+    }
+
+    /**
+     * Detects the calling class by analyzing the stack trace. This method skips
+     * internal frames (ProgressCompletion, Thread, etc.) to find the actual caller.
+     *
+     * @return the calling class, or ProgressCompletion.class as a fallback
+     */
+    private static Class<?> detectCallerClass() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        String thisClassName = ProgressCompletion.class.getName();
+
+        // Start from index 3 to skip:
+        // 0: getStackTrace
+        // 1: detectCallerClass
+        // 2: logging() or logging(int)
+        for (int i = 3; i < stack.length; i++) {
+            String className = stack[i].getClassName();
+
+            // Skip internal frames
+            if (className.equals(thisClassName) || className.equals(Thread.class.getName())
+                    || className.startsWith("java.lang.reflect.") || className.startsWith("sun.reflect.")
+                    || className.startsWith("jdk.internal.reflect.")) {
+                continue;
+            }
+
+            try {
+                return Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                // Continue searching if class can't be loaded
+            }
+        }
+
+        // Fallback to ProgressCompletion if we can't detect the caller
+        return ProgressCompletion.class;
     }
 
     /**
