@@ -1,5 +1,9 @@
 name: Release
 
+concurrency: 
+  group: release-${{ github.repository }} 
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -30,13 +35,11 @@ jobs:
           java-version: '21'
           cache: maven
           server-id: ossrh
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_PASSWORD
+          server-username: ${{ secrets.OSSRH_USERNAME }}
+          server-password: ${{ secrets.OSSRH_PASSWORD }}
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+    
 
       - name: Configure Git
         env:
@@ -61,60 +64,108 @@ jobs:
           if [[ -n "${INPUT_NEXT_VERSION}" ]]; then
             args+=(--next-version "${INPUT_NEXT_VERSION}")
           fi
+          if [[ ! -x scripts/prepare-release.sh ]]; then
+            if [[ -f scripts/prepare-release.sh ]]; then
+              chmod +x scripts/prepare-release.sh
+            else
+              echo "scripts/prepare-release.sh not found or not executable" >&2
+              exit 1
+            fi
+          fi
+
           eval "$(scripts/prepare-release.sh release "${args[@]}")"
+          # Validate required outputs
+          if [[ -z "${release_version:-}" ]]; then
+            echo "release_version was not produced by scripts/prepare-release.sh" >&2
+            exit 1
+          fi
+          if [[ -z "${release_notes_file:-}" ]]; then
+            echo "release_notes_file was not produced by scripts/prepare-release.sh" >&2
+            exit 1
+          fi
           echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
-          echo "next_version=${next_version}" >> "$GITHUB_OUTPUT"
+          echo "next_version=${next_version:-}" >> "$GITHUB_OUTPUT"
           echo "release_notes_file=${release_notes_file}" >> "$GITHUB_OUTPUT"
 
       - name: Create release branch
-        run: git checkout -b "release/${{ steps.prepare_release.outputs.release_version }}"
-
-      - name: Commit release changes
+        id: create_release_branch
+        shell: bash
         run: |
-          git add .
-          if git diff --cached --quiet; then
-            echo "No release changes detected" >&2
+          set -eo pipefail
+          RELEASE_VERSION="${{ steps.prepare_release.outputs.release_version }}"
+          if [[ -z "${RELEASE_VERSION}" ]]; then
+            echo "No release_version provided; aborting" >&2
             exit 1
           fi
+          BRANCH="release/${RELEASE_VERSION}"
+          git checkout -b "${BRANCH}"
+          echo "release_branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit release changes
+        id: commit_release
+        shell: bash
+        run: |
+          set -eo pipefail
+          git add .
+          if git diff --cached --quiet; then
+            echo "No release changes detected; skipping release steps"
+            echo "release_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git commit -m "chore: release ${{ steps.prepare_release.outputs.release_version }}"
+          echo "release_changes=true" >> "$GITHUB_OUTPUT"
 
       - name: Push release branch
+        if: steps.commit_release.outputs.release_changes == 'true'
         env:
-          RELEASE_BRANCH: release/${{ steps.prepare_release.outputs.release_version }}
-        run: git push --set-upstream origin "$RELEASE_BRANCH"
-
+          RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
+        run: |
+          set -eo pipefail
+          git push --set-upstream origin "$RELEASE_BRANCH"
+    
       - name: Build and deploy artifacts
+        if: steps.commit_release.outputs.release_changes == 'true'
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-        run: mvn -B clean license:format formatter:format deploy -P sonatype-oss-release
-
-      - name: Collect release artifacts
         run: |
+          set -eo pipefail
+          mvn -B clean license:format formatter:format deploy -P sonatype-oss-release
+    
+      - name: Collect release artifacts
+        if: steps.commit_release.outputs.release_changes == 'true'
+        shell: bash
+        run: |
+          set -eo pipefail
           mkdir -p release-artifacts
+          # Include common artifacts: jars, poms, sources, javadoc
           while IFS= read -r file; do
             dest="release-artifacts/${file#./}"
             mkdir -p "$(dirname "$dest")"
             cp "$file" "$dest"
-          done < <(find . -type f \( -path '*/target/*.jar' -o -path '*/target/*.pom' \))
+          done < <(find . -type f \( -path '*/target/*.jar' -o -path '*/target/*.pom' -o -path '*/target/*-sources.jar' -o -path '*/target/*-javadoc.jar' \))
           cp "${{ steps.prepare_release.outputs.release_notes_file }}" release-artifacts/RELEASE_NOTES.md
-
+    
       - name: Upload workflow artifacts
+        if: steps.commit_release.outputs.release_changes == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ta4j-${{ steps.prepare_release.outputs.release_version }}
           path: release-artifacts
-
+    
       - name: Create annotated tag
+        if: steps.commit_release.outputs.release_changes == 'true'
         env:
           RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
         run: |
+          set -eo pipefail
           git tag -a "v${RELEASE_VERSION}" -m "ta4j ${RELEASE_VERSION}"
           git push origin "v${RELEASE_VERSION}"
-
+    
       - name: Publish GitHub release
+        if: steps.commit_release.outputs.release_changes == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.prepare_release.outputs.release_version }}
@@ -125,30 +176,57 @@ jobs:
             release-artifacts/**/*.pom
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare next snapshot on master
+    
+      - name: Prepare next snapshot on default branch
         id: prepare_snapshot
         shell: bash
         env:
           NEXT_VERSION: ${{ steps.prepare_release.outputs.next_version }}
         run: |
           set -eo pipefail
-          git checkout master
-          git pull --ff-only origin master
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+          echo "Using default branch: ${DEFAULT_BRANCH}"
+          git checkout "${DEFAULT_BRANCH}"
+          git pull --ff-only origin "${DEFAULT_BRANCH}"
           git clean -fdx
+          if [[ ! -x scripts/prepare-release.sh ]]; then
+            if [[ -f scripts/prepare-release.sh ]]; then
+              chmod +x scripts/prepare-release.sh
+            else
+              echo "scripts/prepare-release.sh not found or not executable" >&2
+              exit 1
+            fi
+          fi
           eval "$(scripts/prepare-release.sh snapshot --next-version "${NEXT_VERSION}")"
           if git diff --quiet; then
             echo "snapshot_changes=false" >> "$GITHUB_OUTPUT"
           else
             git add .
+            # Do not commit here; create-pull-request will create the branch & commit
             echo "snapshot_changes=true" >> "$GITHUB_OUTPUT"
           fi
-
+    
+      - name: Sanitize next version for branch
+        id: sanitize_next
+        shell: bash
+        run: |
+          set -eo pipefail
+          RAW_NEXT="${{ steps.prepare_release.outputs.next_version }}"
+          if [[ -z "${RAW_NEXT}" ]]; then
+            echo "safe_next_branch=next-snapshot" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Replace invalid branch characters with '-', collapse multiple '-' and trim
+          SAFE=$(printf '%s' "${RAW_NEXT}" | sed -E 's/[^A-Za-z0-9._-]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
+          SAFE="${SAFE:-next-snapshot}"
+          echo "safe_next_branch=${SAFE}" >> "$GITHUB_OUTPUT"
+    
       - name: Create pull request for next snapshot
         if: steps.prepare_snapshot.outputs.snapshot_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: chore/${{ steps.prepare_release.outputs.next_version }}-prep
+          branch: chore/${{ steps.sanitize_next.outputs.safe_next_branch }}-prep
           title: |
             chore: prepare for ${{ steps.prepare_release.outputs.next_version }}
           body: |
