@@ -207,7 +207,6 @@ stage_modified_files() {
   while IFS= read -r -d '' entry; do
     local status="${entry:0:2}"
     local path="${entry:3}"
-    # Skip untracked files (e.g., target/release-notes.md)
     if [[ "$status" == "??" ]]; then
       continue
     fi

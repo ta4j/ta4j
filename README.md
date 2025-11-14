@@ -116,7 +116,7 @@ Preparing release:
 
 release_version=1.5.0
 next_version=1.6.0-SNAPSHOT
-release_notes_file=target/release-notes.md
+release_notes_file=release/release-notes.md
 
 ```
 

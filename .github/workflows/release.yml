@@ -34,7 +34,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          server-id: ossrh
+          server-id: sonatype-nexus-staging
           server-username: ${{ secrets.OSSRH_USERNAME }}
           server-password: ${{ secrets.OSSRH_PASSWORD }}
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
