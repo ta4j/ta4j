@@ -75,7 +75,8 @@ See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduc
 Maintainers can automate the mundane parts of the release process with
 `scripts/prepare-release.sh`. The script coordinates Maven's version bump,
 updates documentation snippets, rolls the changelog forward, and stages the
-resulting changes so they are ready to review and commit.
+resulting changes so they are ready to review and commit. The script's
+functionality is validated by `scripts/tests/test_prepare_release.sh`.
 
 ```
 ./scripts/prepare-release.sh
