@@ -28,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.ProgressCompletion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
@@ -61,7 +62,7 @@ import java.util.Objects;
  */
 public class TopStrategiesExample {
 
-    // PERFORMANCE NOTE: The current ranges generate ~20,000+ strategies.
+    // PERFORMANCE NOTE: The current ranges generate ~10,000+ strategies.
     // BacktestExecutor automatically uses batch processing for large strategy
     // counts (>1000)
     // to prevent memory exhaustion. If execution is still too slow, consider:
@@ -110,16 +111,9 @@ public class TopStrategiesExample {
 
         LOG.debug("Testing {} strategies...", strategies.size());
 
-        // Run backtest on all strategies
+        // Run backtest on all strategies with progress logging to this class's logger
         BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
-                DecimalNum.valueOf(1), Trade.TradeType.BUY, completed -> {
-                    // Report progress every 100 strategies or at key milestones
-                    if (completed % 100 == 0 || completed == strategies.size()) {
-                        int percentComplete = (int) (completed * 100.0) / strategies.size();
-                        LOG.debug("Progress: {}/{} strategies completed ({}%)", completed, strategies.size(),
-                                percentComplete);
-                    }
-                });
+                DecimalNum.valueOf(1), Trade.TradeType.BUY, ProgressCompletion.logging(TopStrategiesExample.class));
 
         LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 
