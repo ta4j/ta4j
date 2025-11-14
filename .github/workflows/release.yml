@@ -232,7 +232,7 @@ jobs:
             fi
           fi
           eval "$(scripts/prepare-release.sh snapshot --next-version "${NEXT_VERSION}")"
-          if git diff --quiet; then
+          if git diff --cached --quiet; then
             echo "snapshot_changes=false" >> "$GITHUB_OUTPUT"
           else
             git add .

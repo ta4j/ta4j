@@ -248,7 +248,7 @@ run_release() {
   [[ -z "$release_version" ]] && release_version="${current%-SNAPSHOT}"
   [[ -z "$next_version" ]] && next_version="$(increment_version "$release_version")"
 
-  local snapshot_version="${next_version}-SNAPSHOT"
+  local snapshot_version="${next_version%-SNAPSHOT}-SNAPSHOT"
   local release_notes_file="release/release-notes.md"
 
   echo "Preparing release:" >&2
