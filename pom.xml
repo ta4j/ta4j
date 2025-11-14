@@ -165,8 +165,8 @@
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <!-- The server "id" element from settings to use authentication from -->
                             <serverId>sonatype-nexus-staging</serverId>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                            <autoDropAfterRelease>true</autoDropAfterRelease>
+                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                            <autoDropAfterRelease>false</autoDropAfterRelease>
                         </configuration>
                     </plugin>
 
