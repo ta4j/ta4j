@@ -55,7 +55,7 @@
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
         <url>https://github.com/ta4j/ta4j</url>
-        <tag>0.18</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
@@ -165,6 +165,8 @@
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <!-- The server "id" element from settings to use authentication from -->
                             <serverId>sonatype-nexus-staging</serverId>
+                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                            <autoDropAfterRelease>false</autoDropAfterRelease>
                         </configuration>
                     </plugin>
 

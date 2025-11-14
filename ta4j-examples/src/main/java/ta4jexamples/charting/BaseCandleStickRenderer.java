@@ -45,18 +45,20 @@ import java.awt.*;
 public class BaseCandleStickRenderer extends CandlestickRenderer {
 
     /**
-     * Color for up candles (close > open).
+     * Color for up candles (close > open). Matches TradingView's default bullish
+     * candle color.
      *
      * @since 0.19
      */
-    public static final Color DEFAULT_UP_COLOR = new Color(0x00E676);
+    public static final Color DEFAULT_UP_COLOR = new Color(0x26A69A);
 
     /**
-     * Color for down candles (close < open).
+     * Color for down candles (close < open). Matches TradingView's default bearish
+     * candle color.
      *
      * @since 0.19
      */
-    public static final Color DEFAULT_DOWN_COLOR = new Color(0xFF5252);
+    public static final Color DEFAULT_DOWN_COLOR = new Color(0xEF5350);
 
     /**
      * Returns the paint color for the specified item based on whether it's an up or

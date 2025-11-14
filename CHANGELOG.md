@@ -12,6 +12,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added Log4j 2 configurations for modules and tests to back the consolidated logging stack.
 - Introduced `StrategySerialization` with `Strategy#toJson()`/`Strategy#fromJson(BarSeries, String)` helpers for sharing
   strategy descriptors alongside entry and exit rules.
+- Added release GitHub workflow to automatically version, build, and publish artifacts to Maven Central. The automated release pipeline uses `prepare-release.sh` to prepare release versions (updating Maven POMs, CHANGELOG.md, and README.md), then creates a release branch, tags it, and publishes to Maven Central. The snapshot version bump is handled separately by CI after the release is complete, ensuring the release branch and tag contain only the release version.
+- Added `scripts/tests/test_prepare_release.sh` to validate the release preparation script's functionality, ensuring correct version handling, changelog updates, and README modifications. 
 - [#1349](https://github.com/ta4j/ta4j/issues/1349) Enabled `NamedStrategy` serialization/deserialization with compact labels
   (for example `ToggleNamedStrategy_true_false_u3`) so clients can persist strategy presets alongside their parameters.
 
