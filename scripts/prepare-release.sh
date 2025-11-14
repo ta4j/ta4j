@@ -39,7 +39,7 @@ USAGE
 # Utilities
 # -----------------------------------------------------------------------------
 ensure_tools() {
-  for tool in mvn python3; do
+  for tool in git mvn python3; do
     command -v "$tool" >/dev/null 2>&1 || {
       echo "Error: required tool '$tool' not found in PATH" >&2
       exit 1
@@ -202,6 +202,30 @@ update_readme_versions() {
   perl -0pi -e 's/`[0-9]+\.[0-9]+(?:\.[0-9]+)?-SNAPSHOT`/`$ENV{SNAPSHOT_VERSION}`/g' README.md || true
 }
 
+stage_modified_files() {
+  local -a files=()
+  while IFS= read -r -d '' entry; do
+    local status="${entry:0:2}"
+    local path="${entry:3}"
+    # Skip untracked files (e.g., target/release-notes.md)
+    if [[ "$status" == "??" ]]; then
+      continue
+    fi
+    files+=("$path")
+  done < <(git status --porcelain -z)
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "No tracked changes to stage." >&2
+    return
+  fi
+
+  git add "${files[@]}"
+  echo "Staged ${#files[@]} file(s):" >&2
+  for file in "${files[@]}"; do
+    echo "  - $file" >&2
+  done
+}
+
 # -----------------------------------------------------------------------------
 # Core workflows
 # -----------------------------------------------------------------------------
@@ -226,7 +250,7 @@ run_release() {
   [[ -z "$next_version" ]] && next_version="$(increment_version "$release_version")"
 
   local snapshot_version="${next_version}-SNAPSHOT"
-  local release_notes_file="target/release-notes.md"
+  local release_notes_file="release/release-notes.md"
 
   echo "Preparing release:" >&2
   echo "  Release version: $release_version" >&2
@@ -245,6 +269,10 @@ run_release() {
   export RELEASE_VERSION="$release_version" SNAPSHOT_VERSION="$snapshot_version"
   update_changelog_for_release "$release_version" "$release_notes_file" "$dry_run"
   update_readme_versions "$dry_run"
+
+  if [[ "$dry_run" != "true" ]]; then
+    stage_modified_files
+  fi
 
   # Note: The snapshot version bump is handled separately by the CI workflow
   # after the release branch is created, committed, tagged, and deployed.
@@ -283,6 +311,7 @@ run_snapshot() {
     mvn -B versions:set -DnewVersion="$next_version" >&2
     mvn -B versions:commit >&2
     ensure_unreleased_placeholder "$dry_run"
+    stage_modified_files
   fi
 
   echo >&2

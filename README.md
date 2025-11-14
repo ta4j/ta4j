@@ -90,9 +90,10 @@ value when cutting special releases:
 ./scripts/prepare-release.sh --release-version 0.19.1 --next-version 0.20
 ```
 
-Run the script from a clean working tree. It will stage the updated POM files,
-documentation, and changelog entries so you can create the release commit (and
-follow-up snapshot bump) with confidence.
+Run the script from a clean working tree. It stages the updated POM files,
+documentation, and changelog entries automatically (skipping this step when you
+pass `--dry-run`) so you can create the release commit (and follow-up snapshot
+bump) with confidence.
 
 To preview a release (no file writes) run:
 

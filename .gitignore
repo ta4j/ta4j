@@ -12,6 +12,7 @@ log/
 bin/
 target/
 out/
+release/
 
 # Compiled class file
 *.class

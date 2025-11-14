@@ -176,8 +176,41 @@ jobs:
             release-artifacts/**/*.pom
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
+      - name: Fast-forward default branch with release commit
+        if: steps.commit_release.outputs.release_changes == 'true'
+        env:
+          RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
+        run: |
+          set -eo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+          echo "Ensuring ${DEFAULT_BRANCH} contains the release commit from ${RELEASE_BRANCH}"
+          git checkout "${DEFAULT_BRANCH}"
+          git pull --ff-only origin "${DEFAULT_BRANCH}"
+          git merge --ff-only "${RELEASE_BRANCH}"
+          git push origin "${DEFAULT_BRANCH}"
+
+      - name: Verify release content on default branch
+        if: steps.commit_release.outputs.release_changes == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
+        run: |
+          set -eo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+          git checkout "${DEFAULT_BRANCH}"
+          if ! grep -Eq "^## ${RELEASE_VERSION} \(" CHANGELOG.md; then
+            echo "CHANGELOG.md does not contain release section for ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+          if ! grep -F "<version>${RELEASE_VERSION}</version>" README.md; then
+            echo "README.md does not contain dependency references for ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
       - name: Prepare next snapshot on default branch
+        if: steps.commit_release.outputs.release_changes == 'true'
         id: prepare_snapshot
         shell: bash
         env:
@@ -208,6 +241,7 @@ jobs:
           fi
     
       - name: Sanitize next version for branch
+        if: steps.commit_release.outputs.release_changes == 'true'
         id: sanitize_next
         shell: bash
         run: |
@@ -223,7 +257,7 @@ jobs:
           echo "safe_next_branch=${SAFE}" >> "$GITHUB_OUTPUT"
     
       - name: Create pull request for next snapshot
-        if: steps.prepare_snapshot.outputs.snapshot_changes == 'true'
+        if: steps.commit_release.outputs.release_changes == 'true' && steps.prepare_snapshot.outputs.snapshot_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           branch: chore/${{ steps.sanitize_next.outputs.safe_next_branch }}-prep
