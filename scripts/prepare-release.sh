@@ -52,7 +52,16 @@ trim() {
 }
 
 current_project_version() {
-  mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1
+  local version
+  version="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version 2>/dev/null | tail -n 1)"
+  
+  # Validate version pattern: digits and dots, optionally followed by -SNAPSHOT
+  if ! [[ "$version" =~ ^[0-9]+(\.[0-9]+)+(-SNAPSHOT)?$ ]]; then
+    echo "Error: Failed to extract valid project version from Maven. Got: '$version'" >&2
+    exit 1
+  fi
+  
+  echo "$version"
 }
 
 increment_version() {
