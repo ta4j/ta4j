@@ -230,6 +230,233 @@ public class ProgressCompletionTest {
     }
 
     @Test
+    public void loggingWithMemoryWithAutoDetection() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory();
+        assertNotNull(callback);
+
+        // Should not throw - should detect ProgressCompletionTest as the caller
+        callback.accept(1);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWithAutoDetectionAndCustomInterval() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(50);
+        assertNotNull(callback);
+
+        // Should not throw - should detect ProgressCompletionTest as the caller
+        callback.accept(50);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWithStringLoggerName() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory("test.logger");
+        assertNotNull(callback);
+
+        // Should not throw
+        callback.accept(1);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWithClass() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(ProgressCompletionTest.class);
+        assertNotNull(callback);
+
+        // Should not throw
+        callback.accept(1);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWithLogger() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger);
+        assertNotNull(callback);
+
+        // Should not throw
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWithNullLoggerThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> ProgressCompletion.loggingWithMemory((Logger) null));
+    }
+
+    @Test
+    public void loggingWithMemoryWithInvalidIntervalThrowsException() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        assertThrows(IllegalArgumentException.class, () -> ProgressCompletion.loggingWithMemory(logger, 0));
+        assertThrows(IllegalArgumentException.class, () -> ProgressCompletion.loggingWithMemory(logger, -1));
+    }
+
+    @Test
+    public void loggingWithMemoryWithCustomInterval() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger, 50);
+        assertNotNull(callback);
+
+        // Should not throw
+        callback.accept(50);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryLogsAtIntervalMilestones() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger, 100);
+        ProgressCompletion.withTotalStrategies(callback, 500);
+
+        // Should not throw - logs at 100, 200, 300, etc. with memory stats
+        callback.accept(100);
+        callback.accept(200);
+        callback.accept(300);
+    }
+
+    @Test
+    public void loggingWithMemoryLogsAtPercentageMilestones() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger, 1000); // Large interval
+        ProgressCompletion.withTotalStrategies(callback, 400);
+
+        // Should not throw - logs at 25%, 50%, 75%, 100% with memory stats
+        callback.accept(100); // 25%
+        callback.accept(200); // 50%
+        callback.accept(300); // 75%
+        callback.accept(400); // 100%
+    }
+
+    @Test
+    public void loggingWithMemoryWithoutTotalStrategiesLogsOnlyCount() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger, 100);
+
+        // Without total, should only log count at intervals with memory stats
+        callback.accept(100);
+        callback.accept(200);
+        callback.accept(250); // Should not log (not an interval)
+    }
+
+    @Test
+    public void loggingWithMemoryWithTotalStrategiesLogsPercentage() {
+        Logger logger = LoggerFactory.getLogger("test.logger");
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(logger, 100);
+        ProgressCompletion.withTotalStrategies(callback, 1000);
+
+        // Should not throw - logs percentage with memory stats
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryWorksWithTotalStrategies() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory();
+        assertNotNull(callback);
+
+        // Should work with withTotalStrategies
+        Consumer<Integer> wrapped = ProgressCompletion.withTotalStrategies(callback, 500);
+        assertNotNull(wrapped);
+
+        // Should not throw - logs with memory stats
+        wrapped.accept(100);
+        wrapped.accept(250); // 50% milestone
+        wrapped.accept(500); // 100% milestone
+    }
+
+    @Test
+    public void loggingWithMemoryAndIntervalWorksWithTotalStrategies() {
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(50);
+        assertNotNull(callback);
+
+        // Should work with withTotalStrategies
+        Consumer<Integer> wrapped = ProgressCompletion.withTotalStrategies(callback, 200);
+        assertNotNull(wrapped);
+
+        // Should not throw - logs at interval and milestones with memory stats
+        wrapped.accept(50); // Interval
+        wrapped.accept(100); // Interval and 50% milestone
+        wrapped.accept(150); // Interval and 75% milestone
+        wrapped.accept(200); // Interval and 100% milestone
+    }
+
+    @Test
+    public void loggingWithMemoryWorksWithBacktestExecutor() {
+        // Integration test to ensure memory logging works with actual BacktestExecutor
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(10, 11, 12, 13, 14)
+                .build();
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 150; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        // Use memory logging convenience method
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory();
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
+                Trade.TradeType.BUY, callback);
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+    }
+
+    @Test
+    public void loggingWithMemoryAndIntervalWorksWithBacktestExecutor() {
+        // Integration test with custom interval
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(10, 11, 12, 13, 14)
+                .build();
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+        }
+
+        // Use memory logging with custom interval
+        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(50);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
+                Trade.TradeType.BUY, callback);
+
+        assertEquals(strategies.size(), result.tradingStatements().size());
+    }
+
+    @Test
+    public void loggingWithMemoryFromHelperClass() {
+        // Test that memory logging auto-detection works when called from helper class
+        MemoryTestHelper helper = new MemoryTestHelper();
+        Consumer<Integer> callback = helper.createCallback();
+        assertNotNull(callback);
+        callback.accept(100);
+    }
+
+    @Test
+    public void loggingWithMemoryFromHelperClassWithInterval() {
+        // Test that memory logging auto-detection works with interval from helper class
+        MemoryTestHelper helper = new MemoryTestHelper();
+        Consumer<Integer> callback = helper.createCallbackWithInterval(25);
+        assertNotNull(callback);
+        callback.accept(25);
+        callback.accept(50);
+    }
+
+    /**
+     * Helper class to test memory logging auto-detection from different calling
+     * contexts.
+     */
+    private static class MemoryTestHelper {
+        Consumer<Integer> createCallback() {
+            return ProgressCompletion.loggingWithMemory();
+        }
+
+        Consumer<Integer> createCallbackWithInterval(int interval) {
+            return ProgressCompletion.loggingWithMemory(interval);
+        }
+    }
+
+    @Test
     public void loggingWithStringLoggerName() {
         Consumer<Integer> callback = ProgressCompletion.logging("test.logger");
         assertNotNull(callback);
