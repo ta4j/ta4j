@@ -136,8 +136,11 @@ public class TopStrategiesExample {
             TradingStatement statement = topStrategies.get(i);
             Strategy strategy = statement.getStrategy();
 
-            Num netProfit = netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord());
-            Num expectancy = expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord());
+            // Use stored criterion scores if available, otherwise calculate
+            Num netProfit = statement.getCriterionScore(netProfitCriterion)
+                    .orElseGet(() -> netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord()));
+            Num expectancy = statement.getCriterionScore(expectancyCriterion)
+                    .orElseGet(() -> expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord()));
 
             LOG.debug("{}. {}", (i + 1), strategy.getName());
             LOG.debug("    Net Profit: {}", netProfit);
