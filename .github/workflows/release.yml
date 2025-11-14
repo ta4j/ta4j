@@ -2,7 +2,7 @@ name: Release
 
 concurrency: 
   group: release-${{ github.repository }} 
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
