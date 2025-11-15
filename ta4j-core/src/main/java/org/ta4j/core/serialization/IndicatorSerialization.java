@@ -24,6 +24,7 @@
 package org.ta4j.core.serialization;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -327,11 +328,21 @@ public final class IndicatorSerialization {
         if (value == null) {
             return null;
         }
+        if (targetType.isArray()) {
+            return convertNumericArrayValue(value, targetType, series);
+        }
         if (targetType == String.class) {
             return value.toString();
         }
         if (Num.class.isAssignableFrom(targetType)) {
             return series.numFactory().numOf(value.toString());
+        }
+        if (targetType == Object.class) {
+            try {
+                return series.numFactory().numOf(value.toString());
+            } catch (NumberFormatException ex) {
+                return value;
+            }
         }
         Number coerced = coerceNumber(value);
         if (targetType == int.class || targetType == Integer.class) {
@@ -363,6 +374,32 @@ public final class IndicatorSerialization {
         return null;
     }
 
+    private static Object convertNumericArrayValue(Object value, Class<?> arrayType, BarSeries series) {
+        Class<?> componentType = arrayType.getComponentType();
+        List<?> elements;
+        if (value instanceof List<?> list) {
+            elements = list;
+        } else if (value != null && value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            List<Object> copied = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                copied.add(Array.get(value, i));
+            }
+            elements = copied;
+        } else {
+            elements = List.of(value);
+        }
+        Object array = Array.newInstance(componentType, elements.size());
+        for (int i = 0; i < elements.size(); i++) {
+            Object converted = convertNumericValue(elements.get(i), componentType, series);
+            if (converted == null) {
+                return null;
+            }
+            Array.set(array, i, converted);
+        }
+        return array;
+    }
+
     private static Number coerceNumber(Object value) {
         if (value instanceof Number number) {
             return number;
@@ -374,6 +411,12 @@ public final class IndicatorSerialization {
         Map<String, Object> parameters = new LinkedHashMap<>();
         for (FieldView field : collectFields(indicator)) {
             if (!field.isNumeric()) {
+                Object raw = field.value();
+                if (raw instanceof List<?> list && isNumericList(list)) {
+                    parameters.put(field.label(), formatNumericList(list));
+                } else if (raw != null && raw.getClass().isArray() && isNumericArray(raw)) {
+                    parameters.put(field.label(), formatNumericArray(raw));
+                }
                 continue;
             }
             Object formatted = formatNumericValue(field.value());
@@ -441,6 +484,53 @@ public final class IndicatorSerialization {
             return value;
         }
         return null;
+    }
+
+    private static boolean isNumericArray(Object array) {
+        int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(array, i);
+            if (!isNumericElement(element)) {
+                return false;
+            }
+        }
+        return length > 0;
+    }
+
+    private static boolean isNumericList(List<?> list) {
+        if (list.isEmpty()) {
+            return false;
+        }
+        for (Object element : list) {
+            if (!isNumericElement(element)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isNumericElement(Object value) {
+        if (value == null) {
+            return false;
+        }
+        return value instanceof Num || value instanceof Number || value instanceof String;
+    }
+
+    private static List<Object> formatNumericList(List<?> list) {
+        List<Object> formatted = new ArrayList<>(list.size());
+        for (Object element : list) {
+            formatted.add(formatNumericValue(element));
+        }
+        return formatted;
+    }
+
+    private static List<Object> formatNumericArray(Object array) {
+        int length = Array.getLength(array);
+        List<Object> formatted = new ArrayList<>(length);
+        for (int i = 0; i < length; i++) {
+            formatted.add(formatNumericValue(Array.get(array, i)));
+        }
+        return formatted;
     }
 
     private static String trimDecimal(String value) {
