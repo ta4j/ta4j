@@ -23,16 +23,32 @@
  */
 package org.ta4j.core.strategy.named;
 
+import java.io.IOException;
+import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -52,6 +68,22 @@ public abstract class NamedStrategy extends BaseStrategy {
     public static final String SERIALIZED_TYPE = NamedStrategy.class.getSimpleName();
 
     private static final Map<String, Class<? extends NamedStrategy>> REGISTRY = new ConcurrentHashMap<>();
+    private static final Logger LOGGER = LoggerFactory.getLogger(NamedStrategy.class);
+    private static final String[] DEFAULT_SCAN_PACKAGES = { "org.ta4j.core.strategy.named" };
+    private static final Set<String> SCANNED_PACKAGES = ConcurrentHashMap.newKeySet();
+    private static final AtomicBoolean DEFAULT_PACKAGES_INITIALIZED = new AtomicBoolean();
+
+    /**
+     * Ensures core packages have been scanned and registers any discovered named
+     * strategies.
+     */
+    public static void initializeRegistry(String... basePackages) {
+        ensureDefaultRegistryInitialized();
+        if (basePackages == null || basePackages.length == 0) {
+            return;
+        }
+        scanPackages(basePackages);
+    }
 
     /**
      * Protected constructor that allows subclasses to provide the fully formatted
@@ -215,8 +247,9 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @return registered type
      */
     public static Class<? extends NamedStrategy> requireRegistered(String simpleName) {
+        ensureDefaultRegistryInitialized();
         return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName
-                + "'. Ensure it is registered via NamedStrategy.registerImplementation()."));
+                + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
     }
 
     /**
@@ -230,5 +263,131 @@ public abstract class NamedStrategy extends BaseStrategy {
     @Override
     public String toString() {
         return getName();
+    }
+
+    private static void ensureDefaultRegistryInitialized() {
+        if (DEFAULT_PACKAGES_INITIALIZED.compareAndSet(false, true)) {
+            scanPackages(DEFAULT_SCAN_PACKAGES);
+        }
+    }
+
+    private static void scanPackages(String... basePackages) {
+        if (basePackages == null || basePackages.length == 0) {
+            return;
+        }
+        ClassLoader loader = detectClassLoader();
+        for (String basePackage : basePackages) {
+            String normalized = normalizePackage(basePackage);
+            if (normalized.isEmpty() || !SCANNED_PACKAGES.add(normalized)) {
+                continue;
+            }
+            scanPackage(normalized, loader);
+        }
+    }
+
+    private static ClassLoader detectClassLoader() {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (loader == null) {
+            loader = NamedStrategy.class.getClassLoader();
+        }
+        return loader;
+    }
+
+    private static String normalizePackage(String basePackage) {
+        if (basePackage == null) {
+            return "";
+        }
+        return basePackage.trim().replace('/', '.');
+    }
+
+    private static void scanPackage(String basePackage, ClassLoader loader) {
+        String path = basePackage.replace('.', '/');
+        try {
+            Enumeration<URL> resources = loader.getResources(path);
+            while (resources.hasMoreElements()) {
+                URL url = resources.nextElement();
+                try {
+                    String protocol = url.getProtocol();
+                    if ("file".equals(protocol)) {
+                        scanDirectory(basePackage, Paths.get(url.toURI()), loader);
+                    } else if ("jar".equals(protocol)) {
+                        scanJar(basePackage, url, loader);
+                    }
+                } catch (URISyntaxException ex) {
+                    LOGGER.debug("Invalid URI while scanning package {}", basePackage, ex);
+                } catch (IOException ex) {
+                    LOGGER.debug("Failed to scan package {} from {}", basePackage, url, ex);
+                }
+            }
+        } catch (IOException ex) {
+            LOGGER.debug("Unable to enumerate resources for package {}", basePackage, ex);
+        }
+    }
+
+    private static void scanDirectory(String basePackage, Path directory, ClassLoader loader) throws IOException {
+        if (!Files.isDirectory(directory)) {
+            return;
+        }
+        try (Stream<Path> stream = Files.walk(directory)) {
+            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class"))
+                    .forEach(path -> {
+                        String className = toClassName(basePackage, directory, path);
+                        loadNamedStrategy(className, loader);
+                    });
+        }
+    }
+
+    private static String toClassName(String basePackage, Path root, Path file) {
+        Path relative = root.relativize(file);
+        String name = relative.toString().replace('/', '.').replace('\\', '.');
+        if (name.endsWith(".class")) {
+            name = name.substring(0, name.length() - 6);
+        }
+        if (name.isEmpty()) {
+            return basePackage;
+        }
+        return basePackage + '.' + name;
+    }
+
+    private static void scanJar(String basePackage, URL packageUrl, ClassLoader loader) throws IOException {
+        java.net.URLConnection connection = packageUrl.openConnection();
+        if (!(connection instanceof JarURLConnection jarConnection)) {
+            return;
+        }
+        try (JarFile jarFile = jarConnection.getJarFile()) {
+            String packagePath = basePackage.replace('.', '/') + '/';
+            Enumeration<JarEntry> entries = jarFile.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (!name.endsWith(".class") || !name.startsWith(packagePath)) {
+                    continue;
+                }
+                String className = name.substring(0, name.length() - 6).replace('/', '.');
+                loadNamedStrategy(className, loader);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void loadNamedStrategy(String className, ClassLoader loader) {
+        if (className == null || className.isBlank()) {
+            return;
+        }
+        try {
+            Class<?> candidate = Class.forName(className, false, loader);
+            if (candidate == NamedStrategy.class || candidate.isInterface()
+                    || Modifier.isAbstract(candidate.getModifiers())) {
+                return;
+            }
+            if (NamedStrategy.class.isAssignableFrom(candidate)) {
+                registerImplementation((Class<? extends NamedStrategy>) candidate);
+            }
+        } catch (ClassNotFoundException | LinkageError ex) {
+            LOGGER.debug("Unable to inspect named strategy class {}", className, ex);
+        }
     }
 }

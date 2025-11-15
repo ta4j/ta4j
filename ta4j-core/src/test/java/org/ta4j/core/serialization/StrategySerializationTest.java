@@ -285,6 +285,22 @@ public class StrategySerializationTest {
         assertThat(restored.getName()).isEqualTo("ToggleNamedStrategy_true_false_u2");
     }
 
+    @Test
+    public void initializeRegistryScansAdditionalPackages() {
+        BarSeries series = new MockBarSeriesBuilder().withData(2, 4, 6).build();
+        NamedStrategy.initializeRegistry("org.ta4j.core.serialization");
+
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("AutoScanNamedStrategy_true_u0")
+                .build();
+
+        Strategy restored = StrategySerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored).isInstanceOf(AutoScanNamedStrategy.class);
+        assertThat(restored.getName()).isEqualTo("AutoScanNamedStrategy_true_u0");
+    }
+
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
 
         private final boolean satisfied;
@@ -405,6 +421,33 @@ public class StrategySerializationTest {
         private static String buildLabel(boolean entrySatisfied, boolean exitSatisfied, int unstableBars) {
             return NamedStrategy.buildLabel(ToggleNamedStrategy.class, Boolean.toString(entrySatisfied),
                     Boolean.toString(exitSatisfied), "u" + unstableBars);
+        }
+    }
+
+    private static final class AutoScanNamedStrategy extends NamedStrategy {
+
+        private AutoScanNamedStrategy(BarSeries series, boolean entrySatisfied, int unstableBars) {
+            super(NamedStrategy.buildLabel(AutoScanNamedStrategy.class, Boolean.toString(entrySatisfied),
+                    "u" + unstableBars), new SerializableRule(entrySatisfied), new SerializableRule(!entrySatisfied),
+                    unstableBars);
+        }
+
+        public AutoScanNamedStrategy(BarSeries series, String... parameters) {
+            this(series, parseEntryArgument(parameters), parseUnstableArgument(parameters));
+        }
+
+        private static boolean parseEntryArgument(String[] parameters) {
+            if (parameters == null || parameters.length < 2) {
+                throw new IllegalArgumentException("AutoScanNamedStrategy expects [entry, unstable]");
+            }
+            return Boolean.parseBoolean(parameters[0]);
+        }
+
+        private static int parseUnstableArgument(String[] parameters) {
+            if (parameters == null || parameters.length < 2) {
+                throw new IllegalArgumentException("AutoScanNamedStrategy expects [entry, unstable]");
+            }
+            return parseUnstableToken(parameters[1]);
         }
     }
 

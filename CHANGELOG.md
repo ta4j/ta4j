@@ -17,7 +17,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - [#1349](https://github.com/ta4j/ta4j/issues/1349) Enabled `NamedStrategy` serialization/deserialization with compact labels
   (for example `ToggleNamedStrategy_true_false_u3`) so clients can persist strategy presets alongside their parameters.
 - Refined `NamedStrategy` serialization to emit `{ "type": "NamedStrategy", "label": "<SimpleClass>_<params...>" }`, introduced
-  the registry/permutation helper APIs, and updated `DayOfWeekStrategy` to implement the compact format.
+  the registry/permutation helper APIs, lazy package scanning via `NamedStrategy.initializeRegistry(...)`, and updated
+  `DayOfWeekStrategy` to implement the compact format.
 
 
 ### Changed
