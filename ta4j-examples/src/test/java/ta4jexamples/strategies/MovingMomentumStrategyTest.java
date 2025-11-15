@@ -23,12 +23,16 @@
  */
 package ta4jexamples.strategies;
 
+import org.junit.Assume;
 import org.junit.Test;
+
+import java.awt.*;
 
 public class MovingMomentumStrategyTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
         MovingMomentumStrategy.main(null);
     }
 }

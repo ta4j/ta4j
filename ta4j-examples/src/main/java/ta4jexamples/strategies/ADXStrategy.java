@@ -23,11 +23,10 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jfree.chart.JFreeChart;
+import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.adx.ADXIndicator;
@@ -39,6 +38,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import ta4jexamples.charting.ChartMaker;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -49,6 +49,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
 public class ADXStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(ADXStrategy.class);
 
     /**
      * @param series a bar series
@@ -77,7 +79,7 @@ public class ADXStrategy {
         final UnderIndicatorRule closePriceUnderSma = new UnderIndicatorRule(closePriceIndicator, smaIndicator);
         final Rule exitRule = adxOver20Rule.and(plusDICrossedDownMinusDI).and(closePriceUnderSma);
 
-        return new BaseStrategy("ADX", entryRule, exitRule, adxBarCount);
+        return new BaseStrategy("ADXStrategy", entryRule, exitRule, adxBarCount);
     }
 
     public static void main(String[] args) {
@@ -91,10 +93,17 @@ public class ADXStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
+
+        // Charting
+        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
+        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
+        chartMaker.displayChart(tradingRecordChart);
+        chartMaker.saveChartImage(tradingRecordChart, series);
     }
 }

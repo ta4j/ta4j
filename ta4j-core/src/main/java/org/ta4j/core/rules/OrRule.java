@@ -50,6 +50,7 @@ public class OrRule extends AbstractRule {
     public OrRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;
         this.rule2 = rule2;
+        setName(createCompositeName(getClass().getSimpleName(), rule1.getName(), rule2.getName()));
     }
 
     @Override

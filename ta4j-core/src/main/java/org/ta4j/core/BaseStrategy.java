@@ -185,6 +185,16 @@ public class BaseStrategy implements Strategy {
     }
 
     /**
+     * Returns the display name to use in trace logs. Uses the configured name if
+     * set, otherwise falls back to the class name.
+     *
+     * @return display name for tracing
+     */
+    protected String getTraceDisplayName() {
+        return name != null ? name : className;
+    }
+
+    /**
      * Traces the {@code shouldEnter()} method calls.
      *
      * @param index the bar index
@@ -192,7 +202,7 @@ public class BaseStrategy implements Strategy {
      */
     protected void traceShouldEnter(int index, boolean enter) {
         if (log.isTraceEnabled()) {
-            log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
+            log.trace(">>> {}#shouldEnter({}): {}", getTraceDisplayName(), index, enter);
         }
     }
 
@@ -204,7 +214,7 @@ public class BaseStrategy implements Strategy {
      */
     protected void traceShouldExit(int index, boolean exit) {
         if (log.isTraceEnabled()) {
-            log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
+            log.trace(">>> {}#shouldExit({}): {}", getTraceDisplayName(), index, exit);
         }
     }
 }

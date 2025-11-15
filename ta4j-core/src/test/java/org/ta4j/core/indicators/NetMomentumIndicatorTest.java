@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -277,7 +277,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         Num decayAtWindow = decay.pow(timeFrame);
 
         KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
-        BinaryOperation deltaIndicator = BinaryOperation.difference(smoothed, 50);
+        BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, 50);
 
         Num expected = deltaIndicator.getValue(0);
         for (int i = 1; i <= targetIndex; i++) {
@@ -306,7 +306,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         NetMomentumIndicator instant = new NetMomentumIndicator(varying, 6, 50, 0.0);
         KalmanFilterIndicator smoothed = new KalmanFilterIndicator(varying);
-        BinaryOperation deltaIndicator = BinaryOperation.difference(smoothed, 50);
+        BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, 50);
 
         for (int i = 0; i < series.getBarCount(); i++) {
             Num expected = deltaIndicator.getValue(i);

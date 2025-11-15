@@ -23,12 +23,16 @@
  */
 package ta4jexamples.strategies;
 
+import org.junit.Assume;
 import org.junit.Test;
+
+import java.awt.*;
 
 public class RSI2StrategyTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
         RSI2Strategy.main(null);
     }
 }

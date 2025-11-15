@@ -83,4 +83,28 @@ public interface Rule {
      *         otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
+
+    /**
+     * Sets a human friendly name for this rule. Implementations that support naming
+     * should override this method.
+     *
+     * @param name desired name; {@code null} or blank should reset the rule name
+     *             back to the implementation specific default
+     * @since 0.19
+     */
+    default void setName(String name) {
+        // no-op by default to preserve backwards compatibility for custom Rule
+        // implementations that do not support naming yet
+    }
+
+    /**
+     * Returns the configured name for this rule.
+     *
+     * @return a descriptive name or, by default, the same value as
+     *         {@link #toString()}
+     * @since 0.19
+     */
+    default String getName() {
+        return toString();
+    }
 }

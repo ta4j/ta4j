@@ -23,6 +23,9 @@
  */
 package ta4jexamples.strategies;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -35,6 +38,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+import ta4jexamples.charting.ChartMaker;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -45,6 +49,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
  */
 public class CCICorrectionStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(CCICorrectionStrategy.class);
 
     /**
      * @param series a bar series
@@ -66,7 +72,8 @@ public class CCICorrectionStrategy {
         Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
 
-        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+        String strategyName = "CCICorrectionStrategy";
+        Strategy strategy = new BaseStrategy(strategyName, entryRule, exitRule);
         strategy.setUnstableBars(5);
         return strategy;
     }
@@ -82,10 +89,17 @@ public class CCICorrectionStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
+
+        // Charting
+        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
+        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
+        chartMaker.displayChart(tradingRecordChart);
+        chartMaker.saveChartImage(tradingRecordChart, series);
     }
 }

@@ -50,8 +50,8 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final double processNoise;
     private final double measurementNoise;
-    private KalmanFilter filter;
-    private int lastProcessedIndex;
+    private transient KalmanFilter filter;
+    private transient int lastProcessedIndex;
 
     /**
      * Constructs a KalmanFilterIndicator with the given indicator and default noise

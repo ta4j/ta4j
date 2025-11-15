@@ -24,8 +24,14 @@
 package org.ta4j.core.reports;
 
 import com.google.gson.Gson;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Base implementation of {@link TradingStatement} containing position
@@ -39,6 +45,7 @@ public class BaseTradingStatement implements TradingStatement {
     public final BasePerformanceReport performanceReport;
     public final TradingRecord tradingRecord;
     public final Strategy strategy;
+    private final Map<AnalysisCriterion, Num> criterionScores;
 
     /**
      * Constructs a trading statement with strategy, trading record, position
@@ -52,10 +59,29 @@ public class BaseTradingStatement implements TradingStatement {
      */
     public BaseTradingStatement(Strategy strategy, TradingRecord tradingRecord, PositionStatsReport positionStatsReport,
             BasePerformanceReport performanceReport) {
+        this(strategy, tradingRecord, positionStatsReport, performanceReport, null);
+    }
+
+    /**
+     * Constructs a trading statement with strategy, trading record, position
+     * statistics, performance report, and optional criterion scores.
+     *
+     * @param strategy            the trading strategy used to generate the
+     *                            statement
+     * @param tradingRecord       the record of all trading operations
+     * @param positionStatsReport the report containing position-related statistics
+     * @param performanceReport   the report containing performance metrics
+     * @param criterionScores     optional map of criterion scores (may be null or
+     *                            empty)
+     */
+    public BaseTradingStatement(Strategy strategy, TradingRecord tradingRecord, PositionStatsReport positionStatsReport,
+            BasePerformanceReport performanceReport, Map<AnalysisCriterion, Num> criterionScores) {
         this.positionStatsReport = positionStatsReport;
         this.performanceReport = performanceReport;
         this.tradingRecord = tradingRecord;
         this.strategy = strategy;
+        this.criterionScores = criterionScores == null || criterionScores.isEmpty() ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new HashMap<>(criterionScores));
     }
 
     /**
@@ -109,6 +135,11 @@ public class BaseTradingStatement implements TradingStatement {
     @Override
     public TradingRecord getTradingRecord() {
         return tradingRecord;
+    }
+
+    @Override
+    public Map<AnalysisCriterion, Num> getCriterionScores() {
+        return criterionScores;
     }
 
     @Override

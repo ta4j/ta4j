@@ -25,107 +25,77 @@ package org.ta4j.core.indicators.numeric;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
-import java.util.function.UnaryOperator;
-
 /**
- * Objects of this class defer the evaluation of a unary operator, like sqrt().
- * <p>
- * There may be other unary operations on Num that could be added here.
+ * @deprecated Use {@link UnaryOperationIndicator} instead. This class will be
+ *             removed in a future release.
  */
+@Deprecated(since = "0.19", forRemoval = true)
 public class UnaryOperation implements Indicator<Num> {
 
-    private final UnaryOperator<Num> operator;
-    private final Indicator<Num> operand;
+    private final UnaryOperationIndicator delegate;
 
-    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
-        this.operator = operator;
-        this.operand = operand;
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code √(operand)}.
-     *
-     * @param operand
-     * @return {@code √(operand)}
-     * @see Num#sqrt
-     */
-    public static UnaryOperation sqrt(Indicator<Num> operand) {
-        return new UnaryOperation(Num::sqrt, operand);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is the absolute value of
-     * {@code operand}.
-     *
-     * @param operand
-     * @return {@code abs(operand)}
-     * @see Num#abs
-     */
-    public static UnaryOperation abs(Indicator<Num> operand) {
-        return new UnaryOperation(Num::abs, operand);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code operand^exponent}.
-     *
-     * @param operand  the operand indicator
-     * @param exponent the power exponent
-     * @return {@code operand^exponent}
-     * @see Num#pow
-     */
-    public static UnaryOperation pow(Indicator<Num> operand, Number exponent) {
-        final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
-        return new UnaryOperation(val -> val.pow(numExponent), operand);
-    }
-
-    /**
-     * Returns an {@code Indicator} whose value is {@code log(operand)}.
-     *
-     * @param operand the operand indicator
-     * @return {@code log(operand)}
-     * @apiNote precision may be lost, because this implementation is using the
-     *          underlying doubleValue method
-     */
-    public static UnaryOperation log(Indicator<Num> operand) {
-        return new UnaryOperation(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())), operand);
-    }
-
-    /**
-     * Returns an {@code Indicator} that replaces a given operand value with a
-     * substitute.
-     *
-     * @param operand          the indicator supplying the original values to
-     *                         inspect
-     * @param valueToReplace   the value that, when matched exactly, triggers
-     *                         substitution
-     * @param replacementValue the value that replaces {@code valueToReplace} in the
-     *                         resulting indicator
-     * @return a unary operation indicator reflecting the original values with any
-     *         exact matches substituted
-     */
-    public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
-            final Num replacementValue) {
-        return new UnaryOperation(operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue,
-                operand);
+    private UnaryOperation(final UnaryOperationIndicator delegate) {
+        this.delegate = delegate;
     }
 
     @Override
-    public Num getValue(int index) {
-        Num n = operand.getValue(index);
-        return operator.apply(n);
+    public Num getValue(final int index) {
+        return delegate.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return delegate.getCountOfUnstableBars();
     }
 
     @Override
     public BarSeries getBarSeries() {
-        return operand.getBarSeries();
+        return delegate.getBarSeries();
     }
 
+    /**
+     * @deprecated Use {@link UnaryOperationIndicator#sqrt(Indicator)} instead.
+     */
+    @Deprecated(since = "0.19", forRemoval = true)
+    public static UnaryOperation sqrt(final Indicator<Num> operand) {
+        return new UnaryOperation(UnaryOperationIndicator.sqrt(operand));
+    }
+
+    /**
+     * @deprecated Use {@link UnaryOperationIndicator#abs(Indicator)} instead.
+     */
+    @Deprecated(since = "0.19", forRemoval = true)
+    public static UnaryOperation abs(final Indicator<Num> operand) {
+        return new UnaryOperation(UnaryOperationIndicator.abs(operand));
+    }
+
+    /**
+     * @deprecated Use {@link UnaryOperationIndicator#pow(Indicator, Number)}
+     *             instead.
+     */
+    @Deprecated(since = "0.19", forRemoval = true)
+    public static UnaryOperation pow(final Indicator<Num> operand, final Number exponent) {
+        return new UnaryOperation(UnaryOperationIndicator.pow(operand, exponent));
+    }
+
+    /**
+     * @deprecated Use {@link UnaryOperationIndicator#log(Indicator)} instead.
+     */
+    @Deprecated(since = "0.19", forRemoval = true)
+    public static UnaryOperation log(final Indicator<Num> operand) {
+        return new UnaryOperation(UnaryOperationIndicator.log(operand));
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link UnaryOperationIndicator#substitute(Indicator, Num, Num)}
+     *             instead.
+     */
+    @Deprecated(since = "0.19", forRemoval = true)
+    public static UnaryOperation substitute(final Indicator<Num> operand, final Num valueToReplace,
+            final Num replacementValue) {
+        return new UnaryOperation(UnaryOperationIndicator.substitute(operand, valueToReplace, replacementValue));
+    }
 }

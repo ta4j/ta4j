@@ -108,7 +108,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code this + other}, rounded as necessary
      */
     public NumericIndicator plus(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.sum(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.sum(this, other));
     }
 
     /**
@@ -124,7 +124,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code this - other}, rounded as necessary
      */
     public NumericIndicator minus(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.difference(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.difference(this, other));
     }
 
     /**
@@ -140,7 +140,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code this * other}, rounded as necessary
      */
     public NumericIndicator multipliedBy(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.product(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.product(this, other));
     }
 
     /**
@@ -156,7 +156,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code this / other}, rounded as necessary
      */
     public NumericIndicator dividedBy(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.quotient(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.quotient(this, other));
     }
 
     /**
@@ -173,7 +173,7 @@ public class NumericIndicator implements Indicator<Num> {
      *         {@code this} is returned.
      */
     public NumericIndicator min(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.min(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.min(this, other));
     }
 
     /**
@@ -191,7 +191,7 @@ public class NumericIndicator implements Indicator<Num> {
      *         {@code this} is returned.
      */
     public NumericIndicator max(Indicator<Num> other) {
-        return NumericIndicator.of(BinaryOperation.max(this, other));
+        return NumericIndicator.of(BinaryOperationIndicator.max(this, other));
     }
 
     /**
@@ -209,7 +209,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code abs(this)}
      */
     public NumericIndicator abs() {
-        return NumericIndicator.of(UnaryOperation.abs(this));
+        return NumericIndicator.of(UnaryOperationIndicator.abs(this));
     }
 
     /**
@@ -218,7 +218,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code √(this)}
      */
     public NumericIndicator sqrt() {
-        return NumericIndicator.of(UnaryOperation.sqrt(this));
+        return NumericIndicator.of(UnaryOperationIndicator.sqrt(this));
     }
 
     /**

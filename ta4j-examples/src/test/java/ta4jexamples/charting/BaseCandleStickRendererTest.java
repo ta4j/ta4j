@@ -209,4 +209,66 @@ public class BaseCandleStickRendererTest {
         assertTrue("Should return a Color object", paint instanceof Color);
     }
 
+    @Test
+    public void testUpCandleColorMatchesTradingView() {
+        BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
+
+        // Create dataset with up candle (close > open)
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(true);
+        JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
+        XYPlot plot = chart.getXYPlot();
+        plot.setRenderer(renderer);
+
+        Paint paint = renderer.getItemPaint(0, 0);
+        assertNotNull("Paint should not be null", paint);
+        assertTrue("Paint should be a Color", paint instanceof Color);
+
+        Color color = (Color) paint;
+        // TradingView's default bullish candle color: #26A69A (RGB: 38, 166, 154)
+        assertEquals("Up candle red component should match TradingView", 38, color.getRed());
+        assertEquals("Up candle green component should match TradingView", 166, color.getGreen());
+        assertEquals("Up candle blue component should match TradingView", 154, color.getBlue());
+        assertEquals("Up candle color should match DEFAULT_UP_COLOR", BaseCandleStickRenderer.DEFAULT_UP_COLOR, color);
+    }
+
+    @Test
+    public void testDownCandleColorMatchesTradingView() {
+        BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
+
+        // Create dataset with down candle (close < open)
+        DefaultOHLCDataset dataset = ChartingTestFixtures.singleCandleDataset(false);
+        JFreeChart chart = ChartFactory.createCandlestickChart("Test", "Time", "Price", dataset, true);
+        XYPlot plot = chart.getXYPlot();
+        plot.setRenderer(renderer);
+
+        Paint paint = renderer.getItemPaint(0, 0);
+        assertNotNull("Paint should not be null", paint);
+        assertTrue("Paint should be a Color", paint instanceof Color);
+
+        Color color = (Color) paint;
+        // TradingView's default bearish candle color: #EF5350 (RGB: 239, 83, 80)
+        assertEquals("Down candle red component should match TradingView", 239, color.getRed());
+        assertEquals("Down candle green component should match TradingView", 83, color.getGreen());
+        assertEquals("Down candle blue component should match TradingView", 80, color.getBlue());
+        assertEquals("Down candle color should match DEFAULT_DOWN_COLOR", BaseCandleStickRenderer.DEFAULT_DOWN_COLOR,
+                color);
+    }
+
+    @Test
+    public void testColorConstantsAreTradingViewColors() {
+        // Verify the color constants match TradingView's exact colors
+        Color upColor = BaseCandleStickRenderer.DEFAULT_UP_COLOR;
+        Color downColor = BaseCandleStickRenderer.DEFAULT_DOWN_COLOR;
+
+        // TradingView's default bullish candle color: #26A69A
+        assertEquals("DEFAULT_UP_COLOR red should be 38", 38, upColor.getRed());
+        assertEquals("DEFAULT_UP_COLOR green should be 166", 166, upColor.getGreen());
+        assertEquals("DEFAULT_UP_COLOR blue should be 154", 154, upColor.getBlue());
+
+        // TradingView's default bearish candle color: #EF5350
+        assertEquals("DEFAULT_DOWN_COLOR red should be 239", 239, downColor.getRed());
+        assertEquals("DEFAULT_DOWN_COLOR green should be 83", 83, downColor.getGreen());
+        assertEquals("DEFAULT_DOWN_COLOR blue should be 80", 80, downColor.getBlue());
+    }
+
 }

@@ -26,6 +26,8 @@ package ta4jexamples.bots;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -50,6 +52,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class TradingBotOnMovingBarSeries {
 
+    private static final Logger LOG = LogManager.getLogger(TradingBotOnMovingBarSeries.class);
+
     /**
      * Close price of the last bar
      */
@@ -63,11 +67,11 @@ public class TradingBotOnMovingBarSeries {
      */
     private static BarSeries initMovingBarSeries(int maxBarCount) {
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
-        System.out.print("Initial bar count: " + series.getBarCount());
         // Limitating the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
         LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();
-        System.out.println(" (limited to " + maxBarCount + "), close price = " + LAST_BAR_CLOSE_PRICE);
+        LOG.debug("Initial bar count: {} (limited to {}), close price = {}", series.getBarCount(), maxBarCount,
+                LAST_BAR_CLOSE_PRICE);
         return series;
     }
 
@@ -133,7 +137,7 @@ public class TradingBotOnMovingBarSeries {
 
     public static void main(String[] args) throws InterruptedException {
 
-        System.out.println("********************** Initialization **********************");
+        LOG.debug("********************** Initialization **********************");
         // Getting the bar series
         BarSeries series = initMovingBarSeries(20);
 
@@ -142,7 +146,7 @@ public class TradingBotOnMovingBarSeries {
 
         // Initializing the trading history
         TradingRecord tradingRecord = new BaseTradingRecord();
-        System.out.println("************************************************************");
+        LOG.debug("************************************************************");
 
         /*
          * We run the strategy for the 50 next bars.
@@ -152,28 +156,28 @@ public class TradingBotOnMovingBarSeries {
             // New bar
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
-            System.out.println("------------------------------------------------------\n" + "Bar " + i
-                    + " added, close price = " + newBar.getClosePrice().doubleValue());
+            LOG.debug("------------------------------------------------------\nBar {} added, close price = {}", i,
+                    newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
-                System.out.println("Strategy should ENTER on " + endIndex);
+                LOG.debug("Strategy should ENTER on {}", endIndex);
                 boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (entered) {
                     Trade entry = tradingRecord.getLastEntry();
-                    System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
-                            + ", amount=" + entry.getAmount().doubleValue() + ")");
+                    LOG.debug("Entered on {} (price={}, amount={})", entry.getIndex(),
+                            entry.getNetPrice().doubleValue(), entry.getAmount().doubleValue());
                 }
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
-                System.out.println("Strategy should EXIT on " + endIndex);
+                LOG.debug("Strategy should EXIT on {}", endIndex);
                 boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (exited) {
                     Trade exit = tradingRecord.getLastExit();
-                    System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()
-                            + ", amount=" + exit.getAmount().doubleValue() + ")");
+                    LOG.debug("Exited on {} (price={}, amount={})", exit.getIndex(), exit.getNetPrice().doubleValue(),
+                            exit.getAmount().doubleValue());
                 }
             }
         }

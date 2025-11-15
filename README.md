@@ -19,6 +19,14 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
  * [x] Simple integration
  * [x] One more thing: it's MIT licensed
 
+### Serialization utilities
+
+The core module ships with component serializers that convert indicators and strategies into JSON payloads backed by
+`ComponentDescriptor`. Indicators can call `Indicator#toJson()` / `Indicator#fromJson(BarSeries, String)` to persist their
+configuration, while strategies can now rely on `Strategy#toJson()` / `Strategy#fromJson(BarSeries, String)` for
+round-tripping entry and exit rules alongside metadata. These helpers make it easier to store and exchange model parameters
+without hand-rolling JSON glue.
+
 ### Maven configuration
 
 Ta4j is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.

@@ -435,7 +435,51 @@ public class ChartMaker {
      *         empty if saving failed
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series) {
-        return saveChartImage(chart, series, null);
+        return saveChartImage(chart, series, (String) null);
+    }
+
+    /**
+     * Persists the supplied chart to the specified directory.
+     *
+     * @param chart                   the chart to persist
+     * @param series                  the originating bar series
+     * @param chartImageSaveDirectory the directory to save the chart image to
+     * @return an optional path to the stored chart
+     * @since 0.19
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, Path chartImageSaveDirectory) {
+        if (chartImageSaveDirectory == null) {
+            throw new IllegalArgumentException("Chart image save directory cannot be null");
+        }
+        return saveChartImage(chart, series, null, chartImageSaveDirectory.toString());
+    }
+
+    /**
+     * Persists the supplied chart to the specified directory.
+     *
+     * @param chart                   the chart to persist
+     * @param series                  the originating bar series
+     * @param chartFileName           the filename for the chart (optional, can be
+     *                                null)
+     * @param chartImageSaveDirectory the directory to save the chart image to
+     * @return an optional path to the stored chart
+     * @since 0.19
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName,
+            String chartImageSaveDirectory) {
+        if (chart == null) {
+            throw new IllegalArgumentException("Chart cannot be null");
+        }
+        validateSeries(series);
+        if (chartImageSaveDirectory == null || chartImageSaveDirectory.trim().isEmpty()) {
+            throw new IllegalArgumentException("Chart image save directory cannot be null or empty");
+        }
+        String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
+                : (chart.getTitle() != null ? chart.getTitle().getText()
+                        : chartFactory.buildChartTitle(series.getName(), ""));
+        ChartStorage customStorage = new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory));
+        return customStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
+                DEFAULT_CHART_IMAGE_HEIGHT);
     }
 
     /**

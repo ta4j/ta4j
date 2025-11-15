@@ -341,4 +341,50 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
 
         assertTrue("Should return empty list when no trading statements exist", topStrategies.isEmpty());
     }
+
+    @Test
+    public void getTopStrategiesStoresCriterionScores() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 115, 120, 125, 130, 135, 140, 145)
+                .build();
+
+        Strategy strategy1 = new BaseStrategy("Strategy1", new FixedRule(0), new FixedRule(5));
+        Strategy strategy2 = new BaseStrategy("Strategy2", new FixedRule(2), new FixedRule(7));
+        Strategy strategy3 = new BaseStrategy("Strategy3", new FixedRule(4), new FixedRule(9));
+
+        List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+
+        AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+        AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
+        List<TradingStatement> topStrategies = result.getTopStrategies(3, netProfitCriterion, expectancyCriterion);
+
+        assertEquals("Should return all 3 strategies", 3, topStrategies.size());
+
+        // Verify that criterion scores are stored and accessible
+        for (TradingStatement statement : topStrategies) {
+            // Check that scores are available via getCriterionScore
+            assertTrue("Net profit score should be available",
+                    statement.getCriterionScore(netProfitCriterion).isPresent());
+            assertTrue("Expectancy score should be available",
+                    statement.getCriterionScore(expectancyCriterion).isPresent());
+
+            // Verify the scores match what we would calculate
+            Num storedNetProfit = statement.getCriterionScore(netProfitCriterion).get();
+            Num calculatedNetProfit = netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord());
+            assertEquals("Stored net profit should match calculated value", storedNetProfit, calculatedNetProfit);
+
+            Num storedExpectancy = statement.getCriterionScore(expectancyCriterion).get();
+            Num calculatedExpectancy = expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord());
+            assertEquals("Stored expectancy should match calculated value", storedExpectancy, calculatedExpectancy);
+
+            // Check that all scores are available via getCriterionScores
+            var allScores = statement.getCriterionScores();
+            assertEquals("Should have 2 criterion scores stored", 2, allScores.size());
+            assertTrue("Should contain net profit criterion", allScores.containsKey(netProfitCriterion));
+            assertTrue("Should contain expectancy criterion", allScores.containsKey(expectancyCriterion));
+        }
+    }
 }

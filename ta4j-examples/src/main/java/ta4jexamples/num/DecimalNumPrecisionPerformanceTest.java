@@ -23,6 +23,8 @@
  */
 package ta4jexamples.num;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -41,6 +43,8 @@ import java.util.stream.IntStream;
  * Performance profiling for {@link DecimalNum} precision trade-offs.
  */
 class DecimalNumPrecisionPerformanceTest {
+
+    private static final Logger LOG = LogManager.getLogger(DecimalNumPrecisionPerformanceTest.class);
 
     private static final int SAMPLE_SIZE = 512;
     private static final String[] SAMPLE_VALUES = IntStream.range(0, SAMPLE_SIZE)
@@ -118,7 +122,7 @@ class DecimalNumPrecisionPerformanceTest {
                     medianMillis, avgMillis, minMillis, maxMillis, relative, maxError));
         }
 
-        System.out.println(report);
+        LOG.debug(report.toString());
     }
 
     private BenchmarkResult benchmark(final int precision) {

@@ -25,6 +25,8 @@ package ta4jexamples.analysis;
 
 import java.text.DecimalFormat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
@@ -49,6 +51,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class TradeCost {
 
+    private static final Logger LOG = LogManager.getLogger(TradeCost.class);
+
     public static void main(String[] args) {
 
         // Getting the bar series
@@ -68,16 +72,16 @@ public class TradeCost {
         TradingRecord tradingRecord = seriesManager.run(strategy, entryTrade);
 
         DecimalFormat df = new DecimalFormat("##.##");
-        System.out.println("------------ Borrowing Costs ------------");
+        LOG.debug("------------ Borrowing Costs ------------");
         tradingRecord.getPositions()
-                .forEach(position -> System.out.println("Borrowing cost for "
-                        + df.format(position.getExit().getIndex() - position.getEntry().getIndex()) + " periods is: "
-                        + df.format(position.getHoldingCost().doubleValue())));
-        System.out.println("------------ Transaction Costs ------------");
+                .forEach(position -> LOG.debug("Borrowing cost for {} periods is: {}",
+                        df.format(position.getExit().getIndex() - position.getEntry().getIndex()),
+                        df.format(position.getHoldingCost().doubleValue())));
+        LOG.debug("------------ Transaction Costs ------------");
         tradingRecord.getPositions()
-                .forEach(position -> System.out.println("Transaction cost for selling: "
-                        + df.format(position.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
-                        + df.format(position.getExit().getCost().doubleValue())));
+                .forEach(position -> LOG.debug("Transaction cost for selling: {} -- Transaction cost for buying: {}",
+                        df.format(position.getEntry().getCost().doubleValue()),
+                        df.format(position.getExit().getCost().doubleValue())));
     }
 
     private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {

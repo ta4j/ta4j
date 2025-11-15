@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -185,7 +185,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         this.oscillatingIndicator = oscillatingIndicator;
         this.timeFrame = timeFrame;
         this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        this.deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator, neutralPivotValue);
+        this.deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator, neutralPivotValue);
 
         double rawDecay = decayFactor.doubleValue();
         if (Double.isNaN(rawDecay) || Double.isInfinite(rawDecay) || rawDecay < 0.0 || rawDecay > 1.0) {

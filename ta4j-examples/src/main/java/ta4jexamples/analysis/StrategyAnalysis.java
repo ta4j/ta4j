@@ -23,6 +23,8 @@
  */
 package ta4jexamples.analysis;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.AverageReturnPerBarCriterion;
@@ -46,6 +48,8 @@ import ta4jexamples.strategies.MovingMomentumStrategy;
  */
 public class StrategyAnalysis {
 
+    private static final Logger LOG = LogManager.getLogger(StrategyAnalysis.class);
+
     public static void main(String[] args) {
 
         // Getting the bar series
@@ -61,38 +65,38 @@ public class StrategyAnalysis {
          */
 
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return: " + grossReturn);
+        LOG.debug("Gross return: {}", grossReturn);
 
         var netReturnCriterion = new NetReturnCriterion();
         var netReturn = netReturnCriterion.calculate(series, tradingRecord);
-        System.out.println("Net return: " + netReturn);
+        LOG.debug("Net return: {}", netReturn);
 
         var numberOfBars = new NumberOfBarsCriterion().calculate(series, tradingRecord);
-        System.out.println("Number of bars: " + numberOfBars);
+        LOG.debug("Number of bars: {}", numberOfBars);
 
         var AverageReturnPerBar = new AverageReturnPerBarCriterion().calculate(series, tradingRecord);
-        System.out.println("Average return per bar: " + AverageReturnPerBar);
+        LOG.debug("Average return per bar: {}", AverageReturnPerBar);
 
         var numberOfPositions = new NumberOfPositionsCriterion().calculate(series, tradingRecord);
-        System.out.println("Number of positions: " + numberOfPositions);
+        LOG.debug("Number of positions: {}", numberOfPositions);
 
         var positionsRatio = new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord);
-        System.out.println("Winning positions ratio: " + positionsRatio);
+        LOG.debug("Winning positions ratio: {}", positionsRatio);
 
         var maximumDrawdown = new MaximumDrawdownCriterion().calculate(series, tradingRecord);
-        System.out.println("Maximum drawdown: " + maximumDrawdown);
+        LOG.debug("Maximum drawdown: {}", maximumDrawdown);
 
         var returnOverMaxDrawdown = new ReturnOverMaxDrawdownCriterion().calculate(series, tradingRecord);
-        System.out.println("Return over maximum drawdown: " + returnOverMaxDrawdown);
+        LOG.debug("Return over maximum drawdown: {}", returnOverMaxDrawdown);
 
         var linearTransactionCost = new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord);
-        System.out.println("Total transaction cost (from $1000): " + linearTransactionCost);
+        LOG.debug("Total transaction cost (from $1000): {}", linearTransactionCost);
 
         var enterAndHold = EnterAndHoldCriterion.EnterAndHoldReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Buy-and-hold return: " + enterAndHold);
+        LOG.debug("Buy-and-hold return: {}", enterAndHold);
 
         var versusEnterAndHold = new VersusEnterAndHoldCriterion(netReturnCriterion).calculate(series, tradingRecord);
-        System.out.println("Custom strategy return vs buy-and-hold strategy return: " + versusEnterAndHold);
+        LOG.debug("Custom strategy return vs buy-and-hold strategy return: {}", versusEnterAndHold);
     }
 
 }
