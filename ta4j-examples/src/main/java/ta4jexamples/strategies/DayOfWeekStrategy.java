@@ -25,10 +25,10 @@ package ta4jexamples.strategies;
 
 import org.apache.logging.log4j.LogManager;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.rules.DayOfWeekRule;
+import org.ta4j.core.strategy.named.NamedStrategy;
 
 import java.time.DayOfWeek;
 import java.util.ArrayList;
@@ -55,7 +55,12 @@ import java.util.List;
  *
  * @since 0.19
  */
-public class DayOfWeekStrategy extends BaseStrategy {
+public class DayOfWeekStrategy extends NamedStrategy {
+
+    static {
+        registerImplementation(DayOfWeekStrategy.class);
+    }
+
     /**
      * Constructs a new DayOfWeekStrategy with the specified entry and exit days.
      *
@@ -66,7 +71,7 @@ public class DayOfWeekStrategy extends BaseStrategy {
      *                                  equals exitDayOfWeek
      */
     public DayOfWeekStrategy(BarSeries series, DayOfWeek entryDayOfWeek, DayOfWeek exitDayOfWeek) {
-        super(DayOfWeekStrategy.class.getSimpleName() + "_" + entryDayOfWeek + "_" + exitDayOfWeek,
+        super(NamedStrategy.buildLabel(DayOfWeekStrategy.class, entryDayOfWeek.name(), exitDayOfWeek.name()),
                 new DayOfWeekRule(new DateTimeIndicator(series), entryDayOfWeek),
                 new DayOfWeekRule(new DateTimeIndicator(series), exitDayOfWeek));
     }
@@ -102,23 +107,24 @@ public class DayOfWeekStrategy extends BaseStrategy {
      * @return a list of all valid DayOfWeekStrategy permutations
      */
     public static List<Strategy> buildAllStrategyPermutations(BarSeries series) {
-        List<Strategy> strategies = new ArrayList<>();
+        List<String[]> permutations = new ArrayList<>();
 
         for (DayOfWeek entryDay : DayOfWeek.values()) {
             for (DayOfWeek exitDay : DayOfWeek.values()) {
                 if (entryDay != exitDay) {
-                    try {
-                        strategies.add(new DayOfWeekStrategy(series, entryDay, exitDay));
-                    } catch (IllegalArgumentException e) {
-                        LogManager.getLogger()
-                                .warn("Failed to build strategy for entry day {} and exit day: {} - {}",
-                                        entryDay.name(), exitDay.name(), e);
-                    }
+                    permutations.add(new String[] { entryDay.name(), exitDay.name() });
                 }
             }
         }
 
-        return strategies;
+        return NamedStrategy.buildAllStrategyPermutations(series, permutations, DayOfWeekStrategy::new,
+                (params, error) -> {
+                    String entry = params.length > 0 ? params[0] : "<missing>";
+                    String exit = params.length > 1 ? params[1] : "<missing>";
+                    LogManager.getLogger()
+                            .warn("Failed to build strategy for entry day {} and exit day {} - {}", entry, exit,
+                                    error.getMessage());
+                });
     }
 
     private static DayOfWeek parseEntryDayOfWeek(String... params) {

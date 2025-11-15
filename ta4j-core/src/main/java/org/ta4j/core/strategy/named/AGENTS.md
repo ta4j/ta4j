@@ -1,12 +1,17 @@
 # AGENTS Instructions for `org.ta4j.core.strategy.named`
 
 ## Constructors
-- Provide a constructor accepting `(BarSeries series, String... params)` alongside any main, fully-typed constructor.
-- The varargs constructor should delegate to the primary constructor after validating and parsing the `params` values.
+- Provide a constructor accepting `(BarSeries series, String... params)` alongside any strongly-typed constructor.
+- Parse the parameters inside the varargs constructor and delegate to the main constructor to avoid duplicating rule-building logic.
+- Register every named strategy via `NamedStrategy.registerImplementation(YourClass.class)` (typically from a static initializer) so the serializer can resolve the simple class name that appears in JSON payloads.
 
 ## Serialization format
-- Strategy names must serialize to `<SimpleName>_<param...>` (e.g., `MyStrategy_10_0.5`).
-- Ensure the serialization helper mirrors the argument order of the primary constructor and omits redundant whitespace.
+- Strategy names (and JSON labels) must serialize to `<SimpleName>_<param...>` (e.g., `MyStrategy_10_0.5`). The JSON `"type"` is always `NamedStrategy`.
+- Use `NamedStrategy.buildLabel(...)` when constructing the superclass to guarantee consistent token formatting.
+- The label must encode every piece of information required to reconstruct the instance (including unstable bar counts).
+
+## Permutation helpers
+- Prefer `NamedStrategy.buildAllStrategyPermutations(...)` when emitting preset combinations. Supply a `BiConsumer` failure handler if you need to log or skip invalid parameter sets.
 
 ## Documentation and validation
 - Add `@since` tags to new public classes and constructors.

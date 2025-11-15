@@ -27,8 +27,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +125,13 @@ public final class StrategySerialization {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(descriptor, "descriptor");
 
-        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptor.getType());
+        String descriptorType = descriptor.getType();
+        if (NamedStrategy.SERIALIZED_TYPE.equals(descriptorType)
+                || NamedStrategy.class.getName().equals(descriptorType)) {
+            return instantiateNamedStrategy(series, descriptor, null);
+        }
+
+        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptorType);
         if (NamedStrategy.class.isAssignableFrom(strategyType)) {
             return instantiateNamedStrategy(series, descriptor, strategyType);
         }
@@ -436,68 +440,25 @@ public final class StrategySerialization {
     }
 
     private static Strategy instantiateNamedStrategy(BarSeries series, ComponentDescriptor descriptor,
-            Class<? extends Strategy> strategyType) {
+            Class<? extends Strategy> resolvedType) {
         String label = descriptor.getLabel();
         if (label == null || label.isBlank()) {
             throw new IllegalArgumentException("Named strategy descriptor missing label");
         }
 
-        String simpleName = strategyType.getSimpleName();
-        if (!label.startsWith(simpleName)) {
-            throw new IllegalArgumentException(
-                    "Descriptor label does not match strategy type: " + label + " vs " + simpleName);
+        List<String> labelTokens = NamedStrategy.splitLabel(label);
+        if (labelTokens.isEmpty()) {
+            throw new IllegalArgumentException("Named strategy label missing strategy identifier");
         }
 
-        List<String> encodedTokens = parseLabelTokens(label, simpleName);
-        if (encodedTokens.isEmpty()) {
-            throw new IllegalArgumentException("Named strategy label missing unstable token: " + label);
-        }
+        String simpleName = labelTokens.get(0);
+        String[] parameters = labelTokens.size() == 1 ? new String[0]
+                : labelTokens.subList(1, labelTokens.size()).toArray(new String[0]);
 
-        String unstableToken = encodedTokens.get(encodedTokens.size() - 1);
-        if (!unstableToken.startsWith("u")) {
-            throw new IllegalArgumentException("Unstable token must start with 'u': " + unstableToken);
-        }
-
-        int labelUnstable;
-        try {
-            labelUnstable = Integer.parseInt(unstableToken.substring(1));
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Invalid unstable token: " + unstableToken, ex);
-        }
-
-        List<String> labelArguments = encodedTokens.subList(0, encodedTokens.size() - 1);
-
-        Map<String, Object> parameters = descriptor.getParameters();
-        List<String> descriptorArgs = extractArgumentList(parameters.get("args"));
-        int descriptorUnstable = extractUnstableBars(parameters.get("unstableBars"));
-
-        if (descriptorUnstable != labelUnstable) {
-            throw new IllegalArgumentException("Unstable bar mismatch between label and descriptor: " + labelUnstable
-                    + " vs " + descriptorUnstable);
-        }
-
-        List<String> constructorArguments;
-        if (!descriptorArgs.isEmpty()) {
-            if (descriptorArgs.size() != labelArguments.size()) {
-                throw new IllegalArgumentException("Named strategy argument count mismatch: " + descriptorArgs.size()
-                        + " vs " + labelArguments.size());
-            }
-            if (!labelArguments.isEmpty() && !descriptorArgs.equals(labelArguments)) {
-                throw new IllegalArgumentException(
-                        "Named strategy argument tokens mismatch between label and descriptor");
-            }
-            constructorArguments = descriptorArgs;
-        } else {
-            constructorArguments = labelArguments;
-        }
-
-        List<String> tokens = new ArrayList<>(constructorArguments.size() + 1);
-        tokens.addAll(constructorArguments);
-        tokens.add(Integer.toString(descriptorUnstable));
-
+        Class<? extends NamedStrategy> strategyType = resolveNamedStrategyType(simpleName, resolvedType);
         Constructor<? extends Strategy> constructor = findNamedStrategyConstructor(strategyType);
         try {
-            return constructor.newInstance(series, tokens.toArray(new String[0]));
+            return constructor.newInstance(new Object[] { series, parameters });
         } catch (InstantiationException | IllegalAccessException ex) {
             throw new IllegalStateException("Failed to construct named strategy: " + strategyType.getName(), ex);
         } catch (InvocationTargetException ex) {
@@ -509,8 +470,18 @@ public final class StrategySerialization {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static Class<? extends NamedStrategy> resolveNamedStrategyType(String simpleName,
+            Class<? extends Strategy> resolvedType) {
+        if (resolvedType != null && resolvedType != NamedStrategy.class
+                && NamedStrategy.class.isAssignableFrom(resolvedType)) {
+            return (Class<? extends NamedStrategy>) resolvedType;
+        }
+        return NamedStrategy.requireRegistered(simpleName);
+    }
+
     private static Constructor<? extends Strategy> findNamedStrategyConstructor(
-            Class<? extends Strategy> strategyType) {
+            Class<? extends NamedStrategy> strategyType) {
         try {
             Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(BarSeries.class,
                     String[].class);
@@ -522,33 +493,4 @@ public final class StrategySerialization {
         }
     }
 
-    private static List<String> parseLabelTokens(String label, String simpleName) {
-        if (label.length() == simpleName.length()) {
-            return Collections.singletonList("u0");
-        }
-        int separatorIndex = simpleName.length();
-        if (label.charAt(separatorIndex) != '_') {
-            throw new IllegalArgumentException("Named strategy label missing separator: " + label);
-        }
-        String remainder = label.substring(separatorIndex + 1);
-        if (remainder.isEmpty()) {
-            return Collections.singletonList("u0");
-        }
-        return Arrays.asList(remainder.split("_"));
-    }
-
-    private static List<String> extractArgumentList(Object raw) {
-        if (raw == null) {
-            return Collections.emptyList();
-        }
-        if (raw instanceof List<?>) {
-            List<?> list = (List<?>) raw;
-            List<String> arguments = new ArrayList<>(list.size());
-            for (Object element : list) {
-                arguments.add(String.valueOf(element));
-            }
-            return arguments;
-        }
-        return Collections.singletonList(String.valueOf(raw));
-    }
 }

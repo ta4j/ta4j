@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.strategy.named;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,16 +40,19 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  */
 public final class NamedStrategyFixture extends NamedStrategy {
 
+    static {
+        registerImplementation(NamedStrategyFixture.class);
+    }
+
     private static final AtomicInteger TYPED_CONSTRUCTIONS = new AtomicInteger();
     private static final AtomicInteger VARARGS_CONSTRUCTIONS = new AtomicInteger();
-    private static final String NAME = "FixtureNamedStrategy";
 
     private final Num threshold;
     private final boolean delegated;
 
     private NamedStrategyFixture(BarSeries series, Num threshold, int unstableBars, boolean delegated) {
-        super(NAME, buildEntryRule(series, threshold), buildExitRule(series, threshold), unstableBars,
-                List.of(formatArgument(threshold)));
+        super(buildLabel(threshold, unstableBars), buildEntryRule(series, threshold), buildExitRule(series, threshold),
+                unstableBars);
         this.threshold = threshold;
         this.delegated = delegated;
         TYPED_CONSTRUCTIONS.incrementAndGet();
@@ -102,7 +104,14 @@ public final class NamedStrategyFixture extends NamedStrategy {
     }
 
     private static int parseUnstable(String... parameters) {
-        return Integer.parseInt(parameters[1]);
+        if (parameters.length != 2) {
+            throw new IllegalArgumentException("NamedStrategyFixture expects [threshold, unstable]");
+        }
+        String token = parameters[1];
+        if (token.startsWith("u") && token.length() > 1) {
+            token = token.substring(1);
+        }
+        return Integer.parseInt(token);
     }
 
     private static Rule buildEntryRule(BarSeries series, Num threshold) {
@@ -120,5 +129,9 @@ public final class NamedStrategyFixture extends NamedStrategy {
     private static String formatArgument(Num threshold) {
         double value = threshold.doubleValue();
         return Double.isNaN(value) ? "NaN" : threshold.toString();
+    }
+
+    private static String buildLabel(Num threshold, int unstableBars) {
+        return NamedStrategy.buildLabel(NamedStrategyFixture.class, formatArgument(threshold), "u" + unstableBars);
     }
 }

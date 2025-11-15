@@ -23,16 +23,21 @@
  */
 package org.ta4j.core.strategy.named;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.serialization.ComponentDescriptor;
-import org.ta4j.core.serialization.ComponentSerialization;
-
-import java.lang.StackWalker.Option;
-import java.lang.reflect.Modifier;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Base class for strategies that can be reconstructed from compact name tokens.
@@ -41,220 +46,189 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class NamedStrategy extends BaseStrategy {
 
-    private static final ConcurrentHashMap<Class<? extends NamedStrategy>, StrategyParser> PARSERS = new ConcurrentHashMap<>();
+    /**
+     * JSON {@code type} written by {@link #toDescriptor()}.
+     */
+    public static final String SERIALIZED_TYPE = NamedStrategy.class.getSimpleName();
 
-    private final List<String> arguments;
-    private final String compactName;
+    private static final Map<String, Class<? extends NamedStrategy>> REGISTRY = new ConcurrentHashMap<>();
 
     /**
-     * Protected constructor exposing the strongly typed signature for subclasses.
+     * Protected constructor that allows subclasses to provide the fully formatted
+     * label (and therefore {@link Strategy#getName()}).
      *
-     * @param name         strategy name
+     * @param label        strategy label that also serves as the serialized value
      * @param entryRule    entry rule
      * @param exitRule     exit rule
-     * @param unstableBars number of unstable bars
-     * @param arguments    argument tokens excluding the unstable bar counter
+     * @param unstableBars unstable bars
      */
-    protected NamedStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments) {
-        super(name, entryRule, exitRule, unstableBars);
-        this.arguments = arguments == null ? Collections.emptyList()
-                : Collections.unmodifiableList(new ArrayList<>(arguments));
-        this.compactName = buildCompactName(getClass().getSimpleName(), this.arguments, unstableBars);
-    }
-
-    private NamedStrategy(Specification specification) {
-        this(specification.name(), specification.entryRule(), specification.exitRule(), specification.unstableBars(),
-                specification.arguments());
+    protected NamedStrategy(String label, Rule entryRule, Rule exitRule, int unstableBars) {
+        super(label, entryRule, exitRule, unstableBars);
+        registerImplementation(getClass());
     }
 
     /**
-     * Constructor used by serialization to rebuild the strategy from string tokens.
+     * Protected constructor that defaults {@code unstableBars} to {@code 0}.
      *
-     * @param series     backing bar series
-     * @param parameters constructor parameters, where the last element encodes the
-     *                   unstable bar count
-     * @since 0.19
+     * @param label     strategy label that also serves as the serialized value
+     * @param entryRule entry rule
+     * @param exitRule  exit rule
      */
-    public NamedStrategy(BarSeries series, String... parameters) {
-        this(resolveSpecification(series, parameters));
-    }
-
-    private static Specification resolveSpecification(BarSeries series, String... parameters) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(parameters, "parameters");
-        Class<? extends NamedStrategy> type = resolveConcreteType();
-        StrategyParser parser = Optional.ofNullable(PARSERS.get(type))
-                .orElseThrow(() -> new IllegalStateException("No parser registered for " + type.getName()));
-        List<String> tokens = List.of(parameters);
-        Specification specification = parser.parse(series, Collections.unmodifiableList(tokens));
-        Objects.requireNonNull(specification, "parser returned null specification");
-        if (specification.expectedTokenCount() != tokens.size()) {
-            throw new IllegalArgumentException(
-                    "Expected " + specification.expectedTokenCount() + " parameters but received " + tokens.size());
-        }
-        if (tokens.isEmpty()) {
-            throw new IllegalArgumentException("Named strategies require at least one token for unstable bars");
-        }
-        String unstableToken = tokens.get(tokens.size() - 1);
-        String expectedUnstable = Integer.toString(specification.unstableBars());
-        if (!expectedUnstable.equals(unstableToken)) {
-            throw new IllegalArgumentException(
-                    "Unstable bar token mismatch: expected " + expectedUnstable + " but received " + unstableToken);
-        }
-        return specification;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends NamedStrategy> resolveConcreteType() {
-        return StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
-                .walk(stream -> stream.map(StackWalker.StackFrame::getDeclaringClass)
-                        .filter(clazz -> NamedStrategy.class.isAssignableFrom(clazz) && clazz != NamedStrategy.class
-                                && !Modifier.isAbstract(clazz.getModifiers()))
-                        .findFirst())
-                .map(clazz -> (Class<? extends NamedStrategy>) clazz)
-                .orElseThrow(() -> new IllegalStateException("Unable to determine named strategy subtype"));
-    }
-
-    private static String buildCompactName(String simpleName, List<String> arguments, int unstableBars) {
-        String unstableToken = "u" + unstableBars;
-        if (arguments == null || arguments.isEmpty()) {
-            return simpleName + '_' + unstableToken;
-        }
-        List<String> tokens = new ArrayList<>(arguments);
-        tokens.add(unstableToken);
-        return simpleName + '_' + String.join("_", tokens);
+    protected NamedStrategy(String label, Rule entryRule, Rule exitRule) {
+        super(label, entryRule, exitRule);
+        registerImplementation(getClass());
     }
 
     /**
-     * Registers a parser for the provided named strategy type.
+     * Registers a {@link NamedStrategy} implementation so it can be reconstructed
+     * purely from its compact label. Custom strategies should invoke this method
+     * during application startup (typically from a static initializer).
      *
-     * @param type   strategy subtype
-     * @param parser parser implementation
+     * @param type strategy subtype
      */
-    protected static void registerParser(Class<? extends NamedStrategy> type, StrategyParser parser) {
+    public static void registerImplementation(Class<? extends NamedStrategy> type) {
         Objects.requireNonNull(type, "type");
-        Objects.requireNonNull(parser, "parser");
-        StrategyParser previous = PARSERS.putIfAbsent(type, parser);
-        if (previous != null && previous != parser) {
-            throw new IllegalStateException("Parser already registered for " + type.getName());
+        String key = type.getSimpleName();
+        REGISTRY.compute(key, (name, existing) -> {
+            if (existing != null && existing != type) {
+                throw new IllegalStateException(
+                        "Named strategy already registered for simple name " + name + ": " + existing.getName());
+            }
+            return type;
+        });
+    }
+
+    /**
+     * Resolves a previously registered named strategy type.
+     *
+     * @param simpleName simple class name (without package)
+     * @return optional containing the registered type
+     */
+    public static Optional<Class<? extends NamedStrategy>> lookup(String simpleName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return Optional.empty();
         }
+        return Optional.ofNullable(REGISTRY.get(simpleName));
     }
 
     /**
-     * Creates a specification for the typed constructor.
+     * Builds the serialized label using the simple class name and optional
+     * parameters.
      *
-     * @param name         strategy name
-     * @param entryRule    entry rule
-     * @param exitRule     exit rule
-     * @param unstableBars unstable bars
-     * @param arguments    argument tokens excluding the unstable counter
-     * @return specification
+     * @param type       concrete strategy type
+     * @param parameters constructor parameters encoded as strings
+     * @return compact strategy label
      */
-    protected static Specification specification(String name, Rule entryRule, Rule exitRule, int unstableBars,
-            List<String> arguments) {
-        return new Specification(name, entryRule, exitRule, unstableBars, arguments);
+    public static String buildLabel(Class<? extends NamedStrategy> type, String... parameters) {
+        Objects.requireNonNull(type, "type");
+        if (parameters == null || parameters.length == 0) {
+            return type.getSimpleName();
+        }
+        return type.getSimpleName() + '_' + String.join("_", parameters);
     }
 
     /**
-     * Creates a specification for the typed constructor.
+     * Splits a serialized label into the simple class name and parameter tokens.
      *
-     * @param name         strategy name
-     * @param entryRule    entry rule
-     * @param exitRule     exit rule
-     * @param unstableBars unstable bars
-     * @param arguments    argument tokens excluding the unstable counter
-     * @return specification
+     * @param label serialized label
+     * @return immutable token list where index {@code 0} is the simple class name
      */
-    protected static Specification specification(String name, Rule entryRule, Rule exitRule, int unstableBars,
-            String... arguments) {
-        return specification(name, entryRule, exitRule, unstableBars,
-                arguments == null ? List.of() : List.of(arguments));
+    public static List<String> splitLabel(String label) {
+        Objects.requireNonNull(label, "label");
+        if (label.isBlank()) {
+            throw new IllegalArgumentException("Named strategy label cannot be blank");
+        }
+        return Collections.unmodifiableList(Arrays.asList(label.split("_", -1)));
     }
 
     /**
-     * Returns the immutable argument token list supplied by the subclass.
+     * Builds strategies for every provided parameter permutation.
      *
-     * @return argument tokens, excluding the unstable bar counter
+     * @param series                backing bar series
+     * @param parameterPermutations ordered permutations of constructor parameters
+     * @param factory               factory responsible for instantiating the
+     *                              strategy
+     * @param <T>                   concrete named strategy type
+     * @return list of instantiated strategies
      */
-    protected List<String> getArguments() {
-        return arguments;
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
+            Iterable<String[]> parameterPermutations, Factory<T> factory) {
+        return buildAllStrategyPermutations(series, parameterPermutations, factory, null);
+    }
+
+    /**
+     * Builds strategies for every provided parameter permutation.
+     *
+     * @param series                backing bar series
+     * @param parameterPermutations ordered permutations of constructor parameters
+     * @param factory               factory responsible for instantiating the
+     *                              strategy
+     * @param failureHandler        optional handler that receives the parameter
+     *                              snapshot alongside the
+     *                              {@link IllegalArgumentException} thrown by the
+     *                              factory. When {@code null} the exception is
+     *                              rethrown.
+     * @param <T>                   concrete named strategy type
+     * @return list of instantiated strategies
+     */
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
+            Iterable<String[]> parameterPermutations, Factory<T> factory,
+            BiConsumer<String[], IllegalArgumentException> failureHandler) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(parameterPermutations, "parameterPermutations");
+        Objects.requireNonNull(factory, "factory");
+
+        List<Strategy> strategies = new ArrayList<>();
+        for (String[] parameters : parameterPermutations) {
+            if (parameters == null) {
+                throw new IllegalArgumentException("Parameter entry cannot be null");
+            }
+            String[] args = Arrays.copyOf(parameters, parameters.length);
+            try {
+                strategies.add(factory.create(series, args));
+            } catch (IllegalArgumentException ex) {
+                if (failureHandler == null) {
+                    throw ex;
+                }
+                failureHandler.accept(Arrays.copyOf(args, args.length), ex);
+            }
+        }
+        return strategies;
+    }
+
+    /**
+     * Factory interface used by
+     * {@link #buildAllStrategyPermutations(BarSeries, Iterable, Factory)}.
+     *
+     * @param <T> concrete named strategy type
+     */
+    @FunctionalInterface
+    public interface Factory<T extends NamedStrategy> {
+        T create(BarSeries series, String... parameters);
+    }
+
+    /**
+     * Helper used by the serialization layer to enforce that a strategy has been
+     * registered.
+     *
+     * @param simpleName named strategy simple class name
+     * @return registered type
+     */
+    public static Class<? extends NamedStrategy> requireRegistered(String simpleName) {
+        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName
+                + "'. Ensure it is registered via NamedStrategy.registerImplementation()."));
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @since 0.19
-     */
-    @Override
-    public String toJson() {
-        return ComponentSerialization.toJson(toDescriptor());
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.19
      */
     @Override
     public ComponentDescriptor toDescriptor() {
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(getClass().getName())
-                .withLabel(compactName);
-        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>();
-        if (!arguments.isEmpty()) {
-            parameters.put("args", arguments);
-        }
-        parameters.put("unstableBars", getUnstableBars());
-        builder.withParameters(parameters);
-        return builder.build();
+        return ComponentDescriptor.builder().withType(SERIALIZED_TYPE).withLabel(getName()).build();
     }
 
     @Override
     public String toString() {
-        return compactName;
-    }
-
-    /**
-     * Parser responsible for transforming raw string tokens into strategy
-     * specifications.
-     */
-    @FunctionalInterface
-    protected interface StrategyParser {
-        Specification parse(BarSeries series, List<String> parameters);
-    }
-
-    /**
-     * Immutable specification returned by {@link StrategyParser}s.
-     */
-    protected record Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments,
-            int expectedTokenCount) {
-
-        protected Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments) {
-            this(name, entryRule, exitRule, unstableBars, arguments, arguments == null ? 1 : arguments.size() + 1);
-        }
-
-        protected Specification(String name, Rule entryRule, Rule exitRule, int unstableBars, List<String> arguments,
-                int expectedTokenCount) {
-            this.name = Objects.requireNonNull(name, "name");
-            this.entryRule = Objects.requireNonNull(entryRule, "entryRule");
-            this.exitRule = Objects.requireNonNull(exitRule, "exitRule");
-            if (unstableBars < 0) {
-                throw new IllegalArgumentException("Unstable bars must be >= 0");
-            }
-            if (arguments == null) {
-                this.arguments = Collections.emptyList();
-            } else {
-                this.arguments = Collections.unmodifiableList(new ArrayList<>(arguments));
-            }
-            if (expectedTokenCount < this.arguments.size() + 1) {
-                throw new IllegalArgumentException("Expected token count must be >= arguments size + 1");
-            }
-            this.unstableBars = unstableBars;
-            this.expectedTokenCount = expectedTokenCount;
-        }
-
-        public Specification withExpectedTokenCount(int expectedTokenCount) {
-            return new Specification(name, entryRule, exitRule, unstableBars, arguments, expectedTokenCount);
-        }
+        return getName();
     }
 }

@@ -26,8 +26,6 @@ package org.ta4j.core.serialization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -173,10 +171,9 @@ public class StrategySerializationTest {
 
         ComponentDescriptor descriptor = StrategySerialization.describe(strategy);
 
-        assertThat(descriptor.getType()).isEqualTo(ToggleNamedStrategy.class.getName());
+        assertThat(descriptor.getType()).isEqualTo(NamedStrategy.SERIALIZED_TYPE);
         assertThat(descriptor.getLabel()).isEqualTo("ToggleNamedStrategy_true_false_u4");
-        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 4);
-        assertThat(descriptor.getParameters()).containsEntry("args", List.of("true", "false"));
+        assertThat(descriptor.getParameters()).isEmpty();
         assertThat(descriptor.getComponents()).isEmpty();
     }
 
@@ -224,8 +221,8 @@ public class StrategySerializationTest {
         assertThat(Double.isNaN(reconstructed.getThreshold().doubleValue())).isTrue();
         assertThat(reconstructed.toString()).isEqualTo(original.toString());
         assertThat(reconstructed.getUnstableBars()).isEqualTo(original.getUnstableBars());
-        assertThat(reconstructed.toDescriptor().getParameters()).containsEntry("args", List.of("NaN"));
-        assertThat(json).contains("\"NaN\"");
+        assertThat(reconstructed.toDescriptor().getLabel()).isEqualTo(original.toDescriptor().getLabel());
+        assertThat(json).contains("NaN");
     }
 
     @Test
@@ -247,120 +244,45 @@ public class StrategySerializationTest {
     }
 
     @Test
-    public void namedStrategyArgumentMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(2, 4, 6)
-                .build();
-        NamedStrategyFixture.resetConstructionCounters();
-        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
-
-        ComponentDescriptor descriptor = strategy.toDescriptor();
-        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
-        parameters.put("args", List.of("NaN", "extra"));
-
-        ComponentDescriptor mutated = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel(descriptor.getLabel())
-                .withParameters(parameters)
+    public void namedStrategyMissingRegistrationThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("UnregisteredStrategy_param")
                 .build();
 
-        String json = ComponentSerialization.toJson(mutated);
-
-        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Named strategy argument count mismatch");
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown named strategy");
     }
 
     @Test
-    public void namedStrategyUnstableMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(7, 8, 9)
-                .build();
-        NamedStrategyFixture.resetConstructionCounters();
-        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
-
-        ComponentDescriptor descriptor = strategy.toDescriptor();
-        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
-        parameters.put("unstableBars", 5);
-
-        ComponentDescriptor mutated = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel(descriptor.getLabel())
-                .withParameters(parameters)
+    public void namedStrategyInvalidLabelThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("_missingType")
                 .build();
 
-        String json = ComponentSerialization.toJson(mutated);
-
-        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unstable bar mismatch between label and descriptor");
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown named strategy");
     }
 
     @Test
-    public void namedStrategyLabelArgumentMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(3, 6, 9)
-                .build();
-        NamedStrategyFixture.resetConstructionCounters();
-        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 1);
+    public void namedStrategyLegacyTypeDescriptorStillWorks() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ToggleNamedStrategy.create(series, true, false, 2); // ensure registration
 
-        ComponentDescriptor descriptor = strategy.toDescriptor();
-        ComponentDescriptor mutated = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel("NamedStrategyFixture_override_u1")
-                .withParameters(descriptor.getParameters())
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(ToggleNamedStrategy.class.getName())
+                .withLabel("ToggleNamedStrategy_true_false_u2")
                 .build();
 
-        String json = ComponentSerialization.toJson(mutated);
+        Strategy restored = StrategySerialization.fromDescriptor(series, descriptor);
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Named strategy argument tokens mismatch between label and descriptor");
-    }
-
-    @Test
-    public void namedStrategyFallsBackToLabelArgumentsWhenArgsMissing() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1, 2, 3, 4)
-                .build();
-        NamedStrategyFixture.resetConstructionCounters();
-        NamedStrategyFixture original = NamedStrategyFixture.create(series, series.numFactory().numOf(42), 3);
-
-        ComponentDescriptor descriptor = original.toDescriptor();
-        LinkedHashMap<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
-        parameters.remove("args");
-
-        ComponentDescriptor mutated = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel(descriptor.getLabel())
-                .withParameters(parameters)
-                .build();
-
-        Strategy restored = Strategy.fromJson(series, ComponentSerialization.toJson(mutated));
-
-        assertThat(restored).isInstanceOf(NamedStrategyFixture.class);
-        NamedStrategyFixture reconstructed = (NamedStrategyFixture) restored;
-        assertThat(reconstructed.getThreshold().doubleValue()).isEqualTo(42.0);
-        assertThat(reconstructed.getUnstableBars()).isEqualTo(original.getUnstableBars());
-        assertThat(reconstructed.toString()).isEqualTo(original.toString());
-    }
-
-    @Test
-    public void namedStrategyLabelFormatMismatchThrows() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(5, 10, 15)
-                .build();
-        NamedStrategyFixture.resetConstructionCounters();
-        NamedStrategyFixture strategy = NamedStrategyFixture.create(series, series.numFactory().numOf(Double.NaN), 2);
-
-        ComponentDescriptor descriptor = strategy.toDescriptor();
-        ComponentDescriptor mutated = ComponentDescriptor.builder()
-                .withType(descriptor.getType())
-                .withLabel("FixtureNamedStrategy_NaN")
-                .withParameters(descriptor.getParameters())
-                .build();
-
-        String json = ComponentSerialization.toJson(mutated);
-
-        assertThatThrownBy(() -> Strategy.fromJson(series, json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Descriptor label does not match strategy type");
+        assertThat(restored).isInstanceOf(ToggleNamedStrategy.class);
+        assertThat(restored.getName()).isEqualTo("ToggleNamedStrategy_true_false_u2");
     }
 
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
@@ -386,48 +308,33 @@ public class StrategySerializationTest {
         }
     }
 
-    private abstract static class AbstractToggleNamedStrategy extends NamedStrategy {
-
-        protected AbstractToggleNamedStrategy(BarSeries series, String name, boolean entrySatisfied,
-                boolean exitSatisfied, int unstableBars) {
-            super(name, new SerializableRule(entrySatisfied), new SerializableRule(exitSatisfied), unstableBars,
-                    List.of(Boolean.toString(entrySatisfied), Boolean.toString(exitSatisfied)));
-        }
-
-        protected AbstractToggleNamedStrategy(BarSeries series, String... parameters) {
-            super(series, parameters);
-        }
-    }
-
-    private static final class MultiLevelToggleNamedStrategy extends AbstractToggleNamedStrategy {
+    private static final class MultiLevelToggleNamedStrategy extends NamedStrategy {
 
         private static final AtomicInteger TYPED_CONSTRUCTIONS = new AtomicInteger();
         private static final AtomicInteger VARARGS_CONSTRUCTIONS = new AtomicInteger();
 
         static {
-            registerParser(MultiLevelToggleNamedStrategy.class, MultiLevelToggleNamedStrategy::parseTokens);
+            registerImplementation(MultiLevelToggleNamedStrategy.class);
         }
 
-        private static Specification parseTokens(BarSeries series, List<String> tokens) {
-            if (tokens.size() != 3) {
-                throw new IllegalArgumentException("MultiLevelToggleNamedStrategy expects [entry, exit, unstable]");
+        private MultiLevelToggleNamedStrategy(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
+                int unstableBars, boolean delegated) {
+            super(buildLabel(entrySatisfied, exitSatisfied, unstableBars), new SerializableRule(entrySatisfied),
+                    new SerializableRule(exitSatisfied), unstableBars);
+            if (delegated) {
+                VARARGS_CONSTRUCTIONS.incrementAndGet();
+            } else {
+                TYPED_CONSTRUCTIONS.incrementAndGet();
             }
-            boolean entry = Boolean.parseBoolean(tokens.get(0));
-            boolean exit = Boolean.parseBoolean(tokens.get(1));
-            int unstable = Integer.parseInt(tokens.get(2));
-            return specification("MultiLevelToggle", new SerializableRule(entry), new SerializableRule(exit), unstable,
-                    tokens.subList(0, 2));
         }
 
         private MultiLevelToggleNamedStrategy(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
                 int unstableBars) {
-            super(series, "MultiLevelToggle", entrySatisfied, exitSatisfied, unstableBars);
-            TYPED_CONSTRUCTIONS.incrementAndGet();
+            this(series, entrySatisfied, exitSatisfied, unstableBars, false);
         }
 
         public MultiLevelToggleNamedStrategy(BarSeries series, String... parameters) {
-            super(series, parameters);
-            VARARGS_CONSTRUCTIONS.incrementAndGet();
+            this(series, parseBoolean(parameters, 0), parseBoolean(parameters, 1), parseUnstable(parameters), true);
         }
 
         static MultiLevelToggleNamedStrategy create(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
@@ -447,38 +354,73 @@ public class StrategySerializationTest {
         static int varargsConstructionCount() {
             return VARARGS_CONSTRUCTIONS.get();
         }
+
+        private static boolean parseBoolean(String[] parameters, int index) {
+            validateLength(parameters, 3, "MultiLevelToggleNamedStrategy");
+            return Boolean.parseBoolean(parameters[index]);
+        }
+
+        private static int parseUnstable(String[] parameters) {
+            validateLength(parameters, 3, "MultiLevelToggleNamedStrategy");
+            return parseUnstableToken(parameters[2]);
+        }
+
+        private static String buildLabel(boolean entrySatisfied, boolean exitSatisfied, int unstableBars) {
+            return NamedStrategy.buildLabel(MultiLevelToggleNamedStrategy.class, Boolean.toString(entrySatisfied),
+                    Boolean.toString(exitSatisfied), "u" + unstableBars);
+        }
     }
 
     private static final class ToggleNamedStrategy extends NamedStrategy {
 
         static {
-            registerParser(ToggleNamedStrategy.class, ToggleNamedStrategy::parseTokens);
-        }
-
-        private static Specification parseTokens(BarSeries series, List<String> tokens) {
-            if (tokens.size() != 3) {
-                throw new IllegalArgumentException("ToggleNamedStrategy expects [entry, exit, unstable]");
-            }
-            boolean entry = Boolean.parseBoolean(tokens.get(0));
-            boolean exit = Boolean.parseBoolean(tokens.get(1));
-            int unstable = Integer.parseInt(tokens.get(2));
-            return specification("Toggle", new SerializableRule(entry), new SerializableRule(exit), unstable,
-                    tokens.subList(0, 2));
+            registerImplementation(ToggleNamedStrategy.class);
         }
 
         protected ToggleNamedStrategy(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
                 int unstableBars) {
-            super("Toggle", new SerializableRule(entrySatisfied), new SerializableRule(exitSatisfied), unstableBars,
-                    List.of(Boolean.toString(entrySatisfied), Boolean.toString(exitSatisfied)));
+            super(buildLabel(entrySatisfied, exitSatisfied, unstableBars), new SerializableRule(entrySatisfied),
+                    new SerializableRule(exitSatisfied), unstableBars);
         }
 
         public ToggleNamedStrategy(BarSeries series, String... parameters) {
-            super(series, parameters);
+            this(series, parseBoolean(parameters, 0), parseBoolean(parameters, 1), parseUnstable(parameters));
         }
 
         static ToggleNamedStrategy create(BarSeries series, boolean entrySatisfied, boolean exitSatisfied,
                 int unstableBars) {
             return new ToggleNamedStrategy(series, entrySatisfied, exitSatisfied, unstableBars);
         }
+
+        private static boolean parseBoolean(String[] parameters, int index) {
+            validateLength(parameters, 3, "ToggleNamedStrategy");
+            return Boolean.parseBoolean(parameters[index]);
+        }
+
+        private static int parseUnstable(String[] parameters) {
+            validateLength(parameters, 3, "ToggleNamedStrategy");
+            return parseUnstableToken(parameters[2]);
+        }
+
+        private static String buildLabel(boolean entrySatisfied, boolean exitSatisfied, int unstableBars) {
+            return NamedStrategy.buildLabel(ToggleNamedStrategy.class, Boolean.toString(entrySatisfied),
+                    Boolean.toString(exitSatisfied), "u" + unstableBars);
+        }
+    }
+
+    private static void validateLength(String[] parameters, int expected, String name) {
+        if (parameters == null || parameters.length < expected) {
+            throw new IllegalArgumentException(name + " expects " + expected + " parameters");
+        }
+    }
+
+    private static int parseUnstableToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Unstable token cannot be blank");
+        }
+        if (token.startsWith("u")) {
+            token = token.substring(1);
+        }
+        return Integer.parseInt(token);
     }
 }
