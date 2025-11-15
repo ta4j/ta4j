@@ -52,7 +52,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Bar series trade parameter order**: Fixed swapped parameter naming in `BaseBarSeries#addTrade(final Number tradeVolume, final Number tradePrice)` to match the method signature order.
 - **Bar builder aggregation**: Fixed aggregation of amount and trades in `VolumeBarBuilder` and `TickBarBuilder` to ensure accurate bar construction.
 - **SMA unstable period calculation**: Corrected the calculation of unstable bars for the SMA indicator, ensuring indicators report accurate stability periods.
-- **Java 25 compatibility**: Fixed `PivotPointIndicatorTest` to work with Java 25, ensuring compatibility with the latest Java versions.
+- **Java 25 compatibility**: Fixed `PivotPointIndicatorTest` to work with Java 25, ensuring compatibility with the latest Java versions. Note that this does not mean Ta4j as a whole now supports Java 25, that will come in a future release.
 - **JSON data loading**: Fixed bug in `MovingAverageCrossOverRangeBacktest` that prevented successfully loading test JSON bar data.
 - **Build performance**: Updated GitHub test workflow to cache dependencies for quicker builds, reducing CI/CD execution time.
 - **Documentation**: Updated test status badge on README and clarified PnL criterion comments about trading costs for better user understanding.
