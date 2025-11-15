@@ -48,6 +48,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.helper.ChainLink;
 
 /**
  * Serializes and deserializes {@link Rule} instances into structured
@@ -572,6 +573,8 @@ public final class RuleSerialization {
                             ? String.valueOf(allParams.get(enumTypeKey))
                             : componentType.getName();
                     return context.resolveEnumArray(paramName, enumTypeName, paramType);
+                } else if (componentType.equals(ChainLink.class)) {
+                    return deserializeChainLinks(value, context);
                 }
             }
         } catch (Exception e) {
@@ -579,6 +582,57 @@ public final class RuleSerialization {
         }
 
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ChainLink[] deserializeChainLinks(Object raw, ReconstructionContext context) {
+        if (!(raw instanceof List<?> list)) {
+            throw new IllegalArgumentException("Chain link parameter must be a list but was " + raw);
+        }
+        ChainLink[] links = new ChainLink[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            Object entry = list.get(i);
+            if (entry == null) {
+                links[i] = null;
+                continue;
+            }
+            if (!(entry instanceof Map<?, ?> map)) {
+                throw new IllegalArgumentException("Chain link entry must be an object but was " + entry);
+            }
+            Rule linkRule = null;
+            Object ruleValue = map.get("rule");
+            if (ruleValue != null) {
+                ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
+                if (ruleDescriptor != null) {
+                    linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
+                }
+            }
+            int threshold = 0;
+            Object thresholdValue = map.get("threshold");
+            if (thresholdValue != null) {
+                Object converted = convertNumber(thresholdValue, Integer.class);
+                if (converted instanceof Number number) {
+                    threshold = number.intValue();
+                } else {
+                    threshold = Integer.parseInt(String.valueOf(converted));
+                }
+            }
+            links[i] = new ChainLink(linkRule, threshold);
+        }
+        return links;
+    }
+
+    private static ComponentDescriptor parseChainLinkRule(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof ComponentDescriptor descriptor) {
+            return descriptor;
+        }
+        if (value instanceof String json) {
+            return ComponentSerialization.parse(json);
+        }
+        throw new IllegalArgumentException("Unsupported chain link rule payload: " + value);
     }
 
     private static final class ArgumentContext {
@@ -940,6 +994,10 @@ public final class RuleSerialization {
                         arguments.add(Argument.numberArray(name, type, match.value));
                         continue;
                     }
+                    if (componentType.equals(ChainLink.class)) {
+                        arguments.add(Argument.chainLinks(name, (ChainLink[]) match.value));
+                        continue;
+                    }
                     return Optional.empty();
                 }
 
@@ -1122,7 +1180,7 @@ public final class RuleSerialization {
 
     private enum ArgumentKind {
         SERIES, RULE, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY, INT_ARRAY,
-        LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY
+        LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY, CHAIN_LINKS
     }
 
     private static final class Argument {
@@ -1155,6 +1213,10 @@ public final class RuleSerialization {
 
         private static Argument num(String name, Class<?> targetType, Num value) {
             return new Argument(ArgumentKind.NUM, name, targetType, value, name);
+        }
+
+        private static Argument chainLinks(String name, ChainLink[] value) {
+            return new Argument(ArgumentKind.CHAIN_LINKS, name, ChainLink[].class, value, name);
         }
 
         private static Argument enumValue(String name, Class<? extends Enum<?>> targetType, Enum<?> value) {
@@ -1266,6 +1328,9 @@ public final class RuleSerialization {
                     context.parameters.put("__enumType_" + name, simplifyClassName(componentType));
                 }
                 break;
+            case CHAIN_LINKS:
+                context.parameters.put(name, serializeChainLinks((ChainLink[]) value, context));
+                break;
             default:
                 throw new IllegalStateException("Unsupported argument kind: " + kind);
             }
@@ -1299,6 +1364,27 @@ public final class RuleSerialization {
                     Enum<?> enumValue = (Enum<?>) element;
                     serialized.add(enumValue.name());
                 }
+            }
+            return serialized;
+        }
+
+        private static List<Map<String, Object>> serializeChainLinks(ChainLink[] links, ArgumentContext context) {
+            List<Map<String, Object>> serialized = new ArrayList<>(links.length);
+            for (ChainLink link : links) {
+                if (link == null) {
+                    serialized.add(null);
+                    continue;
+                }
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("threshold", serializeNumber(link.getThreshold()));
+                Rule linkRule = link.getRule();
+                if (linkRule != null) {
+                    ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
+                    payload.put("rule", ComponentSerialization.toJson(descriptor));
+                } else {
+                    payload.put("rule", null);
+                }
+                serialized.add(payload);
             }
             return serialized;
         }
