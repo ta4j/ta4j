@@ -39,12 +39,45 @@ import org.ta4j.core.serialization.RuleSerialization;
 
 /**
  * Shared helper for asserting rule serialization/deserialization round-trips.
+ * <p>
+ * This utility class provides methods to verify that rules can be correctly
+ * serialized to {@link ComponentDescriptor} objects and deserialized back to
+ * equivalent rules. It performs deep equality checks on the descriptors to
+ * ensure that all properties, parameters, and nested components are preserved
+ * during the round-trip process.
+ * <p>
+ * If serialization or deserialization is not supported for a particular rule
+ * type, the test will be skipped using JUnit's {@link Assume} mechanism rather
+ * than failing.
+ *
+ * @since 0.19
  */
 final class RuleSerializationRoundTripTestSupport {
 
     private RuleSerializationRoundTripTestSupport() {
     }
 
+    /**
+     * Asserts that a rule can be serialized and deserialized without losing
+     * information.
+     * <p>
+     * This method performs the following steps:
+     * <ol>
+     * <li>Serializes the given rule to a {@link ComponentDescriptor}</li>
+     * <li>Deserializes the descriptor back to a {@link Rule}</li>
+     * <li>Serializes the restored rule to another descriptor</li>
+     * <li>Compares the original and restored descriptors for equality</li>
+     * </ol>
+     * <p>
+     * If serialization or deserialization is not supported for the rule type, the
+     * test will be skipped (using {@link Assume#assumeNoException}) rather than
+     * failing.
+     *
+     * @param series the bar series to use for rule deserialization
+     * @param rule   the rule to test for round-trip serialization
+     * @return the restored rule after deserialization, or the original rule if
+     *         serialization/deserialization is not supported
+     */
     static Rule assertRuleRoundTrips(BarSeries series, Rule rule) {
         ComponentDescriptor descriptor;
         try {
@@ -72,6 +105,17 @@ final class RuleSerializationRoundTripTestSupport {
         return restored;
     }
 
+    /**
+     * Recursively compares two component descriptors for equality.
+     * <p>
+     * This method checks that both descriptors have the same type, label,
+     * parameters, and nested components. The comparison is performed recursively
+     * for nested components.
+     *
+     * @param expected the expected descriptor
+     * @param actual   the actual descriptor to compare
+     * @return {@code true} if the descriptors are equal, {@code false} otherwise
+     */
     private static boolean descriptorsEqual(ComponentDescriptor expected, ComponentDescriptor actual) {
         if (!Objects.equals(expected.getType(), actual.getType())) {
             return false;
@@ -95,6 +139,16 @@ final class RuleSerializationRoundTripTestSupport {
         return true;
     }
 
+    /**
+     * Compares two parameter maps for equality.
+     * <p>
+     * This method checks that both maps have the same keys and that the
+     * corresponding values are equal using {@link #parameterValuesEqual}.
+     *
+     * @param expected the expected parameter map
+     * @param actual   the actual parameter map to compare
+     * @return {@code true} if the parameter maps are equal, {@code false} otherwise
+     */
     private static boolean compareParameters(Map<String, Object> expected, Map<String, Object> actual) {
         if (!expected.keySet().equals(actual.keySet())) {
             return false;
@@ -107,6 +161,22 @@ final class RuleSerializationRoundTripTestSupport {
         return true;
     }
 
+    /**
+     * Compares two parameter values for equality.
+     * <p>
+     * This method handles various value types:
+     * <ul>
+     * <li>Nested maps: recursively compared using {@link #compareParameters}</li>
+     * <li>Lists: element-wise comparison using this method recursively</li>
+     * <li>Numeric strings: parsed as {@link BigDecimal} and compared
+     * numerically</li>
+     * <li>Other types: compared using {@link Objects#equals}</li>
+     * </ul>
+     *
+     * @param expected the expected parameter value
+     * @param actual   the actual parameter value to compare
+     * @return {@code true} if the values are equal, {@code false} otherwise
+     */
     @SuppressWarnings("unchecked")
     private static boolean parameterValuesEqual(Object expected, Object actual) {
         if (expected == null || actual == null) {
@@ -138,6 +208,15 @@ final class RuleSerializationRoundTripTestSupport {
         return Objects.equals(expected, actual);
     }
 
+    /**
+     * Checks if a string represents a valid numeric value.
+     * <p>
+     * This method attempts to parse the string as a {@link BigDecimal} to determine
+     * if it represents a numeric value.
+     *
+     * @param value the string to check
+     * @return {@code true} if the string is numeric, {@code false} otherwise
+     */
     private static boolean isNumeric(String value) {
         try {
             new BigDecimal(value);

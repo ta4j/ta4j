@@ -344,8 +344,125 @@ public final class RuleSerialization {
             }
         }
 
-        throw new IllegalStateException("No compatible constructor found for rule type: " + ruleType.getName()
-                + " with " + components.size() + " components and " + filteredParams.size() + " parameters");
+        throw new IllegalStateException(
+                buildConstructorNotFoundMessage(ruleType, components, filteredParams, constructors));
+    }
+
+    /**
+     * Builds a descriptive error message when no compatible constructor is found.
+     * The message includes details about what was found (components and parameters)
+     * and what constructor signatures are available.
+     */
+    private static String buildConstructorNotFoundMessage(Class<? extends Rule> ruleType,
+            List<ComponentDescriptor> components, Map<String, Object> filteredParams, Constructor<?>[] constructors) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("No compatible constructor found for rule type: ").append(ruleType.getName());
+        msg.append("\n  Found: ").append(components.size()).append(" component(s)");
+        if (!components.isEmpty()) {
+            msg.append(" [");
+            for (int i = 0; i < components.size(); i++) {
+                if (i > 0) {
+                    msg.append(", ");
+                }
+                ComponentDescriptor comp = components.get(i);
+                String type = comp != null && comp.getType() != null ? comp.getType() : "null";
+                msg.append(type);
+            }
+            msg.append("]");
+        }
+        msg.append(", ").append(filteredParams.size()).append(" parameter(s)");
+        if (!filteredParams.isEmpty()) {
+            msg.append(" [");
+            boolean first = true;
+            for (Map.Entry<String, Object> entry : filteredParams.entrySet()) {
+                if (!first) {
+                    msg.append(", ");
+                }
+                first = false;
+                msg.append(entry.getKey())
+                        .append(": ")
+                        .append(entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "null");
+            }
+            msg.append("]");
+        }
+        msg.append("\n  Looking for a constructor that accepts: ");
+        if (!components.isEmpty() || !filteredParams.isEmpty()) {
+            List<String> expectedParams = new ArrayList<>();
+            for (ComponentDescriptor comp : components) {
+                if (comp != null && comp.getType() != null) {
+                    if (comp.getType().contains("Rule")) {
+                        expectedParams.add("Rule");
+                    } else if (comp.getType().contains("Indicator")) {
+                        expectedParams.add("Indicator<Num>");
+                    } else {
+                        expectedParams.add(comp.getType());
+                    }
+                }
+            }
+            for (Map.Entry<String, Object> entry : filteredParams.entrySet()) {
+                Object value = entry.getValue();
+                if (value != null) {
+                    Class<?> valueClass = value.getClass();
+                    if (Num.class.isAssignableFrom(valueClass)) {
+                        expectedParams.add("Num");
+                    } else if (Number.class.isAssignableFrom(valueClass) || valueClass.isPrimitive()) {
+                        expectedParams.add(valueClass.getSimpleName());
+                    } else if (value instanceof String) {
+                        expectedParams.add("String");
+                    } else {
+                        expectedParams.add(valueClass.getSimpleName());
+                    }
+                } else {
+                    expectedParams.add(entry.getKey() + " (unknown type)");
+                }
+            }
+            msg.append(String.join(", ", expectedParams));
+        } else {
+            msg.append("(no arguments)");
+        }
+        msg.append("\n  Available constructors:");
+        for (Constructor<?> constructor : constructors) {
+            Class<?>[] paramTypes = constructor.getParameterTypes();
+            java.lang.reflect.Parameter[] params = constructor.getParameters();
+            msg.append("\n    ");
+            int startIndex = 0;
+            if (paramTypes.length > 0 && paramTypes[0].equals(BarSeries.class)) {
+                msg.append("(BarSeries");
+                startIndex = 1;
+                if (paramTypes.length > 1) {
+                    msg.append(", ");
+                }
+            } else {
+                msg.append("(");
+            }
+            for (int i = startIndex; i < paramTypes.length; i++) {
+                if (i > startIndex) {
+                    msg.append(", ");
+                }
+                msg.append(simplifyParameterType(paramTypes[i]));
+                if (i < params.length && params[i].isNamePresent()) {
+                    msg.append(" ").append(params[i].getName());
+                }
+            }
+            msg.append(")");
+        }
+        return msg.toString();
+    }
+
+    /**
+     * Simplifies a parameter type name for error messages.
+     */
+    private static String simplifyParameterType(Class<?> paramType) {
+        if (paramType.isArray()) {
+            return simplifyParameterType(paramType.getComponentType()) + "[]";
+        }
+        String packageName = paramType.getPackageName();
+        if (packageName != null && (packageName.equals(CORE_PACKAGE) || packageName.equals(RULE_PACKAGE)
+                || packageName.equals(INDICATOR_PACKAGE) || packageName.equals(NUM_PACKAGE)
+                || packageName.equals(JAVA_LANG_PACKAGE))) {
+            return paramType.getSimpleName();
+        }
+        return paramType.getName();
     }
 
     private static DeserializationMatch tryMatchConstructor(Constructor<?> constructor, Class<?>[] paramTypes,
@@ -1475,7 +1592,8 @@ public final class RuleSerialization {
             Class<?> type = rule.getClass();
             while (type != null && !type.equals(Object.class)) {
                 for (Field field : type.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+                    if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())
+                            || field.isSynthetic()) {
                         continue;
                     }
                     if (field.getDeclaringClass().equals(org.ta4j.core.rules.AbstractRule.class)) {
