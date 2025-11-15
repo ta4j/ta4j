@@ -23,8 +23,6 @@ For toString(), output JSON — prefer Gson serialization > manual JSON > custom
 - Composite rule names should be represented as nested component descriptors. Use
   `ComponentSerialization.parse(rule.getName())` to walk existing rule names safely.
 
-## Serialization Notes
-- Rule/strategy serialization depends on `RuleSerialization` reconstructing indicators directly from their descriptors. Do **not** reintroduce positional indicator matching or mutable cursor state (e.g., `indicatorMatchIndex`): JSON round-trips strip labels, so every descriptor must be self-contained.
-- `ReconstructionContext` should only track label lookups for cross-component references; use the parent-context chain when Strategy-level descriptors need to be visible to nested rules.
-- Keep the focused regression tests consolidated in `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest.java`. It already covers descriptor-only, JSON round-trip, labeled-component, and Strategy round-trip scenarios—add future composite-rule cases there instead of creating new test classes.
-- Temporary/printf debug tests (e.g., `AndRuleSerializationDebugTest`) should not live in the suite. If you need one locally, delete it before committing.
+## Finding Scoped Agent Guides
+- Many packages (e.g., `ta4j-core/src/main/java/org/ta4j/core/serialization`) have their own `AGENTS.md` with domain-specific conventions. Before editing a feature area, run `rg --files -g 'AGENTS.md'` or `fd AGENTS.md` from the repo root and open the closest file to your working directory.
+- When adding new modules or significant subsystems, include an `AGENTS.md` in that directory and link back to it from higher-level docs when possible.

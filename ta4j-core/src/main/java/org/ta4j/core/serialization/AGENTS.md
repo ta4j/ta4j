@@ -49,7 +49,7 @@ This pattern affects:
 3. **RuleSerialization.java**
    - `describe()` + `fromDescriptor()`
    - Constructor inference
-   - Position-based matching when indicators lack labels
+   - Rebuilds indicator children directly from their descriptors; labels are only used for Strategy-level references via `ReconstructionContext`
 
 4. **IndicatorSerialization.java**
    - Same as rules but **no label logic**
@@ -74,7 +74,8 @@ Update:
 
 ### Removing Metadata (`__args`, etc.)
 Requires constructor inference:
-- Match components/rules by type or position
+- Match nested rules by type (via descriptor)
+- Rebuild indicators directly from their descriptors (labels optional, but required for Strategy-level cross references)
 - Match named parameters by type/name
 - Avoid boolean/number ambiguity
 
@@ -88,12 +89,12 @@ else if (number) …
 
 1. Inspect all constructors  
 2. Attempt to match each constructor against:  
-   - Components (by type or position)  
+   - Components (rule descriptors or indicator descriptors)  
    - Parameters (by name or type)  
 3. All components and parameters must be consumed  
 4. Reject ambiguous matches
 
-Pitfall: Indicators lack labels → must fall back to position-only matching.
+Pitfall: Descriptors must be self-contained—indicator descriptors need all nested components so they can be reconstructed without relying on Strategy-level context.
 
 ## Gotchas & Pitfalls
 
@@ -104,8 +105,7 @@ Pitfall: Indicators lack labels → must fall back to position-only matching.
 Store enum metadata under `__enumType_*` keys; exclude during constructor matching.
 
 ### 3. Indicator Labels
-Indicators should never serialize labels, but internal labels help matching.  
-Use position-based matching when missing.
+Indicators should never serialize labels in JSON. During reconstruction we first try to resolve by label (for shared Strategy components) and then fall back to rebuilding the indicator directly from its descriptor. No positional matching remains.
 
 ### 4. Field Name Differences
 - Strategies → `"rules"`
@@ -136,6 +136,7 @@ Primary test suites:
 - RuleSerializationTest
 - StrategySerializationTest
 - RuleNameTest (sensitive to JSON details)
+- Focused composite-rule coverage: `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest`
 
 Typical failures:
 - Wrong field names
@@ -174,6 +175,13 @@ Typical failures:
 3. Missing components → check position-based indicator matching
 4. Type mismatches → verify `isAssignableFrom()` behavior
 5. Test failures → search for outdated JSON strings
+
+## Recent Lessons (2025 rule-name feature branch)
+
+- **Indicator reconstruction:** `RuleSerialization` must rebuild indicators directly from their descriptors. Do **not** reintroduce positional matching or mutable cursor indexes; JSON round-trips often strip labels, so every descriptor must remain self-contained.
+- **Context usage:** `ReconstructionContext` should only cache labeled descriptors. Use the parent-context chain when nested rules need Strategy-level components instead of duplicating state.
+- **Test consolidation:** `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest.java` contains all focused regression cases (descriptor → descriptor, descriptor → JSON → descriptor, labeled-component reconstruction, and Strategy round-trip). Extend this class for future composite-rule scenarios instead of adding new test files.
+- **Debug scaffolding:** Temporary printf-style tests (`AndRuleSerializationDebugTest`, etc.) should stay local and be removed before committing.
 
 ## Key Takeaways
 
