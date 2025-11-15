@@ -113,7 +113,8 @@ public class TopStrategiesExample {
 
         // Run backtest on all strategies with progress logging to this class's logger
         BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
-                series.numFactory().numOf(1), Trade.TradeType.BUY, ProgressCompletion.loggingWithMemory(TopStrategiesExample.class));
+                series.numFactory().numOf(1), Trade.TradeType.BUY,
+                ProgressCompletion.loggingWithMemory(TopStrategiesExample.class));
 
         LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 

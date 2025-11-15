@@ -216,6 +216,21 @@ public final class RuleSerialization {
      * @return reconstructed rule
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
+        return fromDescriptor(series, descriptor, null);
+    }
+
+    /**
+     * Rebuilds a rule from a descriptor tree, optionally with a parent context for
+     * resolving Strategy-level components.
+     *
+     * @param series        series to use for {@link Num} reconstruction and
+     *                      indicator factories
+     * @param descriptor    descriptor describing the rule
+     * @param parentContext optional parent context for resolving shared components
+     * @return reconstructed rule
+     */
+    public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
+            ReconstructionContext parentContext) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(descriptor, "descriptor");
 
@@ -242,7 +257,7 @@ public final class RuleSerialization {
         Class<? extends Rule> ruleType = (Class<? extends Rule>) clazz;
 
         // Infer constructor signature from children and parameters
-        ReconstructionContext context = new ReconstructionContext(series, descriptor);
+        ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
         DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
 
         try {
@@ -460,23 +475,49 @@ public final class RuleSerialization {
             ReconstructionContext context) {
         try {
             if (Indicator.class.isAssignableFrom(paramType)) {
-                // Resolve indicator (position-based if no label)
-                if (component.getLabel() == null) {
-                    return context.resolveIndicatorByPosition();
-                } else {
-                    return context.resolveIndicator(component.getLabel());
+                if (component.getLabel() != null) {
+                    try {
+                        return context.resolveIndicator(component.getLabel());
+                    } catch (IllegalArgumentException ignored) {
+                        // Fall through to descriptor-based reconstruction if the label was
+                        // stripped during JSON round-trip or doesn't map to a named component
+                    }
                 }
+                return IndicatorSerialization.fromDescriptor(context.series, component);
             } else if (Rule.class.isAssignableFrom(paramType)) {
-                // Resolve rule (by label)
-                if (component.getLabel() == null) {
-                    throw new IllegalArgumentException("Rule component missing label: " + component);
+                // For rule components during constructor matching, we have the component
+                // descriptor directly, so we should deserialize it. The component descriptor
+                // contains all its nested components (like indicators), so we can deserialize
+                // it independently. Label-based lookup is only needed for cross-references
+                // in Strategy contexts, not for direct component matching.
+                // Pass the current context as parent so nested components can resolve:
+                // 1. Components from the current rule's context (for nested rules/indicators)
+                // 2. Strategy-level components via the parent chain
+                try {
+                    return RuleSerialization.fromDescriptor(context.series, component, context);
+                } catch (Exception e) {
+                    return null; // Can't resolve, try next match
                 }
-                return context.resolveRule(component.getLabel());
             }
         } catch (Exception e) {
             return null; // Can't resolve, try next match
         }
         return null;
+    }
+
+    private static ComponentDescriptor cloneWithoutLabel(ComponentDescriptor descriptor) {
+        if (descriptor == null) {
+            return null;
+        }
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
+        if (!descriptor.getParameters().isEmpty()) {
+            // Preserve all parameters including __customName
+            builder.withParameters(descriptor.getParameters());
+        }
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
+        }
+        return builder.build();
     }
 
     private static Object resolveParameter(Object value, Class<?> paramType, String paramName,
@@ -554,35 +595,31 @@ public final class RuleSerialization {
         }
     }
 
-    private static final class ReconstructionContext {
+    static final class ReconstructionContext {
 
         private final BarSeries series;
         private final ComponentDescriptor descriptor;
         private final Map<String, ComponentDescriptor> componentsByLabel;
-        private final List<ComponentDescriptor> componentsByIndex;
-        private int indicatorMatchIndex = 0; // Track position for matching indicators without labels
+        private final ReconstructionContext parentContext;
 
-        private ReconstructionContext(BarSeries series, ComponentDescriptor descriptor) {
+        ReconstructionContext(BarSeries series, ComponentDescriptor descriptor) {
+            this(series, descriptor, null);
+        }
+
+        ReconstructionContext(BarSeries series, ComponentDescriptor descriptor, ReconstructionContext parentContext) {
             this.series = series;
             this.descriptor = descriptor;
+            this.parentContext = parentContext;
             if (descriptor.getComponents().isEmpty()) {
                 this.componentsByLabel = Collections.emptyMap();
-                this.componentsByIndex = Collections.emptyList();
             } else {
                 Map<String, ComponentDescriptor> map = new LinkedHashMap<>();
-                List<ComponentDescriptor> indexList = new ArrayList<>();
                 for (ComponentDescriptor component : descriptor.getComponents()) {
-                    if (component != null) {
-                        indexList.add(component);
-                        if (component.getLabel() != null) {
-                            map.put(component.getLabel(), component);
-                        }
-                    } else {
-                        indexList.add(null);
+                    if (component != null && component.getLabel() != null) {
+                        map.put(component.getLabel(), component);
                     }
                 }
                 this.componentsByLabel = map;
-                this.componentsByIndex = indexList;
             }
         }
 
@@ -630,36 +667,30 @@ public final class RuleSerialization {
         private Rule resolveRule(String label) {
             ComponentDescriptor component = componentsByLabel.get(label);
             if (component == null) {
+                // Check parent context if available (for Strategy-level components)
+                if (parentContext != null) {
+                    return parentContext.resolveRule(label);
+                }
                 throw new IllegalArgumentException("Missing rule component descriptor: " + label);
             }
-            return RuleSerialization.fromDescriptor(series, component);
+            // Pass the current context as parent so nested components can resolve
+            // Strategy-level components
+            return RuleSerialization.fromDescriptor(series, component, this);
         }
 
         private Indicator<?> resolveIndicator(String label) {
             ComponentDescriptor component = componentsByLabel.get(label);
             if (component == null) {
+                // Check parent context if available (for Strategy-level components)
+                if (parentContext != null) {
+                    return parentContext.resolveIndicator(label);
+                }
                 throw new IllegalArgumentException("Missing indicator component descriptor: " + label);
             }
+            // For indicators, we don't need to pass context since they don't have nested
+            // components
+            // that need Strategy-level resolution
             return IndicatorSerialization.fromDescriptor(series, component);
-        }
-
-        /**
-         * Resolves an indicator by position (for indicators without labels). Finds the
-         * next unused indicator component without a label.
-         */
-        private Indicator<?> resolveIndicatorByPosition() {
-            for (int i = indicatorMatchIndex; i < componentsByIndex.size(); i++) {
-                ComponentDescriptor candidate = componentsByIndex.get(i);
-                if (candidate != null && candidate.getLabel() == null) {
-                    // Check if this is an indicator (type contains "Indicator" but not "Rule")
-                    String type = candidate.getType();
-                    if (type != null && type.contains("Indicator") && !type.contains("Rule")) {
-                        indicatorMatchIndex = i + 1; // Mark as used
-                        return IndicatorSerialization.fromDescriptor(series, candidate);
-                    }
-                }
-            }
-            throw new IllegalArgumentException("Missing indicator component descriptor (position-based match failed)");
         }
 
         private Num resolveNum(String name) {

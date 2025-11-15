@@ -44,6 +44,16 @@ public abstract class AbstractRule implements Rule {
     private String name;
 
     /**
+     * Returns the display name to use in trace logs. Uses the configured name if
+     * set, otherwise falls back to the class name.
+     *
+     * @return display name for tracing
+     */
+    protected String getTraceDisplayName() {
+        return name != null ? name : className;
+    }
+
+    /**
      * Traces the {@code isSatisfied()} method calls.
      *
      * @param index       the bar index
@@ -51,7 +61,7 @@ public abstract class AbstractRule implements Rule {
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+            log.trace("{}#isSatisfied({}): {}", getTraceDisplayName(), index, isSatisfied);
         }
     }
 

@@ -1,10 +1,12 @@
 # AGENTS Instructions for ta4j
 
 ## Repository-wide conventions
-- All changes should be validated, formatted, and tested using Maven goal: `mvn -B clean license:format formatter:format test install`
+- All code changes must be validated, formatted, and tested using Maven goal: `mvn -B clean license:format formatter:format test install`. The build must be green at the end of every development cycle.
 - Run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) to keep the feedback loop fast.
+- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that both demonstrates the correctness of the solution as well as serves as a shield against future regressions.
+- When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
-- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` within the appropriate section.
+
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
@@ -20,3 +22,9 @@ For toString(), output JSON — prefer Gson serialization > manual JSON > custom
   need structured names or serialization glue.
 - Composite rule names should be represented as nested component descriptors. Use
   `ComponentSerialization.parse(rule.getName())` to walk existing rule names safely.
+
+## Serialization Notes
+- Rule/strategy serialization depends on `RuleSerialization` reconstructing indicators directly from their descriptors. Do **not** reintroduce positional indicator matching or mutable cursor state (e.g., `indicatorMatchIndex`): JSON round-trips strip labels, so every descriptor must be self-contained.
+- `ReconstructionContext` should only track label lookups for cross-component references; use the parent-context chain when Strategy-level descriptors need to be visible to nested rules.
+- Keep the focused regression tests consolidated in `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest.java`. It already covers descriptor-only, JSON round-trip, labeled-component, and Strategy round-trip scenarios—add future composite-rule cases there instead of creating new test classes.
+- Temporary/printf debug tests (e.g., `AndRuleSerializationDebugTest`) should not live in the suite. If you need one locally, delete it before committing.

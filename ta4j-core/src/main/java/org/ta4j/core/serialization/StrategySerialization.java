@@ -132,8 +132,14 @@ public final class StrategySerialization {
             return instantiateNamedStrategy(series, descriptor, strategyType);
         }
 
-        Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL));
-        Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL));
+        // Create a Strategy-level context that contains all Strategy components
+        // This allows rule deserialization to resolve Strategy-level indicators and
+        // rules
+        // For now, pass null as parent context - rule components contain all their
+        // dependencies
+        // and don't need Strategy-level resolution during constructor matching
+        Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL), null);
+        Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
 
         String name = descriptor.getLabel();
         int unstableBars = extractUnstableBars(descriptor.getParameters().get("unstableBars"));
@@ -193,6 +199,11 @@ public final class StrategySerialization {
     }
 
     private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor) {
+        return instantiateRule(series, descriptor, null);
+    }
+
+    private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor,
+            RuleSerialization.ReconstructionContext parentContext) {
         if (descriptor == null) {
             throw new IllegalArgumentException("Rule descriptor cannot be null");
         }
@@ -200,12 +211,12 @@ public final class StrategySerialization {
         // Check if this is a rule by type name (contains "Rule")
         String type = descriptor.getType();
         if (type != null && type.contains("Rule")) {
-            return RuleSerialization.fromDescriptor(series, descriptor);
+            return RuleSerialization.fromDescriptor(series, descriptor, parentContext);
         }
 
         // Legacy check for __args (for backwards compatibility)
         if (descriptor.getParameters().containsKey("__args")) {
-            return RuleSerialization.fromDescriptor(series, descriptor);
+            return RuleSerialization.fromDescriptor(series, descriptor, parentContext);
         }
 
         if (type == null || type.isBlank()) {
@@ -226,7 +237,7 @@ public final class StrategySerialization {
         if (!descriptor.getComponents().isEmpty()) {
             List<Rule> components = new ArrayList<>(descriptor.getComponents().size());
             for (ComponentDescriptor component : descriptor.getComponents()) {
-                components.add(instantiateRule(series, component));
+                components.add(instantiateRule(series, component, parentContext));
             }
             Optional<Rule> composite = tryCompositeConstructor(ruleType, components);
             if (composite.isPresent()) {
