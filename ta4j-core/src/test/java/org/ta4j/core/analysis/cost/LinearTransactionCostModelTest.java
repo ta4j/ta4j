@@ -180,6 +180,6 @@ public class LinearTransactionCostModelTest {
 
         Num overallProfit = firstPositionProfit.plus(secondPositionProfit);
 
-        assertEquals(overallProfit, strategyResult.getPerformanceReport().getTotalProfit());
+        assertEquals(overallProfit, strategyResult.getPerformanceReport().getPerformanceMetric());
     }
 }

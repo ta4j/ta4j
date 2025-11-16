@@ -58,6 +58,145 @@ import org.ta4j.core.serialization.ComponentDescriptor;
 /**
  * Base class for strategies that can be reconstructed from compact name tokens.
  *
+ * <h2>Compact Name Format</h2>
+ * <p>
+ * The compact name (label) must conform to the format:
+ * </p>
+ *
+ * <pre>{@code <SimpleName>_<param1>_<param2>_...}</pre>
+ * <p>
+ * Where:
+ * </p>
+ * <ul>
+ * <li><strong>SimpleName</strong>: The simple class name (without package) of
+ * the strategy implementation</li>
+ * <li><strong>Parameters</strong>: Zero or more parameter values separated by
+ * underscores, where each parameter is a string representation of a constructor
+ * argument</li>
+ * </ul>
+ * <p>
+ * Examples:
+ * </p>
+ * <ul>
+ * <li>{@code "MyStrategy"} - No parameters</li>
+ * <li>{@code "MyStrategy_10"} - Single integer parameter</li>
+ * <li>{@code "MyStrategy_10_0.5"} - Two parameters (integer and decimal)</li>
+ * <li>{@code "DayOfWeekStrategy_MONDAY_FRIDAY"} - Two enum parameters</li>
+ * </ul>
+ * <p>
+ * Use {@link #buildLabel(Class, String...)} when constructing the superclass to
+ * guarantee consistent token formatting. The label must encode every piece of
+ * information required to reconstruct the instance, including unstable bar
+ * counts if they vary.
+ * </p>
+ *
+ * <h2>Constructor Requirements</h2>
+ * <p>
+ * <strong>Every {@code NamedStrategy} implementation must provide a constructor
+ * that accepts the compact name format:</strong>
+ * </p>
+ *
+ * <pre>{@code
+ * public YourStrategy(BarSeries series, String... parameters) {
+ *     // Parse parameters and delegate to main constructor
+ *     this(series, parseParam1(parameters), parseParam2(parameters), ...);
+ * }
+ * }</pre>
+ * <p>
+ * This constructor must be able to parse the parameter tokens (obtained by
+ * splitting the label on underscores after the simple name) and reconstruct the
+ * strategy instance. The serialization layer will invoke this constructor when
+ * deserializing strategies from JSON or other formats.
+ * </p>
+ * <p>
+ * Best practice: Parse parameters inside the varargs constructor and delegate
+ * to a strongly-typed constructor to avoid duplicating rule-building logic.
+ * Validate inputs eagerly and throw informative
+ * {@link IllegalArgumentException}s for bad parameters.
+ * </p>
+ *
+ * <h2>Registration</h2>
+ * <p>
+ * Named strategies must be registered before they can be deserialized. There
+ * are two approaches:
+ * </p>
+ *
+ * <h3>Manual Registration (Recommended for Custom Strategies)</h3>
+ * <p>
+ * Register each strategy class in a static initializer:
+ * </p>
+ *
+ * <pre>{@code
+ * public class MyStrategy extends NamedStrategy {
+ *     static {
+ *         registerImplementation(MyStrategy.class);
+ *     }
+ *     // ... constructors and implementation
+ * }
+ * }</pre>
+ *
+ * <h3>Automatic Package Scanning</h3>
+ * <p>
+ * For projects with many named strategies, you can scan entire packages at
+ * application startup:
+ * </p>
+ *
+ * <pre>{@code
+ * // Scan default Ta4j packages only
+ * NamedStrategy.initializeRegistry();
+ *
+ * // Scan default packages plus your custom packages
+ * NamedStrategy.initializeRegistry("com.mycompany.strategies", "com.mycompany.trading");
+ * }</pre>
+ * <p>
+ * Package scanning automatically discovers and registers all non-abstract
+ * classes extending {@code NamedStrategy} in the specified packages. The
+ * default package {@code "org.ta4j.core.strategy.named"} is always scanned
+ * automatically on first use.
+ * </p>
+ * <p>
+ * <strong>Note:</strong> Package scanning works for both file-based and
+ * JAR-based class loading, but requires that classes are on the classpath at
+ * runtime.
+ * </p>
+ *
+ * <h2>Serialization</h2>
+ * <p>
+ * When serialized to JSON (via {@link #toDescriptor()}), the strategy type is
+ * always {@value #SERIALIZED_TYPE}, and the label field contains the compact
+ * name. The deserialization layer uses {@link #splitLabel(String)} to extract
+ * the simple class name and parameters, then looks up the registered type and
+ * invokes the varargs constructor.
+ * </p>
+ *
+ * <h2>Example Implementation</h2>
+ *
+ * <pre>{@code
+ * public class MovingAverageStrategy extends NamedStrategy {
+ *     static {
+ *         registerImplementation(MovingAverageStrategy.class);
+ *     }
+ *
+ *     private final int shortPeriod;
+ *     private final int longPeriod;
+ *
+ *     // Strongly-typed constructor
+ *     public MovingAverageStrategy(BarSeries series, int shortPeriod, int longPeriod) {
+ *         super(buildLabel(MovingAverageStrategy.class, String.valueOf(shortPeriod), String.valueOf(longPeriod)),
+ *                 buildEntryRule(series, shortPeriod, longPeriod), buildExitRule(series, shortPeriod, longPeriod));
+ *         this.shortPeriod = shortPeriod;
+ *         this.longPeriod = longPeriod;
+ *     }
+ *
+ *     // Varargs constructor for deserialization
+ *     public MovingAverageStrategy(BarSeries series, String... parameters) {
+ *         this(series, Integer.parseInt(parameters[0]), Integer.parseInt(parameters[1]));
+ *     }
+ *
+ *     // ... rule building methods
+ * }
+ * }</pre>
+ *
  * @since 0.19
  */
 public abstract class NamedStrategy extends BaseStrategy {
