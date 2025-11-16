@@ -4,8 +4,9 @@
 - All code changes must be validated, formatted, and tested by running `scripts/run-full-build-quiet.sh` (wraps `mvn -B clean license:format formatter:format test install`). The build must be green at the end of every development cycle (changes that affect build/test behavior).
 - The script stores the full log under `.agents/logs/` and prints aggregated test totals. Always include its reported `Tests run / Failures / Errors / Skipped` numbers plus the log path when you describe your verification results.
 - To keep the feedback loop fast run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) from the repo root. Be sure to finish every change-set by re-running the quiet full-build script above.
-- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that both demonstrates the correctness of the solution as well as serves as a shield against future regressions.
+- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that both demonstrates the correctness of the solution and serves as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
+- At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don’t break tests.
 
