@@ -285,7 +285,7 @@
                 <configuration>
                     <licenseSets>
                         <licenseSet>
-                            <header>LICENSE</header>
+                            <header>${maven.multiModuleProjectDirectory}/LICENSE</header>
                             <includes>
                                 <include>**/*.java</include>
                             </includes>
