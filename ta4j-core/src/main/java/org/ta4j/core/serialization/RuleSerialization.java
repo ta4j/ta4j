@@ -928,43 +928,78 @@ public final class RuleSerialization {
             if (value instanceof Number) {
                 return value;
             }
-            return Double.parseDouble(String.valueOf(value));
+            try {
+                return Double.parseDouble(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
+            }
         }
         if (targetType.equals(int.class) || targetType.equals(Integer.class)) {
             if (value instanceof Number number) {
                 return number.intValue();
             }
-            return Integer.parseInt(String.valueOf(value));
+            try {
+                return Integer.parseInt(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "Failed to convert value '" + value + "' to Integer: " + e.getMessage(), e);
+            }
         }
         if (targetType.equals(long.class) || targetType.equals(Long.class)) {
             if (value instanceof Number number) {
                 return number.longValue();
             }
-            return Long.parseLong(String.valueOf(value));
+            try {
+                return Long.parseLong(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Long: " + e.getMessage(),
+                        e);
+            }
         }
         if (targetType.equals(double.class) || targetType.equals(Double.class)) {
             if (value instanceof Number number) {
                 return number.doubleValue();
             }
-            return Double.parseDouble(String.valueOf(value));
+            try {
+                return Double.parseDouble(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
+            }
         }
         if (targetType.equals(float.class) || targetType.equals(Float.class)) {
             if (value instanceof Number number) {
                 return number.floatValue();
             }
-            return Float.parseFloat(String.valueOf(value));
+            try {
+                return Float.parseFloat(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "Failed to convert value '" + value + "' to Float: " + e.getMessage(), e);
+            }
         }
         if (targetType.equals(short.class) || targetType.equals(Short.class)) {
             if (value instanceof Number number) {
                 return number.shortValue();
             }
-            return Short.parseShort(String.valueOf(value));
+            try {
+                return Short.parseShort(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "Failed to convert value '" + value + "' to Short: " + e.getMessage(), e);
+            }
         }
         if (targetType.equals(byte.class) || targetType.equals(Byte.class)) {
             if (value instanceof Number number) {
                 return number.byteValue();
             }
-            return Byte.parseByte(String.valueOf(value));
+            try {
+                return Byte.parseByte(String.valueOf(value));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Byte: " + e.getMessage(),
+                        e);
+            }
         }
         throw new IllegalStateException("Unsupported numeric target type: " + targetType.getName());
     }
