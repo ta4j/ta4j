@@ -23,12 +23,7 @@
  */
 package org.ta4j.core.serialization;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Describes a TA4J component (rule, indicator, strategy, etc.) for structured
@@ -59,53 +54,6 @@ public final class ComponentDescriptor {
     }
 
     /**
-     * @return the component type, if provided
-     */
-    public String getType() {
-        return type;
-    }
-
-    /**
-     * @return a display label for the component, if provided
-     */
-    public String getLabel() {
-        return label;
-    }
-
-    /**
-     * @return component parameters, never {@code null}
-     */
-    public Map<String, Object> getParameters() {
-        return parameters;
-    }
-
-    /**
-     * @return component descriptors (indicators/rules used by this component),
-     *         never {@code null}
-     */
-    public List<ComponentDescriptor> getComponents() {
-        return components;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof ComponentDescriptor)) {
-            return false;
-        }
-        ComponentDescriptor that = (ComponentDescriptor) o;
-        return Objects.equals(type, that.type) && Objects.equals(label, that.label)
-                && Objects.equals(parameters, that.parameters) && Objects.equals(components, that.components);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(type, label, parameters, components);
-    }
-
-    /**
      * Creates a descriptor with just the type populated.
      *
      * @param type component type
@@ -130,6 +78,58 @@ public final class ComponentDescriptor {
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * @return the component type, if provided
+     */
+    public String getType() {
+        return type;
+    }
+
+    /**
+     * @return a display label for the component, if provided
+     */
+    public String getLabel() {
+        return label;
+    }
+
+    /**
+     * @return component parameters, never {@code null}
+     */
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
+
+    /**
+     * @return component descriptors (indicators/rules used by this component),
+     * never {@code null}
+     */
+    public List<ComponentDescriptor> getComponents() {
+        return components;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ComponentDescriptor)) {
+            return false;
+        }
+        ComponentDescriptor that = (ComponentDescriptor) o;
+        return Objects.equals(type, that.type) && Objects.equals(label, that.label) && Objects.equals(parameters, that.parameters) && Objects.equals(components, that.components);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, label, parameters, components);
+    }
+
+
+    @Override
+    public String toString() {
+        return ComponentSerialization.toJson(this);
     }
 
     /**
