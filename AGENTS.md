@@ -1,9 +1,30 @@
 # AGENTS Instructions for ta4j
 
+## MANDATORY WORKFLOW - DO NOT SKIP
+
+**CRITICAL: Before completing ANY code changes, you MUST:**
+
+1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
+   - **This is NOT optional.** Do not skip this step, even for "simple" changes.
+   - **When:** After every code change that affects build/test behavior (which is almost always)
+   - **Windows command:** `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/path/to/workspace && ./scripts/run-full-build-quiet.sh"`
+   - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
+   - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
+   - **Report:** Always include the script's output showing `Tests run / Failures / Errors / Skipped` numbers and the log path
+
+2. ✅ Verify the build succeeded with zero failures and zero errors
+3. ✅ Include the test results in your completion message
+
+**If you skip the full build, you have NOT completed the task. The build script is the ONLY acceptable way to validate changes.**
+
 ## Repository-wide conventions
-- All code changes must be validated, formatted, and tested by running `scripts/run-full-build-quiet.sh` (wraps `mvn -B clean license:format formatter:format test install`). The build must be green at the end of every development cycle (changes that affect build/test behavior). On Windows, run the script (and other bash-based helpers) through Git Bash/MSYS when available rather than WSL so the repo stays on native NTFS paths and the build completes quickly. Use PowerShell's call operator with proper quoting: `& "C:\Program Files\Git\bin\bash.exe" -c "./scripts/run-full-build-quiet.sh"` (when already in the workspace directory) or `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/path/to/workspace && ./scripts/run-full-build-quiet.sh"` (converting Windows paths to Unix-style, e.g., `C:\Users\...` becomes `/c/Users/...`).
-- The script stores the full log under `.agents/logs/` and prints aggregated test totals. Always include its reported `Tests run / Failures / Errors / Skipped` numbers plus the log path when you describe your verification results.
-- To keep the feedback loop fast run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) from the repo root. Be sure to finish every change-set by re-running the quiet full-build script above.
+
+### Build and Test Workflow
+
+- **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`)
+- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` - this is mandatory, not optional
+- The script stores the full log under `.agents/logs/` and prints aggregated test totals
+- On Windows, run bash-based scripts through Git Bash/MSYS (not WSL) for native NTFS paths and faster builds
 - All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that both demonstrates the correctness of the solution and serves as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.

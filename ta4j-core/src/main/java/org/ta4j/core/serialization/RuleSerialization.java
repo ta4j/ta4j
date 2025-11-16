@@ -114,11 +114,11 @@ public final class RuleSerialization {
 
         ArgumentContext context = new ArgumentContext(parameters, components, visited);
         for (Argument argument : match.arguments) {
-            argument.serialize(rule, context);
+            argument.serialize(context);
         }
 
-        // No longer serialize __args metadata - deserialization will infer from
-        // components and parameters
+        // Serialize components and parameters; deserialization infers constructor
+        // signature from these
         if (!parameters.isEmpty()) {
             builder.withParameters(parameters);
         }
@@ -1347,9 +1347,9 @@ public final class RuleSerialization {
             return ArgumentKind.NUMBER_ARRAY;
         }
 
-        private void serialize(Rule owner, ArgumentContext context) {
-            // No longer create metadata - just serialize components and parameters
-            // Deserialization will infer constructor signature from these
+        private void serialize(ArgumentContext context) {
+            // Serialize components and parameters; deserialization infers constructor
+            // signature from these
             switch (kind) {
             case SERIES:
                 // Series is passed implicitly, not serialized
@@ -1362,8 +1362,7 @@ public final class RuleSerialization {
             case INDICATOR:
                 Indicator<?> indicator = (Indicator<?>) value;
                 ComponentDescriptor indicatorDescriptor = IndicatorSerialization.describe(indicator);
-                // Indicators nested in rules need labels for matching during deserialization
-                // but we'll serialize them without labels in the JSON
+                // Apply label for matching during deserialization
                 ComponentDescriptor labeledDescriptor = applyLabel(indicatorDescriptor, label);
                 context.components.add(labeledDescriptor);
                 break;
