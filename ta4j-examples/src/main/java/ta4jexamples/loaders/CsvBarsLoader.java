@@ -129,7 +129,11 @@ public class CsvBarsLoader {
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());
-        LOG.debug("First bar: \n\tVolume: {}\n\tOpen price: {}\n\tClose price: {}", series.getBar(0).getVolume(),
-                series.getBar(0).getOpenPrice(), series.getBar(0).getClosePrice());
+        if (series.isEmpty()) {
+            LOG.warn("Series is empty - no bars loaded from CSV file. Skipping first bar details.");
+        } else {
+            LOG.debug("First bar: \n\tVolume: {}\n\tOpen price: {}\n\tClose price: {}", series.getBar(0).getVolume(),
+                    series.getBar(0).getOpenPrice(), series.getBar(0).getClosePrice());
+        }
     }
 }
