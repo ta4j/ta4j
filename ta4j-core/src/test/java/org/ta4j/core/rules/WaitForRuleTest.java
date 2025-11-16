@@ -105,5 +105,6 @@ public class WaitForRuleTest {
     public void serializeAndDeserialize() {
         rule = new WaitForRule(Trade.TradeType.BUY, 2);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

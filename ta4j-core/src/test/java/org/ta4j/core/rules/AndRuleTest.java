@@ -62,5 +62,6 @@ public class AndRuleTest {
     public void serializeAndDeserialize() {
         Rule composite = satisfiedRule.and(BooleanRule.TRUE);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, composite);
     }
 }

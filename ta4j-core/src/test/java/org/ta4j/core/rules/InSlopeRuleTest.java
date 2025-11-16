@@ -64,6 +64,8 @@ public class InSlopeRuleTest {
     @Test
     public void testSerializationRoundTrip() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rulePositiveSlope);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rulePositiveSlope);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, ruleNegativeSlope);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, ruleNegativeSlope);
     }
 }

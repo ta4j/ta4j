@@ -104,5 +104,6 @@ public class OpenedPositionMinimumBarCountRuleTest {
                 .build();
         final var rule = new OpenedPositionMinimumBarCountRule(2);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

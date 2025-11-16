@@ -62,5 +62,6 @@ public class OrRuleTest {
     public void serializeAndDeserialize() {
         Rule composite = unsatisfiedRule.or(BooleanRule.TRUE);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, composite);
     }
 }

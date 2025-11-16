@@ -181,5 +181,6 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90, 95, 105).build());
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(7), 2);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
     }
 }

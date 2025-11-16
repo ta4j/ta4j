@@ -60,5 +60,6 @@ public class ChainRuleTest {
     @Test
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, chainRule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, chainRule);
     }
 }

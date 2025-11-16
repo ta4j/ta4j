@@ -60,6 +60,8 @@ public class BooleanRuleTest {
     @Test
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, satisfiedRule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, satisfiedRule);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, unsatisfiedRule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, unsatisfiedRule);
     }
 }

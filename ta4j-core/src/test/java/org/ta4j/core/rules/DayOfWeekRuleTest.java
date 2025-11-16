@@ -74,5 +74,6 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
         var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
         DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

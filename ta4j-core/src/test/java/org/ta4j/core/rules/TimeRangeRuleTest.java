@@ -90,5 +90,6 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
         var range = new TimeRangeRule.TimeRange(LocalTime.of(1, 0), LocalTime.of(3, 0));
         TimeRangeRule rule = new TimeRangeRule(List.of(range), dateTimeIndicator);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

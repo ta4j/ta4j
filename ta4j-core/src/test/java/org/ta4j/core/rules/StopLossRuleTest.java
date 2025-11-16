@@ -128,5 +128,6 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void serializeAndDeserialize() {
         var rule = new StopLossRule(closePrice, numOf(8));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
     }
 }

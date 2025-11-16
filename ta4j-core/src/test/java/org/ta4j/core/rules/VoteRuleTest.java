@@ -68,5 +68,6 @@ public class VoteRuleTest {
         BarSeries series = new MockBarSeriesBuilder().withData(1).build();
         VoteRule rule = new VoteRule(2, BooleanRule.TRUE, BooleanRule.FALSE, BooleanRule.TRUE);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

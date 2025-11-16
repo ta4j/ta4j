@@ -82,6 +82,27 @@ final class RuleSerializationRoundTripTestSupport {
      *         serialization/deserialization is not supported
      */
     static Rule assertRuleRoundTrips(BarSeries series, Rule rule) {
+        return assertRuleRoundTrips(series, rule, RoundTripFlavor.DESCRIPTOR);
+    }
+
+    /**
+     * Asserts that a rule can be serialized to JSON, deserialized back into a
+     * descriptor, and reconstructed into the original rule.
+     *
+     * @param series the bar series to use for rule deserialization
+     * @param rule   the rule to test for round-trip serialization
+     * @return the restored rule after deserialization, or the original rule if
+     *         serialization/deserialization is not supported
+     */
+    static Rule assertRuleJsonRoundTrips(BarSeries series, Rule rule) {
+        return assertRuleRoundTrips(series, rule, RoundTripFlavor.JSON);
+    }
+
+    private enum RoundTripFlavor {
+        DESCRIPTOR, JSON
+    }
+
+    private static Rule assertRuleRoundTrips(BarSeries series, Rule rule, RoundTripFlavor flavor) {
         ComponentDescriptor descriptor;
         try {
             descriptor = RuleSerialization.describe(rule);
@@ -90,19 +111,34 @@ final class RuleSerializationRoundTripTestSupport {
             return rule;
         }
 
+        ComponentDescriptor descriptorForDeserialization = descriptor;
+        String expectedJson = canonicalize(descriptor);
+
+        if (flavor == RoundTripFlavor.JSON) {
+            String serializedJson = ComponentSerialization.toJson(descriptor);
+            ComponentDescriptor parsedDescriptor = ComponentSerialization.parse(serializedJson);
+            assertThat(parsedDescriptor)
+                    .as("ComponentSerialization.parse should rebuild descriptor from JSON\njson: %s", serializedJson)
+                    .isNotNull();
+            descriptorForDeserialization = parsedDescriptor;
+            String parsedJson = canonicalize(parsedDescriptor);
+            assertThat(parsedJson)
+                    .as("JSON serialization mismatch\noriginal: %s\nparsed:   %s", expectedJson, parsedJson)
+                    .isEqualTo(expectedJson);
+        }
+
         Rule restored;
         try {
-            restored = RuleSerialization.fromDescriptor(series, descriptor);
+            restored = RuleSerialization.fromDescriptor(series, descriptorForDeserialization);
         } catch (RuntimeException ex) {
             Assume.assumeNoException("Rule deserialization not supported for " + rule.getClass().getSimpleName(), ex);
             return rule;
         }
 
         ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
-        String expectedJson = canonicalize(descriptor);
         String actualJson = canonicalize(restoredDescriptor);
         assertThat(actualJson)
-                .as("Round-trip descriptor mismatch\nexpected: %s\nactual:   %s", expectedJson, actualJson)
+                .as("Round-trip descriptor mismatch (%s)\nexpected: %s\nactual:   %s", flavor, expectedJson, actualJson)
                 .isEqualTo(expectedJson);
         return restored;
     }
@@ -167,6 +203,9 @@ final class RuleSerializationRoundTripTestSupport {
             }
             return normalized;
         }
+        if (value instanceof Number number) {
+            return normalizeNumericValue(number);
+        }
         if (value instanceof String str) {
             return normalizeNumericString(str);
         }
@@ -176,6 +215,17 @@ final class RuleSerializationRoundTripTestSupport {
     private static String normalizeNumericString(String value) {
         try {
             return new BigDecimal(value).stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException ex) {
+            return value;
+        }
+    }
+
+    private static Number normalizeNumericValue(Number value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal.stripTrailingZeros();
+        }
+        try {
+            return new BigDecimal(value.toString()).stripTrailingZeros();
         } catch (NumberFormatException ex) {
             return value;
         }

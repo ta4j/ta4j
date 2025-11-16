@@ -87,5 +87,6 @@ public class CrossedUpIndicatorRuleTest {
         var evaluatedIndicator = new FixedNumIndicator(series, 3, 4, 6);
         var rule = new CrossedUpIndicatorRule(evaluatedIndicator, series.numFactory().numOf(5));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

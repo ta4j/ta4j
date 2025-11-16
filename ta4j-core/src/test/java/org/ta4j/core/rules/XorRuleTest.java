@@ -62,5 +62,6 @@ public class XorRuleTest {
     public void serializeAndDeserialize() {
         Rule xor = satisfiedRule.xor(unsatisfiedRule);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, xor);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, xor);
     }
 }

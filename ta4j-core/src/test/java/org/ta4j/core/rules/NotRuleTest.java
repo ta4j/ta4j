@@ -57,5 +57,6 @@ public class NotRuleTest {
     @Test
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, satisfiedRule.negation());
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, satisfiedRule.negation());
     }
 }

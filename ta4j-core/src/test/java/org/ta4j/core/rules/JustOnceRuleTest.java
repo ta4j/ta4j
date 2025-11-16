@@ -92,6 +92,8 @@ public class JustOnceRuleTest {
     @Test
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, new JustOnceRule(new FixedRule(1)));
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, new JustOnceRule(new FixedRule(1)));
     }
 }

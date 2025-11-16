@@ -59,5 +59,6 @@ public class FixedRuleTest {
         BarSeries series = new MockBarSeriesBuilder().withData(1).build();
         FixedRule rule = new FixedRule(1, 4, 5);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

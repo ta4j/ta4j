@@ -86,5 +86,6 @@ public class CrossedDownIndicatorRuleTest {
         var evaluatedIndicator = new FixedNumIndicator(series, 5, 6, 4, 3);
         var rule = new CrossedDownIndicatorRule(evaluatedIndicator, series.numFactory().numOf(5));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

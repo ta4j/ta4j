@@ -181,5 +181,6 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
     public void serializeAndDeserialize() {
         var rule = new AverageTrueRangeTrailingStopLossRule(series, 4, 1.5);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

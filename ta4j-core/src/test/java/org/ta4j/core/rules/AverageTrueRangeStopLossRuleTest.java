@@ -255,5 +255,6 @@ public class AverageTrueRangeStopLossRuleTest {
         }
         var rule = new AverageTrueRangeStopLossRule(series, 3, 1.25);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }
