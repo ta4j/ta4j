@@ -35,10 +35,11 @@ import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 public class IsRisingRuleTest {
 
     private IsRisingRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
+        series = new BaseBarSeriesBuilder().build();
         var indicator = new FixedNumIndicator(series, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3);
         rule = new IsRisingRule(indicator, 3);
     }
@@ -56,5 +57,10 @@ public class IsRisingRuleTest {
         assertFalse(rule.isSatisfied(7));
         assertFalse(rule.isSatisfied(8));
         assertTrue(rule.isSatisfied(9));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
     }
 }

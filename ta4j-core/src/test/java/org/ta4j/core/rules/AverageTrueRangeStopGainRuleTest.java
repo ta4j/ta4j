@@ -153,4 +153,10 @@ public class AverageTrueRangeStopGainRuleTest {
         assertFalse(rule.isSatisfied(1, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var rule = new AverageTrueRangeStopGainRule(series, 3, 1.5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+    }
 }

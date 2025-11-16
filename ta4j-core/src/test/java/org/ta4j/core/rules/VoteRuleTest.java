@@ -23,13 +23,17 @@
  */
 package org.ta4j.core.rules;
 
-import org.junit.Test;
-import org.ta4j.core.Rule;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class VoteRuleTest {
 
@@ -57,5 +61,12 @@ public class VoteRuleTest {
         assertTrue(new VoteRule(1, rules).isSatisfied(0));
         assertTrue(new VoteRule(2, rules).isSatisfied(0));
         assertFalse(new VoteRule(3, rules).isSatisfied(0));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        VoteRule rule = new VoteRule(2, BooleanRule.TRUE, BooleanRule.FALSE, BooleanRule.TRUE);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
     }
 }

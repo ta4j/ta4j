@@ -80,4 +80,15 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
         assertTrue(rule.isSatisfied(9, null));
         assertFalse(rule.isSatisfied(10, null));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T02:00:00Z")).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T18:00:00Z")).add();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        var range = new TimeRangeRule.TimeRange(LocalTime.of(1, 0), LocalTime.of(3, 0));
+        TimeRangeRule rule = new TimeRangeRule(List.of(range), dateTimeIndicator);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+    }
 }

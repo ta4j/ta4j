@@ -80,4 +80,11 @@ public class CrossedDownIndicatorRuleTest {
         assertFalse(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 5, 6, 4, 3);
+        var rule = new CrossedDownIndicatorRule(evaluatedIndicator, series.numFactory().numOf(5));
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+    }
 }

@@ -37,10 +37,11 @@ import org.ta4j.core.num.Num;
 public class IsFallingRuleTest {
 
     private IsFallingRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
+        series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 6, 5, 4, 3, 2, 1, 0, -1, 2, 3);
         rule = new IsFallingRule(indicator, 3);
     }
@@ -57,5 +58,10 @@ public class IsFallingRuleTest {
         assertTrue(rule.isSatisfied(7));
         assertFalse(rule.isSatisfied(8));
         assertFalse(rule.isSatisfied(9));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
     }
 }

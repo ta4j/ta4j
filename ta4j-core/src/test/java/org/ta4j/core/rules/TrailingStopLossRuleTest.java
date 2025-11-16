@@ -174,4 +174,12 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertFalse(rule.isSatisfied(7, tradingRecord));
         assertTrue(rule.isSatisfied(8, tradingRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90, 95, 105).build());
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(7), 2);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
+    }
 }

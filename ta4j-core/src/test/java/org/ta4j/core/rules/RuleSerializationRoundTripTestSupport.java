@@ -26,9 +26,12 @@ package org.ta4j.core.rules;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Map.Entry;
 
 import org.junit.Assume;
 import org.ta4j.core.BarSeries;
@@ -96,133 +99,85 @@ final class RuleSerializationRoundTripTestSupport {
         }
 
         ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
-        if (!descriptorsEqual(descriptor, restoredDescriptor)) {
-            String expected = ComponentSerialization.toJson(descriptor);
-            String actual = ComponentSerialization.toJson(restoredDescriptor);
-            assertThat(actual).as("Round-trip descriptor mismatch\nexpected: %s\nactual:   %s", expected, actual)
-                    .isEqualTo(expected);
-        }
+        String expectedJson = canonicalize(descriptor);
+        String actualJson = canonicalize(restoredDescriptor);
+        assertThat(actualJson)
+                .as("Round-trip descriptor mismatch\nexpected: %s\nactual:   %s", expectedJson, actualJson)
+                .isEqualTo(expectedJson);
         return restored;
     }
 
-    /**
-     * Recursively compares two component descriptors for equality.
-     * <p>
-     * This method checks that both descriptors have the same type, label,
-     * parameters, and nested components. The comparison is performed recursively
-     * for nested components.
-     *
-     * @param expected the expected descriptor
-     * @param actual   the actual descriptor to compare
-     * @return {@code true} if the descriptors are equal, {@code false} otherwise
-     */
-    private static boolean descriptorsEqual(ComponentDescriptor expected, ComponentDescriptor actual) {
-        if (!Objects.equals(expected.getType(), actual.getType())) {
-            return false;
-        }
-        if (!Objects.equals(expected.getLabel(), actual.getLabel())) {
-            return false;
-        }
-        if (!compareParameters(expected.getParameters(), actual.getParameters())) {
-            return false;
-        }
-        List<ComponentDescriptor> expectedComponents = expected.getComponents();
-        List<ComponentDescriptor> actualComponents = actual.getComponents();
-        if (expectedComponents.size() != actualComponents.size()) {
-            return false;
-        }
-        for (int i = 0; i < expectedComponents.size(); i++) {
-            if (!descriptorsEqual(expectedComponents.get(i), actualComponents.get(i))) {
-                return false;
-            }
-        }
-        return true;
+    private static String canonicalize(ComponentDescriptor descriptor) {
+        ComponentDescriptor normalized = normalizeDescriptor(descriptor);
+        return ComponentSerialization.toJson(normalized);
     }
 
-    /**
-     * Compares two parameter maps for equality.
-     * <p>
-     * This method checks that both maps have the same keys and that the
-     * corresponding values are equal using {@link #parameterValuesEqual}.
-     *
-     * @param expected the expected parameter map
-     * @param actual   the actual parameter map to compare
-     * @return {@code true} if the parameter maps are equal, {@code false} otherwise
-     */
-    private static boolean compareParameters(Map<String, Object> expected, Map<String, Object> actual) {
-        if (!expected.keySet().equals(actual.keySet())) {
-            return false;
+    private static ComponentDescriptor normalizeDescriptor(ComponentDescriptor descriptor) {
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel(descriptor.getLabel());
+        if (!descriptor.getParameters().isEmpty()) {
+            builder.withParameters(normalizeParameters(descriptor.getParameters()));
         }
-        for (String key : expected.keySet()) {
-            if (!parameterValuesEqual(expected.get(key), actual.get(key))) {
-                return false;
-            }
+        List<ComponentDescriptor> children = new ArrayList<>(descriptor.getComponents().size());
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            children.add(normalizeDescriptor(component));
         }
-        return true;
+        children.sort(ComponentDescriptorComparator.INSTANCE);
+        for (ComponentDescriptor child : children) {
+            builder.addComponent(child);
+        }
+        return builder.build();
     }
 
-    /**
-     * Compares two parameter values for equality.
-     * <p>
-     * This method handles various value types:
-     * <ul>
-     * <li>Nested maps: recursively compared using {@link #compareParameters}</li>
-     * <li>Lists: element-wise comparison using this method recursively</li>
-     * <li>Numeric strings: parsed as {@link BigDecimal} and compared
-     * numerically</li>
-     * <li>Other types: compared using {@link Objects#equals}</li>
-     * </ul>
-     *
-     * @param expected the expected parameter value
-     * @param actual   the actual parameter value to compare
-     * @return {@code true} if the values are equal, {@code false} otherwise
-     */
+    private static final class ComponentDescriptorComparator implements Comparator<ComponentDescriptor> {
+
+        private static final ComponentDescriptorComparator INSTANCE = new ComponentDescriptorComparator();
+
+        @Override
+        public int compare(ComponentDescriptor left, ComponentDescriptor right) {
+            String leftJson = ComponentSerialization.toJson(left);
+            String rightJson = ComponentSerialization.toJson(right);
+            return leftJson.compareTo(rightJson);
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private static boolean parameterValuesEqual(Object expected, Object actual) {
-        if (expected == null || actual == null) {
-            return Objects.equals(expected, actual);
+    private static Map<String, Object> normalizeParameters(Map<String, Object> parameters) {
+        if (parameters.isEmpty()) {
+            return parameters;
         }
-        if (expected instanceof Map && actual instanceof Map) {
-            return compareParameters((Map<String, Object>) expected, (Map<String, Object>) actual);
+        List<Entry<String, Object>> entries = new ArrayList<>(parameters.entrySet());
+        entries.sort(Entry.comparingByKey());
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (Entry<String, Object> entry : entries) {
+            normalized.put(entry.getKey(), normalizeValue(entry.getValue()));
         }
-        if (expected instanceof List && actual instanceof List) {
-            List<Object> expectedList = (List<Object>) expected;
-            List<Object> actualList = (List<Object>) actual;
-            if (expectedList.size() != actualList.size()) {
-                return false;
-            }
-            for (int i = 0; i < expectedList.size(); i++) {
-                if (!parameterValuesEqual(expectedList.get(i), actualList.get(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        if (expected instanceof String && actual instanceof String) {
-            if (isNumeric((String) expected) && isNumeric((String) actual)) {
-                BigDecimal left = new BigDecimal((String) expected);
-                BigDecimal right = new BigDecimal((String) actual);
-                return left.compareTo(right) == 0;
-            }
-        }
-        return Objects.equals(expected, actual);
+        return normalized;
     }
 
-    /**
-     * Checks if a string represents a valid numeric value.
-     * <p>
-     * This method attempts to parse the string as a {@link BigDecimal} to determine
-     * if it represents a numeric value.
-     *
-     * @param value the string to check
-     * @return {@code true} if the string is numeric, {@code false} otherwise
-     */
-    private static boolean isNumeric(String value) {
+    private static Object normalizeValue(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return normalizeParameters((Map<String, Object>) map);
+        }
+        if (value instanceof List<?> list) {
+            List<Object> normalized = new ArrayList<>(list.size());
+            for (Object element : list) {
+                normalized.add(normalizeValue(element));
+            }
+            return normalized;
+        }
+        if (value instanceof String str) {
+            return normalizeNumericString(str);
+        }
+        return value;
+    }
+
+    private static String normalizeNumericString(String value) {
         try {
-            new BigDecimal(value);
-            return true;
+            return new BigDecimal(value).stripTrailingZeros().toPlainString();
         } catch (NumberFormatException ex) {
-            return false;
+            return value;
         }
     }
 }

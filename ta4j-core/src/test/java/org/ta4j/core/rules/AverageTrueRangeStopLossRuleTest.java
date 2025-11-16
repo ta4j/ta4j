@@ -240,4 +240,20 @@ public class AverageTrueRangeStopLossRuleTest {
 
         assertFalse(rule.isSatisfied(9, tradingRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var now = Instant.now();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder()
+                    .endTime(now.plus(Duration.ofDays(i)))
+                    .openPrice(100 + i)
+                    .highPrice(105 + i)
+                    .lowPrice(95 + i)
+                    .closePrice(100 + i)
+                    .add();
+        }
+        var rule = new AverageTrueRangeStopLossRule(series, 3, 1.25);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+    }
 }

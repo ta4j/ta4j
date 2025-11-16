@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -35,11 +36,12 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 public class BooleanIndicatorRuleTest {
 
     private BooleanIndicatorRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        Indicator<Boolean> indicator = new FixedIndicator<>(new MockBarSeriesBuilder().build(), true, true, false,
-                false, true);
+        series = new MockBarSeriesBuilder().build();
+        Indicator<Boolean> indicator = new FixedIndicator<>(series, true, true, false, false, true);
         rule = new BooleanIndicatorRule(indicator);
     }
 
@@ -50,5 +52,10 @@ public class BooleanIndicatorRuleTest {
         assertFalse(rule.isSatisfied(2));
         assertFalse(rule.isSatisfied(3));
         assertTrue(rule.isSatisfied(4));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
     }
 }

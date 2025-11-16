@@ -4,6 +4,7 @@
 .idea/
 .vscode/
 .svn/
+.agents/
 nb-configuration.xml
 nbactions.xml
 *.iml

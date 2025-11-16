@@ -27,6 +27,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class FixedRuleTest {
 
@@ -50,5 +52,12 @@ public class FixedRuleTest {
         assertFalse(fixedRule.isSatisfied(8));
         assertFalse(fixedRule.isSatisfied(9));
         assertFalse(fixedRule.isSatisfied(10));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        FixedRule rule = new FixedRule(1, 4, 5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
     }
 }

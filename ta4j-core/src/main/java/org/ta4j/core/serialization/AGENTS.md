@@ -127,8 +127,10 @@ Use simple names within `org.ta4j.core.rules`.
 Always run (from the project root):
 
 ```bash
-mvn -B clean license:format formatter:format test install -pl ta4j-core
+scripts/run-full-build-quiet.sh -pl ta4j-core
 ```
+
+That keeps the serialization module tight while still emitting the standardized log; rerun the script without `-pl` before you hand the change back.
 
 Primary test suites:
 - ComponentSerializationTest

@@ -176,4 +176,10 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
         assertFalse(rule.isSatisfied(1, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, 4, 1.5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+    }
 }
