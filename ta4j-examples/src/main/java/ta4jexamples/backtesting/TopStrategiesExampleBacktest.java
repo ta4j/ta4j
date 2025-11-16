@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.backtest;
+package ta4jexamples.backtesting;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,7 +34,6 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -60,7 +59,7 @@ import java.util.Objects;
  * first, then by Expectancy for any ties
  * </ul>
  */
-public class TopStrategiesExample {
+public class TopStrategiesExampleBacktest {
 
     // PERFORMANCE NOTE: The current ranges generate ~10,000+ strategies.
     // BacktestExecutor automatically uses batch processing for large strategy
@@ -90,14 +89,14 @@ public class TopStrategiesExample {
     private static final double DECAY_FACTOR_MIN = 0.9;
     private static final double DECAY_FACTOR_MAX = 1;
 
-    private static final Logger LOG = LogManager.getLogger(TopStrategiesExample.class);
+    private static final Logger LOG = LogManager.getLogger(TopStrategiesExampleBacktest.class);
 
     public static void main(String[] args) {
         // Load the bar series
         String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
 
         BarSeries series = null;
-        try (InputStream resourceStream = TopStrategiesExample.class.getClassLoader()
+        try (InputStream resourceStream = TopStrategiesExampleBacktest.class.getClassLoader()
                 .getResourceAsStream(jsonOhlcResourceFile)) {
             series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
         } catch (IOException ex) {
@@ -114,7 +113,7 @@ public class TopStrategiesExample {
         // Run backtest on all strategies with progress logging to this class's logger
         BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
                 series.numFactory().numOf(1), Trade.TradeType.BUY,
-                ProgressCompletion.loggingWithMemory(TopStrategiesExample.class));
+                ProgressCompletion.loggingWithMemory(TopStrategiesExampleBacktest.class));
 
         LOG.debug("Backtest complete. Execution stats: {}", result.runtimeReport());
 
