@@ -199,7 +199,11 @@ public final class StrategySerialization {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        return Integer.parseInt(String.valueOf(value));
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor) {
