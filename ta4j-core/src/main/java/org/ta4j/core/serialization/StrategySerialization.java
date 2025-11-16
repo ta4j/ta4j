@@ -80,8 +80,10 @@ public final class StrategySerialization {
         ComponentDescriptor entryDescriptor = RuleSerialization.describe(strategy.getEntryRule());
         ComponentDescriptor exitDescriptor = RuleSerialization.describe(strategy.getExitRule());
 
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(strategy.getClass().getSimpleName());
+        Class<?> strategyClass = strategy.getClass();
+        String typeName = strategyClass.getPackageName().equals(STRATEGY_PACKAGE) ? strategyClass.getSimpleName()
+                : strategyClass.getName();
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(typeName);
 
         String name = strategy.getName();
         if (name != null && !name.isBlank()) {

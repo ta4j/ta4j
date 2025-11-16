@@ -299,6 +299,60 @@ public class StrategySerializationTest {
         assertThat(restored.getName()).isEqualTo("AutoScanNamedStrategy_true_u0");
     }
 
+    @Test
+    public void customStrategyOutsideCorePackageUsesFullyQualifiedName() {
+        // Test that strategies outside org.ta4j.core use fully qualified names
+        // We'll manually create a descriptor with a fully qualified name to simulate
+        // a strategy from a different package (e.g., com.example.MyStrategy)
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+
+        // Create a descriptor with a fully qualified name outside org.ta4j.core
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("com.example.CustomStrategy")
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("entry")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
+
+        // This should fail to resolve the class and fall back to BaseStrategy
+        // But the important thing is that the deserializer can handle fully qualified
+        // names
+        Strategy restored = StrategySerialization.fromDescriptor(series, descriptor);
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getName()).isEqualTo("TestStrategy");
+    }
+
+    @Test
+    public void customStrategyInTestPackageRoundTrips() {
+        // Test that a custom strategy in the test package (org.ta4j.core.serialization)
+        // can be round-tripped correctly
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        Rule entry = new SerializableRule(true);
+        Rule exit = new SerializableRule(false);
+        CustomTestStrategy original = new CustomTestStrategy("RoundTrip", entry, exit, 2);
+
+        String json = original.toJson();
+        Strategy restored = StrategySerialization.fromJson(series, json);
+
+        // Should restore as the same type, not BaseStrategy
+        assertThat(restored).isInstanceOf(CustomTestStrategy.class);
+        assertThat(restored.getName()).isEqualTo(original.getName());
+        assertThat(restored.getUnstableBars()).isEqualTo(original.getUnstableBars());
+
+        TradingRecord record = new BaseTradingRecord();
+        assertThat(restored.shouldEnter(3, record)).isTrue();
+        assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
 
         private final boolean satisfied;
@@ -419,6 +473,13 @@ public class StrategySerializationTest {
         private static String buildLabel(boolean entrySatisfied, boolean exitSatisfied, int unstableBars) {
             return NamedStrategy.buildLabel(ToggleNamedStrategy.class, Boolean.toString(entrySatisfied),
                     Boolean.toString(exitSatisfied), "u" + unstableBars);
+        }
+    }
+
+    private static final class CustomTestStrategy extends BaseStrategy {
+
+        public CustomTestStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
+            super(name, entryRule, exitRule, unstableBars);
         }
     }
 
