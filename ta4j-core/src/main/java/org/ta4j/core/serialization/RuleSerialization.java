@@ -23,32 +23,15 @@
  */
 package org.ta4j.core.serialization;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
+
+import java.lang.reflect.*;
+import java.util.*;
 
 /**
  * Serializes and deserializes {@link Rule} instances into structured
@@ -1047,7 +1030,7 @@ public final class RuleSerialization {
                 }
 
                 if (Rule.class.isAssignableFrom(type)) {
-                    Match match = findMatch(values, used, type, value -> value instanceof Rule && value != rule);
+                    Match match = findMatch(values, used, value -> value instanceof Rule && value != rule);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1065,7 +1048,7 @@ public final class RuleSerialization {
                 }
 
                 if (Num.class.isAssignableFrom(type)) {
-                    Match match = findMatch(values, used, Num.class, Num.class::isInstance);
+                    Match match = findMatch(values, used, Num.class::isInstance);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1095,7 +1078,7 @@ public final class RuleSerialization {
                 }
 
                 if (type.isEnum()) {
-                    Match match = findMatch(values, used, type, value -> type.isInstance(value));
+                    Match match = findMatch(values, used, type::isInstance);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1106,7 +1089,7 @@ public final class RuleSerialization {
                 }
 
                 if (type.equals(String.class)) {
-                    Match match = findMatch(values, used, String.class, value -> value instanceof String);
+                    Match match = findMatch(values, used, value -> value instanceof String);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1115,7 +1098,7 @@ public final class RuleSerialization {
                 }
 
                 if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-                    Match match = findMatch(values, used, Boolean.class, value -> value instanceof Boolean);
+                    Match match = findMatch(values, used, value -> value instanceof Boolean);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1194,7 +1177,7 @@ public final class RuleSerialization {
             return null;
         }
 
-        private static Match findMatch(Map<String, Object> values, Set<String> used, Class<?> type,
+        private static Match findMatch(Map<String, Object> values, Set<String> used,
                 java.util.function.Predicate<Object> filter) {
             for (Map.Entry<String, Object> entry : values.entrySet()) {
                 if (used.contains(entry.getKey())) {
