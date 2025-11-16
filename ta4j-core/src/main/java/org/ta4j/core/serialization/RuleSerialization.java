@@ -66,7 +66,6 @@ import org.ta4j.core.rules.helper.ChainLink;
  */
 public final class RuleSerialization {
 
-    private static final String ARGUMENTS_KEY = "__args";
     private static final String CORE_PACKAGE = "org.ta4j.core";
     private static final String RULE_PACKAGE = "org.ta4j.core.rules";
     private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
@@ -623,21 +622,6 @@ public final class RuleSerialization {
         return null;
     }
 
-    private static ComponentDescriptor cloneWithoutLabel(ComponentDescriptor descriptor) {
-        if (descriptor == null) {
-            return null;
-        }
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
-        if (!descriptor.getParameters().isEmpty()) {
-            // Preserve all parameters including __customName
-            builder.withParameters(descriptor.getParameters());
-        }
-        for (ComponentDescriptor component : descriptor.getComponents()) {
-            builder.addComponent(component);
-        }
-        return builder.build();
-    }
-
     private static Object resolveParameter(Object value, Class<?> paramType, String paramName,
             Map<String, Object> allParams, ReconstructionContext context) {
         if (value == null) {
@@ -701,7 +685,6 @@ public final class RuleSerialization {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     private static ChainLink[] deserializeChainLinks(Object raw, ReconstructionContext context) {
         if (!(raw instanceof List<?> list)) {
             throw new IllegalArgumentException("Chain link parameter must be a list but was " + raw);
@@ -791,47 +774,6 @@ public final class RuleSerialization {
                     }
                 }
                 this.componentsByLabel = map;
-            }
-        }
-
-        private Object resolveArgument(ArgumentKind kind, String name, Map<String, Object> metadata,
-                Class<?> targetType) {
-            switch (kind) {
-            case SERIES:
-                return series;
-            case RULE: {
-                String label = metadata.containsKey("label") ? String.valueOf(metadata.get("label")) : name;
-                return resolveRule(label);
-            }
-            case INDICATOR: {
-                String label = metadata.containsKey("label") ? String.valueOf(metadata.get("label")) : name;
-                return resolveIndicator(label);
-            }
-            case NUM:
-                return resolveNum(name);
-            case NUMBER:
-            case INT:
-            case LONG:
-            case DOUBLE:
-                return resolveNumber(name, targetType);
-            case NUMBER_ARRAY:
-            case INT_ARRAY:
-            case LONG_ARRAY:
-            case DOUBLE_ARRAY:
-                return resolveNumberArray(name, targetType);
-            case BOOLEAN:
-                return convertBoolean(descriptor.getParameters().get(name));
-            case STRING:
-                Object value = descriptor.getParameters().get(name);
-                return value == null ? null : String.valueOf(value);
-            case ENUM:
-                String enumClassName = String.valueOf(metadata.get("enumType"));
-                return resolveEnum(name, enumClassName, targetType);
-            case ENUM_ARRAY:
-                String enumArrayType = String.valueOf(metadata.get("enumType"));
-                return resolveEnumArray(name, enumArrayType, targetType);
-            default:
-                throw new IllegalStateException("Unsupported argument kind: " + kind);
             }
         }
 
@@ -1625,13 +1567,8 @@ public final class RuleSerialization {
         }
 
         private static boolean shouldIgnore(String name, Object value) {
-            if (value instanceof Indicator<?> indicator) {
-                return indicator == null;
-            }
-            if (name.equals(name.toUpperCase())) {
-                return true;
-            }
-            return false;
+            // Ignore constants (all uppercase field names)
+            return name.equals(name.toUpperCase());
         }
     }
 
