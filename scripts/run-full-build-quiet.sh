@@ -1,6 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+UNAME_OUT="$(uname -s 2>/dev/null || echo unknown)"
+RUNNING_IN_MINGW="false"
+case "$UNAME_OUT" in
+    CYGWIN*|MSYS*|MINGW*) RUNNING_IN_MINGW="true" ;;
+esac
+
+to_host_path() {
+    local posix_path="$1"
+    if [[ "$RUNNING_IN_MINGW" == "true" ]]; then
+        if command -v cygpath >/dev/null 2>&1; then
+            cygpath -w "$posix_path"
+            return
+        fi
+        if [[ "$posix_path" =~ ^/([a-zA-Z])/(.*)$ ]]; then
+            local drive="${BASH_REMATCH[1]}"
+            local remainder="${BASH_REMATCH[2]}"
+            drive="$(printf '%s' "$drive" | tr '[:lower:]' '[:upper:]')"
+            if [[ -n "$remainder" ]]; then
+                printf '%s:/%s' "$drive" "$remainder"
+            else
+                printf '%s:/' "$drive"
+            fi
+            return
+        fi
+    fi
+    printf '%s' "$posix_path"
+}
+
+python_supports_py3() {
+    local -a candidate=("$@")
+    if "${candidate[@]}" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)' >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+PYTHON_CMD=()
+if command -v python3 >/dev/null 2>&1 && python_supports_py3 python3; then
+    PYTHON_CMD=(python3)
+elif command -v python >/dev/null 2>&1 && python_supports_py3 python; then
+    PYTHON_CMD=(python)
+elif command -v py >/dev/null 2>&1 && python_supports_py3 py -3; then
+    PYTHON_CMD=(py -3)
+else
+    echo "Error: Python 3.6 or newer is required to run this script." >&2
+    exit 1
+fi
+
+TMP_FILES=()
+cleanup() {
+    local file
+    for file in "${TMP_FILES[@]}"; do
+        if [[ -n "${file:-}" && -f "$file" ]]; then
+            rm -f "$file"
+        fi
+    done
+}
+trap cleanup EXIT
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
@@ -9,6 +68,11 @@ LOG_DIR="$REPO_ROOT/.agents/logs"
 mkdir -p "$LOG_DIR"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$LOG_DIR/full-build-${TIMESTAMP}.log"
+LOG_FILE_FOR_PYTHON="$(to_host_path "$LOG_FILE")"
+LOG_FILE_FOR_DISPLAY="$LOG_FILE"
+if [[ "$RUNNING_IN_MINGW" == "true" ]]; then
+    LOG_FILE_FOR_DISPLAY="$LOG_FILE_FOR_PYTHON"
+fi
 
 MAVEN_FLAGS=(
     -B
@@ -38,49 +102,110 @@ fi
 MVN_CMD+=("${GOALS[@]}")
 
 echo "Running ta4j full build quietly..."
-echo "Full log: $LOG_FILE"
+echo "Full log: $LOG_FILE_FOR_DISPLAY"
 echo
+
+FILTER_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-filter.XXXXXX.py")"
+TMP_FILES+=("$FILTER_SCRIPT")
+cat >"$FILTER_SCRIPT" <<'PY'
+import os
+import sys
+import threading
+import time
+from pathlib import Path
+
+
+def format_elapsed(seconds):
+    seconds = int(seconds)
+    minutes, secs = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def main(log_path):
+    keywords = (
+        "[ERROR]",
+        "[WARNING]",
+        "BUILD SUCCESS",
+        "BUILD FAILURE",
+        "Failed to execute goal",
+        "Reactor Summary",
+    )
+    try:
+        heartbeat_interval = int(os.environ.get("QUIET_BUILD_HEARTBEAT_SECONDS", "60"))
+    except ValueError:
+        heartbeat_interval = 60
+    if heartbeat_interval < 1:
+        heartbeat_interval = 60
+
+    printed_once = set()
+    suppressed_counts = {}
+    start_time = time.monotonic()
+    last_visible = {"value": start_time}
+    lock = threading.Lock()
+    stop_event = threading.Event()
+
+    def update_last_visible():
+        with lock:
+            last_visible["value"] = time.monotonic()
+
+    def heartbeat_worker():
+        while not stop_event.wait(heartbeat_interval):
+            now = time.monotonic()
+            with lock:
+                last_time = last_visible["value"]
+            if now - last_time >= heartbeat_interval:
+                message = (
+                    f"[quiet-build] still running... "
+                    f"({format_elapsed(now - start_time)})\n"
+                )
+                sys.stdout.write(message)
+                sys.stdout.flush()
+                update_last_visible()
+
+    heartbeat_thread = threading.Thread(target=heartbeat_worker, daemon=True)
+    heartbeat_thread.start()
+
+    with Path(log_path).open("w", encoding="utf-8") as log_file:
+        for raw_line in sys.stdin.buffer:
+            text = raw_line.decode("utf-8", errors="replace")
+            log_file.write(text)
+            if any(keyword in text for keyword in keywords):
+                if "Tests run:" in text and "Time elapsed" in text:
+                    continue
+                if text in printed_once:
+                    suppressed_counts[text] = suppressed_counts.get(text, 0) + 1
+                else:
+                    printed_once.add(text)
+                    sys.stdout.write(text)
+                    sys.stdout.flush()
+                    update_last_visible()
+        log_file.flush()
+
+    stop_event.set()
+    heartbeat_thread.join()
+
+    if suppressed_counts:
+        sys.stdout.write("\n[quiet-build] Suppressed duplicate warnings:\n")
+        for message, count in suppressed_counts.items():
+            sys.stdout.write(f"[quiet-build]   ({count} more) {message.strip()}\n")
+        sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.stderr.write("Usage: quiet_build_filter.py <log_path>\n")
+        sys.exit(1)
+    main(sys.argv[1])
+PY
 
 set +o pipefail
 set +e
-"${MVN_CMD[@]}" 2>&1 | python3 -u -c '
-import sys
-from pathlib import Path
-
-log_path = Path(sys.argv[1])
-KEYWORDS = (
-    "[ERROR]",
-    "[WARNING]",
-    "BUILD SUCCESS",
-    "BUILD FAILURE",
-    "Failed to execute goal",
-    "Reactor Summary",
-)
-
-printed_once = set()
-suppressed_counts = {}
-
-with log_path.open("w", encoding="utf-8") as log_file:
-    for raw_line in sys.stdin.buffer:
-        text = raw_line.decode("utf-8", errors="replace")
-        log_file.write(text)
-        if any(keyword in text for keyword in KEYWORDS):
-            if "Tests run:" in text and "Time elapsed" in text:
-                continue
-            if text in printed_once:
-                suppressed_counts[text] = suppressed_counts.get(text, 0) + 1
-            else:
-                printed_once.add(text)
-                sys.stdout.write(text)
-                sys.stdout.flush()
-    log_file.flush()
-
-if suppressed_counts:
-    sys.stdout.write("\n[quiet-build] Suppressed duplicate warnings:\n")
-    for message, count in suppressed_counts.items():
-        sys.stdout.write(f"[quiet-build]   ({count} more) {message.strip()}\n")
-    sys.stdout.flush()
-' "$LOG_FILE"
+"${MVN_CMD[@]}" 2>&1 | "${PYTHON_CMD[@]}" -u "$FILTER_SCRIPT" "$LOG_FILE_FOR_PYTHON"
 statuses=("${PIPESTATUS[@]}")
 set -e
 set -o pipefail
@@ -90,11 +215,11 @@ filter_status=${statuses[1]:-0}
 
 if ((mvn_status != 0 || filter_status != 0)); then
     echo
-    echo "Maven build failed (mvn=$mvn_status, filter=$filter_status). Inspect the full log at: $LOG_FILE"
+    echo "Maven build failed (mvn=$mvn_status, filter=$filter_status). Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
     exit 1
 fi
 
-summary=$(python3 - "$LOG_FILE" <<'PY'
+summary=$("${PYTHON_CMD[@]}" - "$LOG_FILE_FOR_PYTHON" <<'PY'
 import re
 import sys
 
@@ -142,6 +267,6 @@ echo
 if [[ -n "$summary" ]]; then
     echo "$summary"
 else
-    echo "Tests run summary not found in log; see $LOG_FILE"
+    echo "Tests run summary not found in log; see $LOG_FILE_FOR_DISPLAY"
 fi
-echo "Full build log saved to: $LOG_FILE"
+echo "Full build log saved to: $LOG_FILE_FOR_DISPLAY"
