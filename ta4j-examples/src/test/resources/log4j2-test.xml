@@ -12,7 +12,7 @@
         <Logger name="ta4jexamples.loaders" level="error" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Root level="debug">
+        <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>
     </Loggers>
