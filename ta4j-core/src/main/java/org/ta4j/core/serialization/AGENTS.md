@@ -124,13 +124,15 @@ Use simple names within `org.ta4j.core.rules`.
 
 ## Testing
 
-Always run (from the project root):
+**During development:** Run (from the project root):
 
 ```bash
 scripts/run-full-build-quiet.sh -pl ta4j-core
 ```
 
-That keeps the serialization module tight while still emitting the standardized log; rerun the script without `-pl` before you hand the change back.
+This keeps the serialization module tight while still emitting the standardized log.
+
+**Before completion:** Rerun the script without `-pl` flags to validate the full reactor (see root [`AGENTS.md`](../../../../../../AGENTS.md) for mandatory completion requirements).
 
 Primary test suites:
 - ComponentSerializationTest

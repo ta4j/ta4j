@@ -15,8 +15,8 @@
 - Prefer `NamedStrategy.buildAllStrategyPermutations(...)` when emitting preset combinations. Supply a `BiConsumer` failure handler if you need to log or skip invalid parameter sets.
 
 ## Documentation and validation
-- Add `@since` tags to new public classes and constructors.
+- Add `@since` tags to new public classes and constructors (use current version, omit -SNAPSHOT if applicable).
 - Validate inputs eagerly; surface informative `IllegalArgumentException`s for bad parameters before strategy execution begins.
 
 ## Cross-cutting repository guidance
-- Follow the root `AGENTS.md` for changelog expectations and the Maven-driven formatting pipeline described there.
+- Follow the root [`AGENTS.md`](../../../../../../../AGENTS.md) for changelog expectations and the Maven-driven formatting pipeline described there.

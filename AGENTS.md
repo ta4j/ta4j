@@ -7,7 +7,7 @@
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
    - **This is NOT optional.** Do not skip this step, even for "simple" changes.
    - **When:** After every code change that affects build/test behavior (which is almost always)
-   - **Windows command:** `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/path/to/workspace && ./scripts/run-full-build-quiet.sh"`
+   - **Windows:** Use Git Bash or MSYS2 (not WSL) for native NTFS paths. Example: `bash scripts/run-full-build-quiet.sh` from the workspace root.
    - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
    - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
    - **Report:** Always include the script's output showing `Tests run / Failures / Errors / Skipped` numbers and the log path
@@ -21,11 +21,10 @@
 
 ### Build and Test Workflow
 
-- **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`)
-- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` - this is mandatory, not optional
+- **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`). For focused module testing, you may use `scripts/run-full-build-quiet.sh -pl ta4j-core` to get filtered logs while still validating a single module.
+- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags) - this is mandatory, not optional
 - The script stores the full log under `.agents/logs/` and prints aggregated test totals
-- On Windows, run bash-based scripts through Git Bash/MSYS (not WSL) for native NTFS paths and faster builds
-- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that both demonstrates the correctness of the solution and serves as a shield against future regressions.
+- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
