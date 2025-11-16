@@ -178,7 +178,6 @@ final class RuleSerializationRoundTripTestSupport {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> normalizeParameters(Map<String, Object> parameters) {
         if (parameters.isEmpty()) {
             return parameters;
@@ -194,7 +193,7 @@ final class RuleSerializationRoundTripTestSupport {
 
     private static Object normalizeValue(Object value) {
         if (value instanceof Map<?, ?> map) {
-            return normalizeParameters((Map<String, Object>) map);
+            return normalizeParameters(convertToStringObjectMap(map));
         }
         if (value instanceof List<?> list) {
             List<Object> normalized = new ArrayList<>(list.size());
@@ -229,5 +228,26 @@ final class RuleSerializationRoundTripTestSupport {
         } catch (NumberFormatException ex) {
             return value;
         }
+    }
+
+    /**
+     * Safely converts a Map<?, ?> to Map<String, Object> by verifying all keys are
+     * Strings and building a new properly-typed map. This avoids unchecked cast
+     * warnings.
+     *
+     * @param map the map to convert
+     * @return a new Map<String, Object> with the same entries
+     */
+    private static Map<String, Object> convertToStringObjectMap(Map<?, ?> map) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Entry<?, ?> entry : map.entrySet()) {
+            Object key = entry.getKey();
+            if (!(key instanceof String)) {
+                throw new IllegalArgumentException(
+                        "Expected all map keys to be Strings, but found: " + key.getClass().getName());
+            }
+            result.put((String) key, entry.getValue());
+        }
+        return result;
     }
 }
