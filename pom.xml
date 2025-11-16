@@ -300,7 +300,7 @@
                 <artifactId>formatter-maven-plugin</artifactId>
                 <version>2.29.0</version>
                 <configuration>
-                    <configFile>${project.basedir}/code-formatter.xml</configFile>
+                    <configFile>${maven.multiModuleProjectDirectory}/code-formatter.xml</configFile>
                 </configuration>
             </plugin>
 
