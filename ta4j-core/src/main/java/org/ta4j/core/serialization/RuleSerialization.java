@@ -505,7 +505,7 @@ public final class RuleSerialization {
                 }
 
                 // Check if component type matches parameter type
-                if (isAssignableFrom(paramType, component, context)) {
+                if (isAssignableFrom(paramType, component)) {
                     Object componentValue = resolveComponent(component, paramType, context);
                     if (componentValue != null) {
                         arguments[i] = componentValue;
@@ -568,8 +568,7 @@ public final class RuleSerialization {
         return new DeserializationMatch(ruleConstructor, arguments, argumentTypes);
     }
 
-    private static boolean isAssignableFrom(Class<?> paramType, ComponentDescriptor child,
-            ReconstructionContext context) {
+    private static boolean isAssignableFrom(Class<?> paramType, ComponentDescriptor child) {
         String childType = child.getType();
         if (childType == null) {
             return false;
@@ -660,7 +659,7 @@ public final class RuleSerialization {
                 String enumTypeKey = "__enumType_" + paramName;
                 String enumTypeName = allParams.containsKey(enumTypeKey) ? String.valueOf(allParams.get(enumTypeKey))
                         : paramType.getName();
-                return context.resolveEnum(paramName, enumTypeName, paramType);
+                return context.resolveEnum(paramName, enumTypeName);
             }
 
             // Handle arrays
@@ -673,7 +672,7 @@ public final class RuleSerialization {
                     String enumTypeName = allParams.containsKey(enumTypeKey)
                             ? String.valueOf(allParams.get(enumTypeKey))
                             : componentType.getName();
-                    return context.resolveEnumArray(paramName, enumTypeName, paramType);
+                    return context.resolveEnumArray(paramName, enumTypeName);
                 } else if (componentType.equals(ChainLink.class)) {
                     return deserializeChainLinks(value, context);
                 }
@@ -850,7 +849,7 @@ public final class RuleSerialization {
             return (Boolean) convertBoolean(value);
         }
 
-        private Object resolveEnum(String name, String enumClassName, Class<?> targetType) {
+        private Object resolveEnum(String name, String enumClassName) {
             Object raw = descriptor.getParameters().get(name);
             if (raw == null) {
                 throw new IllegalArgumentException("Missing enum parameter: " + name);
@@ -865,7 +864,7 @@ public final class RuleSerialization {
             }
         }
 
-        private Object resolveEnumArray(String name, String enumClassName, Class<?> targetType) {
+        private Object resolveEnumArray(String name, String enumClassName) {
             Object raw = descriptor.getParameters().get(name);
             if (!(raw instanceof List<?> list)) {
                 throw new IllegalArgumentException("Missing enum array parameter: " + name);
@@ -1551,7 +1550,7 @@ public final class RuleSerialization {
                     if (value == null) {
                         continue;
                     }
-                    if (shouldIgnore(field.getName(), value)) {
+                    if (shouldIgnore(field.getName())) {
                         continue;
                     }
                     String key = field.getName();
@@ -1566,7 +1565,7 @@ public final class RuleSerialization {
             return values;
         }
 
-        private static boolean shouldIgnore(String name, Object value) {
+        private static boolean shouldIgnore(String name) {
             // Ignore constants (all uppercase field names)
             return name.equals(name.toUpperCase());
         }
