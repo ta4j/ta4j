@@ -54,19 +54,29 @@ public class RuleTraceLoggingTest {
     private LoggerContext loggerContext;
     private StringWriter logOutput;
     private Appender appender;
+    private Appender consoleAppender;
     private Level originalLevel;
+    private LoggerConfig rootLoggerConfig;
 
     @Before
     public void setUp() {
         loggerContext = (LoggerContext) LogManager.getContext(false);
         Configuration config = loggerContext.getConfiguration();
-        LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+        rootLoggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
 
         // Store original level
-        originalLevel = loggerConfig.getLevel();
+        originalLevel = rootLoggerConfig.getLevel();
+
+        // Temporarily remove Console appender to prevent trace logs from going to
+        // stdout
+        // This keeps build output clean while still allowing us to capture trace logs
+        consoleAppender = rootLoggerConfig.getAppenders().get("Console");
+        if (consoleAppender != null) {
+            rootLoggerConfig.removeAppender("Console");
+        }
 
         // Set trace level for rule loggers
-        loggerConfig.setLevel(Level.TRACE);
+        rootLoggerConfig.setLevel(Level.TRACE);
         loggerContext.updateLoggers();
 
         // Create a string writer to capture log output
@@ -75,8 +85,8 @@ public class RuleTraceLoggingTest {
         appender = WriterAppender.newBuilder().setTarget(logOutput).setLayout(layout).setName("TestAppender").build();
         appender.start();
 
-        // Add appender to root logger
-        loggerConfig.addAppender(appender, Level.TRACE, null);
+        // Add appender to root logger to capture trace logs
+        rootLoggerConfig.addAppender(appender, Level.TRACE, null);
         loggerContext.updateLoggers();
     }
 
@@ -87,6 +97,11 @@ public class RuleTraceLoggingTest {
             Configuration config = loggerContext.getConfiguration();
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
             loggerConfig.removeAppender(appender.getName());
+        }
+
+        // Restore Console appender if it was removed
+        if (consoleAppender != null) {
+            rootLoggerConfig.addAppender(consoleAppender, null, null);
         }
 
         // Restore original level
