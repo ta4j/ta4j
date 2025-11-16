@@ -103,7 +103,7 @@ public final class ComponentDescriptor {
 
     /**
      * @return component descriptors (indicators/rules used by this component),
-     * never {@code null}
+     *         never {@code null}
      */
     public List<ComponentDescriptor> getComponents() {
         return components;
@@ -118,14 +118,14 @@ public final class ComponentDescriptor {
             return false;
         }
         ComponentDescriptor that = (ComponentDescriptor) o;
-        return Objects.equals(type, that.type) && Objects.equals(label, that.label) && Objects.equals(parameters, that.parameters) && Objects.equals(components, that.components);
+        return Objects.equals(type, that.type) && Objects.equals(label, that.label)
+                && Objects.equals(parameters, that.parameters) && Objects.equals(components, that.components);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(type, label, parameters, components);
     }
-
 
     @Override
     public String toString() {
