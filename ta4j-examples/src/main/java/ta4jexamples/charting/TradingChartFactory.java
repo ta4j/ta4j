@@ -254,6 +254,153 @@ final class TradingChartFactory {
         return strategyName + "@" + shortenedBarSeriesName[0];
     }
 
+    /**
+     * Adds analysis overlays to an existing chart.
+     *
+     * @param chart         the chart to add analysis to
+     * @param series        the bar series
+     * @param analysisTypes the analysis types to add
+     */
+    void addAnalysisToChart(JFreeChart chart, BarSeries series, AnalysisType... analysisTypes) {
+        if (chart == null || series == null || analysisTypes == null || analysisTypes.length == 0) {
+            return;
+        }
+
+        DefaultOHLCDataset data = createChartDataset(series);
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            @SuppressWarnings("unchecked")
+            List<XYPlot> subplots = combinedPlot.getSubplots();
+            if (subplots != null && !subplots.isEmpty()) {
+                addAnalysisLinesToChart(subplots.get(0), data, analysisTypes);
+            }
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            addAnalysisLinesToChart(plot, data, analysisTypes);
+        }
+    }
+
+    /**
+     * Adds indicators as subplots to an existing chart, converting it to a combined
+     * plot if necessary.
+     *
+     * @param chart      the chart to add indicators to
+     * @param series     the bar series
+     * @param indicators the indicators to add as subplots
+     * @return the modified chart (may be a new chart instance if conversion was
+     *         needed)
+     */
+    JFreeChart addIndicatorsToChart(JFreeChart chart, BarSeries series, Indicator<Num>... indicators) {
+        if (chart == null || series == null || indicators == null || indicators.length == 0) {
+            return chart;
+        }
+
+        // If chart already has a CombinedDomainXYPlot, add indicators to it
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            for (Indicator<Num> indicator : indicators) {
+                XYPlot indicatorPlot = createIndicatorSubplot(series, indicator);
+                @SuppressWarnings("unchecked")
+                List<XYPlot> existingSubplots = combinedPlot.getSubplots();
+                int currentIndicatorCount = existingSubplots != null ? existingSubplots.size() - 1 : 0;
+                combinedPlot.add(indicatorPlot,
+                        calculateIndicatorPlotWeight(currentIndicatorCount + indicators.length));
+            }
+            return chart;
+        }
+
+        // If chart has a simple XYPlot, convert to CombinedDomainXYPlot
+        if (chart.getPlot() instanceof XYPlot mainPlot) {
+            // Extract the main plot's domain axis configuration
+            DateAxis domainAxis = (DateAxis) mainPlot.getDomainAxis();
+            if (domainAxis == null) {
+                domainAxis = new DateAxis("Date");
+                Duration duration = series.getFirstBar().getTimePeriod();
+                if (duration.toDays() >= 1) {
+                    domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+                } else {
+                    domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+                }
+                domainAxis.setAutoRange(true);
+                domainAxis.setLowerMargin(0.02);
+                domainAxis.setUpperMargin(0.02);
+                domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+                domainAxis.setLabelPaint(Color.LIGHT_GRAY);
+            }
+
+            // Create combined plot
+            CombinedDomainXYPlot combinedPlot = new CombinedDomainXYPlot(domainAxis);
+            combinedPlot.setGap(10.0);
+            combinedPlot.setOrientation(PlotOrientation.VERTICAL);
+            combinedPlot.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+            combinedPlot.setBackgroundAlpha(CHART_BACKGROUND_ALPHA);
+            combinedPlot.setDomainGridlinePaint(GRIDLINE_COLOR);
+            combinedPlot.setRangeGridlinePaint(GRIDLINE_COLOR);
+
+            // Add main plot
+            combinedPlot.add(mainPlot, calculateMainPlotWeight(indicators.length));
+
+            // Add indicator subplots
+            for (Indicator<Num> indicator : indicators) {
+                XYPlot indicatorPlot = createIndicatorSubplot(series, indicator);
+                combinedPlot.add(indicatorPlot, calculateIndicatorPlotWeight(indicators.length));
+            }
+
+            // Create new chart with combined plot
+            String chartTitle = chart.getTitle() != null ? chart.getTitle().getText() : series.getName();
+            JFreeChart newChart = new JFreeChart(chartTitle, null, combinedPlot, true);
+            newChart.setAntiAlias(true);
+            newChart.setTextAntiAlias(true);
+            newChart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+            newChart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
+
+            if (newChart.getTitle() != null) {
+                newChart.getTitle().setPaint(Color.LIGHT_GRAY);
+            }
+
+            return newChart;
+        }
+
+        return chart;
+    }
+
+    /**
+     * Adds additional indicators as series to a dual-axis chart.
+     *
+     * @param chart      the dual-axis chart
+     * @param series     the bar series
+     * @param indicators the indicators to add as additional series
+     */
+    void addIndicatorsToDualAxisChart(JFreeChart chart, BarSeries series, Indicator<Num>... indicators) {
+        if (chart == null || series == null || indicators == null || indicators.length == 0) {
+            return;
+        }
+
+        if (!(chart.getPlot() instanceof XYPlot plot)) {
+            return;
+        }
+
+        // Determine next dataset index
+        int nextDatasetIndex = plot.getDatasetCount();
+
+        // Add each indicator as a new series, alternating between left (0) and right
+        // (1) axes
+        for (int i = 0; i < indicators.length; i++) {
+            Indicator<Num> indicator = indicators[i];
+            TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, indicator.toString());
+
+            // Alternate between left (0) and right (1) axes
+            int axisIndex = (i % 2 == 0) ? 1 : 0; // Start with right axis (1), then alternate
+
+            plot.setDataset(nextDatasetIndex, dataset);
+            plot.mapDatasetToRangeAxis(nextDatasetIndex, axisIndex);
+            StandardXYItemRenderer renderer = new StandardXYItemRenderer();
+            // Use different colors for additional series
+            Color[] colors = { Color.GREEN, Color.YELLOW, Color.CYAN, Color.MAGENTA, Color.ORANGE };
+            renderer.setSeriesPaint(0, colors[i % colors.length]);
+            plot.setRenderer(nextDatasetIndex, renderer);
+
+            nextDatasetIndex++;
+        }
+    }
+
     private DefaultOHLCDataset createChartDataset(BarSeries series) {
         List<OHLCDataItem> dataItems = new ArrayList<>();
 

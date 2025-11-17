@@ -106,6 +106,20 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testBuilder() {
+        ChartBuilder builder = chartMaker.builder();
+        assertNotNull(builder, "Builder should not be null");
+    }
+
+    @Test
+    public void testBuilderCreatesValidHandle() {
+        ChartHandle handle = chartMaker.builder().withTradingRecord(barSeries, "Test Strategy", tradingRecord).build();
+        assertNotNull(handle, "Handle should not be null");
+        assertNotNull(handle.getChart(), "Chart should not be null");
+        assertEquals(barSeries, handle.getSeries(), "Series should match");
+    }
+
+    @Test
     public void testGenerateChartWithTradingRecord() {
         JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 

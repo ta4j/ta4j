@@ -101,9 +101,10 @@ public class ADXStrategy {
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
-        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord);
-        chartMaker.displayChart(tradingRecordChart);
-        chartMaker.saveChartImage(tradingRecordChart, series);
+        new ChartMaker().builder()
+            .withTradingRecord(series, strategy.getName(), tradingRecord)
+            .build()
+            .display()
+            .save("ta4j-examples/log/charts", "adx-strategy");
     }
 }

@@ -21,6 +21,9 @@ release/
 # Log file
 *.log
 
+# Images
+*.jpg
+
 # BlueJ files
 *.ctxt
 

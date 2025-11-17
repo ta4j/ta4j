@@ -85,12 +85,12 @@ public class NetMomentumStrategy {
         LOG.debug("{}'s net profit/loss: {}", strategy.getName(), netProfitLoss);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
-
-        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord,
-                rsiIndicator, rsiM);
-        chartMaker.displayChart(tradingRecordChart);
-        chartMaker.saveChartImage(tradingRecordChart, series);
+        new ChartMaker().builder()
+            .withTradingRecord(series, strategy.getName(), tradingRecord)
+            .withIndicators(rsiIndicator, rsiM)
+            .build()
+            .display()
+            .save("ta4j-examples/log/charts", "net-momentum-strategy");
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {

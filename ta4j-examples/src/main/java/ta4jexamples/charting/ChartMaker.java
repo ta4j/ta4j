@@ -109,6 +109,16 @@ public class ChartMaker {
     }
 
     /**
+     * Creates a new chart builder for fluent chart construction.
+     *
+     * @return a new chart builder
+     * @since 0.19
+     */
+    public ChartBuilder builder() {
+        return new ChartBuilder(this, chartFactory);
+    }
+
+    /**
      * Builds a chart that overlays a trading record on top of OHLC data.
      *
      * @since 0.19
@@ -409,7 +419,8 @@ public class ChartMaker {
     }
 
     /**
-     * Persists the supplied chart.
+     * Persists the supplied chart. Uses the default save directory if configured
+     * via constructor, otherwise saves to the current directory.
      *
      * @return an optional path to the stored chart
      * @since 0.19
@@ -422,17 +433,29 @@ public class ChartMaker {
         String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
                 : (chart.getTitle() != null ? chart.getTitle().getText()
                         : chartFactory.buildChartTitle(series.getName(), ""));
-        return chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
+
+        // Try using constructor storage first, if it returns empty (no-op), use current
+        // directory
+        Optional<Path> result = chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
                 DEFAULT_CHART_IMAGE_HEIGHT);
+        if (result.isEmpty()) {
+            // Constructor storage is no-op, use current directory
+            ChartStorage currentDirStorage = new FileSystemChartStorage(Paths.get("."));
+            return currentDirStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
+                    DEFAULT_CHART_IMAGE_HEIGHT);
+        }
+        return result;
     }
 
     /**
-     * Saves a chart image to a file path.
+     * Saves a chart image to a file path. Uses the default save directory if
+     * configured via constructor, otherwise saves to the current directory.
      *
      * @param chart  the JFreeChart object to be saved as an image
      * @param series the BarSeries object containing chart data
      * @return an Optional containing the Path where the chart image was saved, or
      *         empty if saving failed
+     * @since 0.19
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series) {
         return saveChartImage(chart, series, (String) null);
