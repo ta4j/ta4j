@@ -23,10 +23,6 @@
  */
 package ta4jexamples.strategies;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,6 +32,10 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -68,6 +68,7 @@ public class HourOfDayStrategyTest {
 
         assertNotNull(strategy);
         assertEquals("HourOfDayStrategy_9_17", strategy.getName());
+        assertEquals("{\"type\":\"NamedStrategy\",\"label\":\"HourOfDayStrategy_9_17\"}", strategy.toJson());
         assertNotNull(strategy.getEntryRule());
         assertNotNull(strategy.getExitRule());
     }

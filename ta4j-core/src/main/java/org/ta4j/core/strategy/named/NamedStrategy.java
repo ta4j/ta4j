@@ -23,6 +23,14 @@
  */
 package org.ta4j.core.strategy.named;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.serialization.ComponentDescriptor;
+
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
@@ -31,29 +39,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
  * Base class for strategies that can be reconstructed from compact name tokens.
@@ -72,7 +64,8 @@ import org.ta4j.core.serialization.ComponentDescriptor;
  * the strategy implementation</li>
  * <li><strong>Parameters</strong>: Zero or more parameter values separated by
  * underscores, where each parameter is a string representation of a constructor
- * argument</li>
+ * argument. <strong>Underscores are reserved as delimiters and are not
+ * permitted inside parameter values.</strong></li>
  * </ul>
  * <p>
  * Examples:
@@ -163,7 +156,7 @@ import org.ta4j.core.serialization.ComponentDescriptor;
  * <h2>Serialization</h2>
  * <p>
  * When serialized to JSON (via {@link #toDescriptor()}), the strategy type is
- * always {@value #SERIALIZED_TYPE}, and the label field contains the compact
+ * always {@value #NamedStrategy}, and the label field contains the compact
  * name. The deserialization layer uses {@link #splitLabel(String)} to extract
  * the simple class name and parameters, then looks up the registered type and
  * invokes the varargs constructor.
@@ -208,21 +201,9 @@ public abstract class NamedStrategy extends BaseStrategy {
 
     private static final Map<String, Class<? extends NamedStrategy>> REGISTRY = new ConcurrentHashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger(NamedStrategy.class);
-    private static final String[] DEFAULT_SCAN_PACKAGES = { "org.ta4j.core.strategy.named" };
+    private static final String[] DEFAULT_SCAN_PACKAGES = {"org.ta4j.core.strategy.named"};
     private static final Set<String> SCANNED_PACKAGES = ConcurrentHashMap.newKeySet();
     private static final AtomicBoolean DEFAULT_PACKAGES_INITIALIZED = new AtomicBoolean();
-
-    /**
-     * Ensures core packages have been scanned and registers any discovered named
-     * strategies.
-     */
-    public static void initializeRegistry(String... basePackages) {
-        ensureDefaultRegistryInitialized();
-        if (basePackages == null || basePackages.length == 0) {
-            return;
-        }
-        scanPackages(basePackages);
-    }
 
     /**
      * Protected constructor that allows subclasses to provide the fully formatted
@@ -251,6 +232,18 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
+     * Ensures core packages have been scanned and registers any discovered named
+     * strategies.
+     */
+    public static void initializeRegistry(String... basePackages) {
+        ensureDefaultRegistryInitialized();
+        if (basePackages == null || basePackages.length == 0) {
+            return;
+        }
+        scanPackages(basePackages);
+    }
+
+    /**
      * Registers a {@link NamedStrategy} implementation so it can be reconstructed
      * purely from its compact label. Custom strategies should invoke this method
      * during application startup (typically from a static initializer).
@@ -262,8 +255,7 @@ public abstract class NamedStrategy extends BaseStrategy {
         String key = type.getSimpleName();
         REGISTRY.compute(key, (name, existing) -> {
             if (existing != null && existing != type) {
-                throw new IllegalStateException(
-                        "Named strategy already registered for simple name " + name + ": " + existing.getName());
+                throw new IllegalStateException("Named strategy already registered for simple name " + name + ": " + existing.getName());
             }
             return type;
         });
@@ -295,6 +287,12 @@ public abstract class NamedStrategy extends BaseStrategy {
         if (parameters == null || parameters.length == 0) {
             return type.getSimpleName();
         }
+        for (int i = 0; i < parameters.length; i++) {
+            String parameter = Objects.requireNonNull(parameters[i], "parameters[" + i + "]");
+            if (parameter.indexOf('_') >= 0) {
+                throw new IllegalArgumentException("Named strategy parameters cannot contain underscores: parameters[" + i + "]");
+            }
+        }
         return type.getSimpleName() + '_' + String.join("_", parameters);
     }
 
@@ -322,8 +320,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param <T>                   concrete named strategy type
      * @return list of instantiated strategies
      */
-    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
-            Iterable<String[]> parameterPermutations, Factory<T> factory) {
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series, Iterable<String[]> parameterPermutations, Factory<T> factory) {
         return buildAllStrategyPermutations(series, parameterPermutations, factory, null);
     }
 
@@ -342,9 +339,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param <T>                   concrete named strategy type
      * @return list of instantiated strategies
      */
-    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
-            Iterable<String[]> parameterPermutations, Factory<T> factory,
-            BiConsumer<String[], IllegalArgumentException> failureHandler) {
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series, Iterable<String[]> parameterPermutations, Factory<T> factory, BiConsumer<String[], IllegalArgumentException> failureHandler) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(parameterPermutations, "parameterPermutations");
         Objects.requireNonNull(factory, "factory");
@@ -368,17 +363,6 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
-     * Factory interface used by
-     * {@link #buildAllStrategyPermutations(BarSeries, Iterable, Factory)}.
-     *
-     * @param <T> concrete named strategy type
-     */
-    @FunctionalInterface
-    public interface Factory<T extends NamedStrategy> {
-        T create(BarSeries series, String... parameters);
-    }
-
-    /**
      * Helper used by the serialization layer to enforce that a strategy has been
      * registered.
      *
@@ -387,21 +371,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      */
     public static Class<? extends NamedStrategy> requireRegistered(String simpleName) {
         ensureDefaultRegistryInitialized();
-        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName
-                + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ComponentDescriptor toDescriptor() {
-        return ComponentDescriptor.builder().withType(SERIALIZED_TYPE).withLabel(getName()).build();
-    }
-
-    @Override
-    public String toString() {
-        return getName();
+        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
     }
 
     private static void ensureDefaultRegistryInitialized() {
@@ -468,11 +438,10 @@ public abstract class NamedStrategy extends BaseStrategy {
             return;
         }
         try (Stream<Path> stream = Files.walk(directory)) {
-            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class"))
-                    .forEach(path -> {
-                        String className = toClassName(basePackage, directory, path);
-                        loadNamedStrategy(className, loader);
-                    });
+            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class")).forEach(path -> {
+                String className = toClassName(basePackage, directory, path);
+                loadNamedStrategy(className, loader);
+            });
         }
     }
 
@@ -518,8 +487,7 @@ public abstract class NamedStrategy extends BaseStrategy {
         }
         try {
             Class<?> candidate = Class.forName(className, false, loader);
-            if (candidate == NamedStrategy.class || candidate.isInterface()
-                    || Modifier.isAbstract(candidate.getModifiers())) {
+            if (candidate == NamedStrategy.class || candidate.isInterface() || Modifier.isAbstract(candidate.getModifiers())) {
                 return;
             }
             if (NamedStrategy.class.isAssignableFrom(candidate)) {
@@ -528,5 +496,29 @@ public abstract class NamedStrategy extends BaseStrategy {
         } catch (ClassNotFoundException | LinkageError ex) {
             LOGGER.debug("Unable to inspect named strategy class {}", className, ex);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ComponentDescriptor toDescriptor() {
+        return ComponentDescriptor.builder().withType(SERIALIZED_TYPE).withLabel(getName()).build();
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
+
+    /**
+     * Factory interface used by
+     * {@link #buildAllStrategyPermutations(BarSeries, Iterable, Factory)}.
+     *
+     * @param <T> concrete named strategy type
+     */
+    @FunctionalInterface
+    public interface Factory<T extends NamedStrategy> {
+        T create(BarSeries series, String... parameters);
     }
 }

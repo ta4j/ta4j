@@ -30,6 +30,7 @@ import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -40,6 +41,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import java.awt.*;
 import java.util.Collection;
 import java.util.Comparator;
 import java.io.IOException;
@@ -195,12 +197,14 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullVarargs() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
                 "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
     }
 
     @Test
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullElement() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
                 "Test Strategy", tradingRecord, closePrice, null));
@@ -393,8 +397,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateAndDisplayTradingRecordChart() {
-        // This test just ensures the method doesn't throw an exception
-        // In a real test environment, we might mock the display functionality
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         try {
             chartMaker.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         } catch (Exception e) {
@@ -406,6 +409,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayTradingRecordChartWithIndicators() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
@@ -427,6 +431,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateAndDisplayChartWithAnalysisTypes() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         try {
             chartMaker.displayAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10);
         } catch (Exception e) {
@@ -438,6 +443,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateAndDisplayChartWithIndicators() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         try {
             chartMaker.displayIndicatorChart(barSeries, closePrice);
@@ -562,6 +568,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayDualAxisChart() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
@@ -582,6 +589,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayDualAxisChartWithCustomTitles() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
@@ -601,6 +609,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayChartWithWindowTitle() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
@@ -618,6 +627,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayChartWithNullWindowTitle() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
@@ -635,6 +645,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayChartWithEmptyWindowTitle() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
@@ -652,6 +663,7 @@ public class ChartMakerTest {
 
     @Test
     public void testChartLegendNotDuplicatedWhenReusingChartMaker() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         // Create a ChartMaker with save directory to enable save functionality
         Path tempDir = null;
         try {
