@@ -60,7 +60,7 @@ public class IndicatorSerializationTest {
 
         assertThat(descriptor.getType()).isEqualTo("SMAIndicator");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 3);
-        assertThat(descriptor.getComponents()).anySatisfy(child -> {
+        assertThat(descriptor.getComponents()).hasSize(1).anySatisfy(child -> {
             assertThat(child.getLabel()).isNull();
             assertThat(child.getType()).isEqualTo("ClosePriceIndicator");
         });
@@ -80,6 +80,7 @@ public class IndicatorSerializationTest {
 
         String json = original.toJson();
         Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, json);
+        assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
 
         assertThat(restored).isInstanceOf(SMAIndicator.class);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
@@ -103,7 +104,7 @@ public class IndicatorSerializationTest {
 
         Indicator<?> reconstructed = Indicator.fromJson(series, json);
         assertThat(reconstructed).isInstanceOf(DifferencePercentageIndicator.class);
-        assertThat(((Indicator<?>) reconstructed).toDescriptor()).isEqualTo(descriptor);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
     }
 
     @Test

@@ -25,7 +25,6 @@ package ta4jexamples.strategies;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -85,17 +84,17 @@ public class UnstableIndicatorStrategy {
         // Getting the bar series
         BarSeries series = new BaseBarSeriesBuilder().build();
 
-        AtomicReference<Instant> currentTime = new AtomicReference<>(TIME);
+        Instant[] currentTime = { TIME };
         closePrices.forEach(close -> {
             series.barBuilder()
                     .timePeriod(MINUTE)
-                    .endTime(currentTime.get())
+                    .endTime(currentTime[0])
                     .openPrice(0)
                     .closePrice(close)
                     .highPrice(0)
                     .lowPrice(0)
                     .add();
-            currentTime.set(currentTime.get().plus(MINUTE));
+            currentTime[0] = currentTime[0].plus(MINUTE);
         });
 
         // Building the trading strategy

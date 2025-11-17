@@ -263,6 +263,22 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
+     * Unregisters a previously registered {@link NamedStrategy} implementation.
+     * This method is primarily intended for testing purposes to allow cleanup of
+     * test fixtures that register strategies via static initializers.
+     *
+     * @param type strategy subtype to unregister
+     * @return {@code true} if the strategy was registered and has been removed,
+     *         {@code false} if it was not registered
+     */
+    public static boolean unregisterImplementation(Class<? extends NamedStrategy> type) {
+        Objects.requireNonNull(type, "type");
+        String key = type.getSimpleName();
+        Class<? extends NamedStrategy> removed = REGISTRY.remove(key);
+        return removed != null && removed == type;
+    }
+
+    /**
      * Resolves a previously registered named strategy type.
      *
      * @param simpleName simple class name (without package)

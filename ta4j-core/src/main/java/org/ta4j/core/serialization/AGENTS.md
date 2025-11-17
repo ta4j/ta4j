@@ -25,12 +25,19 @@ All components use `ComponentDescriptor` but follow different JSON rules:
 
 ### Type Detection Pattern
 
-`ComponentSerialization.getComponentsFieldName()` detects type via substring:
+`ComponentSerialization.getComponentsFieldName()` uses strong type checking with fallback to naming conventions:
 
-```java
-if (type.contains("Strategy")) return "rules";
-if (type.contains("Indicator") || type.contains("Rule")) return "components";
-```
+1. **Strong type checking (preferred):** Attempts to resolve the type string to a `Class` and checks if it's assignable from `Strategy`, `Indicator`, or `Rule` interfaces using `isAssignableFrom()`.
+
+2. **Naming convention fallback:** If class resolution fails, uses `endsWith()` checks (the library's naming convention):
+   ```java
+   if (type.endsWith("Strategy")) return "rules";
+   if (type.endsWith("Indicator") || type.endsWith("Rule")) return "components";
+   ```
+
+The same pattern is used in `isIndicator()` for label serialization decisions.
+
+**Note:** The library follows a naming convention where component types end with their category name (e.g., "OrRule", "RSIIndicator", "BaseStrategy"). The `endsWith()` check aligns with this convention and is more precise than substring matching.
 
 This pattern affects:
 - Which field name is used (`components` vs `rules`)
@@ -189,7 +196,7 @@ Typical failures:
 
 ## Key Takeaways
 
-1. Behavior is driven by substring type detection  
+1. Behavior is driven by strong type checking (via `isAssignableFrom()`) with fallback to naming convention checks (`endsWith()`)  
 2. Indicators never serialize labels; rules and strategies do  
 3. `"rules"` vs `"components"` is crucial  
 4. Constructor inference is the most fragile part  

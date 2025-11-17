@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.After;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -55,6 +56,19 @@ import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.strategy.named.NamedStrategyFixture;
 
 public class StrategySerializationTest {
+
+    /**
+     * Cleans up static registrations made by test fixtures to prevent interference
+     * between test runs, especially when tests execute in parallel or the test
+     * suite runs multiple times in the same JVM.
+     */
+    @After
+    public void tearDown() {
+        // Unregister test-specific named strategies that use static initializers
+        NamedStrategy.unregisterImplementation(ToggleNamedStrategy.class);
+        NamedStrategy.unregisterImplementation(MultiLevelToggleNamedStrategy.class);
+        NamedStrategy.unregisterImplementation(AutoScanNamedStrategy.class);
+    }
 
     @Test
     public void describeStrategy() {

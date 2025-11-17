@@ -42,8 +42,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is {@code (left + right)}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return {@code left + right}, rounded as necessary
      * @see Num#plus
      */
@@ -54,8 +54,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is {@code (left - right)}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return {@code left - right}, rounded as necessary
      * @see Num#minus
      */
@@ -66,8 +66,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is {@code (left * right)}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return {@code left * right}, rounded as necessary
      * @see Num#multipliedBy
      */
@@ -78,8 +78,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     /**
      * Returns an {@code Indicator} whose value is {@code (left / right)}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return {@code left / right}, rounded as necessary
      * @see Num#dividedBy
      */
@@ -91,8 +91,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * Returns the minimum of {@code left} and {@code right} as an
      * {@code Indicator}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return the {@code Indicator} whose value is the smaller of {@code left} and
      *         {@code right}. If they are equal, {@code left} is returned.
      * @see Num#min
@@ -105,8 +105,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * Returns the maximum of {@code left} and {@code right} as an
      * {@code Indicator}.
      *
-     * @param left
-     * @param right
+     * @param left  the left operand Indicator
+     * @param right the right operand Indicator
      * @return the {@code Indicator} whose value is the greater of {@code left} and
      *         {@code right}. If they are equal, {@code left} is returned.
      * @see Num#max
@@ -234,7 +234,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
 
     @Override
     public BarSeries getBarSeries() {
-        return left.getBarSeries();
+        return left.getBarSeries(); // Both indicators share the same series (validated in constructor)
     }
 
 }

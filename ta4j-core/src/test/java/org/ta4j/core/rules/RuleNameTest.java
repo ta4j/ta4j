@@ -77,6 +77,39 @@ public class RuleNameTest {
     }
 
     @Test
+    public void customNameOnCompositeRuleOverridesGeneratedJson() {
+        Rule entryRule = new FixedRule(1);
+        entryRule.setName("Entry");
+        Rule exitRule = new FixedRule(2);
+        exitRule.setName("Exit");
+
+        AndRule andRule = new AndRule(entryRule, exitRule);
+        String originalEntryName = entryRule.getName();
+        String originalExitName = exitRule.getName();
+        String originalCompositeName = andRule.getName();
+
+        // Verify initial state: composite has generated JSON name
+        assertEquals("{\"type\":\"AndRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
+                originalCompositeName);
+
+        // Set custom name on composite
+        andRule.setName("My Custom Composite Rule");
+
+        // Verify composite name is now the custom name
+        assertEquals("My Custom Composite Rule", andRule.getName());
+
+        // Verify child rule names remain unchanged
+        assertEquals(originalEntryName, entryRule.getName());
+        assertEquals(originalExitName, exitRule.getName());
+        assertEquals("Entry", entryRule.getName());
+        assertEquals("Exit", exitRule.getName());
+
+        // Verify child rules accessed through composite also have unchanged names
+        assertEquals(originalEntryName, andRule.getRule1().getName());
+        assertEquals(originalExitName, andRule.getRule2().getName());
+    }
+
+    @Test
     public void nestedCompositeRulesAreSerializedRecursively() {
         Rule entryRule = new FixedRule(1);
         entryRule.setName("Entry");

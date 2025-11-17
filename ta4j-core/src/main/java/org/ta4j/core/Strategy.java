@@ -157,6 +157,12 @@ public interface Strategy {
      * metadata and rule descriptors.
      *
      * @return JSON description of the strategy
+     * @throws NullPointerException  if the strategy or any of its components are
+     *                               {@code null}
+     * @throws IllegalStateException if serialization fails due to an internal error
+     *                               during JSON generation
+     * @throws RuntimeException      if serialization fails due to an I/O error or
+     *                               other runtime exception during JSON processing
      * @since 0.19
      */
     default String toJson() {
@@ -168,6 +174,11 @@ public interface Strategy {
      * embedded inside other component metadata.
      *
      * @return component descriptor for the strategy
+     * @throws NullPointerException     if the strategy or any of its rules are
+     *                                  {@code null}
+     * @throws IllegalArgumentException if rule serialization fails due to
+     *                                  unsupported constructor signatures or
+     *                                  invalid rule configurations
      * @since 0.19
      */
     default ComponentDescriptor toDescriptor() {

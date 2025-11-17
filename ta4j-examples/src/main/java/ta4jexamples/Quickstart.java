@@ -65,7 +65,8 @@ public class Quickstart {
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         // Here is the same close price:
-        LOG.debug("{}", firstClosePrice.isEqual(closePrice.getValue(0))); // equal to firstClosePrice
+        LOG.debug("Close price indicator value equals first close price: {}",
+                firstClosePrice.isEqual(closePrice.getValue(0)));
 
         // Getting the simple moving average (SMA) of the close price over the last 5
         // bars

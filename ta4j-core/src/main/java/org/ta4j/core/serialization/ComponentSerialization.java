@@ -37,7 +37,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.JsonSyntaxException;
@@ -104,16 +103,41 @@ public final class ComponentSerialization {
         private static final String FIELD_COMPONENTS = "components";
 
         /**
-         * Determines the field name for components based on the component type. Uses
-         * class name substring detection: - "Indicator" or "Rule" → "components" -
-         * "Strategy" → "rules"
+         * Determines the field name for components based on the component type.
+         * <p>
+         * Uses strong type checking first: attempts to resolve the type to a
+         * {@link Class} and checks if it's assignable from {@link Strategy},
+         * {@link Indicator}, or {@link Rule} interfaces. If class resolution fails,
+         * falls back to naming convention checks using {@code endsWith} (the library's
+         * naming convention):
+         * <ul>
+         * <li>Types ending with "Strategy" → "rules"</li>
+         * <li>Types ending with "Indicator" or "Rule" → "components"</li>
+         * </ul>
+         * Defaults to "components" if type is unknown or cannot be determined.
+         *
+         * @param descriptor component descriptor
+         * @return field name for components ("rules" for strategies, "components" for
+         *         indicators/rules)
          */
         private static String getComponentsFieldName(ComponentDescriptor descriptor) {
+            // Try strong type checking first
+            Class<?> typeClass = descriptor.getTypeClass();
+            if (typeClass != null) {
+                if (org.ta4j.core.Strategy.class.isAssignableFrom(typeClass)) {
+                    return FIELD_RULES;
+                } else if (org.ta4j.core.Indicator.class.isAssignableFrom(typeClass)
+                        || org.ta4j.core.Rule.class.isAssignableFrom(typeClass)) {
+                    return FIELD_COMPONENTS;
+                }
+            }
+
+            // Fall back to naming convention (endsWith per library convention)
             String type = descriptor.getType();
             if (type != null) {
-                if (type.contains("Strategy")) {
+                if (type.endsWith("Strategy")) {
                     return FIELD_RULES;
-                } else if (type.contains("Indicator") || type.contains("Rule")) {
+                } else if (type.endsWith("Indicator") || type.endsWith("Rule")) {
                     return FIELD_COMPONENTS;
                 }
             }
@@ -123,22 +147,43 @@ public final class ComponentSerialization {
 
         /**
          * Determines if a descriptor represents an indicator (for label serialization).
-         * Indicators should not serialize labels, even when nested in rules. Rules
-         * contain "Rule" in their name, so check for "Rule" first to avoid false
-         * positives.
+         * Indicators should not serialize labels, even when nested in rules.
+         * <p>
+         * Uses strong type checking first: attempts to resolve the type to a
+         * {@link Class} and checks if it's assignable from {@link Indicator} but not
+         * {@link Rule}. If class resolution fails, falls back to naming convention
+         * checks using {@code endsWith} (the library's naming convention):
+         * <ul>
+         * <li>Types ending with "Rule" → not an indicator</li>
+         * <li>Types ending with "Indicator" → is an indicator</li>
+         * </ul>
+         *
+         * @param descriptor component descriptor
+         * @return {@code true} if the descriptor represents an indicator
          */
         private static boolean isIndicator(ComponentDescriptor descriptor) {
+            // Try strong type checking first
+            Class<?> typeClass = descriptor.getTypeClass();
+            if (typeClass != null) {
+                // If it's a Rule, it's not an indicator
+                if (org.ta4j.core.Rule.class.isAssignableFrom(typeClass)) {
+                    return false;
+                }
+                // If it's an Indicator, it is an indicator
+                return org.ta4j.core.Indicator.class.isAssignableFrom(typeClass);
+            }
+
+            // Fall back to naming convention (endsWith per library convention)
             String type = descriptor.getType();
             if (type == null) {
                 return false;
             }
-            // Rules contain "Rule" in their name, so if it contains "Rule", it's not an
-            // indicator
-            if (type.contains("Rule")) {
+            // Rules end with "Rule", so if it ends with "Rule", it's not an indicator
+            if (type.endsWith("Rule")) {
                 return false;
             }
-            // If it contains "Indicator" but not "Rule", it's an indicator
-            return type.contains("Indicator");
+            // If it ends with "Indicator", it's an indicator
+            return type.endsWith("Indicator");
         }
 
         @Override

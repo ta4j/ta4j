@@ -50,6 +50,8 @@ public final class StrategySerialization {
     private static final String ENTRY_LABEL = "entry";
     private static final String EXIT_LABEL = "exit";
     private static final String STRATEGY_PACKAGE = "org.ta4j.core";
+    private static final String UNSTABLE_BARS_KEY = "unstableBars";
+    private static final String ARGS_KEY = "__args";
 
     private StrategySerialization() {
     }
@@ -91,7 +93,7 @@ public final class StrategySerialization {
         }
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("unstableBars", strategy.getUnstableBars());
+        parameters.put(UNSTABLE_BARS_KEY, strategy.getUnstableBars());
         builder.withParameters(parameters);
 
         if (entryDescriptor != null) {
@@ -118,10 +120,19 @@ public final class StrategySerialization {
 
     /**
      * Rebuilds a strategy from a descriptor tree.
+     * <p>
+     * If the specified strategy type cannot be instantiated (e.g., no matching
+     * constructor is found), this method will silently fall back to creating a
+     * {@link BaseStrategy} instance with the same entry/exit rules and parameters.
+     * This fallback behavior may mask configuration issues where a specific
+     * strategy type was expected but could not be constructed. Callers should
+     * verify the returned strategy type matches expectations if strict type
+     * checking is required.
      *
      * @param series     bar series to attach to the strategy
      * @param descriptor descriptor describing the strategy
-     * @return reconstructed strategy
+     * @return reconstructed strategy (may be a {@link BaseStrategy} fallback if the
+     *         specified type could not be instantiated)
      */
     public static Strategy fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         Objects.requireNonNull(series, "series");
@@ -148,7 +159,7 @@ public final class StrategySerialization {
         Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
 
         String name = descriptor.getLabel();
-        int unstableBars = extractUnstableBars(descriptor.getParameters().get("unstableBars"));
+        int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
 
         Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars);
         strategy.setUnstableBars(unstableBars);
@@ -225,7 +236,7 @@ public final class StrategySerialization {
         }
 
         // Legacy check for __args (for backwards compatibility)
-        if (descriptor.getParameters().containsKey("__args")) {
+        if (descriptor.getParameters().containsKey(ARGS_KEY)) {
             return RuleSerialization.fromDescriptor(series, descriptor, parentContext);
         }
 
@@ -389,6 +400,40 @@ public final class StrategySerialization {
         return BaseStrategy.class;
     }
 
+    /**
+     * Attempts to instantiate a strategy of the specified type using various
+     * constructor patterns.
+     * <p>
+     * This method tries multiple constructor signatures in order:
+     * <ol>
+     * <li>{@code (String, Rule, Rule, int)} - name, entry, exit, unstableBars</li>
+     * <li>{@code (String, Rule, Rule)} - name, entry, exit (unstableBars set via
+     * setter)</li>
+     * <li>{@code (Rule, Rule, int)} - entry, exit, unstableBars</li>
+     * <li>{@code (Rule, Rule)} - entry, exit (unstableBars set via setter)</li>
+     * </ol>
+     * <p>
+     * <strong>Fallback Behavior:</strong> If none of the above constructors are
+     * found and the requested type is not {@link BaseStrategy}, this method will
+     * silently create a {@link BaseStrategy} instance instead. This fallback
+     * provides resilience but may mask configuration issues where a specific
+     * strategy type was expected. The returned instance will have the same entry
+     * rule, exit rule, name, and unstableBars value, but will be of type
+     * {@code BaseStrategy} rather than the requested type.
+     * <p>
+     * If the requested type is already {@code BaseStrategy} and no suitable
+     * constructor is found, an {@link IllegalStateException} is thrown.
+     *
+     * @param strategyType the class of strategy to instantiate
+     * @param name         strategy name (may be null)
+     * @param entryRule    entry rule (required)
+     * @param exitRule     exit rule (required)
+     * @param unstableBars number of unstable bars
+     * @return instantiated strategy (may be a {@link BaseStrategy} fallback if the
+     *         requested type could not be instantiated)
+     * @throws IllegalStateException if the requested type is {@code BaseStrategy}
+     *                               and no suitable constructor is found
+     */
     private static Strategy instantiateStrategy(Class<? extends Strategy> strategyType, String name, Rule entryRule,
             Rule exitRule, int unstableBars) {
         try {
@@ -439,6 +484,10 @@ public final class StrategySerialization {
             throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
         }
 
+        // Fallback: If the requested strategy type cannot be instantiated, create a
+        // BaseStrategy instead. This provides resilience but may mask configuration
+        // issues where a specific strategy type was expected. The fallback preserves
+        // the entry/exit rules and parameters but changes the strategy type.
         if (!strategyType.equals(BaseStrategy.class)) {
             return new BaseStrategy(name, entryRule, exitRule, unstableBars);
         }

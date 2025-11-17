@@ -1510,7 +1510,7 @@ public final class RuleSerialization {
         // Simple identifiers are typically: start with letter, followed by
         // letters/digits
         // and don't contain special characters like '{', '[', etc. that appear in JSON
-        return str.matches("^[a-zA-Z][a-zA-Z0-9]*$") && !str.startsWith("{") && !str.startsWith("[");
+        return str.matches("^[a-zA-Z][a-zA-Z0-9]*$");
     }
 
     /**
@@ -1561,7 +1561,8 @@ public final class RuleSerialization {
                             || field.isSynthetic()) {
                         continue;
                     }
-                    if (field.getDeclaringClass().equals(org.ta4j.core.rules.AbstractRule.class)) {
+                    Class<?> declaringClass = field.getDeclaringClass();
+                    if (declaringClass.equals(Rule.class) || Modifier.isAbstract(declaringClass.getModifiers())) {
                         continue;
                     }
                     field.setAccessible(true);
@@ -1579,14 +1580,89 @@ public final class RuleSerialization {
                     }
                     String key = field.getName();
                     values.put(key, value);
-                    if (value instanceof CrossIndicator cross) {
-                        values.put(key + ".low", cross.getLow());
-                        values.put(key + ".up", cross.getUp());
-                    }
+                    // Extract nested components from composite indicators/rules
+                    // Some rules store composite indicators (like CrossIndicator) as fields,
+                    // but their constructors take the individual components. We need to extract
+                    // these nested components via getter methods to match constructor signatures.
+                    extractNestedComponents(value, key, values);
                 }
                 type = type.getSuperclass();
             }
             return values;
+        }
+
+        /**
+         * Extracts nested components from composite indicators or rules using
+         * reflection.
+         *
+         * <p>
+         * Some rules store composite indicators (like {@link CrossIndicator}) as
+         * fields, but their constructors take the individual components as separate
+         * parameters. For example, {@link CrossedUpIndicatorRule} stores a
+         * {@code CrossIndicator} field, but its constructor takes two separate
+         * {@code Indicator<Num>} parameters.
+         *
+         * <p>
+         * This method uses reflection to find getter methods that return
+         * {@link Indicator} or {@link Rule} types, and extracts those nested components
+         * so they can be matched against constructor parameters during deserialization.
+         *
+         * @param value    the field value (may be a composite indicator or rule)
+         * @param fieldKey the field name to use as a prefix for nested component keys
+         * @param values   the map to add extracted components to
+         */
+        private static void extractNestedComponents(Object value, String fieldKey, Map<String, Object> values) {
+            if (value == null) {
+                return;
+            }
+
+            Class<?> valueClass = value.getClass();
+            Method[] methods = valueClass.getMethods();
+
+            // Sort methods by name to ensure consistent ordering
+            Arrays.sort(methods, Comparator.comparing(Method::getName));
+
+            for (Method method : methods) {
+                // Look for getter methods (no parameters, return type is Indicator or Rule)
+                if (method.getParameterCount() != 0) {
+                    continue;
+                }
+
+                String methodName = method.getName();
+                // Skip if not a getter (doesn't start with "get" or has wrong return type)
+                if (!methodName.startsWith("get") || methodName.length() <= 3) {
+                    continue;
+                }
+
+                Class<?> returnType = method.getReturnType();
+                // Check if return type is Indicator or Rule (or assignable from them)
+                boolean isIndicator = Indicator.class.isAssignableFrom(returnType);
+                boolean isRule = Rule.class.isAssignableFrom(returnType);
+
+                if (!isIndicator && !isRule) {
+                    continue;
+                }
+
+                // Skip if this is just the field's own getter (would cause infinite recursion)
+                // We're looking for getters that return nested components, not the field itself
+                if (methodName.equals("getClass") || methodName.equals("getBarSeries")) {
+                    continue;
+                }
+
+                try {
+                    Object nestedValue = method.invoke(value);
+                    if (nestedValue != null) {
+                        // Use method name (without "get" prefix, lowercased) as suffix
+                        String suffix = methodName.substring(3); // Remove "get" prefix
+                        String nestedKey = fieldKey + "." + Character.toLowerCase(suffix.charAt(0))
+                                + suffix.substring(1);
+                        values.put(nestedKey, nestedValue);
+                    }
+                } catch (IllegalAccessException | InvocationTargetException ex) {
+                    // Skip methods that can't be invoked
+                    continue;
+                }
+            }
         }
 
         private static boolean shouldIgnore(String name) {

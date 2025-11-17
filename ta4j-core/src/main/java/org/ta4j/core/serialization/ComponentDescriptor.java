@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.serialization;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -85,6 +86,35 @@ public final class ComponentDescriptor {
      */
     public String getType() {
         return type;
+    }
+
+    /**
+     * Attempts to resolve the type string to a {@link Class}. The type may be a
+     * simple class name (for classes in standard packages) or a fully qualified
+     * class name.
+     *
+     * @return the resolved class, or {@code null} if the type is not set or cannot
+     *         be resolved
+     */
+    public Class<?> getTypeClass() {
+        if (type == null || type.isBlank()) {
+            return null;
+        }
+        try {
+            // Try fully qualified name first
+            return Class.forName(type);
+        } catch (ClassNotFoundException e) {
+            // Try simple name in standard packages
+            String[] standardPackages = { "org.ta4j.core.rules", "org.ta4j.core.indicators", "org.ta4j.core.strategy" };
+            for (String pkg : standardPackages) {
+                try {
+                    return Class.forName(pkg + "." + type);
+                } catch (ClassNotFoundException ignored) {
+                    // Continue to next package
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -173,14 +203,41 @@ public final class ComponentDescriptor {
 
         /**
          * Adds or replaces component parameters.
+         * <p>
+         * Parameter values must be serializable. Supported types include:
+         * <ul>
+         * <li>Primitive types and their wrapper classes (Integer, Long, Double,
+         * etc.)</li>
+         * <li>String</li>
+         * <li>Number and its subclasses</li>
+         * <li>Boolean</li>
+         * <li>Enum types</li>
+         * <li>Any type implementing {@link java.io.Serializable}</li>
+         * <li>null (allowed)</li>
+         * </ul>
+         * Non-serializable values may cause serialization failures when the descriptor
+         * is converted to JSON or other formats.
          *
          * @param parameters parameter map
          * @return the builder
+         * @throws IllegalArgumentException if any parameter value is not null and is
+         *                                  not an instance of
+         *                                  {@link java.io.Serializable}
          */
         public Builder withParameters(Map<String, Object> parameters) {
             if (parameters == null || parameters.isEmpty()) {
                 this.parameters = null;
             } else {
+                // Validate all values before copying to maintain builder state consistency
+                for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value != null && !(value instanceof Serializable)) {
+                        throw new IllegalArgumentException(String.format(
+                                "Parameter '%s' has unsupported type '%s'. "
+                                        + "Parameter values must be null or implement java.io.Serializable.",
+                                entry.getKey(), value.getClass().getName()));
+                    }
+                }
                 this.parameters = new LinkedHashMap<>(parameters);
             }
             return this;

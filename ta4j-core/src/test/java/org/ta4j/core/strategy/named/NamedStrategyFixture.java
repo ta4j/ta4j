@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.strategy.named;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -33,6 +30,9 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Test fixture for {@link NamedStrategy} that captures constructor invocation
@@ -59,10 +59,6 @@ public final class NamedStrategyFixture extends NamedStrategy {
         if (countTypedConstruction) {
             TYPED_CONSTRUCTIONS.incrementAndGet();
         }
-    }
-
-    protected NamedStrategyFixture(BarSeries series, Num threshold, int unstableBars) {
-        this(series, threshold, unstableBars, false, true);
     }
 
     public NamedStrategyFixture(BarSeries series, String... parameters) {

@@ -98,7 +98,7 @@ public class RSI2Strategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        LOG.debug(strategy.toJson());
+        LOG.debug(() -> strategy.toJson());
         LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis

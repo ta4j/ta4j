@@ -88,6 +88,9 @@ public interface Rule {
      * Sets a human friendly name for this rule. Implementations that support naming
      * should override this method.
      *
+     * <p>
+     * The default implementation is a no-op and does not store the name.
+     *
      * @param name desired name; {@code null} or blank should reset the rule name
      *             back to the implementation specific default
      * @since 0.19

@@ -21,18 +21,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.strategies;
+package org.ta4j.core.serialization;
 
-import org.junit.Assume;
-import org.junit.Test;
+/**
+ * Unchecked exception thrown when indicator serialization or deserialization
+ * fails.
+ *
+ * <p>
+ * This exception wraps underlying errors that occur during the serialization
+ * process, such as reflection failures, class loading issues, instantiation
+ * problems, or JSON parsing errors. It provides a consistent exception type for
+ * callers to handle serialization failures.
+ *
+ * @since 0.19
+ */
+public class IndicatorSerializationException extends RuntimeException {
 
-import java.awt.GraphicsEnvironment;
+    private static final long serialVersionUID = 1L;
 
-public class GlobalExtremaStrategyTest {
+    /**
+     * Constructs a new exception with the specified detail message.
+     *
+     * @param message the detail message
+     */
+    public IndicatorSerializationException(String message) {
+        super(message);
+    }
 
-    @Test
-    public void test() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        GlobalExtremaStrategy.main(null);
+    /**
+     * Constructs a new exception with the specified detail message and cause.
+     *
+     * @param message the detail message
+     * @param cause   the cause (which is saved for later retrieval by the
+     *                {@link #getCause()} method)
+     */
+    public IndicatorSerializationException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

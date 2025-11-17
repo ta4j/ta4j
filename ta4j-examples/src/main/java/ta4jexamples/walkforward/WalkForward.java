@@ -190,11 +190,11 @@ public class WalkForward {
                 // For each strategy...
                 TradingRecord tradingRecord = sliceManager.run(strategy);
                 Num profit = returnCriterion.calculate(slice, tradingRecord);
-                LOG.debug("\tProfit for {}: {}", name, profit);
+                LOG.debug("Profit for {}: {}", name, profit);
             }
             Strategy bestStrategy = returnCriterion.chooseBest(sliceManager, TradeType.BUY,
                     new ArrayList<Strategy>(strategies.keySet()));
-            LOG.debug("\t\t--> Best strategy: {}\n", strategies.get(bestStrategy));
+            LOG.debug("--> Best strategy: {}", strategies.get(bestStrategy));
         }
     }
 }

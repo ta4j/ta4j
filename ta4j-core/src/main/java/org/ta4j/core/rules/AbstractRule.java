@@ -112,11 +112,7 @@ public abstract class AbstractRule implements Rule {
         ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
         if (childNames != null && childNames.length > 0) {
             for (String child : childNames) {
-                if (child == null) {
-                    builder.addComponent(null);
-                } else {
-                    builder.addComponent(ComponentSerialization.parse(child));
-                }
+                builder.addComponent(ComponentSerialization.parse(child));
             }
         }
         return ComponentSerialization.toJson(builder.build());
