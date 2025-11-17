@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorConstructorSelectionTestIndicator;
 import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -124,6 +125,25 @@ public class IndicatorSerializationTest {
 
         assertThat(reconstructed).isInstanceOf(ParabolicSarIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
+    }
+
+    @Test
+    public void deserializePrefersConstructorThatConsumesAllComponents() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+        Indicator<Num> extra = new SMAIndicator(base, 2);
+        Num scale = series.numFactory().numOf("1.5");
+        Num offset = series.numFactory().numOf("2.5");
+        Num bias = series.numFactory().numOf("0.75");
+
+        IndicatorConstructorSelectionTestIndicator original = new IndicatorConstructorSelectionTestIndicator(base,
+                extra, scale, offset, bias);
+
+        String json = original.toJson();
+        Indicator<?> reconstructed = Indicator.fromJson(series, json);
+
+        assertThat(reconstructed).isInstanceOf(IndicatorConstructorSelectionTestIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(original.toDescriptor());
     }
 
     @Test

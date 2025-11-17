@@ -30,6 +30,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
@@ -191,24 +193,51 @@ public final class IndicatorSerialization {
         Arrays.sort(constructors,
                 (left, right) -> Integer.compare(right.getParameterCount(), left.getParameterCount()));
         Map<String, Object> parameterValues = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
+        boolean hasIndicatorConstructor = Arrays.stream(constructors)
+                .filter(constructor -> !Modifier.isPrivate(constructor.getModifiers()))
+                .anyMatch(IndicatorSerialization::constructorConsumesIndicators);
+        InvocationPlan bestPlan = null;
         for (Constructor<?> constructor : constructors) {
             if (Modifier.isPrivate(constructor.getModifiers())) {
                 continue;
             }
-            Optional<Object> instance = tryInvoke(constructor, series, components, parameterValues);
-            if (instance.isPresent()) {
-                return instance.get();
+            Optional<InvocationPlan> plan = tryInvoke(constructor, series, components, parameterValues,
+                    hasIndicatorConstructor);
+            if (plan.isEmpty()) {
+                continue;
+            }
+            InvocationPlan candidate = plan.get();
+            if (bestPlan == null || isBetterMatch(candidate, bestPlan, components.size())) {
+                bestPlan = candidate;
+                if (candidate.consumedComponents() == components.size()) {
+                    break;
+                }
+            }
+        }
+        if (bestPlan != null) {
+            try {
+                bestPlan.constructor().setAccessible(true);
+            } catch (SecurityException ignored) {
+                // Ignore - proceed with existing accessibility
+            }
+            try {
+                return bestPlan.constructor().newInstance(bestPlan.arguments());
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new IllegalStateException("Unable to instantiate indicator: " + type.getName(), e);
             }
         }
         throw new IllegalStateException("Unable to instantiate indicator: " + type.getName());
     }
 
-    private static Optional<Object> tryInvoke(Constructor<?> constructor, BarSeries series,
-            List<Indicator<?>> components, Map<String, Object> parameters) {
+    private static Optional<InvocationPlan> tryInvoke(Constructor<?> constructor, BarSeries series,
+            List<Indicator<?>> components, Map<String, Object> parameters, boolean hasIndicatorConstructor) {
         Class<?>[] parameterTypes = constructor.getParameterTypes();
         Parameter[] parameterMetadata = constructor.getParameters();
+        Type[] genericParameterTypes = constructor.getGenericParameterTypes();
         Object[] args = new Object[parameterTypes.length];
         int componentIndex = 0;
+        boolean bulkConsumed = false;
+        boolean constructorUsesIndicators = false;
         LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
                 : new LinkedHashMap<>(parameters);
         List<NumericParameterRequest> numericRequests = new ArrayList<>();
@@ -219,6 +248,7 @@ public final class IndicatorSerialization {
             if (BarSeries.class.isAssignableFrom(parameterType)) {
                 args[i] = series;
             } else if (Indicator.class.isAssignableFrom(parameterType)) {
+                constructorUsesIndicators = true;
                 if (componentIndex >= components.size()) {
                     return Optional.empty();
                 }
@@ -228,6 +258,10 @@ public final class IndicatorSerialization {
                 }
                 args[i] = component;
             } else if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
+                constructorUsesIndicators = true;
+                if (bulkConsumed) {
+                    return Optional.empty();
+                }
                 Indicator<?>[] remaining = components.subList(componentIndex, components.size())
                         .toArray(Indicator[]::new);
                 for (Indicator<?> component : remaining) {
@@ -237,10 +271,28 @@ public final class IndicatorSerialization {
                 }
                 args[i] = remaining;
                 componentIndex = components.size();
+                bulkConsumed = true;
             } else if (List.class.isAssignableFrom(parameterType)) {
-                List<Indicator<?>> remaining = new ArrayList<>(components.subList(componentIndex, components.size()));
-                args[i] = remaining;
-                componentIndex = components.size();
+                Type genericType = i < genericParameterTypes.length ? genericParameterTypes[i] : null;
+                Class<?> listElementType = getListElementType(genericType);
+                if (listElementType != null && Indicator.class.isAssignableFrom(listElementType)) {
+                    constructorUsesIndicators = true;
+                    if (bulkConsumed) {
+                        return Optional.empty();
+                    }
+                    List<Indicator<?>> remaining = new ArrayList<>(
+                            components.subList(componentIndex, components.size()));
+                    for (Indicator<?> component : remaining) {
+                        if (!listElementType.isInstance(component)) {
+                            return Optional.empty();
+                        }
+                    }
+                    args[i] = remaining;
+                    componentIndex = components.size();
+                    bulkConsumed = true;
+                } else {
+                    numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
+                }
             } else {
                 numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
             }
@@ -274,12 +326,74 @@ public final class IndicatorSerialization {
             args[request.index()] = converted;
         }
 
-        try {
-            constructor.setAccessible(true);
-            return Optional.of(constructor.newInstance(args));
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        // Validate that all components were consumed
+        boolean hasComponents = components != null && !components.isEmpty();
+        if (!constructorUsesIndicators && hasComponents && hasIndicatorConstructor) {
             return Optional.empty();
         }
+
+        return Optional.of(new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators));
+    }
+
+    private static boolean constructorConsumesIndicators(Constructor<?> constructor) {
+        Class<?>[] parameterTypes = constructor.getParameterTypes();
+        Type[] genericTypes = constructor.getGenericParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> parameterType = parameterTypes[i];
+            if (Indicator.class.isAssignableFrom(parameterType)) {
+                return true;
+            }
+            if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
+                return true;
+            }
+            if (List.class.isAssignableFrom(parameterType)) {
+                Type genericType = i < genericTypes.length ? genericTypes[i] : null;
+                Class<?> elementType = getListElementType(genericType);
+                if (elementType != null && Indicator.class.isAssignableFrom(elementType)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isBetterMatch(InvocationPlan candidate, InvocationPlan current, int totalComponents) {
+        if (current == null) {
+            return true;
+        }
+        boolean candidateUsesAll = totalComponents > 0 && candidate.consumedComponents() >= totalComponents;
+        boolean currentUsesAll = totalComponents > 0 && current.consumedComponents() >= totalComponents;
+        if (candidateUsesAll && !currentUsesAll) {
+            return true;
+        }
+        if (currentUsesAll && !candidateUsesAll) {
+            return false;
+        }
+        if (candidate.consumedComponents() != current.consumedComponents()) {
+            return candidate.consumedComponents() > current.consumedComponents();
+        }
+        if (candidate.usesIndicators() && !current.usesIndicators()) {
+            return true;
+        }
+        return false;
+    }
+
+    private static Class<?> getListElementType(Type genericType) {
+        if (genericType instanceof ParameterizedType parameterizedType) {
+            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            if (typeArguments.length > 0) {
+                Type elementType = typeArguments[0];
+                if (elementType instanceof Class<?> clazz) {
+                    return clazz;
+                } else if (elementType instanceof ParameterizedType parameterizedElementType) {
+                    Type rawType = parameterizedElementType.getRawType();
+                    if (rawType instanceof Class<?> clazz) {
+                        return clazz;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static Object extractNamedParameterValue(Parameter parameter, LinkedHashMap<String, Object> parameters) {
@@ -721,5 +835,9 @@ public final class IndicatorSerialization {
     }
 
     private record NumericParameterRequest(int index, Class<?> type, Parameter parameter) {
+    }
+
+    private record InvocationPlan(Constructor<?> constructor, Object[] arguments, int consumedComponents,
+            boolean usesIndicators) {
     }
 }

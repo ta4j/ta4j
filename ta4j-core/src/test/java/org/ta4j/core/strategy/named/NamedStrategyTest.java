@@ -33,14 +33,16 @@ class NamedStrategyTest {
 
     @Test
     void buildLabelRejectsUnderscoreParameters() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> NamedStrategy.buildLabel(NamedStrategyFixture.class, "fast", "slow_value", "u3"));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> NamedStrategy.buildLabel(NamedStrategyFixture.class, "fast", "slow_value", "u3"));
 
         assertEquals("Named strategy parameters cannot contain underscores: parameters[1]", ex.getMessage());
     }
 
     @Test
     void buildLabelRejectsNullParameters() {
-        assertThrows(NullPointerException.class, () -> NamedStrategy.buildLabel(NamedStrategyFixture.class, "fast", null));
+        assertThrows(NullPointerException.class,
+                () -> NamedStrategy.buildLabel(NamedStrategyFixture.class, "fast", null));
     }
 
     @Test

@@ -7,7 +7,7 @@
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
    - **This is NOT optional.** Do not skip this step, even for "simple" changes.
    - **When:** After every code change that affects build/test behavior (which is almost always)
-   - **Windows:** Invoke Git Bash or MSYS2 binary directly (not WSL) for native NTFS paths. Example: `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
+   - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI’s default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
    - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
    - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
    - **Report:** Always include the script's output showing `Tests run / Failures / Errors / Skipped` numbers and the log path

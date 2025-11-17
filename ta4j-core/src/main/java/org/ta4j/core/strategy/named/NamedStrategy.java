@@ -201,7 +201,7 @@ public abstract class NamedStrategy extends BaseStrategy {
 
     private static final Map<String, Class<? extends NamedStrategy>> REGISTRY = new ConcurrentHashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger(NamedStrategy.class);
-    private static final String[] DEFAULT_SCAN_PACKAGES = {"org.ta4j.core.strategy.named"};
+    private static final String[] DEFAULT_SCAN_PACKAGES = { "org.ta4j.core.strategy.named" };
     private static final Set<String> SCANNED_PACKAGES = ConcurrentHashMap.newKeySet();
     private static final AtomicBoolean DEFAULT_PACKAGES_INITIALIZED = new AtomicBoolean();
 
@@ -255,7 +255,8 @@ public abstract class NamedStrategy extends BaseStrategy {
         String key = type.getSimpleName();
         REGISTRY.compute(key, (name, existing) -> {
             if (existing != null && existing != type) {
-                throw new IllegalStateException("Named strategy already registered for simple name " + name + ": " + existing.getName());
+                throw new IllegalStateException(
+                        "Named strategy already registered for simple name " + name + ": " + existing.getName());
             }
             return type;
         });
@@ -290,7 +291,8 @@ public abstract class NamedStrategy extends BaseStrategy {
         for (int i = 0; i < parameters.length; i++) {
             String parameter = Objects.requireNonNull(parameters[i], "parameters[" + i + "]");
             if (parameter.indexOf('_') >= 0) {
-                throw new IllegalArgumentException("Named strategy parameters cannot contain underscores: parameters[" + i + "]");
+                throw new IllegalArgumentException(
+                        "Named strategy parameters cannot contain underscores: parameters[" + i + "]");
             }
         }
         return type.getSimpleName() + '_' + String.join("_", parameters);
@@ -320,7 +322,8 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param <T>                   concrete named strategy type
      * @return list of instantiated strategies
      */
-    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series, Iterable<String[]> parameterPermutations, Factory<T> factory) {
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
+            Iterable<String[]> parameterPermutations, Factory<T> factory) {
         return buildAllStrategyPermutations(series, parameterPermutations, factory, null);
     }
 
@@ -339,7 +342,9 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param <T>                   concrete named strategy type
      * @return list of instantiated strategies
      */
-    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series, Iterable<String[]> parameterPermutations, Factory<T> factory, BiConsumer<String[], IllegalArgumentException> failureHandler) {
+    public static <T extends NamedStrategy> List<Strategy> buildAllStrategyPermutations(BarSeries series,
+            Iterable<String[]> parameterPermutations, Factory<T> factory,
+            BiConsumer<String[], IllegalArgumentException> failureHandler) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(parameterPermutations, "parameterPermutations");
         Objects.requireNonNull(factory, "factory");
@@ -371,7 +376,8 @@ public abstract class NamedStrategy extends BaseStrategy {
      */
     public static Class<? extends NamedStrategy> requireRegistered(String simpleName) {
         ensureDefaultRegistryInitialized();
-        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
+        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName
+                + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
     }
 
     private static void ensureDefaultRegistryInitialized() {
@@ -438,10 +444,11 @@ public abstract class NamedStrategy extends BaseStrategy {
             return;
         }
         try (Stream<Path> stream = Files.walk(directory)) {
-            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class")).forEach(path -> {
-                String className = toClassName(basePackage, directory, path);
-                loadNamedStrategy(className, loader);
-            });
+            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class"))
+                    .forEach(path -> {
+                        String className = toClassName(basePackage, directory, path);
+                        loadNamedStrategy(className, loader);
+                    });
         }
     }
 
@@ -487,7 +494,8 @@ public abstract class NamedStrategy extends BaseStrategy {
         }
         try {
             Class<?> candidate = Class.forName(className, false, loader);
-            if (candidate == NamedStrategy.class || candidate.isInterface() || Modifier.isAbstract(candidate.getModifiers())) {
+            if (candidate == NamedStrategy.class || candidate.isInterface()
+                    || Modifier.isAbstract(candidate.getModifiers())) {
                 return;
             }
             if (NamedStrategy.class.isAssignableFrom(candidate)) {

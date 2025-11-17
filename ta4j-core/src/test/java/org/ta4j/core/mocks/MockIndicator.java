@@ -47,7 +47,8 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     /**
-     * Constructs a MockIndicator with the specified bar series, unstable bars count, and values.
+     * Constructs a MockIndicator with the specified bar series, unstable bars
+     * count, and values.
      *
      * @param series            the bar series associated with this indicator
      * @param unstableBarsCount the number of unstable bars for this indicator
