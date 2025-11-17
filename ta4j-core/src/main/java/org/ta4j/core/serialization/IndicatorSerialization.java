@@ -133,10 +133,23 @@ public final class IndicatorSerialization {
             return cached;
         }
 
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
-                .withType(indicator.getClass().getSimpleName());
-
+        // Extract type and parameters first
+        String type = indicator.getClass().getSimpleName();
         Map<String, Object> parameters = extractNumericParameters(indicator);
+
+        // Create a placeholder descriptor with type and parameters (no children yet)
+        // and insert it into visited BEFORE processing children to prevent infinite
+        // recursion on circular indicator graphs
+        ComponentDescriptor.Builder placeholderBuilder = ComponentDescriptor.builder().withType(type);
+        if (!parameters.isEmpty()) {
+            placeholderBuilder.withParameters(parameters);
+        }
+        ComponentDescriptor placeholder = placeholderBuilder.build();
+        visited.put(indicator, placeholder);
+
+        // Now process children - if we encounter a circular reference, we'll find
+        // the placeholder in visited and return it, breaking the cycle
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
         if (!parameters.isEmpty()) {
             builder.withParameters(parameters);
         }
@@ -148,6 +161,7 @@ public final class IndicatorSerialization {
             builder.addComponent(childDescriptor);
         }
 
+        // Build the final descriptor with all children and replace the placeholder
         ComponentDescriptor descriptor = builder.build();
         visited.put(indicator, descriptor);
         return descriptor;

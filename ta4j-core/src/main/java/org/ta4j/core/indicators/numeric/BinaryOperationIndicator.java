@@ -209,6 +209,12 @@ public class BinaryOperationIndicator implements Indicator<Num> {
 
     private BinaryOperationIndicator(final BinaryOperator<Num> operator, final Indicator<Num> left,
             final Indicator<Num> right) {
+        if (operator == null || left == null || right == null) {
+            throw new IllegalArgumentException("Operator and indicators must not be null");
+        }
+        if (!left.getBarSeries().equals(right.getBarSeries())) {
+            throw new IllegalArgumentException("Left and right indicators must share the same BarSeries");
+        }
         this.operator = operator;
         this.left = left;
         this.right = right;

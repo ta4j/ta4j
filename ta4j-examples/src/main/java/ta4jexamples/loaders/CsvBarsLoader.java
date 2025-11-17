@@ -51,24 +51,23 @@ public class CsvBarsLoader {
     private static final String DEFAULT_APPLE_BAR_FILE = "appleinc_bars_from_20130101_usd.csv";
 
     /**
-     * Loads the default Apple Inc. bar series from the predefined CSV file.
+     * Loads a bar series from the default CSV file.
      *
-     * @return the bar series containing Apple Inc. stock data
+     * @return the bar series loaded from the default CSV file
      */
-    public static BarSeries loadAppleIncSeries() {
-        return loadAppleIncSeries(DEFAULT_APPLE_BAR_FILE);
+    public static BarSeries loadSeriesFromFile() {
+        return loadSeriesFromFile(DEFAULT_APPLE_BAR_FILE);
     }
 
     /**
-     * Loads Apple Inc. bar series from the specified CSV file.
+     * Loads a bar series from the specified CSV file. This is a convenience method
+     * that delegates to {@link #loadCsvSeries(String)}.
      *
-     * @param appleBarsCsvFile the path to the CSV file containing Apple Inc. stock
-     *                         data
-     * @return the bar series containing Apple Inc. stock data loaded from the
-     *         specified CSV file
+     * @param csvFile the path to the CSV file containing bar data
+     * @return the bar series loaded from the specified CSV file
      */
-    public static BarSeries loadAppleIncSeries(String appleBarsCsvFile) {
-        return loadCsvSeries(appleBarsCsvFile);
+    public static BarSeries loadSeriesFromFile(String csvFile) {
+        return loadCsvSeries(csvFile);
     }
 
     /**
@@ -85,10 +84,14 @@ public class CsvBarsLoader {
 
         var stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
+        if (stream == null) {
+            LOG.error("Unable to load CSV file: {} not found in classpath", filename);
+            return new BaseBarSeriesBuilder().withName(filename).build();
+        }
+
         var series = new BaseBarSeriesBuilder().withName(filename).build();
 
         try {
-            assert stream != null;
             try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
                     .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                     .withSkipLines(1)
@@ -125,7 +128,7 @@ public class CsvBarsLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

@@ -448,6 +448,9 @@ public class ChartMaker {
      * @since 0.19
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, Path chartImageSaveDirectory) {
+        if (chart == null) {
+            throw new IllegalArgumentException("Chart cannot be null");
+        }
         if (chartImageSaveDirectory == null) {
             throw new IllegalArgumentException("Chart image save directory cannot be null");
         }

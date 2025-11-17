@@ -57,6 +57,8 @@ import java.util.Date;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 /**
  * Swing-based {@link ChartDisplayer} that renders charts in an
@@ -151,6 +153,24 @@ final class SwingChartDisplayer implements ChartDisplayer {
         int hoverDelay = resolveHoverDelay();
         ChartMouseoverListener mouseoverListener = new ChartMouseoverListener(chartClone, panel, infoLabel, hoverDelay);
         panel.addChartMouseListener(mouseoverListener);
+
+        // Add ancestor listener to cleanup timer when component is removed
+        panel.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorAdded(AncestorEvent event) {
+                // No action needed
+            }
+
+            @Override
+            public void ancestorRemoved(AncestorEvent event) {
+                mouseoverListener.disposeHoverTimer();
+            }
+
+            @Override
+            public void ancestorMoved(AncestorEvent event) {
+                // No action needed
+            }
+        });
 
         String title = windowTitle != null && !windowTitle.trim().isEmpty() ? windowTitle : "Ta4j-examples";
         ApplicationFrame frame = new ApplicationFrame(title);
@@ -282,6 +302,19 @@ final class SwingChartDisplayer implements ChartDisplayer {
             });
             hoverTimer.setRepeats(false);
             hoverTimer.start();
+        }
+
+        /**
+         * Stops the hover timer and clears all references to prevent memory leaks when
+         * the component is disposed or the listener is removed.
+         */
+        void disposeHoverTimer() {
+            if (hoverTimer != null) {
+                hoverTimer.stop();
+                hoverTimer = null;
+            }
+            lastEvent = null;
+            lastDisplayedText = null;
         }
 
         private void displayMouseoverData(ChartMouseEvent event) {

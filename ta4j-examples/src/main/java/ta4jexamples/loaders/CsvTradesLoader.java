@@ -70,7 +70,10 @@ public class CsvTradesLoader {
         // Reading all lines of the CSV file
         InputStream stream = CsvTradesLoader.class.getClassLoader().getResourceAsStream(bitstampCsvFile);
         List<String[]> lines = null;
-        assert stream != null;
+        if (stream == null) {
+            LOG.error("Unable to find CSV file: {}", bitstampCsvFile);
+            return new BaseBarSeriesBuilder().withName(bitstampCsvFile).build();
+        }
         try (final var csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line

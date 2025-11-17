@@ -60,11 +60,11 @@ public class RuleSerializationVarargsTest {
             break;
         }
 
+        assertThat(arrayValues).as("Expected to find indexes list in descriptor parameters").isNotNull();
         assertThat(arrayValues).isInstanceOf(List.class);
         @SuppressWarnings("unchecked")
         List<Integer> indexes = (List<Integer>) arrayValues;
         assertThat(indexes).containsExactly(1, 3, 5);
-
         // __args metadata is no longer serialized - check that parameters contain the
         // array values
         assertThat(descriptor.getParameters()).containsKey("indexes");
@@ -118,7 +118,7 @@ public class RuleSerializationVarargsTest {
             }
         }
 
-        assertThat(days).isNotNull();
+        assertThat(days).as("Expected to find daysOfWeek list in descriptor parameters").isNotNull();
         assertThat(days).containsExactlyInAnyOrder("WEDNESDAY", "FRIDAY");
 
         Rule reconstructed = RuleSerialization.fromDescriptor(series, descriptor);

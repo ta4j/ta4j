@@ -244,7 +244,14 @@ public final class RuleSerialization {
         DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
 
         try {
-            match.constructor.setAccessible(true);
+            try {
+                match.constructor.setAccessible(true);
+            } catch (SecurityException ex) {
+                // SecurityManager may prevent changing accessibility.
+                // Continue without changing accessibility - if the constructor is already
+                // accessible, newInstance will succeed; otherwise it will throw
+                // IllegalAccessException which is caught below.
+            }
             Rule rule = match.constructor.newInstance(match.arguments);
 
             // Restore custom name if present

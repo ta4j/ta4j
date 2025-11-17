@@ -95,7 +95,7 @@ public class IndicatorsToChart {
         /*
          * Getting bar series
          */
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
         /*
          * Creating indicators

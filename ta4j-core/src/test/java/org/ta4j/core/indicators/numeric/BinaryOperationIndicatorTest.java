@@ -25,11 +25,18 @@ package org.ta4j.core.indicators.numeric;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -70,10 +77,17 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testDifferenceIndicatorToIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7, 8, 9).build();
-        var left = new ClosePriceIndicator(series);
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(5, 6, 7, 8, 9)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(1, 2, 3, 4, 5)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
 
         var result = BinaryOperationIndicator.difference(left, right);
 
@@ -100,10 +114,17 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testProductIndicatorToIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
-        var left = new ClosePriceIndicator(series);
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 1, 2, 3).build();
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(2, 3, 4, 5, 6)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(3, 2, 1, 2, 3)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
 
         var result = BinaryOperationIndicator.product(left, right);
 
@@ -130,10 +151,17 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testQuotientIndicatorToIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 25, 30).build();
-        var left = new ClosePriceIndicator(series);
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 3, 4, 5, 6).build();
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(10, 15, 20, 25, 30)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(2, 3, 4, 5, 6)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
 
         var result = BinaryOperationIndicator.quotient(left, right);
 
@@ -160,10 +188,17 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testMaxIndicatorToIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 5, 3, 8, 2).build();
-        var left = new ClosePriceIndicator(series);
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 6, 4, 7).build();
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(1, 5, 3, 8, 2)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(3, 2, 6, 4, 7)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
 
         var result = BinaryOperationIndicator.max(left, right);
 
@@ -190,10 +225,17 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testMinIndicatorToIndicator() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 5, 3, 8, 2).build();
-        var left = new ClosePriceIndicator(series);
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(3, 2, 6, 4, 7).build();
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(1, 5, 3, 8, 2)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(3, 2, 6, 4, 7)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
 
         var result = BinaryOperationIndicator.min(left, right);
 
@@ -220,10 +262,9 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
     @Test
     public void testGetCountOfUnstableBars() {
-        var series1 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
-        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
-        var left = new ClosePriceIndicator(series1);
-        var right = new ClosePriceIndicator(series2);
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        var left = new ClosePriceIndicator(series);
+        var right = new ClosePriceIndicator(series);
 
         var result = BinaryOperationIndicator.sum(left, right);
 
@@ -239,5 +280,37 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
         var result = BinaryOperationIndicator.sum(left, right);
 
         assertEquals(series, result.getBarSeries());
+    }
+
+    @Test
+    public void testNullLeftIndicatorThrowsException() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        var right = new ClosePriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            BinaryOperationIndicator.sum((Indicator<Num>) null, right);
+        });
+    }
+
+    @Test
+    public void testNullRightIndicatorThrowsException() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        var left = new ClosePriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            BinaryOperationIndicator.sum(left, (Indicator<Num>) null);
+        });
+    }
+
+    @Test
+    public void testDifferentBarSeriesThrowsException() {
+        var series1 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        var series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(4, 5, 6).build();
+        var left = new ClosePriceIndicator(series1);
+        var right = new ClosePriceIndicator(series2);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            BinaryOperationIndicator.sum(left, right);
+        });
     }
 }

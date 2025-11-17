@@ -26,6 +26,7 @@ package org.ta4j.core.serialization;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -160,6 +161,124 @@ public class IndicatorSerializationTest {
         // Verify the reconstructed indicator produces the same values
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(reconstructed.getValue(i)).isEqualTo(indicator.getValue(i));
+        }
+    }
+
+    @Test
+    public void serializeCircularIndicatorReference() {
+        // Test that circular indicator references are handled gracefully
+        // This test verifies the fix for infinite recursion on circular graphs
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+
+        // Create two indicators that reference each other (circular reference)
+        CircularTestIndicator indicatorA = new CircularTestIndicator(series, base, "A", 5);
+        CircularTestIndicator indicatorB = new CircularTestIndicator(series, base, "B", 10);
+        indicatorA.setReferencedIndicator(indicatorB);
+        indicatorB.setReferencedIndicator(indicatorA);
+
+        // Serialization should complete without StackOverflowError
+        // The placeholder mechanism should detect the circular reference
+        ComponentDescriptor descriptorA = indicatorA.toDescriptor();
+
+        // Verify the descriptor structure
+        assertThat(descriptorA.getType()).isEqualTo("CircularTestIndicator");
+        // Only numeric parameters are serialized, so only 'value' will be present
+        assertThat(descriptorA.getParameters()).containsEntry("value", 5);
+        assertThat(descriptorA.getComponents()).hasSize(2); // base + indicatorB
+
+        // Verify that indicatorB is referenced (circular reference detected)
+        assertThat(descriptorA.getComponents()).anySatisfy(child -> {
+            assertThat(child.getType()).isEqualTo("CircularTestIndicator");
+            assertThat(child.getParameters()).containsEntry("value", 10);
+        });
+
+        // Verify JSON serialization also works
+        String json = indicatorA.toJson();
+        assertThat(json).contains("CircularTestIndicator");
+        assertThat(json).contains("\"value\":5");
+        assertThat(json).contains("\"value\":10");
+
+        // Verify that the circular reference doesn't cause infinite recursion
+        // by checking that the JSON doesn't contain excessive nesting
+        long indicatorCount = json.chars().filter(ch -> ch == '{').count();
+        // Should have reasonable nesting (base indicator + 2 circular indicators)
+        assertThat(indicatorCount).isLessThan(20);
+    }
+
+    @Test
+    public void serializeSelfReferencingIndicator() {
+        // Test an indicator that references itself
+        // Note: The serialization code explicitly excludes self-references (child !=
+        // indicator),
+        // so the self-reference field won't be serialized, but this test verifies that
+        // having a self-reference doesn't cause infinite recursion or crashes
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+
+        CircularTestIndicator indicator = new CircularTestIndicator(series, base, "SelfRef", 7);
+        indicator.setReferencedIndicator(indicator); // Self-reference
+
+        // Serialization should complete without StackOverflowError
+        // The self-reference is excluded by design, so only the base indicator will be
+        // serialized
+        ComponentDescriptor descriptor = indicator.toDescriptor();
+
+        assertThat(descriptor.getType()).isEqualTo("CircularTestIndicator");
+        // Only numeric parameters are serialized, so only 'value' will be present
+        assertThat(descriptor.getParameters()).containsEntry("value", 7);
+        // Self-references are excluded, so only the base indicator is included
+        assertThat(descriptor.getComponents()).hasSize(1); // base only
+
+        // Verify JSON serialization works
+        String json = indicator.toJson();
+        assertThat(json).contains("CircularTestIndicator");
+        assertThat(json).contains("\"value\":7");
+
+        // Verify no infinite recursion
+        long indicatorCount = json.chars().filter(ch -> ch == '{').count();
+        assertThat(indicatorCount).isLessThan(20);
+    }
+
+    /**
+     * Test indicator class that allows circular references for testing purposes.
+     * This class has a field that can reference another indicator, enabling
+     * circular reference scenarios.
+     */
+    private static class CircularTestIndicator extends CachedIndicator<Num> {
+        @SuppressWarnings("unused")
+        private final Indicator<Num> base;
+        @SuppressWarnings("unused")
+        private final String name;
+        @SuppressWarnings("unused")
+        private final int value;
+        private Indicator<Num> referencedIndicator;
+
+        public CircularTestIndicator(BarSeries series, Indicator<Num> base, String name, int value) {
+            super(series);
+            this.base = base;
+            this.name = name;
+            this.value = value;
+        }
+
+        public void setReferencedIndicator(Indicator<Num> referencedIndicator) {
+            this.referencedIndicator = referencedIndicator;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            Num baseValue = base.getValue(index);
+            if (referencedIndicator != null) {
+                Num refValue = referencedIndicator.getValue(index);
+                Num two = getBarSeries().numFactory().numOf(2);
+                return baseValue.plus(refValue).dividedBy(two);
+            }
+            return baseValue;
         }
     }
 }

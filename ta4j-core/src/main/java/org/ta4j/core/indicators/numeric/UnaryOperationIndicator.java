@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.numeric;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 
 import java.util.function.UnaryOperator;
@@ -86,12 +85,9 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      *
      * @param operand the operand indicator
      * @return {@code log(operand)}
-     * @apiNote precision may be lost, because this implementation is using the
-     *          underlying doubleValue method
      */
     public static UnaryOperationIndicator log(Indicator<Num> operand) {
-        return new UnaryOperationIndicator(val -> DecimalNumFactory.getInstance().numOf(Math.log(val.doubleValue())),
-                operand);
+        return new UnaryOperationIndicator(Num::log, operand);
     }
 
     /**
@@ -121,7 +117,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return operand.getCountOfUnstableBars();
     }
 
     @Override
