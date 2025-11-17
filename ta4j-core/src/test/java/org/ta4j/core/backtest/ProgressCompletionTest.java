@@ -25,7 +25,6 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
@@ -556,9 +555,10 @@ public class ProgressCompletionTest {
     }
 
     @Test
-    public void withTotalStrategiesReturnsNullForNullCallback() {
-        Consumer<Integer> result = ProgressCompletion.withTotalStrategies(null, 100);
-        assertNull(result);
+    public void withTotalStrategiesThrowsForNullCallback() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> ProgressCompletion.withTotalStrategies(null, 100));
+        assertEquals("callback must not be null", ex.getMessage());
     }
 
     @Test

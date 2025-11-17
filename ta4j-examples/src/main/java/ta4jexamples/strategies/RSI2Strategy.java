@@ -107,11 +107,11 @@ public class RSI2Strategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .withIndicators(new RSIIndicator(new ClosePriceIndicator(series), 2))
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "rsi2-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .withIndicators(new RSIIndicator(new ClosePriceIndicator(series), 2))
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "rsi2-strategy");
     }
 
 }

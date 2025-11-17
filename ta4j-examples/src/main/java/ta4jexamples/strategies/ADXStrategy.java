@@ -102,9 +102,9 @@ public class ADXStrategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "adx-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "adx-strategy");
     }
 }

@@ -86,11 +86,11 @@ public class NetMomentumStrategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .withIndicators(rsiIndicator, rsiM)
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "net-momentum-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .withIndicators(rsiIndicator, rsiM)
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "net-momentum-strategy");
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {

@@ -104,9 +104,9 @@ public class GlobalExtremaStrategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "global-extrema-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "global-extrema-strategy");
     }
 }

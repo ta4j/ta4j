@@ -588,23 +588,29 @@ public final class ProgressCompletion {
     }
 
     /**
-     * Wraps a progress callback to set the total strategies count. This allows
-     * percentage-based logging to work correctly.
+     * Configures a progress callback with the total strategies count. This allows
+     * percentage-based logging to work correctly for logging callbacks.
+     * <p>
+     * This method only affects logging callbacks ({@link LoggingProgressCallback}
+     * and {@link LoggingWithMemoryProgressCallback}). For other callback types, the
+     * callback is returned unchanged and the {@code totalStrategies} parameter is
+     * ignored.
      *
-     * @param callback        the progress callback to wrap
+     * @param callback        the progress callback to configure (must not be null)
      * @param totalStrategies the total number of strategies
-     * @return a Consumer that wraps the original callback with total strategies
-     *         information
+     * @return the same callback instance (configured if it's a logging callback)
+     * @throws IllegalArgumentException if callback is null
      */
     static Consumer<Integer> withTotalStrategies(Consumer<Integer> callback, int totalStrategies) {
         if (callback == null) {
-            return null;
+            throw new IllegalArgumentException("callback must not be null");
         }
         if (callback instanceof LoggingProgressCallback) {
             ((LoggingProgressCallback) callback).setTotalStrategies(totalStrategies);
         } else if (callback instanceof LoggingWithMemoryProgressCallback) {
             ((LoggingWithMemoryProgressCallback) callback).setTotalStrategies(totalStrategies);
         }
+        // For other callback types, return unchanged (totalStrategies is ignored)
         return callback;
     }
 }

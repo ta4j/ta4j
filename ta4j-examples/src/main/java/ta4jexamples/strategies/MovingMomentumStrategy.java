@@ -112,9 +112,9 @@ public class MovingMomentumStrategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "moving-momentum-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "moving-momentum-strategy");
     }
 }

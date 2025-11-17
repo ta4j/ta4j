@@ -98,9 +98,9 @@ public class CCICorrectionStrategy {
 
         // Charting
         new ChartMaker().builder()
-            .withTradingRecord(series, strategy.getName(), tradingRecord)
-            .build()
-            .display()
-            .save("ta4j-examples/log/charts", "cci-correction-strategy");
+                .withTradingRecord(series, strategy.getName(), tradingRecord)
+                .build()
+                .display()
+                .save("ta4j-examples/log/charts", "cci-correction-strategy");
     }
 }
