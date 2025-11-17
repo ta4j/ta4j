@@ -845,6 +845,45 @@ public class ChartMakerTest {
     }
 
     @Test
+    public void testSaveChartImageWithPathDirectoryRejectsNullChart() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(null, barSeries, customDir),
+                    "Should reject null chart when saving to Path directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithPathDirectoryRejectsNullSeries() throws IOException {
+        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        try {
+            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, null, customDir),
+                    "Should reject null BarSeries when saving to Path directory");
+        } finally {
+            if (Files.exists(customDir)) {
+                Files.walk(customDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
     public void testSaveChartImageWithStringDirectory() throws IOException {
         Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
         try {

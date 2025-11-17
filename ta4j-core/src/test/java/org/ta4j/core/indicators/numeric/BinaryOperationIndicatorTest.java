@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.numeric;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
@@ -187,6 +188,49 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
     }
 
     @Test
+    public void testQuotientDivisionByZeroIndicator() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        List<Num> leftValues = Arrays.asList(10, 20, 30, 40, 50)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(2, 0, 5, 0, 10)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, leftValues);
+        var right = new MockIndicator(series, rightValues);
+
+        var result = BinaryOperationIndicator.quotient(left, right);
+
+        // Index 0: 10 / 2 = 5 (normal division)
+        assertNumEquals(5, result.getValue(0));
+        // Index 1: 20 / 0 = NaN (division by zero)
+        assertTrue("Expected NaN at index 1 (division by zero)", result.getValue(1).isNaN());
+        // Index 2: 30 / 5 = 6 (normal division)
+        assertNumEquals(6, result.getValue(2));
+        // Index 3: 40 / 0 = NaN (division by zero)
+        assertTrue("Expected NaN at index 3 (division by zero)", result.getValue(3).isNaN());
+        // Index 4: 50 / 10 = 5 (normal division)
+        assertNumEquals(5, result.getValue(4));
+    }
+
+    @Test
+    public void testQuotientDivisionByZeroNumber() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        var indicator = new ClosePriceIndicator(series);
+
+        var result = BinaryOperationIndicator.quotient(indicator, 0);
+
+        // All indexes should be NaN when dividing by zero
+        assertTrue("Expected NaN at index 0 (division by zero)", result.getValue(0).isNaN());
+        assertTrue("Expected NaN at index 1 (division by zero)", result.getValue(1).isNaN());
+        assertTrue("Expected NaN at index 2 (division by zero)", result.getValue(2).isNaN());
+        assertTrue("Expected NaN at index 3 (division by zero)", result.getValue(3).isNaN());
+        assertTrue("Expected NaN at index 4 (division by zero)", result.getValue(4).isNaN());
+    }
+
+    @Test
     public void testMaxIndicatorToIndicator() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         List<Num> leftValues = Arrays.asList(1, 5, 3, 8, 2)
@@ -221,6 +265,26 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
         assertNumEquals(3, result.getValue(2));
         assertNumEquals(4, result.getValue(3));
         assertNumEquals(5, result.getValue(4));
+    }
+
+    @Test
+    public void testSumWithDifferingUnstableBars() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        List<Num> leftValues = Arrays.asList(1, 2, 3, 4, 5)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        List<Num> rightValues = Arrays.asList(2, 3, 4, 5, 6)
+                .stream()
+                .map(numFactory::numOf)
+                .collect(Collectors.toList());
+        var left = new MockIndicator(series, 2, leftValues);
+        var right = new MockIndicator(series, 5, rightValues);
+
+        var result = BinaryOperationIndicator.sum(left, right);
+
+        assertEquals(Math.max(left.getCountOfUnstableBars(), right.getCountOfUnstableBars()),
+                result.getCountOfUnstableBars());
     }
 
     @Test

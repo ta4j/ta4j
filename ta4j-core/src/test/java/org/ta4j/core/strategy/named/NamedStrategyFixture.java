@@ -50,27 +50,30 @@ public final class NamedStrategyFixture extends NamedStrategy {
     private final Num threshold;
     private final boolean delegated;
 
-    private NamedStrategyFixture(BarSeries series, Num threshold, int unstableBars, boolean delegated) {
+    private NamedStrategyFixture(BarSeries series, Num threshold, int unstableBars, boolean delegated,
+            boolean countTypedConstruction) {
         super(buildLabel(threshold, unstableBars), buildEntryRule(series, threshold), buildExitRule(series, threshold),
                 unstableBars);
         this.threshold = threshold;
         this.delegated = delegated;
-        TYPED_CONSTRUCTIONS.incrementAndGet();
+        if (countTypedConstruction) {
+            TYPED_CONSTRUCTIONS.incrementAndGet();
+        }
     }
 
     protected NamedStrategyFixture(BarSeries series, Num threshold, int unstableBars) {
-        this(series, threshold, unstableBars, false);
+        this(series, threshold, unstableBars, false, true);
     }
 
     public NamedStrategyFixture(BarSeries series, String... parameters) {
-        this(series, parseThreshold(series, parameters), parseUnstable(parameters), true);
+        this(series, parseThreshold(series, parameters), parseUnstable(parameters), true, false);
         VARARGS_CONSTRUCTIONS.incrementAndGet();
     }
 
     public static NamedStrategyFixture create(BarSeries series, Num threshold, int unstableBars) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(threshold, "threshold");
-        return new NamedStrategyFixture(series, threshold, unstableBars, false);
+        return new NamedStrategyFixture(series, threshold, unstableBars, false, true);
     }
 
     public static void resetConstructionCounters() {

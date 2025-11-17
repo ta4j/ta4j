@@ -213,7 +213,7 @@ public class StrategySerializationTest {
         assertThat(restored).isInstanceOf(NamedStrategyFixture.class);
         NamedStrategyFixture reconstructed = (NamedStrategyFixture) restored;
 
-        assertThat(NamedStrategyFixture.typedConstructionCount()).isEqualTo(2);
+        assertThat(NamedStrategyFixture.typedConstructionCount()).isEqualTo(1);
         assertThat(NamedStrategyFixture.varargsConstructionCount()).isEqualTo(1);
         assertThat(reconstructed.isDelegated()).isTrue();
         assertThat(Double.isNaN(reconstructed.getThreshold().doubleValue())).isTrue();
