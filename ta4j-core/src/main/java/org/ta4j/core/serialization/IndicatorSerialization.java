@@ -231,6 +231,9 @@ public final class IndicatorSerialization {
 
     private static Optional<InvocationPlan> tryInvoke(Constructor<?> constructor, BarSeries series,
             List<Indicator<?>> components, Map<String, Object> parameters, boolean hasIndicatorConstructor) {
+        if (components == null) {
+            return Optional.empty();
+        }
         Class<?>[] parameterTypes = constructor.getParameterTypes();
         Parameter[] parameterMetadata = constructor.getParameters();
         Type[] genericParameterTypes = constructor.getGenericParameterTypes();
@@ -327,7 +330,8 @@ public final class IndicatorSerialization {
         }
 
         // Validate that all components were consumed
-        boolean hasComponents = components != null && !components.isEmpty();
+        // Note: components is guaranteed non-null due to early return check above
+        boolean hasComponents = !components.isEmpty();
         if (!constructorUsesIndicators && hasComponents && hasIndicatorConstructor) {
             return Optional.empty();
         }

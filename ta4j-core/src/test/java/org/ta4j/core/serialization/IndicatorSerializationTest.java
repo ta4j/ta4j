@@ -260,6 +260,51 @@ public class IndicatorSerializationTest {
         assertThat(indicatorCount).isLessThan(20);
     }
 
+    @Test
+    public void deserializeIndicatorWithNoComponents() {
+        // Test that indicators with no child components can be deserialized correctly.
+        // This exercises the code path where components is an empty list, which
+        // exercises
+        // similar defensive logic to the null check in tryInvoke. The null check in
+        // tryInvoke
+        // is defensive programming that protects against a bug or future change, but in
+        // normal
+        // operation components is always initialized as an empty list (never null) when
+        // there
+        // are no child indicators. Since there's no way to pass null components through
+        // the
+        // public API (instantiate always initializes it as new ArrayList<>()), this
+        // test
+        // verifies the related edge case behavior.
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> original = new ClosePriceIndicator(series);
+
+        // Create a descriptor manually with no components (empty list)
+        ComponentDescriptor descriptor = ComponentDescriptor.builder().withType("ClosePriceIndicator").build();
+
+        // Verify the descriptor has no components
+        assertThat(descriptor.getComponents()).isEmpty();
+
+        // Deserialize through the public API - this exercises the code path where
+        // components is an empty list (not null, but exercises similar defensive logic)
+        Indicator<?> reconstructed = IndicatorSerialization.fromDescriptor(series, descriptor);
+
+        // Verify the indicator was reconstructed correctly
+        assertThat(reconstructed).isInstanceOf(ClosePriceIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
+
+        // Verify it produces the same values
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(reconstructed.getValue(i)).isEqualTo(original.getValue(i));
+        }
+
+        // Also test via JSON round-trip
+        String json = original.toJson();
+        Indicator<?> fromJson = IndicatorSerialization.fromJson(series, json);
+        assertThat(fromJson).isInstanceOf(ClosePriceIndicator.class);
+        assertThat(fromJson.toDescriptor()).isEqualTo(descriptor);
+    }
+
     /**
      * Test indicator class that allows circular references for testing purposes.
      * This class has a field that can reference another indicator, enabling

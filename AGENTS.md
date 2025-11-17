@@ -28,8 +28,30 @@
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
-- When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don’t break tests.
+- When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
 
+### Unit Testing Best Practices
+
+- **Never use reflection to access private APIs in tests.** Always test through the nearest public API, even if it requires additional setup. If testing private methods is necessary, refactor the production code to support dependency injection and mocks, or extract the logic into a testable public method. Reflection-based tests are brittle, harder to maintain, and don't reflect real usage patterns.
+- **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties:
+  ```java
+  // Good
+  IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+      someMethod();
+  });
+  assertThat(ex.getMessage()).contains("expected message");
+  
+  // Avoid
+  @Test(expected = IllegalArgumentException.class)
+  public void testMethod() { ... }
+  
+  // Avoid
+  try {
+      someMethod();
+      fail("Expected exception");
+  } catch (IllegalArgumentException e) { ... }
+  ```
+- **Prefer dependency injection for testability.** When code is difficult to test, refactor to accept dependencies through constructors or methods rather than accessing them statically or creating them internally. This enables mocking and makes tests more focused and maintainable.
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
