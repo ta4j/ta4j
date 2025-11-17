@@ -151,7 +151,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
 
         // Add mouseover listener
         int hoverDelay = resolveHoverDelay();
-        ChartMouseoverListener mouseoverListener = new ChartMouseoverListener(chartClone, panel, infoLabel, hoverDelay);
+        ChartMouseoverListener mouseoverListener = new ChartMouseoverListener(panel, infoLabel, hoverDelay);
         panel.addChartMouseListener(mouseoverListener);
 
         // Add ancestor listener to cleanup timer when component is removed
@@ -265,7 +265,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
         private String lastDisplayedText;
         private ChartMouseEvent lastEvent;
 
-        ChartMouseoverListener(JFreeChart chart, ChartPanel chartPanel, JLabel infoLabel, int hoverDelay) {
+        ChartMouseoverListener(ChartPanel chartPanel, JLabel infoLabel, int hoverDelay) {
             this.chartPanel = chartPanel;
             this.infoLabel = infoLabel;
             this.hoverDelay = hoverDelay;

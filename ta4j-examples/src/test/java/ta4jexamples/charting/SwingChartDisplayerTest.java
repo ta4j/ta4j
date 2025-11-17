@@ -232,8 +232,8 @@ class SwingChartDisplayerTest {
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
         int hoverDelay = 1000;
 
-        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(chart,
-                panel, infoLabel, hoverDelay);
+        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(panel,
+                infoLabel, hoverDelay);
         assertNotNull(listener, "Listener should be created successfully");
     }
 
@@ -244,12 +244,12 @@ class SwingChartDisplayerTest {
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
 
         // Test with different delay values
-        SwingChartDisplayer.ChartMouseoverListener listener1 = new SwingChartDisplayer.ChartMouseoverListener(chart,
-                panel, infoLabel, 0);
+        SwingChartDisplayer.ChartMouseoverListener listener1 = new SwingChartDisplayer.ChartMouseoverListener(panel,
+                infoLabel, 0);
         assertNotNull(listener1, "Listener should be created with zero delay");
 
-        SwingChartDisplayer.ChartMouseoverListener listener2 = new SwingChartDisplayer.ChartMouseoverListener(chart,
-                panel, infoLabel, 5000);
+        SwingChartDisplayer.ChartMouseoverListener listener2 = new SwingChartDisplayer.ChartMouseoverListener(panel,
+                infoLabel, 5000);
         assertNotNull(listener2, "Listener should be created with large delay");
     }
 
@@ -258,8 +258,8 @@ class SwingChartDisplayerTest {
         JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
         ChartPanel panel = new ChartPanel(chart);
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
-        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(chart,
-                panel, infoLabel, 1000);
+        SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(panel,
+                infoLabel, 1000);
 
         // Verify listener was created
         assertNotNull(listener, "Listener should be created successfully");
