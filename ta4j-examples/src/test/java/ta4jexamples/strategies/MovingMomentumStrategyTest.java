@@ -32,7 +32,7 @@ public class MovingMomentumStrategyTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         MovingMomentumStrategy.main(null);
     }
 }

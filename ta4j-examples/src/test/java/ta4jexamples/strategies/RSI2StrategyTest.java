@@ -32,7 +32,7 @@ public class RSI2StrategyTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         RSI2Strategy.main(null);
     }
 }

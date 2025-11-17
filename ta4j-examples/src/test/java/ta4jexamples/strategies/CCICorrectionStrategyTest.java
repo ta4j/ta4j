@@ -32,7 +32,7 @@ public class CCICorrectionStrategyTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         CCICorrectionStrategy.main(null);
     }
 }

@@ -32,7 +32,7 @@ public class GlobalExtremaStrategyTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         GlobalExtremaStrategy.main(null);
     }
 }

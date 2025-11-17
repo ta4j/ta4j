@@ -25,6 +25,7 @@ package ta4jexamples.charting;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
+import org.junit.Assume;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -147,6 +148,9 @@ class SwingChartDisplayerTest {
 
     @Test
     void testDisplayHandlesHeadlessEnvironment() {
+        // This test only runs in headless environments
+        Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
+
         // In headless environment, display should fail gracefully
         JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
 
@@ -226,6 +230,7 @@ class SwingChartDisplayerTest {
 
     @Test
     void testChartMouseoverListenerCreation() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
         int hoverDelay = 1000;
 
@@ -236,6 +241,7 @@ class SwingChartDisplayerTest {
 
     @Test
     void testChartMouseoverListenerCreationWithDifferentDelays() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
 
         // Test with different delay values
@@ -250,6 +256,7 @@ class SwingChartDisplayerTest {
 
     @Test
     void testChartMouseoverListenerHandlesClick() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         javax.swing.JLabel infoLabel = new javax.swing.JLabel(" ");
         SwingChartDisplayer.ChartMouseoverListener listener = new SwingChartDisplayer.ChartMouseoverListener(infoLabel,
                 1000);
