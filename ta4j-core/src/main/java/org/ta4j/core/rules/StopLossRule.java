@@ -24,7 +24,6 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
