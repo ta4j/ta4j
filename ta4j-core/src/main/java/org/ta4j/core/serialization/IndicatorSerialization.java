@@ -613,7 +613,10 @@ public final class IndicatorSerialization {
                     loader = IndicatorSerialization.class.getClassLoader();
                 }
                 if (loader == null) {
-                    return;
+                    throw new IllegalStateException(
+                            "No ClassLoader available: both Thread.currentThread().getContextClassLoader() "
+                                    + "and IndicatorSerialization.class.getClassLoader() returned null. "
+                                    + "Cannot initialize indicator type cache.");
                 }
                 Enumeration<URL> resources = loader.getResources(PACKAGE_PATH);
                 while (resources.hasMoreElements()) {
