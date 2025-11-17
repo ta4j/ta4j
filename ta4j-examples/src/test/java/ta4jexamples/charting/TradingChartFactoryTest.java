@@ -219,29 +219,6 @@ class TradingChartFactoryTest {
     }
 
     @Test
-    void testCreateAnalysisChart() {
-        JFreeChart chart = factory.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10,
-                AnalysisType.MOVING_AVERAGE_20);
-
-        assertNotNull(chart, "Chart should not be null");
-        assertNotNull(chart.getTitle(), "Chart should have a title");
-    }
-
-    @Test
-    void testCreateAnalysisChartWithSingleType() {
-        JFreeChart chart = factory.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_50);
-
-        assertNotNull(chart, "Chart should not be null");
-    }
-
-    @Test
-    void testCreateAnalysisChartWithNoTypes() {
-        JFreeChart chart = factory.createAnalysisChart(barSeries);
-
-        assertNotNull(chart, "Chart should be created even without analysis types");
-    }
-
-    @Test
     void testChartConfiguration() {
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 

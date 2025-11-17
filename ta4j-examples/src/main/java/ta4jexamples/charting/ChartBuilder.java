@@ -24,6 +24,7 @@
 package ta4jexamples.charting;
 
 import org.jfree.chart.JFreeChart;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
@@ -41,9 +42,10 @@ import java.util.Objects;
  * This builder supports creating various chart types and combinations:
  * </p>
  * <ul>
- * <li>Trading record charts with optional indicators and analysis overlays</li>
- * <li>Analysis charts with optional indicators</li>
- * <li>Dual-axis charts with optional additional indicators</li>
+ * <li>Trading record charts with optional indicators as subplots</li>
+ * <li>Indicator-only charts with optional indicators as subplots</li>
+ * <li>Dual-axis charts (automatically created when an analysis criterion is
+ * specified)</li>
  * </ul>
  *
  * <p>
@@ -53,8 +55,8 @@ import java.util.Objects;
  * <pre>
  * ChartHandle handle = chartMaker.builder()
  *         .withTradingRecord(series, strategyName, tradingRecord)
- *         .withIndicators(rsi, macd)
- *         .withAnalysis(AnalysisType.MOVING_AVERAGE_20)
+ *         .addIndicators(rsi, macd)
+ *         .withAnalysisCriterion(series, tradingRecord, new MaximumDrawdownCriterion())
  *         .withTitle("My Chart")
  *         .build()
  *         .display()
@@ -66,7 +68,7 @@ import java.util.Objects;
 public final class ChartBuilder {
 
     private enum ChartType {
-        TRADING_RECORD, ANALYSIS, DUAL_AXIS
+        TRADING_RECORD, INDICATORS
     }
 
     private final ChartMaker chartMaker;
@@ -76,12 +78,9 @@ public final class ChartBuilder {
     private BarSeries series;
     private String strategyName;
     private TradingRecord tradingRecord;
-    private Indicator<Num> primaryIndicator;
-    private String primaryLabel;
-    private Indicator<Num> secondaryIndicator;
-    private String secondaryLabel;
     private final List<Indicator<Num>> additionalIndicators = new ArrayList<>();
-    private final List<AnalysisType> analysisTypes = new ArrayList<>();
+    private AnalysisCriterion analysisCriterion;
+    private String analysisCriterionLabel;
     private String customTitle;
 
     ChartBuilder(ChartMaker chartMaker, TradingChartFactory chartFactory) {
@@ -110,88 +109,138 @@ public final class ChartBuilder {
     }
 
     /**
-     * Configures the builder to create an analysis chart.
+     * Configures the builder to create an indicator-only chart (no OHLC
+     * candlesticks).
      *
-     * @param series        the bar series
-     * @param analysisTypes the analysis types to overlay
+     * @param series     the bar series
+     * @param indicators the indicators to display as subplots
      * @return this builder for method chaining
      * @throws IllegalStateException if a different base chart type has already been
      *                               set
-     * @since 0.19
-     */
-    public ChartBuilder withAnalysis(BarSeries series, AnalysisType... analysisTypes) {
-        validateBaseTypeNotSet();
-        this.chartType = ChartType.ANALYSIS;
-        this.series = Objects.requireNonNull(series, "Series cannot be null");
-        if (analysisTypes == null) {
-            throw new IllegalArgumentException("Analysis types cannot be null");
-        }
-        for (AnalysisType type : analysisTypes) {
-            if (type == null) {
-                throw new IllegalArgumentException("Analysis types cannot contain null values");
-            }
-        }
-        this.analysisTypes.addAll(Arrays.asList(analysisTypes));
-        return this;
-    }
-
-    /**
-     * Configures the builder to create a dual-axis chart.
-     *
-     * @param series             the bar series
-     * @param primaryIndicator   the primary indicator (left axis)
-     * @param primaryLabel       the label for the primary axis
-     * @param secondaryIndicator the secondary indicator (right axis)
-     * @param secondaryLabel     the label for the secondary axis
-     * @return this builder for method chaining
-     * @throws IllegalStateException if a different base chart type has already been
-     *                               set
-     * @since 0.19
-     */
-    public ChartBuilder withDualAxis(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
-            Indicator<Num> secondaryIndicator, String secondaryLabel) {
-        validateBaseTypeNotSet();
-        this.chartType = ChartType.DUAL_AXIS;
-        this.series = Objects.requireNonNull(series, "Series cannot be null");
-        this.primaryIndicator = Objects.requireNonNull(primaryIndicator, "Primary indicator cannot be null");
-        this.primaryLabel = Objects.requireNonNull(primaryLabel, "Primary label cannot be null");
-        this.secondaryIndicator = Objects.requireNonNull(secondaryIndicator, "Secondary indicator cannot be null");
-        this.secondaryLabel = Objects.requireNonNull(secondaryLabel, "Secondary label cannot be null");
-        return this;
-    }
-
-    /**
-     * Adds analysis overlays to the chart. Can be used with trading record or
-     * analysis charts.
-     *
-     * @param analysisTypes the analysis types to add as overlays
-     * @return this builder for method chaining
-     * @since 0.19
-     */
-    public ChartBuilder addAnalysis(AnalysisType... analysisTypes) {
-        if (analysisTypes == null) {
-            throw new IllegalArgumentException("Analysis types cannot be null");
-        }
-        for (AnalysisType type : analysisTypes) {
-            if (type == null) {
-                throw new IllegalArgumentException("Analysis types cannot contain null values");
-            }
-        }
-        this.analysisTypes.addAll(Arrays.asList(analysisTypes));
-        return this;
-    }
-
-    /**
-     * Adds indicators to the chart. For OHLC-based charts (trading record,
-     * analysis), indicators are added as subplots. For dual-axis charts, indicators
-     * are added as additional series.
-     *
-     * @param indicators the indicators to add
-     * @return this builder for method chaining
      * @since 0.19
      */
     @SafeVarargs
-    public final ChartBuilder withIndicators(Indicator<Num>... indicators) {
+    public final ChartBuilder withIndicators(BarSeries series, Indicator<Num>... indicators) {
+        validateBaseTypeNotSet();
+        this.chartType = ChartType.INDICATORS;
+        this.series = Objects.requireNonNull(series, "Series cannot be null");
+        if (indicators == null) {
+            throw new IllegalArgumentException("Indicators cannot be null");
+        }
+        if (indicators.length == 0) {
+            throw new IllegalArgumentException("At least one indicator must be provided");
+        }
+        for (Indicator<Num> indicator : indicators) {
+            if (indicator == null) {
+                throw new IllegalArgumentException("Indicators cannot contain null values");
+            }
+        }
+        this.additionalIndicators.addAll(Arrays.asList(indicators));
+        return this;
+    }
+
+    /**
+     * Adds an analysis criterion to visualize on the chart. This will create a
+     * dual-axis chart with the base chart (price or indicators) on the left axis
+     * and the analysis criterion on the right axis.
+     *
+     * <p>
+     * Only one analysis criterion can be added per chart. The criterion will be
+     * visualized as a time series showing its value at each bar index.
+     * </p>
+     *
+     * <p>
+     * If no label is provided, it will be inferred from the criterion class name by
+     * removing the "Criterion" suffix. For example, {@code ExpectancyCriterion}
+     * becomes "Expectancy".
+     * </p>
+     *
+     * @param series        the bar series
+     * @param tradingRecord the trading record to calculate the criterion from
+     * @param criterion     the analysis criterion to visualize
+     * @return this builder for method chaining
+     * @throws IllegalStateException if an analysis criterion has already been set
+     * @since 0.19
+     */
+    public ChartBuilder withAnalysisCriterion(BarSeries series, TradingRecord tradingRecord,
+            AnalysisCriterion criterion) {
+        return withAnalysisCriterion(series, tradingRecord, criterion, null);
+    }
+
+    /**
+     * Adds an analysis criterion to visualize on the chart. This will create a
+     * dual-axis chart with the base chart (price or indicators) on the left axis
+     * and the analysis criterion on the right axis.
+     *
+     * <p>
+     * Only one analysis criterion can be added per chart. The criterion will be
+     * visualized as a time series showing its value at each bar index.
+     * </p>
+     *
+     * <p>
+     * If the label is null or empty, it will be inferred from the criterion class
+     * name by removing the "Criterion" suffix. For example,
+     * {@code ExpectancyCriterion} becomes "Expectancy".
+     * </p>
+     *
+     * @param series        the bar series
+     * @param tradingRecord the trading record to calculate the criterion from
+     * @param criterion     the analysis criterion to visualize
+     * @param label         the label for the criterion axis (optional, will be
+     *                      inferred if null or empty)
+     * @return this builder for method chaining
+     * @throws IllegalStateException if an analysis criterion has already been set
+     * @since 0.19
+     */
+    public ChartBuilder withAnalysisCriterion(BarSeries series, TradingRecord tradingRecord,
+            AnalysisCriterion criterion, String label) {
+        if (this.analysisCriterion != null) {
+            throw new IllegalStateException(
+                    "Analysis criterion already set. Only one analysis criterion can be configured per chart.");
+        }
+        this.series = Objects.requireNonNull(series, "Series cannot be null");
+        this.tradingRecord = Objects.requireNonNull(tradingRecord, "Trading record cannot be null");
+        this.analysisCriterion = Objects.requireNonNull(criterion, "Criterion cannot be null");
+
+        // Infer label from class name if not provided
+        if (label == null || label.trim().isEmpty()) {
+            this.analysisCriterionLabel = inferLabelFromCriterion(criterion);
+        } else {
+            this.analysisCriterionLabel = label;
+        }
+        return this;
+    }
+
+    /**
+     * Infers a label from the analysis criterion class name by removing the
+     * "Criterion" suffix.
+     *
+     * @param criterion the analysis criterion
+     * @return the inferred label
+     */
+    private String inferLabelFromCriterion(AnalysisCriterion criterion) {
+        String className = criterion.getClass().getSimpleName();
+        if (className.endsWith("Criterion")) {
+            return className.substring(0, className.length() - "Criterion".length());
+        }
+        return className;
+    }
+
+    /**
+     * Adds additional indicators to the chart as subplots. Can only be used with
+     * trading record charts.
+     *
+     * @param indicators the indicators to add as subplots
+     * @return this builder for method chaining
+     * @throws IllegalStateException if called on an indicator-only chart
+     * @since 0.19
+     */
+    @SafeVarargs
+    public final ChartBuilder addIndicators(Indicator<Num>... indicators) {
+        if (chartType == ChartType.INDICATORS) {
+            throw new IllegalStateException(
+                    "Cannot add indicators to an indicator-only chart. Use withIndicators(series, ...) to create the base chart.");
+        }
         if (indicators == null) {
             throw new IllegalArgumentException("Indicators cannot be null");
         }
@@ -228,7 +277,12 @@ public final class ChartBuilder {
     public ChartHandle build() {
         if (chartType == null) {
             throw new IllegalStateException(
-                    "No chart type configured. Call withTradingRecord(), withAnalysis(), or withDualAxis() first.");
+                    "No chart type configured. Call withTradingRecord() or withIndicators(series, ...) first.");
+        }
+
+        if (analysisCriterion != null && tradingRecord == null) {
+            throw new IllegalStateException(
+                    "Analysis criterion requires a trading record. Call withAnalysisCriterion() after withTradingRecord().");
         }
 
         JFreeChart chart = buildChart();
@@ -245,13 +299,30 @@ public final class ChartBuilder {
     private JFreeChart buildChart() {
         return switch (chartType) {
         case TRADING_RECORD -> buildTradingRecordChart();
-        case ANALYSIS -> buildAnalysisChart();
-        case DUAL_AXIS -> buildDualAxisChart();
+        case INDICATORS -> buildIndicatorsChart();
         };
     }
 
     @SuppressWarnings("unchecked")
     private JFreeChart buildTradingRecordChart() {
+        // If analysis criterion is specified, create dual-axis chart
+        if (analysisCriterion != null) {
+            AnalysisCriterionIndicator criterionIndicator = new AnalysisCriterionIndicator(series, analysisCriterion,
+                    tradingRecord);
+            Indicator<Num> closePrice = new org.ta4j.core.indicators.helpers.ClosePriceIndicator(series);
+
+            Indicator<Num>[] indicatorsArray = additionalIndicators.isEmpty() ? null
+                    : additionalIndicators.toArray(new Indicator[0]);
+
+            String effectiveTitle = customTitle != null && !customTitle.trim().isEmpty() ? customTitle : null;
+            JFreeChart chart = chartFactory.createDualAxisChartWithAnalysisCriterion(series, strategyName,
+                    tradingRecord, closePrice, "Price", criterionIndicator, analysisCriterionLabel, indicatorsArray,
+                    effectiveTitle);
+
+            return chart;
+        }
+
+        // Otherwise, create standard trading record chart
         Indicator<Num>[] indicatorsArray = additionalIndicators.isEmpty() ? null
                 : additionalIndicators.toArray(new Indicator[0]);
 
@@ -262,11 +333,6 @@ public final class ChartBuilder {
             chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
         }
 
-        // Add analysis overlays if specified
-        if (!analysisTypes.isEmpty()) {
-            chartFactory.addAnalysisToChart(chart, series, analysisTypes.toArray(new AnalysisType[0]));
-        }
-
         // Apply custom title if specified
         if (customTitle != null && !customTitle.trim().isEmpty()) {
             chart.setTitle(customTitle);
@@ -278,16 +344,16 @@ public final class ChartBuilder {
         return chart;
     }
 
-    private JFreeChart buildAnalysisChart() {
-        AnalysisType[] analysisArray = analysisTypes.isEmpty() ? new AnalysisType[0]
-                : analysisTypes.toArray(new AnalysisType[0]);
-        JFreeChart chart = chartFactory.createAnalysisChart(series, analysisArray);
+    private JFreeChart buildIndicatorsChart() {
+        @SuppressWarnings("unchecked")
+        Indicator<Num>[] indicatorsArray = additionalIndicators.toArray(new Indicator[0]);
+        JFreeChart chart = chartFactory.createIndicatorChart(series, indicatorsArray);
 
-        // Add indicators as subplots if specified
-        if (!additionalIndicators.isEmpty()) {
-            @SuppressWarnings("unchecked")
-            Indicator<Num>[] indicatorsArray = additionalIndicators.toArray(new Indicator[0]);
-            chart = chartFactory.addIndicatorsToChart(chart, series, indicatorsArray);
+        // If analysis criterion is specified, convert to dual-axis
+        if (analysisCriterion != null) {
+            AnalysisCriterionIndicator criterionIndicator = new AnalysisCriterionIndicator(series, analysisCriterion,
+                    tradingRecord);
+            chart = chartFactory.addAnalysisCriterionToChart(chart, series, criterionIndicator, analysisCriterionLabel);
         }
 
         // Apply custom title if specified
@@ -296,21 +362,6 @@ public final class ChartBuilder {
             if (chart.getTitle() != null) {
                 chart.getTitle().setPaint(java.awt.Color.LIGHT_GRAY);
             }
-        }
-
-        return chart;
-    }
-
-    private JFreeChart buildDualAxisChart() {
-        String effectiveTitle = customTitle != null && !customTitle.trim().isEmpty() ? customTitle : null;
-        JFreeChart chart = chartFactory.createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
-                secondaryLabel, effectiveTitle);
-
-        // Add additional indicators as series if specified
-        if (!additionalIndicators.isEmpty()) {
-            @SuppressWarnings("unchecked")
-            Indicator<Num>[] indicatorsArray = additionalIndicators.toArray(new Indicator[0]);
-            chartFactory.addIndicatorsToDualAxisChart(chart, series, indicatorsArray);
         }
 
         return chart;

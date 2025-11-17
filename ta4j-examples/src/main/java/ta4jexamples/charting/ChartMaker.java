@@ -264,38 +264,6 @@ public class ChartMaker {
     }
 
     /**
-     * Builds an analysis overlay chart.
-     *
-     * @since 0.19
-     */
-    public JFreeChart createAnalysisChart(BarSeries series, AnalysisType... analysisTypes) {
-        validateSeries(series);
-        if (analysisTypes == null) {
-            throw new IllegalArgumentException("Analysis types cannot be null");
-        }
-        for (AnalysisType analysisType : analysisTypes) {
-            if (analysisType == null) {
-                throw new IllegalArgumentException("Analysis types cannot contain null values");
-            }
-        }
-        return chartFactory.createAnalysisChart(series, analysisTypes);
-    }
-
-    /**
-     * Displays an analysis overlay chart.
-     *
-     * @since 0.19
-     */
-    public void displayAnalysisChart(BarSeries series, AnalysisType... analysisTypes) {
-        try {
-            JFreeChart chart = createAnalysisChart(series, analysisTypes);
-            displayChart(chart);
-        } catch (Exception ex) {
-            LOG.error("Failed to display analysis chart for {}", safeSeriesName(series), ex);
-        }
-    }
-
-    /**
      * Builds a dual-axis chart with two indicators.
      *
      * @param series             the bar series
@@ -553,16 +521,6 @@ public class ChartMaker {
     /**
      * Legacy convenience method retained for backwards compatibility.
      *
-     * @deprecated use {@link #displayAnalysisChart(BarSeries, AnalysisType...)}
-     */
-    @Deprecated
-    public void generateAndDisplayChart(BarSeries series, AnalysisType... analysisTypes) {
-        displayAnalysisChart(series, analysisTypes);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
      * @deprecated use {@link #displayIndicatorChart(BarSeries, Indicator[])}
      */
     @Deprecated
@@ -602,16 +560,6 @@ public class ChartMaker {
     @SafeVarargs
     public final JFreeChart generateChart(BarSeries series, Indicator<Num>... indicators) {
         return createIndicatorChart(series, indicators);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use {@link #createAnalysisChart(BarSeries, AnalysisType...)}
-     */
-    @Deprecated
-    public JFreeChart generateChart(BarSeries series, AnalysisType... analysisTypes) {
-        return createAnalysisChart(series, analysisTypes);
     }
 
     private void validateTradingInputs(BarSeries series, String strategyName, TradingRecord tradingRecord) {

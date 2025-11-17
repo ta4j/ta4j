@@ -28,6 +28,8 @@ import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.criteria.ExpectancyCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -87,7 +89,8 @@ public class NetMomentumStrategy {
         // Charting
         new ChartMaker().builder()
                 .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .withIndicators(rsiIndicator, rsiM)
+                .addIndicators(rsiIndicator, rsiM)
+                .withAnalysisCriterion(series, tradingRecord, new NetProfitCriterion())
                 .build()
                 .display()
                 .save("ta4j-examples/log/charts", "net-momentum-strategy");

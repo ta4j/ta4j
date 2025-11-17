@@ -104,7 +104,7 @@ class ChartBuilderTest {
     void testWithTradingRecordAndIndicators() {
         ChartHandle handle = chartMaker.builder()
                 .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
-                .withIndicators(closePrice, sma)
+                .addIndicators(closePrice, sma)
                 .build();
 
         assertNotNull(handle);
@@ -115,143 +115,305 @@ class ChartBuilderTest {
     }
 
     @Test
-    void testWithTradingRecordAndAnalysis() {
-        ChartHandle handle = chartMaker.builder()
-                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
-                .addAnalysis(AnalysisType.MOVING_AVERAGE_20)
-                .build();
-
-        assertNotNull(handle);
-        assertNotNull(handle.getChart());
-    }
-
-    @Test
-    void testWithTradingRecordIndicatorsAndAnalysis() {
-        ChartHandle handle = chartMaker.builder()
-                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
-                .withIndicators(closePrice, sma)
-                .addAnalysis(AnalysisType.MOVING_AVERAGE_20, AnalysisType.MOVING_AVERAGE_50)
-                .build();
-
-        assertNotNull(handle);
-        assertNotNull(handle.getChart());
-    }
-
-    @Test
-    void testWithAnalysis() {
-        ChartHandle handle = chartMaker.builder().withAnalysis(barSeries, AnalysisType.MOVING_AVERAGE_20).build();
+    void testWithIndicatorsOnly() {
+        ChartHandle handle = chartMaker.builder().withIndicators(barSeries, closePrice, sma).build();
 
         assertNotNull(handle);
         assertNotNull(handle.getChart());
         assertEquals(barSeries, handle.getSeries());
+        assertInstanceOf(CombinedDomainXYPlot.class, handle.getChart().getPlot(),
+                "Indicator-only chart should have CombinedDomainXYPlot");
     }
 
     @Test
-    void testWithAnalysisNullSeries() {
+    void testWithIndicatorsOnlyNullSeries() {
         ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class, () -> builder.withAnalysis(null, AnalysisType.MOVING_AVERAGE_20),
+        assertThrows(NullPointerException.class, () -> builder.withIndicators(null, closePrice, sma),
                 "Should throw exception for null series");
     }
 
     @Test
-    void testWithAnalysisNullAnalysisTypes() {
+    void testWithIndicatorsOnlyNullIndicators() {
         ChartBuilder builder = chartMaker.builder();
-        assertThrows(IllegalArgumentException.class, () -> builder.withAnalysis(barSeries, (AnalysisType[]) null),
-                "Should throw exception for null analysis types");
-    }
-
-    @Test
-    void testWithAnalysisNullAnalysisTypeInArray() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(IllegalArgumentException.class,
-                () -> builder.withAnalysis(barSeries, AnalysisType.MOVING_AVERAGE_20, null),
-                "Should throw exception for null analysis type in array");
-    }
-
-    @Test
-    void testWithAnalysisAndIndicators() {
-        ChartHandle handle = chartMaker.builder()
-                .withAnalysis(barSeries, AnalysisType.MOVING_AVERAGE_20)
-                .withIndicators(closePrice, sma)
-                .build();
-
-        assertNotNull(handle);
-        JFreeChart chart = handle.getChart();
-        assertNotNull(chart);
-        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
-                "Chart with indicators should have CombinedDomainXYPlot");
-    }
-
-    @Test
-    void testWithDualAxis() {
-        ChartHandle handle = chartMaker.builder().withDualAxis(barSeries, closePrice, "Close", sma, "SMA").build();
-
-        assertNotNull(handle);
-        assertNotNull(handle.getChart());
-        assertEquals(barSeries, handle.getSeries());
-    }
-
-    @Test
-    void testWithDualAxisNullSeries() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class, () -> builder.withDualAxis(null, closePrice, "Close", sma, "SMA"),
-                "Should throw exception for null series");
-    }
-
-    @Test
-    void testWithDualAxisNullPrimaryIndicator() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class, () -> builder.withDualAxis(barSeries, null, "Close", sma, "SMA"),
-                "Should throw exception for null primary indicator");
-    }
-
-    @Test
-    void testWithDualAxisNullPrimaryLabel() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class, () -> builder.withDualAxis(barSeries, closePrice, null, sma, "SMA"),
-                "Should throw exception for null primary label");
-    }
-
-    @Test
-    void testWithDualAxisNullSecondaryIndicator() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class,
-                () -> builder.withDualAxis(barSeries, closePrice, "Close", null, "SMA"),
-                "Should throw exception for null secondary indicator");
-    }
-
-    @Test
-    void testWithDualAxisNullSecondaryLabel() {
-        ChartBuilder builder = chartMaker.builder();
-        assertThrows(NullPointerException.class, () -> builder.withDualAxis(barSeries, closePrice, "Close", sma, null),
-                "Should throw exception for null secondary label");
-    }
-
-    @Test
-    void testWithDualAxisAndIndicators() {
-        SMAIndicator sma2 = new SMAIndicator(closePrice, 10);
-        ChartHandle handle = chartMaker.builder()
-                .withDualAxis(barSeries, closePrice, "Close", sma, "SMA")
-                .withIndicators(sma2)
-                .build();
-
-        assertNotNull(handle);
-        assertNotNull(handle.getChart());
-    }
-
-    @Test
-    void testWithIndicatorsNull() {
-        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
-        @SuppressWarnings("unchecked")
-        Indicator<Num>[] nullIndicators = null;
-        assertThrows(IllegalArgumentException.class, () -> builder.withIndicators(nullIndicators),
+        assertThrows(IllegalArgumentException.class, () -> builder.withIndicators(barSeries, (Indicator<Num>[]) null),
                 "Should throw exception for null indicators");
     }
 
     @Test
-    void testWithIndicatorsNullInArray() {
+    void testWithIndicatorsOnlyEmptyIndicators() {
+        ChartBuilder builder = chartMaker.builder();
+        assertThrows(IllegalArgumentException.class, () -> builder.withIndicators(barSeries),
+                "Should throw exception for empty indicators");
+    }
+
+    @Test
+    void testWithIndicatorsOnlyNullInArray() {
+        ChartBuilder builder = chartMaker.builder();
+        assertThrows(IllegalArgumentException.class, () -> builder.withIndicators(barSeries, closePrice, null, sma),
+                "Should throw exception for null indicator in array");
+    }
+
+    @Test
+    void testWithAnalysisCriterion() {
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion, "Number of Positions")
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+        // Should create dual-axis chart
+        assertInstanceOf(XYPlot.class, handle.getChart().getPlot(),
+                "Chart with analysis criterion should have XYPlot (dual-axis)");
+    }
+
+    @Test
+    void testWithAnalysisCriterionNullSeries() {
         ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> builder.withIndicators(closePrice, null, sma),
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        assertThrows(NullPointerException.class,
+                () -> builder.withAnalysisCriterion(null, tradingRecord, criterion, "Label"),
+                "Should throw exception for null series");
+    }
+
+    @Test
+    void testWithAnalysisCriterionNullTradingRecord() {
+        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        assertThrows(NullPointerException.class,
+                () -> builder.withAnalysisCriterion(barSeries, null, criterion, "Label"),
+                "Should throw exception for null trading record");
+    }
+
+    @Test
+    void testWithAnalysisCriterionNullCriterion() {
+        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
+        assertThrows(NullPointerException.class,
+                () -> builder.withAnalysisCriterion(barSeries, tradingRecord, null, "Label"),
+                "Should throw exception for null criterion");
+    }
+
+    @Test
+    void testWithAnalysisCriterionWithoutLabel() {
+        org.ta4j.core.criteria.ExpectancyCriterion criterion = new org.ta4j.core.criteria.ExpectancyCriterion();
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion)
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+
+        // Verify label is inferred and used in the chart
+        JFreeChart chart = handle.getChart();
+        XYPlot plot = extractMainPlot(chart);
+        assertNotNull(plot.getRangeAxis(1), "Chart should have a secondary axis");
+        assertEquals("Expectancy", plot.getRangeAxis(1).getLabel(),
+                "Inferred label should be 'Expectancy' for ExpectancyCriterion");
+    }
+
+    @Test
+    void testWithAnalysisCriterionWithNullLabel() {
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion, null)
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+
+        // Verify label is inferred when null is explicitly passed
+        JFreeChart chart = handle.getChart();
+        XYPlot plot = extractMainPlot(chart);
+        assertNotNull(plot.getRangeAxis(1), "Chart should have a secondary axis");
+        assertEquals("NumberOfPositions", plot.getRangeAxis(1).getLabel(),
+                "Inferred label should be 'NumberOfPositions' for NumberOfPositionsCriterion");
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void testWithAnalysisCriterionWithEmptyLabel() {
+        org.ta4j.core.criteria.MaximumDrawdownCriterion criterion = new org.ta4j.core.criteria.MaximumDrawdownCriterion();
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion, "   ")
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+
+        // Verify label is inferred when empty/whitespace is provided
+        JFreeChart chart = handle.getChart();
+        XYPlot plot = extractMainPlot(chart);
+        assertNotNull(plot.getRangeAxis(1), "Chart should have a secondary axis");
+        assertEquals("MaximumDrawdown", plot.getRangeAxis(1).getLabel(),
+                "Inferred label should be 'MaximumDrawdown' for MaximumDrawdownCriterion when label is whitespace");
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void testWithAnalysisCriterionLabelInference() {
+        // Test various criterion types to verify label inference
+        org.ta4j.core.criteria.ExpectancyCriterion expectancy = new org.ta4j.core.criteria.ExpectancyCriterion();
+        org.ta4j.core.criteria.NumberOfPositionsCriterion nop = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        org.ta4j.core.criteria.MaximumDrawdownCriterion mdd = new org.ta4j.core.criteria.MaximumDrawdownCriterion();
+
+        ChartHandle handle1 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, expectancy)
+                .build();
+        assertNotNull(handle1);
+        XYPlot plot1 = extractMainPlot(handle1.getChart());
+        assertEquals("Expectancy", plot1.getRangeAxis(1).getLabel(), "ExpectancyCriterion should infer 'Expectancy'");
+
+        ChartHandle handle2 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, nop)
+                .build();
+        assertNotNull(handle2);
+        XYPlot plot2 = extractMainPlot(handle2.getChart());
+        assertEquals("NumberOfPositions", plot2.getRangeAxis(1).getLabel(),
+                "NumberOfPositionsCriterion should infer 'NumberOfPositions'");
+
+        ChartHandle handle3 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, mdd)
+                .build();
+        assertNotNull(handle3);
+        XYPlot plot3 = extractMainPlot(handle3.getChart());
+        assertEquals("MaximumDrawdown", plot3.getRangeAxis(1).getLabel(),
+                "MaximumDrawdownCriterion should infer 'MaximumDrawdown'");
+    }
+
+    @Test
+    void testWithAnalysisCriterionExplicitLabelOverridesInference() {
+        org.ta4j.core.criteria.ExpectancyCriterion criterion = new org.ta4j.core.criteria.ExpectancyCriterion();
+        String customLabel = "Custom Expectancy Label";
+
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion, customLabel)
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+
+        // Verify explicit label is used instead of inferred label
+        JFreeChart chart = handle.getChart();
+        XYPlot plot = extractMainPlot(chart);
+        assertNotNull(plot.getRangeAxis(1), "Chart should have a secondary axis");
+        assertEquals(customLabel, plot.getRangeAxis(1).getLabel(), "Explicit label should override inferred label");
+        assertNotEquals("Expectancy", plot.getRangeAxis(1).getLabel(),
+                "Explicit label should not be the inferred label");
+    }
+
+    @Test
+    void testWithAnalysisCriterionLabelInferenceForVariousCriteria() {
+        // Test additional criterion types to ensure inference works broadly
+        org.ta4j.core.criteria.NumberOfBarsCriterion numberOfBars = new org.ta4j.core.criteria.NumberOfBarsCriterion();
+        org.ta4j.core.criteria.NumberOfWinningPositionsCriterion winningPos = new org.ta4j.core.criteria.NumberOfWinningPositionsCriterion();
+        org.ta4j.core.criteria.pnl.NetProfitCriterion netProfit = new org.ta4j.core.criteria.pnl.NetProfitCriterion();
+
+        ChartHandle handle1 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, numberOfBars)
+                .build();
+        XYPlot plot1 = extractMainPlot(handle1.getChart());
+        assertEquals("NumberOfBars", plot1.getRangeAxis(1).getLabel(),
+                "NumberOfBarsCriterion should infer 'NumberOfBars'");
+
+        ChartHandle handle2 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, winningPos)
+                .build();
+        XYPlot plot2 = extractMainPlot(handle2.getChart());
+        assertEquals("NumberOfWinningPositions", plot2.getRangeAxis(1).getLabel(),
+                "NumberOfWinningPositionsCriterion should infer 'NumberOfWinningPositions'");
+
+        ChartHandle handle3 = chartMaker.builder()
+                .withTradingRecord(barSeries, "Strategy", tradingRecord)
+                .withAnalysisCriterion(barSeries, tradingRecord, netProfit)
+                .build();
+        XYPlot plot3 = extractMainPlot(handle3.getChart());
+        assertEquals("NetProfit", plot3.getRangeAxis(1).getLabel(), "NetProfitCriterion should infer 'NetProfit'");
+    }
+
+    @Test
+    void testWithAnalysisCriterionLabelInferenceOnIndicatorOnlyChart() {
+        org.ta4j.core.criteria.ExpectancyCriterion criterion = new org.ta4j.core.criteria.ExpectancyCriterion();
+
+        ChartHandle handle = chartMaker.builder()
+                .withIndicators(barSeries, closePrice, sma)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion)
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+
+        // Verify label inference works on indicator-only charts
+        JFreeChart chart = handle.getChart();
+        XYPlot plot = extractMainPlot(chart);
+        assertNotNull(plot.getRangeAxis(1), "Indicator-only chart with criterion should have a secondary axis");
+        assertEquals("Expectancy", plot.getRangeAxis(1).getLabel(),
+                "Inferred label should work on indicator-only charts");
+    }
+
+    /**
+     * Extracts the main XYPlot from a chart, handling both regular XYPlot and
+     * CombinedDomainXYPlot.
+     */
+    private XYPlot extractMainPlot(JFreeChart chart) {
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            @SuppressWarnings("unchecked")
+            java.util.List<XYPlot> subplots = combinedPlot.getSubplots();
+            if (subplots != null && !subplots.isEmpty()) {
+                return subplots.get(0);
+            }
+            throw new IllegalStateException("Combined plot has no subplots");
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            return plot;
+        } else {
+            throw new IllegalStateException("Chart plot is not an XYPlot");
+        }
+    }
+
+    @Test
+    void testWithAnalysisCriterionTwice() {
+        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion1 = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion2 = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        builder.withAnalysisCriterion(barSeries, tradingRecord, criterion1, "Label1");
+        assertThrows(IllegalStateException.class,
+                () -> builder.withAnalysisCriterion(barSeries, tradingRecord, criterion2, "Label2"),
+                "Should throw exception when trying to set second analysis criterion");
+    }
+
+    @Test
+    void testWithAnalysisCriterionOnIndicatorOnlyChart() {
+        ChartBuilder builder = chartMaker.builder().withIndicators(barSeries, closePrice);
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
+        // This should work - withAnalysisCriterion sets the tradingRecord
+        ChartHandle handle = builder.withAnalysisCriterion(barSeries, tradingRecord, criterion, "Number of Positions")
+                .build();
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+    }
+
+    @Test
+    void testAddIndicatorsNull() {
+        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
+        @SuppressWarnings("unchecked")
+        Indicator<Num>[] nullIndicators = null;
+        assertThrows(IllegalArgumentException.class, () -> builder.addIndicators(nullIndicators),
+                "Should throw exception for null indicators");
+    }
+
+    @Test
+    void testAddIndicatorsNullInArray() {
+        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> builder.addIndicators(closePrice, null, sma),
                 "Should throw exception for null indicator in array");
     }
 
@@ -308,20 +470,13 @@ class ChartBuilderTest {
     @Test
     void testMultipleChartTypesThrowsException() {
         ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
-        assertThrows(IllegalStateException.class, () -> builder.withAnalysis(barSeries, AnalysisType.MOVING_AVERAGE_20),
+        assertThrows(IllegalStateException.class, () -> builder.withIndicators(barSeries, closePrice),
                 "Should throw exception when trying to set second chart type");
     }
 
     @Test
     void testMultipleChartTypesThrowsExceptionReverseOrder() {
-        ChartBuilder builder = chartMaker.builder().withAnalysis(barSeries, AnalysisType.MOVING_AVERAGE_20);
-        assertThrows(IllegalStateException.class, () -> builder.withTradingRecord(barSeries, "Strategy", tradingRecord),
-                "Should throw exception when trying to set second chart type");
-    }
-
-    @Test
-    void testMultipleChartTypesThrowsExceptionDualAxis() {
-        ChartBuilder builder = chartMaker.builder().withDualAxis(barSeries, closePrice, "Close", sma, "SMA");
+        ChartBuilder builder = chartMaker.builder().withIndicators(barSeries, closePrice);
         assertThrows(IllegalStateException.class, () -> builder.withTradingRecord(barSeries, "Strategy", tradingRecord),
                 "Should throw exception when trying to set second chart type");
     }
@@ -330,8 +485,7 @@ class ChartBuilderTest {
     void testFluentChaining() {
         ChartHandle handle = chartMaker.builder()
                 .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
-                .withIndicators(closePrice, sma)
-                .addAnalysis(AnalysisType.MOVING_AVERAGE_20)
+                .addIndicators(closePrice, sma)
                 .withTitle("Fluent Test")
                 .build();
 
@@ -341,28 +495,40 @@ class ChartBuilderTest {
     }
 
     @Test
-    void testAddAnalysis() {
+    void testFluentChainingWithAnalysisCriterion() {
+        org.ta4j.core.criteria.NumberOfPositionsCriterion criterion = new org.ta4j.core.criteria.NumberOfPositionsCriterion();
         ChartHandle handle = chartMaker.builder()
                 .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
-                .addAnalysis(AnalysisType.MOVING_AVERAGE_20, AnalysisType.MOVING_AVERAGE_50)
+                .addIndicators(closePrice, sma)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion, "Number of Positions")
+                .withTitle("Fluent Test")
                 .build();
 
         assertNotNull(handle);
         assertNotNull(handle.getChart());
+        assertEquals("Fluent Test", handle.getChart().getTitle().getText());
     }
 
     @Test
-    void testAddAnalysisNull() {
-        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> builder.addAnalysis((AnalysisType[]) null),
-                "Should throw exception for null analysis types");
+    void testFluentChainingWithAnalysisCriterionInferredLabel() {
+        org.ta4j.core.criteria.ExpectancyCriterion criterion = new org.ta4j.core.criteria.ExpectancyCriterion();
+        ChartHandle handle = chartMaker.builder()
+                .withTradingRecord(barSeries, "Test Strategy", tradingRecord)
+                .addIndicators(closePrice, sma)
+                .withAnalysisCriterion(barSeries, tradingRecord, criterion)
+                .withTitle("Fluent Test")
+                .build();
+
+        assertNotNull(handle);
+        assertNotNull(handle.getChart());
+        assertEquals("Fluent Test", handle.getChart().getTitle().getText());
     }
 
     @Test
-    void testAddAnalysisNullInArray() {
-        ChartBuilder builder = chartMaker.builder().withTradingRecord(barSeries, "Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> builder.addAnalysis(AnalysisType.MOVING_AVERAGE_20, null),
-                "Should throw exception for null analysis type in array");
+    void testAddIndicatorsOnIndicatorOnlyChart() {
+        ChartBuilder builder = chartMaker.builder().withIndicators(barSeries, closePrice);
+        assertThrows(IllegalStateException.class, () -> builder.addIndicators(sma),
+                "Should throw exception when trying to add indicators to indicator-only chart");
     }
 
     @Test

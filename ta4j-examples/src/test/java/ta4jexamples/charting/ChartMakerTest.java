@@ -279,33 +279,6 @@ public class ChartMakerTest {
     }
 
     @Test
-    public void testGenerateChartWithAnalysisTypes() {
-        JFreeChart chart = chartMaker.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10,
-                AnalysisType.MOVING_AVERAGE_20);
-
-        assertNotNull(chart, "Chart should not be null");
-        assertNotNull(chart.getTitle(), "Chart title should not be null");
-    }
-
-    @Test
-    public void testGenerateChartWithNullSeriesForAnalysis() {
-        assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createAnalysisChart(null, AnalysisType.MOVING_AVERAGE_10));
-    }
-
-    @Test
-    public void testGenerateChartWithNullAnalysisTypes() {
-        assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createAnalysisChart(barSeries, (AnalysisType[]) null));
-    }
-
-    @Test
-    public void testCreateAnalysisChartWithNullElement() {
-        assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10, null));
-    }
-
-    @Test
     public void testGenerateChartAsBytes() {
         byte[] chartBytes = chartMaker.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
@@ -441,18 +414,6 @@ public class ChartMakerTest {
     @Test
     public void testDisplayChartWithNullChart() {
         assertThrows(IllegalArgumentException.class, () -> chartMaker.displayChart(null));
-    }
-
-    @Test
-    public void testGenerateAndDisplayChartWithAnalysisTypes() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        try {
-            chartMaker.displayAnalysisChart(barSeries, AnalysisType.MOVING_AVERAGE_10);
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
-                    "Exception should be related to display functionality");
-        }
     }
 
     @Test

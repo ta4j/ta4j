@@ -31,14 +31,12 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.PlotOrientation;
-import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.OHLCDataItem;
-import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.apache.logging.log4j.LogManager;
@@ -200,17 +198,6 @@ final class TradingChartFactory {
         return chart;
     }
 
-    JFreeChart createAnalysisChart(BarSeries series, AnalysisType... analysisTypes) {
-        DefaultOHLCDataset data = createChartDataset(series);
-        String chartTitle = buildChartTitle(series.getName(), "");
-        JFreeChart chart = buildChart(chartTitle, series.getFirstBar().getTimePeriod(), data);
-
-        if (analysisTypes.length > 0) {
-            addAnalysisLinesToChart((XYPlot) chart.getPlot(), data, analysisTypes);
-        }
-        return chart;
-    }
-
     JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel) {
         return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null);
@@ -243,6 +230,106 @@ final class TradingChartFactory {
         return chart;
     }
 
+    /**
+     * Creates a dual-axis chart with a trading record (OHLC) on the left axis and
+     * an analysis criterion on the right axis.
+     *
+     * @param series               the bar series
+     * @param strategyName         the strategy name
+     * @param tradingRecord        the trading record
+     * @param primaryIndicator     the primary indicator (typically close price) for
+     *                             the left axis
+     * @param primaryLabel         the label for the primary axis
+     * @param criterionIndicator   the analysis criterion indicator for the right
+     *                             axis
+     * @param criterionLabel       the label for the criterion axis
+     * @param additionalIndicators optional additional indicators to add as subplots
+     * @param chartTitle           optional custom chart title
+     * @return the dual-axis chart
+     */
+    @SuppressWarnings("unchecked")
+    final JFreeChart createDualAxisChartWithAnalysisCriterion(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> criterionIndicator, String criterionLabel, Indicator<Num>[] additionalIndicators,
+            String chartTitle) {
+        // Create base trading record chart (may include indicators as subplots)
+        JFreeChart chart;
+        if (additionalIndicators != null && additionalIndicators.length > 0) {
+            chart = createTradingRecordChart(series, strategyName, tradingRecord, additionalIndicators);
+        } else {
+            chart = createTradingRecordChart(series, strategyName, tradingRecord);
+        }
+
+        // Apply custom title if specified
+        if (chartTitle != null && !chartTitle.trim().isEmpty()) {
+            chart.setTitle(chartTitle);
+            if (chart.getTitle() != null) {
+                chart.getTitle().setPaint(Color.LIGHT_GRAY);
+            }
+        }
+
+        // Get the main plot (first subplot if combined, or the plot itself)
+        XYPlot mainPlot;
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            @SuppressWarnings("unchecked")
+            List<XYPlot> subplots = combinedPlot.getSubplots();
+            if (subplots != null && !subplots.isEmpty()) {
+                mainPlot = subplots.get(0);
+            } else {
+                throw new IllegalStateException("Combined plot has no subplots");
+            }
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            mainPlot = plot;
+        } else {
+            throw new IllegalStateException("Chart plot is not an XYPlot");
+        }
+
+        // Add secondary axis with analysis criterion
+        TimeSeriesCollection criterionDataset = createTimeSeriesDataset(series, criterionIndicator, criterionLabel);
+        addSecondaryAxis(mainPlot, criterionDataset, criterionLabel);
+
+        return chart;
+    }
+
+    /**
+     * Adds an analysis criterion to an existing chart, converting it to a dual-axis
+     * chart if necessary.
+     *
+     * @param chart              the chart to modify
+     * @param series             the bar series
+     * @param criterionIndicator the analysis criterion indicator
+     * @param criterionLabel     the label for the criterion axis
+     * @return the modified chart (may be a new instance if conversion was needed)
+     */
+    JFreeChart addAnalysisCriterionToChart(JFreeChart chart, BarSeries series, Indicator<Num> criterionIndicator,
+            String criterionLabel) {
+        if (chart == null || series == null || criterionIndicator == null) {
+            return chart;
+        }
+
+        // Get the main plot
+        XYPlot mainPlot;
+        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
+            @SuppressWarnings("unchecked")
+            List<XYPlot> subplots = combinedPlot.getSubplots();
+            if (subplots != null && !subplots.isEmpty()) {
+                mainPlot = subplots.get(0);
+            } else {
+                return chart;
+            }
+        } else if (chart.getPlot() instanceof XYPlot plot) {
+            mainPlot = plot;
+        } else {
+            return chart;
+        }
+
+        // Add secondary axis with analysis criterion
+        TimeSeriesCollection criterionDataset = createTimeSeriesDataset(series, criterionIndicator, criterionLabel);
+        addSecondaryAxis(mainPlot, criterionDataset, criterionLabel);
+
+        return chart;
+    }
+
     String buildChartTitle(String barSeriesName, String strategyName) {
         if (barSeriesName == null || barSeriesName.trim().isEmpty()) {
             return strategyName;
@@ -252,30 +339,6 @@ final class TradingChartFactory {
             return shortenedBarSeriesName[0];
         }
         return strategyName + "@" + shortenedBarSeriesName[0];
-    }
-
-    /**
-     * Adds analysis overlays to an existing chart.
-     *
-     * @param chart         the chart to add analysis to
-     * @param series        the bar series
-     * @param analysisTypes the analysis types to add
-     */
-    void addAnalysisToChart(JFreeChart chart, BarSeries series, AnalysisType... analysisTypes) {
-        if (chart == null || series == null || analysisTypes == null || analysisTypes.length == 0) {
-            return;
-        }
-
-        DefaultOHLCDataset data = createChartDataset(series);
-        if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
-            @SuppressWarnings("unchecked")
-            List<XYPlot> subplots = combinedPlot.getSubplots();
-            if (subplots != null && !subplots.isEmpty()) {
-                addAnalysisLinesToChart(subplots.get(0), data, analysisTypes);
-            }
-        } else if (chart.getPlot() instanceof XYPlot plot) {
-            addAnalysisLinesToChart(plot, data, analysisTypes);
-        }
     }
 
     /**
@@ -729,23 +792,6 @@ final class TradingChartFactory {
         // Distribute remaining space evenly among indicators
         // Each indicator gets equal weight
         return Math.max(10, 40 / indicatorCount);
-    }
-
-    private void addAnalysisLinesToChart(XYPlot plot, DefaultOHLCDataset data, AnalysisType... analysisTypes) {
-        try {
-            plot.addRangeMarker(new ValueMarker(300d, Color.RED, new BasicStroke(0.1f)),
-                    org.jfree.chart.ui.Layer.FOREGROUND);
-
-            int index = 1;
-            for (AnalysisType analysisType : analysisTypes) {
-                XYDataset analysisDataSet = analysisType.dataSet.getAnalysis(data);
-                plot.setDataset(index, analysisDataSet);
-                plot.setRenderer(index, new StandardXYItemRenderer());
-                index++;
-            }
-        } catch (Exception ex) {
-            LOG.error("Failed to add analysis lines to chart", ex);
-        }
     }
 
     private org.jfree.data.time.TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
