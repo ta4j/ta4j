@@ -341,8 +341,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
                         if (plotInfo != null) {
                             MouseEvent mouseEvent = event.getTrigger();
                             if (mouseEvent != null) {
-                                String displayText = findDataFromCoordinates(mouseEvent.getX(), mouseEvent.getY(),
-                                        plotInfo);
+                                String displayText = findDataFromCoordinates(mouseEvent.getY(), plotInfo);
                                 if (displayText != null && !displayText.isEmpty()) {
                                     infoLabel.setText(displayText);
                                     lastDisplayedText = displayText;
@@ -394,7 +393,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
             return null;
         }
 
-        private String findDataFromCoordinates(int x, int y, PlotRenderingInfo plotInfo) {
+        private String findDataFromCoordinates(int y, PlotRenderingInfo plotInfo) {
             // This is a fallback method - try to find nearest data point
             // For now, return null to use entity-based approach
             return null;
