@@ -23,9 +23,6 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -33,9 +30,13 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOperationIndicator, Num> {
 
@@ -176,7 +177,7 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
     @Test
     public void testGetCountOfUnstableBars() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
-        final var indicator = new ClosePriceIndicator(series);
+        final var indicator = new MockIndicator(series, 1, numOf(1));
 
         final var result = UnaryOperationIndicator.sqrt(indicator);
 

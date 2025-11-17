@@ -47,6 +47,17 @@ public class MockIndicator implements Indicator<Num> {
     }
 
     /**
+     * Constructs a MockIndicator with the specified bar series, unstable bars count, and values.
+     *
+     * @param series            the bar series associated with this indicator
+     * @param unstableBarsCount the number of unstable bars for this indicator
+     * @param values            the numeric values for this indicator
+     */
+    public MockIndicator(BarSeries series, int unstableBarsCount, Num... values) {
+        this(series, unstableBarsCount, List.of(values));
+    }
+
+    /**
      * Constructs a MockIndicator with the specified bar series, unstable bars
      * count, and values.
      *
