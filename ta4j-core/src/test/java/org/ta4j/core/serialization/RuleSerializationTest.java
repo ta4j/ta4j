@@ -25,30 +25,64 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.DayOfWeekRule;
+import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.rules.NotRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.XorRule;
 
 /**
- * Tests for nested component extraction in rule serialization.
+ * Comprehensive tests for rule serialization and deserialization.
  *
  * <p>
- * These tests verify that composite indicators (like {@link CrossIndicator})
- * stored as fields in rules are correctly "unwrapped" to extract their nested
- * components via getter methods, so they can be matched against constructor
- * parameters during deserialization.
+ * This test class consolidates tests for:
+ * <ul>
+ * <li>Nested component extraction in rule serialization</li>
+ * <li>Varargs parameter serialization</li>
+ * <li>Custom name preservation</li>
+ * <li>AndRule-specific serialization scenarios</li>
+ * </ul>
  */
-public class RuleSerializationNestedComponentsTest {
+public class RuleSerializationTest {
 
+    // ==================== Nested Components Tests ====================
+
+    /**
+     * Tests for nested component extraction in rule serialization.
+     *
+     * <p>
+     * These tests verify that composite indicators (like {@link CrossIndicator})
+     * stored as fields in rules are correctly "unwrapped" to extract their nested
+     * components via getter methods, so they can be matched against constructor
+     * parameters during deserialization.
+     */
     @Test
     public void extractNestedComponentsFromCrossIndicatorInCrossedUpRule() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
@@ -248,16 +282,13 @@ public class RuleSerializationNestedComponentsTest {
 
         ComponentDescriptor descriptor = RuleSerialization.describe(rule);
 
-        // Verify components are extracted in a consistent order
-        // (alphabetical by getter name: getLow comes before getUp)
+        // Verify components are extracted
         assertThat(descriptor.getComponents()).hasSize(2);
 
-        // Round-trip should preserve the same order
+        // Round-trip should preserve functionality
         Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
         ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
 
-        // The order should be consistent (though not necessarily the same as original
-        // due to constructor matching logic)
         assertThat(restoredDescriptor.getComponents()).hasSize(2);
     }
 
@@ -320,5 +351,302 @@ public class RuleSerializationNestedComponentsTest {
 
         assertThat(restored1).isInstanceOf(CrossedUpIndicatorRule.class);
         assertThat(restored2).isInstanceOf(CrossedDownIndicatorRule.class);
+    }
+
+    // ==================== Varargs Tests ====================
+
+    @Test
+    public void serializeAndRebuildNumericVarargs() {
+        Rule rule = new FixedRule(1, 3, 5);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+
+        Object arrayValues = null;
+        for (Map.Entry<String, Object> entry : descriptor.getParameters().entrySet()) {
+            Object value = entry.getValue();
+            if (!(value instanceof List<?> list)) {
+                continue;
+            }
+            if (!list.isEmpty() && list.get(0) instanceof Map<?, ?>) {
+                continue;
+            }
+            arrayValues = list;
+            break;
+        }
+
+        assertThat(arrayValues).as("Expected to find indexes list in descriptor parameters").isNotNull();
+        assertThat(arrayValues).isInstanceOf(List.class);
+        @SuppressWarnings("unchecked")
+        List<Integer> indexes = (List<Integer>) arrayValues;
+        assertThat(indexes).containsExactly(1, 3, 5);
+        assertThat(descriptor.getParameters()).containsKey("indexes");
+
+        Rule reconstructed = RuleSerialization.fromDescriptor(new MockBarSeriesBuilder().build(), descriptor);
+        assertThat(reconstructed).isInstanceOf(FixedRule.class);
+        assertThat(reconstructed.isSatisfied(1)).isTrue();
+        assertThat(reconstructed.isSatisfied(2)).isFalse();
+        assertThat(reconstructed.isSatisfied(5)).isTrue();
+    }
+
+    @Test
+    public void serializeAndRebuildEnumVarargs() {
+        var series = new MockBarSeriesBuilder().build();
+        series.barBuilder().endTime(Instant.parse("2024-01-01T12:00:00Z")).add(); // Monday
+        series.barBuilder().endTime(Instant.parse("2024-01-02T12:00:00Z")).add(); // Tuesday
+        series.barBuilder().endTime(Instant.parse("2024-01-03T12:00:00Z")).add(); // Wednesday
+        series.barBuilder().endTime(Instant.parse("2024-01-04T12:00:00Z")).add(); // Thursday
+        series.barBuilder().endTime(Instant.parse("2024-01-05T12:00:00Z")).add(); // Friday
+
+        DateTimeIndicator dateTime = new DateTimeIndicator(series, Bar::getEndTime);
+        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+
+        assertThat(descriptor.getParameters()).containsKey("daysOfWeek");
+
+        List<String> days = null;
+        for (Map.Entry<String, Object> entry : descriptor.getParameters().entrySet()) {
+            Object value = entry.getValue();
+            if (!(value instanceof List<?> list)) {
+                continue;
+            }
+            if (!list.isEmpty() && list.get(0) instanceof Map<?, ?>) {
+                continue;
+            }
+            boolean allStrings = true;
+            for (Object element : list) {
+                if (element != null && !(element instanceof String)) {
+                    allStrings = false;
+                    break;
+                }
+            }
+            if (allStrings) {
+                @SuppressWarnings("unchecked")
+                List<String> cast = (List<String>) list;
+                days = cast;
+                break;
+            }
+        }
+
+        assertThat(days).as("Expected to find daysOfWeek list in descriptor parameters").isNotNull();
+        assertThat(days).containsExactlyInAnyOrder("WEDNESDAY", "FRIDAY");
+
+        Rule reconstructed = RuleSerialization.fromDescriptor(series, descriptor);
+        assertThat(reconstructed).isInstanceOf(DayOfWeekRule.class);
+        Set<DayOfWeek> expected = Set.of(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
+        Set<DayOfWeek> actual;
+        try {
+            var field = DayOfWeekRule.class.getDeclaredField("daysOfWeekSet");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Set<DayOfWeek> value = (Set<DayOfWeek>) field.get(reconstructed);
+            actual = value;
+        } catch (IllegalAccessException | NoSuchFieldException ex) {
+            throw new AssertionError("Unable to inspect reconstructed rule", ex);
+        }
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    // ==================== Custom Name Tests ====================
+
+    @Test
+    public void preserveCustomNameForSimpleRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule rule = new FixedRule(1);
+        rule.setName("My Custom Rule");
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo("My Custom Rule");
+    }
+
+    @Test
+    public void preserveCustomNameForCompositeRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule entryRule = new FixedRule(1);
+        entryRule.setName("Entry");
+        Rule exitRule = new FixedRule(2);
+        exitRule.setName("Exit");
+
+        Rule andRule = new AndRule(entryRule, exitRule);
+        // AndRule automatically sets its name based on child names
+        String originalName = andRule.getName();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(andRule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo(originalName);
+        // Verify child rules also preserved their names
+        AndRule restoredAnd = (AndRule) restored;
+        assertThat(restoredAnd.getRule1().getName()).isEqualTo("Entry");
+        assertThat(restoredAnd.getRule2().getName()).isEqualTo("Exit");
+    }
+
+    @Test
+    public void preserveCustomNameForNestedCompositeRules() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule entryRule = new FixedRule(1);
+        entryRule.setName("Entry");
+        Rule exitRule = new FixedRule(2);
+        exitRule.setName("Exit");
+
+        Rule innerAnd = new AndRule(entryRule, exitRule);
+        Rule notExit = new NotRule(exitRule);
+        Rule outerOr = new OrRule(innerAnd, notExit);
+
+        String originalName = outerOr.getName();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(outerOr);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo(originalName);
+    }
+
+    @Test
+    public void preserveCustomNameForOrRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule rule1 = new FixedRule(1);
+        rule1.setName("Rule1");
+        Rule rule2 = new FixedRule(2);
+        rule2.setName("Rule2");
+
+        Rule orRule = new OrRule(rule1, rule2);
+        String originalName = orRule.getName();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(orRule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo(originalName);
+    }
+
+    @Test
+    public void preserveCustomNameForXorRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule rule1 = new FixedRule(1);
+        rule1.setName("Rule1");
+        Rule rule2 = new FixedRule(2);
+        rule2.setName("Rule2");
+
+        Rule xorRule = new XorRule(rule1, rule2);
+        String originalName = xorRule.getName();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(xorRule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo(originalName);
+    }
+
+    @Test
+    public void preserveCustomNameForNotRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        Rule rule = new FixedRule(1);
+        rule.setName("MyRule");
+
+        Rule notRule = new NotRule(rule);
+        String originalName = notRule.getName();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(notRule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored.getName()).isEqualTo(originalName);
+    }
+
+    // ==================== AndRule-Specific Tests ====================
+
+    private static Fixture newFixture() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator slowSma = new SMAIndicator(close, 3);
+        SMAIndicator fastSma = new SMAIndicator(close, 2);
+
+        Rule entry = new AndRule(new OverIndicatorRule(fastSma, slowSma), new UnderIndicatorRule(fastSma, slowSma));
+        Rule exit = new UnderIndicatorRule(fastSma, slowSma);
+
+        Strategy strategy = new BaseStrategy("Test", entry, exit, 2);
+
+        return new Fixture(series, entry, strategy);
+    }
+
+    private static ComponentDescriptor withChildLabels(ComponentDescriptor descriptor) {
+        ComponentDescriptor.Builder parent = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withParameters(descriptor.getParameters());
+        int index = 1;
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            ComponentDescriptor.Builder child = ComponentDescriptor.builder()
+                    .withType(component.getType())
+                    .withLabel("rule" + index++)
+                    .withParameters(component.getParameters());
+            for (ComponentDescriptor nested : component.getComponents()) {
+                child.addComponent(nested);
+            }
+            parent.addComponent(child.build());
+        }
+        return parent.build();
+    }
+
+    @Test
+    public void roundTripAndRuleWithIndicatorRules() {
+        Fixture fixture = newFixture();
+
+        // Serialize
+        ComponentDescriptor descriptor = RuleSerialization.describe(fixture.andRule());
+        ComponentDescriptor parsed = ComponentSerialization.parse(ComponentSerialization.toJson(descriptor));
+
+        // Deserialize
+        Rule restored = RuleSerialization.fromDescriptor(fixture.series(), parsed);
+
+        assertThat(restored).isInstanceOf(AndRule.class);
+        assertThat(restored.isSatisfied(3)).isEqualTo(fixture.andRule().isSatisfied(3));
+    }
+
+    @Test
+    public void roundTripAndRuleFromJson() {
+        Fixture fixture = newFixture();
+
+        // Serialize to JSON
+        ComponentDescriptor descriptor = RuleSerialization.describe(fixture.andRule());
+        String json = ComponentSerialization.toJson(descriptor);
+
+        // Deserialize from JSON
+        ComponentDescriptor parsed = ComponentSerialization.parse(json);
+        Rule restored = RuleSerialization.fromDescriptor(fixture.series(), parsed);
+
+        assertThat(restored).isInstanceOf(AndRule.class);
+        assertThat(restored.isSatisfied(3)).isEqualTo(fixture.andRule().isSatisfied(3));
+    }
+
+    @Test
+    public void deserializeAndRuleWithLabeledComponents() {
+        Fixture fixture = newFixture();
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(fixture.andRule());
+        ComponentDescriptor labeled = withChildLabels(descriptor);
+
+        Rule restored = RuleSerialization.fromDescriptor(fixture.series(), labeled);
+
+        assertThat(restored).isInstanceOf(AndRule.class);
+        assertThat(restored.isSatisfied(3)).isEqualTo(fixture.andRule().isSatisfied(3));
+    }
+
+    @Test
+    public void roundTripStrategyWithAndRule() {
+        Fixture fixture = newFixture();
+
+        String json = fixture.strategy().toJson();
+        Strategy restored = Strategy.fromJson(fixture.series(), json);
+
+        assertThat(restored.getName()).isEqualTo("Test");
+        assertThat(restored.getUnstableBars()).isEqualTo(2);
+        assertThat(restored.getEntryRule()).isInstanceOf(AndRule.class);
+
+        TradingRecord originalRecord = new BaseTradingRecord();
+        TradingRecord restoredRecord = new BaseTradingRecord();
+        assertThat(restored.shouldEnter(3, restoredRecord))
+                .isEqualTo(fixture.strategy().shouldEnter(3, originalRecord));
+    }
+
+    private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {
     }
 }

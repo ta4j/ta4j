@@ -144,10 +144,9 @@ This keeps the serialization module tight while still emitting the standardized 
 Primary test suites:
 - ComponentSerializationTest
 - IndicatorSerializationTest
-- RuleSerializationTest
+- RuleSerializationTest (includes AndRule-specific tests)
 - StrategySerializationTest
 - RuleNameTest (sensitive to JSON details)
-- Focused composite-rule coverage: `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest`
 
 Typical failures:
 - Wrong field names
@@ -191,7 +190,7 @@ Typical failures:
 
 - **Indicator reconstruction:** `RuleSerialization` must rebuild indicators directly from their descriptors. Do **not** reintroduce positional matching or mutable cursor indexes; JSON round-trips often strip labels, so every descriptor must remain self-contained.
 - **Context usage:** `ReconstructionContext` should only cache labeled descriptors. Use the parent-context chain when nested rules need Strategy-level components instead of duplicating state.
-- **Test consolidation:** `ta4j-core/src/test/java/org/ta4j/core/serialization/AndRuleSerializationTest.java` contains all focused regression cases (descriptor → descriptor, descriptor → JSON → descriptor, labeled-component reconstruction, and Strategy round-trip). Extend this class for future composite-rule scenarios instead of adding new test files.
+- **Test consolidation:** `RuleSerializationTest` contains all focused regression cases including AndRule-specific tests (descriptor → descriptor, descriptor → JSON → descriptor, labeled-component reconstruction, and Strategy round-trip). Extend this class for future composite-rule scenarios instead of adding new test files.
 - **Debug scaffolding:** Temporary printf-style tests (`AndRuleSerializationDebugTest`, etc.) should stay local and be removed before committing.
 
 ## Key Takeaways
