@@ -29,7 +29,6 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.entity.ChartEntity;
 import org.jfree.chart.entity.XYItemEntity;
-import org.jfree.chart.plot.PlotRenderingInfo;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.XYDataset;
@@ -46,7 +45,6 @@ import java.awt.HeadlessException;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -151,7 +149,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
 
         // Add mouseover listener
         int hoverDelay = resolveHoverDelay();
-        ChartMouseoverListener mouseoverListener = new ChartMouseoverListener(panel, infoLabel, hoverDelay);
+        ChartMouseoverListener mouseoverListener = new ChartMouseoverListener(infoLabel, hoverDelay);
         panel.addChartMouseListener(mouseoverListener);
 
         // Add ancestor listener to cleanup timer when component is removed
@@ -258,15 +256,13 @@ final class SwingChartDisplayer implements ChartDisplayer {
      */
     static class ChartMouseoverListener implements ChartMouseListener {
 
-        private final ChartPanel chartPanel;
         private final JLabel infoLabel;
         private final int hoverDelay;
         private Timer hoverTimer;
         private String lastDisplayedText;
         private ChartMouseEvent lastEvent;
 
-        ChartMouseoverListener(ChartPanel chartPanel, JLabel infoLabel, int hoverDelay) {
-            this.chartPanel = chartPanel;
+        ChartMouseoverListener(JLabel infoLabel, int hoverDelay) {
             this.infoLabel = infoLabel;
             this.hoverDelay = hoverDelay;
         }
@@ -334,21 +330,6 @@ final class SwingChartDisplayer implements ChartDisplayer {
                         infoLabel.setText(displayText);
                         lastDisplayedText = displayText;
                     }
-                } else {
-                    // Try to find data point from mouse coordinates
-                    if (chartPanel.getChartRenderingInfo() != null) {
-                        PlotRenderingInfo plotInfo = chartPanel.getChartRenderingInfo().getPlotInfo();
-                        if (plotInfo != null) {
-                            MouseEvent mouseEvent = event.getTrigger();
-                            if (mouseEvent != null) {
-                                String displayText = findDataFromCoordinates(mouseEvent.getY(), plotInfo);
-                                if (displayText != null && !displayText.isEmpty()) {
-                                    infoLabel.setText(displayText);
-                                    lastDisplayedText = displayText;
-                                }
-                            }
-                        }
-                    }
                 }
             } catch (Exception ex) {
                 LOG.debug("Error displaying mouseover data", ex);
@@ -390,12 +371,6 @@ final class SwingChartDisplayer implements ChartDisplayer {
                     LOG.debug("Error extracting indicator data", ex);
                 }
             }
-            return null;
-        }
-
-        private String findDataFromCoordinates(int y, PlotRenderingInfo plotInfo) {
-            // This is a fallback method - try to find nearest data point
-            // For now, return null to use entity-based approach
             return null;
         }
     }
