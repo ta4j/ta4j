@@ -7,3 +7,4 @@
 - The charting tests share fixtures via `ChartingTestFixtures` and depend on `org.ta4j.core.mocks.*`; prefer those helpers over ad-hoc builders when generating series or OHLC datasets.
 - All code changes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
 - Prefer explicit imports for charting dependencies (e.g., `org.jfree.*`, Swing) instead of repeating fully qualified names inline; this keeps the samples easier to scan when iterating quickly.
+- Charting code is split into subpackages: `charting.builder` (builder/plan), `charting.workflow` (facade), `charting.compose` (factory/renderers), `charting.display`, `charting.storage`, and `charting.renderer`. Keep new classes grouped similarly rather than dropping more files into the root.

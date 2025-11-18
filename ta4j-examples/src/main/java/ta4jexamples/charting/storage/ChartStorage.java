@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.storage;
 
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
@@ -40,7 +40,7 @@ import java.util.Optional;
  *
  * @since 0.19
  */
-interface ChartStorage {
+public interface ChartStorage {
 
     /**
      * Persists the provided chart and returns the destination path if the operation

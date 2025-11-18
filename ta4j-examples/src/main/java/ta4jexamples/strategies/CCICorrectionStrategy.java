@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -102,8 +102,8 @@ public class CCICorrectionStrategy {
         CCIIndicator shortCci = new CCIIndicator(series, 5);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker();
-        JFreeChart chart = chartMaker.builder()
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
                 .withSeries(series)
                 .withTradingRecordOverlay(tradingRecord)
                 .withSubChart(longCci)
@@ -111,7 +111,7 @@ public class CCICorrectionStrategy {
                 .withLineColor(Color.ORANGE)
                 .withSubChart(new GrossReturnCriterion(), tradingRecord)
                 .toChart();
-        chartMaker.displayChart(chart);
-        chartMaker.saveChartImage(chart, series, "cci-correction-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "cci-correction-strategy", "ta4j-examples/log/charts");
     }
 }

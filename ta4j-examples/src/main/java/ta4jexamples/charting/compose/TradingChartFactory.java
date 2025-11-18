@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.compose;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
@@ -70,13 +70,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
+import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
+
 /**
  * Builds {@link JFreeChart} instances with different overlays for TA4J trading
  * data.
  *
  * @since 0.19
  */
-final class TradingChartFactory {
+public final class TradingChartFactory {
 
     private static final Logger LOG = LogManager.getLogger(TradingChartFactory.class);
 
@@ -102,7 +105,7 @@ final class TradingChartFactory {
     private static final String DATE_FORMAT_DAILY = "yyyy-MM-dd";
     private static final String DATE_FORMAT_INTRADAY = "yyyy-MM-dd HH:mm:ss";
 
-    JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
+    public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         DefaultOHLCDataset data = createChartDataset(series);
         String chartTitle = buildChartTitle(series.getName(), strategyName);
         JFreeChart chart = buildChart(chartTitle, series.getFirstBar().getTimePeriod(), data);
@@ -111,7 +114,7 @@ final class TradingChartFactory {
     }
 
     @SafeVarargs
-    final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+    public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             Indicator<Num>... indicators) {
         if (indicators == null || indicators.length == 0) {
             return createTradingRecordChart(series, strategyName, tradingRecord);
@@ -141,7 +144,7 @@ final class TradingChartFactory {
     }
 
     @SafeVarargs
-    final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
+    public final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
         if (indicators == null || indicators.length == 0) {
             // No indicators, return simple OHLC chart
             DefaultOHLCDataset data = createChartDataset(series);
@@ -205,7 +208,7 @@ final class TradingChartFactory {
         return chart;
     }
 
-    JFreeChart compose(ChartBuilder.ChartDefinition definition) {
+    public JFreeChart compose(ChartBuilder.ChartDefinition definition) {
         Objects.requireNonNull(definition, "Chart definition cannot be null");
         ChartBuilder.PlotDefinition baseDefinition = Objects.requireNonNull(definition.basePlot(),
                 "Base plot cannot be null");
@@ -230,12 +233,12 @@ final class TradingChartFactory {
         return chart;
     }
 
-    JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+    public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel) {
         return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null);
     }
 
-    JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+    public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle) {
         String effectiveTitle = chartTitle != null && !chartTitle.trim().isEmpty() ? chartTitle
                 : (series.getName() != null ? series.getName() : series.toString());
@@ -359,7 +362,7 @@ final class TradingChartFactory {
         return chart;
     }
 
-    String buildChartTitle(String barSeriesName, String strategyName) {
+    public String buildChartTitle(String barSeriesName, String strategyName) {
         if (barSeriesName == null || barSeriesName.trim().isEmpty()) {
             return strategyName;
         }

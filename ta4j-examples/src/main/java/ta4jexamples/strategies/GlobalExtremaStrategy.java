@@ -40,7 +40,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -111,8 +111,8 @@ public class GlobalExtremaStrategy {
         final var upWeek = BinaryOperationIndicator.product(weekHighPrice, 0.996);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker();
-        JFreeChart chart = chartMaker.builder()
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
                 .withSeries(series)
                 .withTradingRecordOverlay(tradingRecord)
                 .withIndicatorOverlay(weekHighPrice)
@@ -121,7 +121,7 @@ public class GlobalExtremaStrategy {
                 .withIndicatorOverlay(upWeek)
                 .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
                 .toChart();
-        chartMaker.displayChart(chart);
-        chartMaker.saveChartImage(chart, series, "global-extrema-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "ta4j-examples/log/charts");
     }
 }

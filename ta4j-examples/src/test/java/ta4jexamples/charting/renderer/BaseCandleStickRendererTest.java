@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.renderer;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ChartFactory;
@@ -33,6 +33,8 @@ import org.junit.Test;
 import java.awt.*;
 
 import static org.junit.Assert.*;
+
+import ta4jexamples.charting.ChartingTestFixtures;
 
 /**
  * Unit tests for {@link BaseCandleStickRenderer}.

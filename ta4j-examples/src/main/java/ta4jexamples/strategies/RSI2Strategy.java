@@ -40,7 +40,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -111,8 +111,8 @@ public class RSI2Strategy {
         RSIIndicator rsiOverlay = new RSIIndicator(closePrice, 2);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker();
-        JFreeChart chart = chartMaker.builder()
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
                 .withSeries(series)
                 .withTradingRecordOverlay(tradingRecord)
                 .withIndicatorOverlay(shortSma)
@@ -120,8 +120,8 @@ public class RSI2Strategy {
                 .withAnalysisCriterionOverlay(new GrossReturnCriterion(), tradingRecord)
                 .withSubChart(rsiOverlay)
                 .toChart();
-        chartMaker.displayChart(chart);
-        chartMaker.saveChartImage(chart, series, "rsi2-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "rsi2-strategy", "ta4j-examples/log/charts");
     }
 
 }

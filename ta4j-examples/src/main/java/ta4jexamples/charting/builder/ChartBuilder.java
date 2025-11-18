@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.builder;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,6 +42,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import ta4jexamples.charting.AnalysisCriterionIndicator;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
  * Fluent chart builder that mirrors the Java Stream API: users select a base
@@ -71,7 +75,7 @@ public final class ChartBuilder {
     private String customTitle;
     private BarSeries domainSeries;
 
-    ChartBuilder(ChartWorkflow chartWorkflow, TradingChartFactory chartFactory) {
+    public ChartBuilder(ChartWorkflow chartWorkflow, TradingChartFactory chartFactory) {
         this.chartWorkflow = Objects.requireNonNull(chartWorkflow, "Chart workflow cannot be null");
         this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
     }
@@ -568,7 +572,7 @@ public final class ChartBuilder {
         }
     }
 
-    static final class ChartDefinition {
+    public static final class ChartDefinition {
         private final PlotDefinition basePlot;
         private final List<PlotDefinition> subplots;
         private final String title;
@@ -579,20 +583,20 @@ public final class ChartBuilder {
             this.title = title;
         }
 
-        PlotDefinition basePlot() {
+        public PlotDefinition basePlot() {
             return basePlot;
         }
 
-        List<PlotDefinition> subplots() {
+        public List<PlotDefinition> subplots() {
             return subplots;
         }
 
-        String title() {
+        public String title() {
             return title;
         }
     }
 
-    static final class PlotDefinition {
+    public static final class PlotDefinition {
         private final PlotType type;
         private final BarSeries series;
         private final Indicator<Num> baseIndicator;
@@ -617,28 +621,28 @@ public final class ChartBuilder {
                     Collections.unmodifiableList(overlayDefinitions));
         }
 
-        PlotType type() {
+        public PlotType type() {
             return type;
         }
 
-        BarSeries series() {
+        public BarSeries series() {
             return series;
         }
 
-        Indicator<Num> baseIndicator() {
+        public Indicator<Num> baseIndicator() {
             return baseIndicator;
         }
 
-        TradingRecord tradingRecord() {
+        public TradingRecord tradingRecord() {
             return tradingRecord;
         }
 
-        List<OverlayDefinition> overlays() {
+        public List<OverlayDefinition> overlays() {
             return overlays;
         }
     }
 
-    static final class OverlayDefinition {
+    public static final class OverlayDefinition {
         private final OverlayType type;
         private final Indicator<Num> indicator;
         private final TradingRecord tradingRecord;
@@ -659,23 +663,23 @@ public final class ChartBuilder {
                     context.style);
         }
 
-        OverlayType type() {
+        public OverlayType type() {
             return type;
         }
 
-        Indicator<Num> indicator() {
+        public Indicator<Num> indicator() {
             return indicator;
         }
 
-        TradingRecord tradingRecord() {
+        public TradingRecord tradingRecord() {
             return tradingRecord;
         }
 
-        AxisSlot axisSlot() {
+        public AxisSlot axisSlot() {
             return axisSlot;
         }
 
-        OverlayStyle style() {
+        public OverlayStyle style() {
             return style;
         }
     }
@@ -706,15 +710,15 @@ public final class ChartBuilder {
         }
     }
 
-    enum PlotType {
+    public enum PlotType {
         CANDLESTICK, INDICATOR, TRADING_RECORD
     }
 
-    enum OverlayType {
+    public enum OverlayType {
         INDICATOR, TRADING_RECORD, ANALYSIS_CRITERION
     }
 
-    enum AxisSlot {
+    public enum AxisSlot {
         PRIMARY, SECONDARY
     }
 
@@ -848,7 +852,7 @@ public final class ChartBuilder {
         }
     }
 
-    static final class OverlayStyle {
+    public static final class OverlayStyle {
         private Color color;
         private float lineWidth;
 
@@ -861,19 +865,19 @@ public final class ChartBuilder {
             return new OverlayStyle(color, 1.6f);
         }
 
-        Color color() {
+        public Color color() {
             return color;
         }
 
-        float lineWidth() {
+        public float lineWidth() {
             return lineWidth;
         }
 
-        void setColor(Color color) {
+        public void setColor(Color color) {
             this.color = Objects.requireNonNull(color, "Color cannot be null");
         }
 
-        void setLineWidth(float width) {
+        public void setLineWidth(float width) {
             if (width <= 0.05f) {
                 throw new IllegalArgumentException("Line width must be positive");
             }

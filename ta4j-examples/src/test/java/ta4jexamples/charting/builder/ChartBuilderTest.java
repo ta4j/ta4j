@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.builder;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
@@ -35,7 +35,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -44,6 +43,9 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 
 class ChartBuilderTest {
 

@@ -41,7 +41,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -118,8 +118,8 @@ public class MovingMomentumStrategy {
         StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker();
-        JFreeChart chart = chartMaker.builder()
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
                 .withSeries(series)
                 .withTradingRecordOverlay(tradingRecord)
                 .withIndicatorOverlay(shortEma)
@@ -128,7 +128,7 @@ public class MovingMomentumStrategy {
                 .withIndicatorOverlay(emaMacd)
                 .withSubChart(stochasticOscillK)
                 .toChart();
-        chartMaker.displayChart(chart);
-        chartMaker.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
     }
 }

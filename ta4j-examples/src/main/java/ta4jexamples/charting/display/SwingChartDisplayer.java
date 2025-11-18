@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.display;
 
 import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
@@ -71,7 +71,7 @@ import javax.swing.event.AncestorListener;
  *
  * @since 0.19
  */
-final class SwingChartDisplayer implements ChartDisplayer {
+public final class SwingChartDisplayer implements ChartDisplayer {
 
     /**
      * System property key for chart display scale configuration.

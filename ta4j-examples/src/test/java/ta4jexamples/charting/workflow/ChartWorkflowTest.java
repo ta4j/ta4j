@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.workflow;
 
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.JFreeChart;
@@ -51,6 +51,9 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.builder.ChartBuilder;
 
 /**
  * Integration tests for {@link ChartWorkflow}.

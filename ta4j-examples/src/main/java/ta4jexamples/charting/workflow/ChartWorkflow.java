@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.workflow;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -38,6 +38,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Optional;
+
+import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.display.ChartDisplayer;
+import ta4jexamples.charting.display.SwingChartDisplayer;
+import ta4jexamples.charting.storage.ChartStorage;
+import ta4jexamples.charting.storage.FileSystemChartStorage;
 
 /**
  * Facade for composing, displaying, and persisting TA4J charts.
@@ -102,7 +110,7 @@ public class ChartWorkflow {
                 new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory)));
     }
 
-    ChartWorkflow(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
+    public ChartWorkflow(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
         this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
         this.chartDisplayer = Objects.requireNonNull(chartDisplayer, "Chart displayer cannot be null");
         this.chartStorage = Objects.requireNonNull(chartStorage, "Chart storage cannot be null");
