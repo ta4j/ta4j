@@ -203,7 +203,7 @@ public final class TradingChartFactory {
         ChartBuilder.PlotDefinition baseDefinition = Objects.requireNonNull(definition.basePlot(),
                 "Base plot cannot be null");
 
-        CombinedDomainXYPlot combinedPlot = createCombinedPlot(baseDefinition.series(), definition.subplots().size());
+        CombinedDomainXYPlot combinedPlot = createCombinedPlot(baseDefinition.series());
         XYPlot basePlot = buildPlotFromDefinition(baseDefinition);
         combinedPlot.add(basePlot, calculateMainPlotWeight(definition.subplots().size()));
 
@@ -382,7 +382,7 @@ public final class TradingChartFactory {
         plot.setRangeGridlinePaint(GRIDLINE_COLOR);
     }
 
-    private CombinedDomainXYPlot createCombinedPlot(BarSeries series, int subplotCount) {
+    private CombinedDomainXYPlot createCombinedPlot(BarSeries series) {
         Objects.requireNonNull(series, "BarSeries cannot be null");
         DateAxis domainAxis = new DateAxis("Date");
         Duration duration = series.getFirstBar().getTimePeriod();
