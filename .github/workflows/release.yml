@@ -28,6 +28,43 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
+      - name: Write Maven security settings
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD }}
+          MAVEN_SECURITY_MASTER_PLAIN: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD_PLAIN }}
+        run: |
+          set -euo pipefail
+          # Only create settings-security.xml if a master password is provided
+          if [[ -z "${MAVEN_SECURITY_MASTER:-}" && -z "${MAVEN_SECURITY_MASTER_PLAIN:-}" ]]; then
+            echo "No Maven security master password provided; skipping settings-security.xml creation"
+            echo "Note: setup-java will write plaintext passwords to settings.xml"
+            exit 0
+          fi
+          # Check if Maven is available, install if not
+          if ! command -v mvn &> /dev/null; then
+            echo "Maven not found, installing..."
+            sudo apt-get update -qq
+            sudo apt-get install -y maven
+          fi
+          master_value="${MAVEN_SECURITY_MASTER:-}"
+          if [[ -z "${master_value}" && -n "${MAVEN_SECURITY_MASTER_PLAIN:-}" ]]; then
+            echo "Encrypting provided plain master password for settings-security.xml"
+            master_value="$(mvn --encrypt-master-password "${MAVEN_SECURITY_MASTER_PLAIN}" | awk 'NF{line=$0} END{print line}')"
+          fi
+          if [[ -z "${master_value}" ]]; then
+            echo "Failed to determine master password value" >&2
+            exit 1
+          fi
+          mkdir -p "${HOME}/.m2"
+          cat > "${HOME}/.m2/settings-security.xml" <<EOF
+          <settingsSecurity>
+            <master>${master_value}</master>
+          </settingsSecurity>
+          EOF
+          chmod 600 "${HOME}/.m2/settings-security.xml"
+          echo "Created settings-security.xml with master password"
+
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -39,29 +76,6 @@ jobs:
           server-password: ${{ secrets.OSSRH_PASSWORD }}
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-
-      - name: Write Maven security settings
-        shell: bash
-        env:
-          MAVEN_SECURITY_MASTER: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD }}
-          MAVEN_SECURITY_MASTER_PLAIN: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD_PLAIN }}
-        run: |
-          set -euo pipefail
-          master_value="${MAVEN_SECURITY_MASTER}"
-          if [[ -z "${master_value}" && -n "${MAVEN_SECURITY_MASTER_PLAIN}" ]]; then
-            echo "Encrypting provided plain master password for settings-security.xml"
-            master_value="$(mvn --encrypt-master-password "${MAVEN_SECURITY_MASTER_PLAIN}" | awk 'NF{line=$0} END{print line}')"
-          fi
-          if [[ -z "${master_value}" ]]; then
-            echo "Set OSSRH_SECURITY_MASTER_PASSWORD (encrypted) or OSSRH_SECURITY_MASTER_PASSWORD_PLAIN (unencrypted) secret" >&2
-            exit 1
-          fi
-          mkdir -p "${HOME}/.m2"
-          printf '%s\n' \
-            '<settingsSecurity>' \
-            "  <master>${master_value}</master>" \
-            '</settingsSecurity>' > "${HOME}/.m2/settings-security.xml"
-          chmod 600 "${HOME}/.m2/settings-security.xml"
 
       - name: Configure Git
         env:
