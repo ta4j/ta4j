@@ -41,15 +41,12 @@ jobs:
           gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
 
       - name: Write Maven security settings
+        if: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD != '' }}
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
-            echo "OSSRH_SECURITY_MASTER_PASSWORD secret must be set to decrypt Maven credentials" >&2
-            exit 1
-          fi
           mkdir -p "${HOME}/.m2"
           printf '%s\n' \
             '<settingsSecurity>' \
@@ -115,7 +112,18 @@ jobs:
             exit 1
           fi
           BRANCH="release/${RELEASE_VERSION}"
-          git checkout -b "${BRANCH}"
+          # Check if branch already exists locally or remotely
+          if git show-ref --verify --quiet "refs/heads/${BRANCH}"; then
+            echo "Release branch ${BRANCH} already exists locally; checking it out" >&2
+            git checkout "${BRANCH}"
+          elif git ls-remote --heads origin "${BRANCH}" | grep -q "${BRANCH}"; then
+            echo "Release branch ${BRANCH} already exists remotely; checking it out" >&2
+            git fetch origin "${BRANCH}"
+            git checkout -b "${BRANCH}" "origin/${BRANCH}"
+          else
+            echo "Creating new release branch ${BRANCH}" >&2
+            git checkout -b "${BRANCH}"
+          fi
           echo "release_branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
       - name: Commit release changes
@@ -138,7 +146,17 @@ jobs:
           RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
         run: |
           set -eo pipefail
-          git push --set-upstream origin "$RELEASE_BRANCH"
+          # Check if branch already exists remotely
+          if git ls-remote --heads origin "${RELEASE_BRANCH}" | grep -q "${RELEASE_BRANCH}"; then
+            echo "Release branch ${RELEASE_BRANCH} already exists remotely; pushing updates" >&2
+            git push origin "${RELEASE_BRANCH}" || {
+              echo "Push failed. If this is a retry, the branch may need to be reset. Consider deleting it first." >&2
+              exit 1
+            }
+          else
+            echo "Pushing new release branch ${RELEASE_BRANCH}" >&2
+            git push --set-upstream origin "${RELEASE_BRANCH}"
+          fi
     
       - name: Build and deploy artifacts
         if: steps.commit_release.outputs.release_changes == 'true'
@@ -178,8 +196,17 @@ jobs:
           RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
         run: |
           set -eo pipefail
-          git tag -a "v${RELEASE_VERSION}" -m "ta4j ${RELEASE_VERSION}"
-          git push origin "v${RELEASE_VERSION}"
+          TAG="v${RELEASE_VERSION}"
+          # Check if tag already exists locally or remotely
+          if git rev-parse --verify --quiet "${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists locally; skipping creation" >&2
+          elif git ls-remote --tags origin "${TAG}" | grep -q "${TAG}"; then
+            echo "Tag ${TAG} already exists remotely; skipping creation" >&2
+          else
+            echo "Creating new tag ${TAG}" >&2
+            git tag -a "${TAG}" -m "ta4j ${RELEASE_VERSION}"
+            git push origin "${TAG}"
+          fi
     
       - name: Publish GitHub release
         if: steps.commit_release.outputs.release_changes == 'true'
@@ -287,3 +314,35 @@ jobs:
           commit-message: |
             chore: prepare for next development iteration
           delete-branch: true
+
+      - name: Cleanup on failure
+        if: failure() && steps.create_release_branch.outputs.release_branch != ''
+        env:
+          RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
+          RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
+        run: |
+          set -eo pipefail
+          echo "Workflow failed; cleaning up release artifacts..." >&2
+          
+          # Delete remote release branch if it exists
+          if [[ -n "${RELEASE_BRANCH}" ]]; then
+            if git ls-remote --heads origin "${RELEASE_BRANCH}" | grep -q "${RELEASE_BRANCH}"; then
+              echo "Deleting remote release branch: ${RELEASE_BRANCH}" >&2
+              git push origin --delete "${RELEASE_BRANCH}" || echo "Failed to delete remote branch (may not exist or already deleted)" >&2
+            else
+              echo "Release branch ${RELEASE_BRANCH} does not exist remotely; skipping deletion" >&2
+            fi
+          fi
+          
+          # Delete remote tag if it exists
+          if [[ -n "${RELEASE_VERSION}" ]]; then
+            TAG="v${RELEASE_VERSION}"
+            if git ls-remote --tags origin "${TAG}" | grep -q "${TAG}"; then
+              echo "Deleting remote tag: ${TAG}" >&2
+              git push origin --delete "${TAG}" || echo "Failed to delete remote tag (may not exist or already deleted)" >&2
+            else
+              echo "Tag ${TAG} does not exist remotely; skipping deletion" >&2
+            fi
+          fi
+          
+          echo "Cleanup completed" >&2
