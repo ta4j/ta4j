@@ -32,6 +32,7 @@ import org.jfree.chart.entity.XYItemEntity;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.XYDataset;
+import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -358,7 +359,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
                 }
             } else if (dataset instanceof XYSeriesCollection xyCollection) {
                 try {
-                    org.jfree.data.xy.XYSeries series = xyCollection.getSeries(seriesIndex);
+                    XYSeries series = xyCollection.getSeries(seriesIndex);
                     if (series != null && itemIndex < series.getItemCount()) {
                         double x = series.getX(itemIndex).doubleValue();
                         double y = series.getY(itemIndex).doubleValue();

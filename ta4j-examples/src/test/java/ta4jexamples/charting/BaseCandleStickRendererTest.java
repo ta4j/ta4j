@@ -26,6 +26,7 @@ package ta4jexamples.charting;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.CandlestickRenderer;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.junit.Test;
 
@@ -155,8 +156,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Test that it extends CandlestickRenderer
-        assertTrue("Should extend CandlestickRenderer",
-                renderer instanceof org.jfree.chart.renderer.xy.CandlestickRenderer);
+        assertTrue("Should extend CandlestickRenderer", renderer instanceof CandlestickRenderer);
     }
 
     @Test

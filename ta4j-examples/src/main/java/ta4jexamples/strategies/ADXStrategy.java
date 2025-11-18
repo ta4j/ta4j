@@ -100,11 +100,25 @@ public class ADXStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        SMAIndicator smaIndicator = new SMAIndicator(closePriceIndicator, 50);
+        int adxBarCount = 14;
+        ADXIndicator adxIndicator = new ADXIndicator(series, adxBarCount);
+        PlusDIIndicator plusDIIndicator = new PlusDIIndicator(series, adxBarCount);
+        MinusDIIndicator minusDIIndicator = new MinusDIIndicator(series, adxBarCount);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "adx-strategy");
+        ChartMaker chartMaker = new ChartMaker();
+        JFreeChart chart = chartMaker.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(smaIndicator)
+                .withSubChart(adxIndicator)
+                .withIndicatorOverlay(plusDIIndicator)
+                .withIndicatorOverlay(minusDIIndicator)
+                .withSubChart(new GrossReturnCriterion(), tradingRecord)
+                .toChart();
+        chartMaker.displayChart(chart);
+        chartMaker.saveChartImage(chart, series, "adx-strategy", "ta4j-examples/log/charts");
     }
 }

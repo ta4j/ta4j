@@ -23,6 +23,8 @@
  */
 package ta4jexamples.strategies;
 
+import java.awt.Color;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
@@ -96,11 +98,20 @@ public class CCICorrectionStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        CCIIndicator longCci = new CCIIndicator(series, 200);
+        CCIIndicator shortCci = new CCIIndicator(series, 5);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "cci-correction-strategy");
+        ChartMaker chartMaker = new ChartMaker();
+        JFreeChart chart = chartMaker.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withSubChart(longCci)
+                .withIndicatorOverlay(shortCci)
+                .withLineColor(Color.ORANGE)
+                .withSubChart(new GrossReturnCriterion(), tradingRecord)
+                .toChart();
+        chartMaker.displayChart(chart);
+        chartMaker.saveChartImage(chart, series, "cci-correction-strategy", "ta4j-examples/log/charts");
     }
 }

@@ -105,13 +105,23 @@ public class RSI2Strategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
+        SMAIndicator longSma = new SMAIndicator(closePrice, 200);
+        RSIIndicator rsiOverlay = new RSIIndicator(closePrice, 2);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .addIndicators(new RSIIndicator(new ClosePriceIndicator(series), 2))
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "rsi2-strategy");
+        ChartMaker chartMaker = new ChartMaker();
+        JFreeChart chart = chartMaker.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(shortSma)
+                .withIndicatorOverlay(longSma)
+                .withAnalysisCriterionOverlay(new GrossReturnCriterion(), tradingRecord)
+                .withSubChart(rsiOverlay)
+                .toChart();
+        chartMaker.displayChart(chart);
+        chartMaker.saveChartImage(chart, series, "rsi2-strategy", "ta4j-examples/log/charts");
     }
 
 }

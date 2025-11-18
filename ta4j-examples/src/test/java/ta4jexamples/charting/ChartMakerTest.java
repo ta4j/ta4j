@@ -29,6 +29,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.ui.Layer;
 import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
@@ -112,11 +113,11 @@ public class ChartMakerTest {
     }
 
     @Test
-    public void testBuilderCreatesValidHandle() {
-        ChartHandle handle = chartMaker.builder().withTradingRecord(barSeries, "Test Strategy", tradingRecord).build();
-        assertNotNull(handle, "Handle should not be null");
-        assertNotNull(handle.getChart(), "Chart should not be null");
-        assertEquals(barSeries, handle.getSeries(), "Series should match");
+    public void testBuilderProducesChart() {
+        JFreeChart chart = chartMaker.builder().withSeries(barSeries).withTradingRecordOverlay(tradingRecord).toChart();
+        assertNotNull(chart, "Chart should not be null");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
+                "Chart built through builder should use CombinedDomainXYPlot");
     }
 
     @Test
@@ -700,7 +701,7 @@ public class ChartMakerTest {
         // Filter to count only LegendTitle instances
         int legendCount = 0;
         for (int i = 0; i < subtitleCount; i++) {
-            if (chart.getSubtitle(i) instanceof org.jfree.chart.title.LegendTitle) {
+            if (chart.getSubtitle(i) instanceof LegendTitle) {
                 legendCount++;
             }
         }
