@@ -1,10 +1,57 @@
 # AGENTS Instructions for ta4j
 
+## MANDATORY WORKFLOW - DO NOT SKIP
+
+**CRITICAL: Before completing ANY code changes, you MUST:**
+
+1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
+   - **This is NOT optional.** Do not skip this step, even for "simple" changes.
+   - **When:** After every code change that affects build/test behavior (which is almost always)
+   - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI’s default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
+   - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
+   - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
+   - **Report:** Always include the script's output showing `Tests run / Failures / Errors / Skipped` numbers and the log path
+
+2. ✅ Verify the build succeeded with zero failures and zero errors
+3. ✅ Include the test results in your completion message
+
+**If you skip the full build, you have NOT completed the task. The build script is the ONLY acceptable way to validate changes.**
+
 ## Repository-wide conventions
-- All changes should be validated, formatted, and tested using Maven goal: `mvn -B clean license:format formatter:format test install`
-- Run the narrowest Maven test command that covers new code (typically `mvn -pl ta4j-core test -Dtest=...`) to keep the feedback loop fast.
+
+### Build and Test Workflow
+
+- **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`). For focused module testing, you may use `scripts/run-full-build-quiet.sh -pl ta4j-core` to get filtered logs while still validating a single module.
+- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags) - this is mandatory, not optional
+- The script stores the full log under `.agents/logs/` and prints aggregated test totals
+- All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
+- When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
+- At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
-- The project tracks release notes in `CHANGELOG.md`; if instructions mention `CHANGES.md`, update the `CHANGELOG.md` within the appropriate section.
+- When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
+
+### Unit Testing Best Practices
+
+- **Never use reflection to access private APIs in tests.** Always test through the nearest public API, even if it requires additional setup. If testing private methods is necessary, refactor the production code to support dependency injection and mocks, or extract the logic into a testable public method. Reflection-based tests are brittle, harder to maintain, and don't reflect real usage patterns.
+- **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties:
+  ```java
+  // Good
+  IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+      someMethod();
+  });
+  assertThat(ex.getMessage()).contains("expected message");
+  
+  // Avoid
+  @Test(expected = IllegalArgumentException.class)
+  public void testMethod() { ... }
+  
+  // Avoid
+  try {
+      someMethod();
+      fail("Expected exception");
+  } catch (IllegalArgumentException e) { ... }
+  ```
+- **Prefer dependency injection for testability.** When code is difficult to test, refactor to accept dependencies through constructors or methods rather than accessing them statically or creating them internally. This enables mocking and makes tests more focused and maintainable.
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
@@ -15,3 +62,12 @@
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.
 For toString(), output JSON — prefer Gson serialization > manual JSON > custom/ad hoc formatting.
+- The project uses Gson for component (rule, indicator, strategy) metadata. Prefer the helper classes in
+  `org.ta4j.core.serialization` (see `ComponentDescriptor` and `ComponentSerialization`) instead of hand-rolling JSON when you
+  need structured names or serialization glue.
+- Composite rule names should be represented as nested component descriptors. Use
+  `ComponentSerialization.parse(rule.getName())` to walk existing rule names safely.
+
+## Finding Scoped Agent Guides
+- Many packages (e.g., `ta4j-core/src/main/java/org/ta4j/core/serialization`) have their own `AGENTS.md` with domain-specific conventions. Before editing a feature area, run `rg --files -g 'AGENTS.md'` or `fd AGENTS.md` from the repo root and open the closest file to your working directory.
+- When adding new modules or significant subsystems, include an `AGENTS.md` in that directory and link back to it from higher-level docs when possible.

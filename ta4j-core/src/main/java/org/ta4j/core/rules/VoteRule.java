@@ -25,6 +25,7 @@ package org.ta4j.core.rules;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
@@ -73,7 +74,10 @@ public class VoteRule extends AbstractRule {
         }
 
         this.requiredVotes = requiredVotes;
-        this.rules = rules;
+        for (Rule rule : rules) {
+            Objects.requireNonNull(rule, "rule cannot be null");
+        }
+        this.rules = List.copyOf(rules);
     }
 
     @Override

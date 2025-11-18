@@ -39,6 +39,8 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeStopLossRuleTest {
@@ -239,5 +241,41 @@ public class AverageTrueRangeStopLossRuleTest {
         tradingRecord.exit(5, series.numFactory().hundred(), series.numFactory().one());
 
         assertFalse(rule.isSatisfied(9, tradingRecord));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var now = Instant.now();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder()
+                    .endTime(now.plus(Duration.ofDays(i)))
+                    .openPrice(100 + i)
+                    .highPrice(105 + i)
+                    .lowPrice(95 + i)
+                    .closePrice(100 + i)
+                    .add();
+        }
+        var rule = new AverageTrueRangeStopLossRule(series, 3, 1.25);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void serializeAndDeserializeWithCustomReference() {
+        var now = Instant.now();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder()
+                    .endTime(now.plus(Duration.ofDays(i)))
+                    .openPrice(100 + i)
+                    .highPrice(105 + i)
+                    .lowPrice(95 + i)
+                    .closePrice(100 + i)
+                    .add();
+        }
+        Num base = series.numFactory().numOf(150);
+        FixedIndicator<Num> referencePrice = new FixedIndicator<>(series, base, base, base, base, base);
+        var rule = new AverageTrueRangeStopLossRule(series, referencePrice, 4, 2.0);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

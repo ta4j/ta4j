@@ -29,7 +29,7 @@ import java.util.function.BiFunction;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -78,13 +78,13 @@ public class VWMAIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
         }
 
-        final var weightedPriceSum = BinaryOperation.product(priceIndicator, volumeIndicator);
+        final var weightedPriceSum = BinaryOperationIndicator.product(priceIndicator, volumeIndicator);
         final var weightedPriceAverage = Objects.requireNonNull(averageFactory.apply(weightedPriceSum, barCount),
                 "averageFactory must return a price-volume average");
         final var volumeAverage = Objects.requireNonNull(averageFactory.apply(volumeIndicator, barCount),
                 "averageFactory must return a volume average");
 
-        this.volumeWeightedIndicator = BinaryOperation.quotient(weightedPriceAverage, volumeAverage);
+        this.volumeWeightedIndicator = BinaryOperationIndicator.quotient(weightedPriceAverage, volumeAverage);
         this.barCount = barCount;
     }
 

@@ -23,6 +23,15 @@
  */
 package ta4jexamples.loaders;
 
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvValidationException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -32,16 +41,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import com.opencsv.exceptions.CsvValidationException;
-
 /**
  * This class build a Ta4j bar series from a CSV file containing bars.
  */
@@ -49,23 +48,50 @@ public class CsvBarsLoader {
 
     private static final Logger LOG = LogManager.getLogger(CsvBarsLoader.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String DEFAULT_APPLE_BAR_FILE = "appleinc_bars_from_20130101_usd.csv";
 
     /**
-     * @return the bar series from Apple Inc. bars.
+     * Loads a bar series from the default CSV file.
+     *
+     * @return the bar series loaded from the default CSV file
      */
-
-    public static BarSeries loadAppleIncSeries() {
-        return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
+    public static BarSeries loadSeriesFromFile() {
+        return loadSeriesFromFile(DEFAULT_APPLE_BAR_FILE);
     }
 
+    /**
+     * Loads a bar series from the specified CSV file. This is a convenience method
+     * that delegates to {@link #loadCsvSeries(String)}.
+     *
+     * @param csvFile the path to the CSV file containing bar data
+     * @return the bar series loaded from the specified CSV file
+     */
+    public static BarSeries loadSeriesFromFile(String csvFile) {
+        return loadCsvSeries(csvFile);
+    }
+
+    /**
+     * Loads a bar series from a CSV file with the specified filename. The CSV file
+     * is expected to contain stock market data with the following columns: date,
+     * open price, high price, low price, close price, and volume. The date format
+     * is expected to match the predefined DATE_FORMAT.
+     *
+     * @param filename the name of the CSV file to load
+     * @return the bar series containing stock data loaded from the specified CSV
+     *         file
+     */
     public static BarSeries loadCsvSeries(String filename) {
 
         var stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
-        var series = new BaseBarSeriesBuilder().withName("apple_bars").build();
+        if (stream == null) {
+            LOG.error("Unable to load CSV file: {} not found in classpath", filename);
+            return new BaseBarSeriesBuilder().withName(filename).build();
+        }
+
+        var series = new BaseBarSeriesBuilder().withName(filename).build();
 
         try {
-            assert stream != null;
             try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
                     .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                     .withSkipLines(1)
@@ -102,11 +128,15 @@ public class CsvBarsLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
-                + series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+        LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
+        LOG.debug("Number of bars: {}", series.getBarCount());
+        if (series.isEmpty()) {
+            LOG.warn("Series is empty - no bars loaded from CSV file. Skipping first bar details.");
+        } else {
+            LOG.debug("First bar: \n\tVolume: {}\n\tOpen price: {}\n\tClose price: {}", series.getBar(0).getVolume(),
+                    series.getBar(0).getOpenPrice(), series.getBar(0).getClosePrice());
+        }
     }
 }

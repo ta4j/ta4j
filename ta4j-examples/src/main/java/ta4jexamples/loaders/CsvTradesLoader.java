@@ -23,6 +23,12 @@
  */
 package ta4jexamples.loaders;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
@@ -31,29 +37,43 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.num.Num;
-
 /**
  * This class builds a Ta4j bar series from a CSV file containing trades.
  */
 public class CsvTradesLoader {
 
     private static final Logger LOG = LogManager.getLogger(CsvTradesLoader.class);
+    private static final String DEFAULT_BITSTAMP_FILE = "bitstamp_trades_from_20131125_usd.csv";
 
     /**
+     * Loads a bar series from the default Bitstamp CSV file. The method reads trade
+     * data from a CSV file containing Bitstamp exchange trades and converts it into
+     * a bar series format suitable for technical analysis.
+     *
      * @return the bar series from Bitstamp (bitcoin exchange) trades
      */
     public static BarSeries loadBitstampSeries() {
+        return loadBitstampSeries(DEFAULT_BITSTAMP_FILE);
+    }
+
+    /**
+     * Loads a bar series from a specified Bitstamp CSV file. The method reads trade
+     * data from a CSV file containing Bitstamp exchange trades and converts it into
+     * a bar series format suitable for technical analysis.
+     *
+     * @param bitstampCsvFile the path to the CSV file containing Bitstamp trade
+     *                        data
+     * @return the bar series built from the Bitstamp trades data
+     */
+    public static BarSeries loadBitstampSeries(String bitstampCsvFile) {
 
         // Reading all lines of the CSV file
-        InputStream stream = CsvTradesLoader.class.getClassLoader()
-                .getResourceAsStream("bitstamp_trades_from_20131125_usd.csv");
+        InputStream stream = CsvTradesLoader.class.getClassLoader().getResourceAsStream(bitstampCsvFile);
         List<String[]> lines = null;
-        assert stream != null;
+        if (stream == null) {
+            LOG.error("Unable to find CSV file: {}", bitstampCsvFile);
+            return new BaseBarSeriesBuilder().withName(bitstampCsvFile).build();
+        }
         try (final var csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
@@ -61,7 +81,7 @@ public class CsvTradesLoader {
             LOG.error("Unable to load trades from CSV", ioe);
         }
 
-        var series = new BaseBarSeriesBuilder().build();
+        var series = new BaseBarSeriesBuilder().withName(bitstampCsvFile).build();
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -128,9 +148,9 @@ public class CsvTradesLoader {
     public static void main(String[] args) {
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tNumber of trades: "
-                + series.getBar(0).getTrades() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+        LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
+        LOG.debug("Number of bars: {}", series.getBarCount());
+        LOG.debug("First bar: \n\tVolume: {}\n\tNumber of trades: {}\n\tClose price: {}", series.getBar(0).getVolume(),
+                series.getBar(0).getTrades(), series.getBar(0).getClosePrice());
     }
 }

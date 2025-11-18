@@ -28,14 +28,18 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class JustOnceRuleTest {
 
     private JustOnceRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
         rule = new JustOnceRule();
+        series = new MockBarSeriesBuilder().withData(1).build();
     }
 
     @Test
@@ -83,5 +87,13 @@ public class JustOnceRuleTest {
         assertFalse(rule.isSatisfied(4));
         assertFalse(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(1));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, new JustOnceRule(new FixedRule(1)));
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, new JustOnceRule(new FixedRule(1)));
     }
 }

@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
@@ -52,6 +54,8 @@ import ta4jexamples.strategies.RSI2Strategy;
  *      http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
  */
 public class WalkForward {
+
+    private static final Logger LOG = LogManager.getLogger(WalkForward.class);
 
     /**
      * Builds a list of split indexes from splitDuration.
@@ -178,7 +182,7 @@ public class WalkForward {
 
         for (BarSeries slice : subseries) {
             // For each sub-series...
-            System.out.println("Sub-series: " + slice.getSeriesPeriodDescription());
+            LOG.debug("Sub-series: {}", slice.getSeriesPeriodDescription());
             BarSeriesManager sliceManager = new BarSeriesManager(slice);
             for (Map.Entry<Strategy, String> entry : strategies.entrySet()) {
                 Strategy strategy = entry.getKey();
@@ -186,11 +190,11 @@ public class WalkForward {
                 // For each strategy...
                 TradingRecord tradingRecord = sliceManager.run(strategy);
                 Num profit = returnCriterion.calculate(slice, tradingRecord);
-                System.out.println("\tProfit for " + name + ": " + profit);
+                LOG.debug("Profit for {}: {}", name, profit);
             }
             Strategy bestStrategy = returnCriterion.chooseBest(sliceManager, TradeType.BUY,
                     new ArrayList<Strategy>(strategies.keySet()));
-            System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
+            LOG.debug("--> Best strategy: {}", strategies.get(bestStrategy));
         }
     }
 }

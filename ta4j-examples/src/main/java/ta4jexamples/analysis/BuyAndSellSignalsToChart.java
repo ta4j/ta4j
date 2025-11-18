@@ -30,7 +30,7 @@ import org.ta4j.core.BarSeries;
 
 import ta4jexamples.strategies.MovingMomentumStrategy;
 import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
  * This class builds a graphical chart showing the buy/sell signals of a
@@ -49,9 +49,9 @@ public class BuyAndSellSignalsToChart {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 
-        // Displaying the chart using the shared ChartMaker utility
-        ChartMaker chartMaker = new ChartMaker();
+        // Displaying the chart using the shared ChartWorkflow utility
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
         String strategyName = strategy.getName() != null ? strategy.getName() : "Moving Momentum Strategy";
-        chartMaker.displayTradingRecordChart(series, strategyName, tradingRecord);
+        chartWorkflow.displayTradingRecordChart(series, strategyName, tradingRecord);
     }
 }

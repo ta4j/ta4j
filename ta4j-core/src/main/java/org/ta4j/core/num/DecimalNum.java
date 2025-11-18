@@ -746,6 +746,11 @@ public final class DecimalNum implements Num {
         return this.delegate.toString();
     }
 
+    /***
+     * TODO: DecimalNum throws NumberFormatException when Math.pow returns
+     * NaN/Infinity This is also an edge case behavior that should be documented or
+     * handled properly.
+     */
     @Override
     public Num pow(final Num n) {
         // There is no BigDecimal.pow(BigDecimal). We could do:

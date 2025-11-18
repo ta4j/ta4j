@@ -30,7 +30,7 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
@@ -39,8 +39,8 @@ import ta4jexamples.strategies.MovingMomentumStrategy;
  *
  * <p>
  * This example demonstrates the use of the dual-axis chart functionality in
- * {@link ChartMaker} to display both the close price and cash flow of a trading
- * strategy on the same chart with separate Y-axes.
+ * {@link ChartWorkflow} to display both the close price and cash flow of a
+ * trading strategy on the same chart with separate Y-axes.
  * </p>
  */
 public class CashFlowToChart {
@@ -62,9 +62,9 @@ public class CashFlowToChart {
         // Creating indicators for the dual-axis chart
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
 
-        // Building and displaying the dual-axis chart using ChartMaker
-        ChartMaker chartMaker = new ChartMaker();
-        chartMaker.displayDualAxisChart(series, closePrice, "Price (USD)", cashFlow, "Cash Flow Ratio", "Bitstamp BTC",
-                "Ta4j example - Cash flow to chart");
+        // Building and displaying the dual-axis chart using ChartWorkflow
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        chartWorkflow.displayDualAxisChart(series, closePrice, "Price (USD)", cashFlow, "Cash Flow Ratio",
+                "Bitstamp BTC", "Ta4j example - Cash flow to chart");
     }
 }
