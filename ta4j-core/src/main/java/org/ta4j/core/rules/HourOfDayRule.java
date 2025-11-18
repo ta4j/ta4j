@@ -25,7 +25,9 @@ package org.ta4j.core.rules;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.ta4j.core.TradingRecord;
@@ -46,13 +48,9 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  *
  * @since 0.19
  */
-// TODO: Add serialization support for HourOfDayRule. The rule currently does not
-// support serialization/deserialization via RuleSerialization. When implemented, the
-// serializeAndDeserialize test in HourOfDayRuleTest should pass automatically. The
-// serialization should handle the DateTimeIndicator component and the int[] hoursOfDay
-// parameter (which is stored as a Set<Integer> internally).
 public class HourOfDayRule extends AbstractRule {
 
+    private final int[] hoursOfDay;
     private final Set<Integer> hoursOfDaySet;
     private final DateTimeIndicator timeIndicator;
 
@@ -64,14 +62,16 @@ public class HourOfDayRule extends AbstractRule {
      * @throws IllegalArgumentException if any hour is not in the range 0-23
      */
     public HourOfDayRule(DateTimeIndicator timeIndicator, int... hoursOfDay) {
-        this.timeIndicator = timeIndicator;
-        for (int hour : hoursOfDay) {
+        this.timeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
+        Objects.requireNonNull(hoursOfDay, "hoursOfDay");
+        this.hoursOfDay = Arrays.copyOf(hoursOfDay, hoursOfDay.length);
+        this.hoursOfDaySet = new HashSet<>(this.hoursOfDay.length);
+        for (int hour : this.hoursOfDay) {
             if (hour < 0 || hour > 23) {
                 throw new IllegalArgumentException("Hour of day must be in range 0-23, but got: " + hour);
             }
         }
-        this.hoursOfDaySet = new HashSet<>();
-        for (int hour : hoursOfDay) {
+        for (int hour : this.hoursOfDay) {
             this.hoursOfDaySet.add(hour);
         }
     }

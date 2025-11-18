@@ -39,6 +39,8 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeStopLossRuleTest {
@@ -241,20 +243,6 @@ public class AverageTrueRangeStopLossRuleTest {
         assertFalse(rule.isSatisfied(9, tradingRecord));
     }
 
-    /**
-     * Tests serialization/deserialization round-trip for
-     * AverageTrueRangeStopLossRule.
-     * <p>
-     * <b>Note:</b> This test may be skipped if serialization is not yet supported
-     * for AverageTrueRangeStopLossRule. The test uses
-     * {@code Assume.assumeNoException()} to gracefully skip when serialization
-     * fails, rather than failing the build. This is intentional - the test serves
-     * as a placeholder until serialization support is implemented.
-     * <p>
-     * When serialization support is added to AverageTrueRangeStopLossRule, this
-     * test should pass automatically. See the TODO comment in
-     * AverageTrueRangeStopLossRule class.
-     */
     @Test
     public void serializeAndDeserialize() {
         var now = Instant.now();
@@ -268,6 +256,25 @@ public class AverageTrueRangeStopLossRuleTest {
                     .add();
         }
         var rule = new AverageTrueRangeStopLossRule(series, 3, 1.25);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void serializeAndDeserializeWithCustomReference() {
+        var now = Instant.now();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder()
+                    .endTime(now.plus(Duration.ofDays(i)))
+                    .openPrice(100 + i)
+                    .highPrice(105 + i)
+                    .lowPrice(95 + i)
+                    .closePrice(100 + i)
+                    .add();
+        }
+        Num base = series.numFactory().numOf(150);
+        FixedIndicator<Num> referencePrice = new FixedIndicator<>(series, base, base, base, base, base);
+        var rule = new AverageTrueRangeStopLossRule(series, referencePrice, 4, 2.0);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }

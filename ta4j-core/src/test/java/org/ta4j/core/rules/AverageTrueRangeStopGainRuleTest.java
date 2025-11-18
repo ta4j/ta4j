@@ -34,7 +34,9 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 public class AverageTrueRangeStopGainRuleTest {
 
@@ -154,23 +156,18 @@ public class AverageTrueRangeStopGainRuleTest {
         assertFalse(rule.isSatisfied(2, tradingRecord));
     }
 
-    /**
-     * Tests serialization/deserialization round-trip for
-     * AverageTrueRangeStopGainRule.
-     * <p>
-     * <b>Note:</b> This test may be skipped if serialization is not yet supported
-     * for AverageTrueRangeStopGainRule. The test uses
-     * {@code Assume.assumeNoException()} to gracefully skip when serialization
-     * fails, rather than failing the build. This is intentional - the test serves
-     * as a placeholder until serialization support is implemented.
-     * <p>
-     * When serialization support is added to AverageTrueRangeStopGainRule, this
-     * test should pass automatically. See the TODO comment in
-     * AverageTrueRangeStopGainRule class.
-     */
     @Test
     public void serializeAndDeserialize() {
         var rule = new AverageTrueRangeStopGainRule(series, 3, 1.5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void serializeAndDeserializeWithCustomReference() {
+        Num constant = series.numFactory().numOf(20);
+        FixedIndicator<Num> reference = new FixedIndicator<>(series, constant, constant, constant, constant, constant);
+        var rule = new AverageTrueRangeStopGainRule(series, reference, 4, 2.25);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }

@@ -25,7 +25,9 @@ package org.ta4j.core.rules;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.ta4j.core.TradingRecord;
@@ -46,13 +48,9 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  *
  * @since 0.19
  */
-// TODO: Add serialization support for MinuteOfHourRule. The rule currently does not
-// support serialization/deserialization via RuleSerialization. When implemented, the
-// serializeAndDeserialize test in MinuteOfHourRuleTest should pass automatically. The
-// serialization should handle the DateTimeIndicator component and the int[] minutesOfHour
-// parameter (which is stored as a Set<Integer> internally).
 public class MinuteOfHourRule extends AbstractRule {
 
+    private final int[] minutesOfHour;
     private final Set<Integer> minutesOfHourSet;
     private final DateTimeIndicator timeIndicator;
 
@@ -64,14 +62,16 @@ public class MinuteOfHourRule extends AbstractRule {
      * @throws IllegalArgumentException if any minute is not in the range 0-59
      */
     public MinuteOfHourRule(DateTimeIndicator timeIndicator, int... minutesOfHour) {
-        this.timeIndicator = timeIndicator;
-        for (int minute : minutesOfHour) {
+        this.timeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
+        Objects.requireNonNull(minutesOfHour, "minutesOfHour");
+        this.minutesOfHour = Arrays.copyOf(minutesOfHour, minutesOfHour.length);
+        this.minutesOfHourSet = new HashSet<>(this.minutesOfHour.length);
+        for (int minute : this.minutesOfHour) {
             if (minute < 0 || minute > 59) {
                 throw new IllegalArgumentException("Minute of hour must be in range 0-59, but got: " + minute);
             }
         }
-        this.minutesOfHourSet = new HashSet<>();
-        for (int minute : minutesOfHour) {
+        for (int minute : this.minutesOfHour) {
             this.minutesOfHourSet.add(minute);
         }
     }

@@ -44,23 +44,19 @@ import org.ta4j.core.num.Num;
  * <p>
  * This rule uses the {@code tradingRecord}.
  */
-// TODO: Add serialization support for AverageTrueRangeTrailingStopLossRule. The rule
-// currently does not support serialization/deserialization via RuleSerialization. When
-// implemented, the serializeAndDeserialize test in
-// AverageTrueRangeTrailingStopLossRuleTest should pass automatically. The serialization
-// should handle the BarSeries parameter, the optional Indicator<Num> referencePrice
-// component, and the int atrBarCount and Number atrCoefficient parameters.
 public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
 
     /**
      * The ATR-based stop loss threshold.
      */
-    private final Indicator<Num> stopLossThreshold;
+    private final transient Indicator<Num> stopLossThreshold;
 
     /**
      * The reference price indicator.
      */
     private final Indicator<Num> referencePrice;
+    private final int atrBarCount;
+    private final Number atrCoefficient;
 
     /**
      * Constructor with default close price as reference.
@@ -83,9 +79,10 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.stopLossThreshold = BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount),
-                atrCoefficient);
         this.referencePrice = referencePrice;
+        this.atrBarCount = atrBarCount;
+        this.atrCoefficient = atrCoefficient;
+        this.stopLossThreshold = createStopLossThreshold(series);
     }
 
     /**
@@ -126,5 +123,9 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
             }
         }
         return false;
+    }
+
+    private Indicator<Num> createStopLossThreshold(BarSeries series) {
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 }
