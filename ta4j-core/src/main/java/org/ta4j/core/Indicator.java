@@ -23,13 +23,16 @@
  */
 package org.ta4j.core;
 
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
 import org.ta4j.core.num.Num;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.IndicatorSerialization;
+import org.ta4j.core.serialization.IndicatorSerializationException;
 
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.IndicatorSerialization;
 /**
  * Indicator over a {@link BarSeries bar series}.
  *
@@ -49,7 +52,7 @@ public interface Indicator<T> {
     /**
      * Returns {@code true} once {@code this} indicator has enough bars to
      * accurately calculate its value. Otherwise, {@code false} will be returned,
-     * which means the indicator will give incorrect values ​​due to insufficient
+     * which means the indicator will give incorrect values due to insufficient
      * data. This method determines stability using the formula:
      *
      * <pre>
@@ -121,31 +124,13 @@ public interface Indicator<T> {
      * </ul>
      *
      * @return JSON description of the indicator
-     * @throws org.ta4j.core.serialization.IndicatorSerializationException if
-     *                                                                     serialization
-     *                                                                     fails due
-     *                                                                     to
-     *                                                                     reflection
-     *                                                                     errors,
-     *                                                                     class
-     *                                                                     loading
-     *                                                                     issues,
-     *                                                                     or JSON
-     *                                                                     generation
-     *                                                                     problems.
-     *                                                                     This
-     *                                                                     exception
-     *                                                                     wraps all
-     *                                                                     underlying
-     *                                                                     serialization
-     *                                                                     failures,
-     *                                                                     providing
-     *                                                                     a
-     *                                                                     consistent
-     *                                                                     exception
-     *                                                                     type for
-     *                                                                     error
-     *                                                                     handling.
+     * @throws IndicatorSerializationException if serialization fails due to
+     *                                         reflection errors, class loading
+     *                                         issues, or JSON generation problems.
+     *                                         This exception wraps all underlying
+     *                                         serialization failures, providing a
+     *                                         consistent exception type for error
+     *                                         handling.
      * @since 0.19
      */
     default String toJson() {
@@ -172,33 +157,13 @@ public interface Indicator<T> {
      * </ul>
      *
      * @return component descriptor for the indicator
-     * @throws org.ta4j.core.serialization.IndicatorSerializationException if
-     *                                                                     descriptor
-     *                                                                     creation
-     *                                                                     fails due
-     *                                                                     to
-     *                                                                     reflection
-     *                                                                     errors,
-     *                                                                     class
-     *                                                                     loading
-     *                                                                     issues,
-     *                                                                     or
-     *                                                                     problems
-     *                                                                     processing
-     *                                                                     circular
-     *                                                                     references.
-     *                                                                     This
-     *                                                                     exception
-     *                                                                     wraps all
-     *                                                                     underlying
-     *                                                                     failures,
-     *                                                                     providing
-     *                                                                     a
-     *                                                                     consistent
-     *                                                                     exception
-     *                                                                     type for
-     *                                                                     error
-     *                                                                     handling.
+     * @throws IndicatorSerializationException if descriptor creation fails due to
+     *                                         reflection errors, class loading
+     *                                         issues, or problems processing
+     *                                         circular references. This exception
+     *                                         wraps all underlying failures,
+     *                                         providing a consistent exception type
+     *                                         for error handling.
      * @since 0.19
      */
     default ComponentDescriptor toDescriptor() {
@@ -215,6 +180,44 @@ public interface Indicator<T> {
      * <ul>
      * <li>Parses the JSON into a component descriptor structure</li>
      * <li>Resolves indicator types by simple name from the classpath</li>
+     * <li>Matches constructor parameters to descriptor values</li>
+     * <li>Recursively instantiates child indicators</li>
+     * <li>Constructs the indicator using reflection-based constructor matching</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Important:</strong> The indicator type must be resolvable from the
+     * classpath. Custom indicator classes must be in the
+     * {@code org.ta4j.core.indicators} package or registered appropriately for
+     * successful deserialization.
+     *
+     * @param series backing series to attach to the reconstructed indicator
+     * @param json   serialized indicator payload generated by {@link #toJson()}
+     * @return indicator instance
+     * @throws IndicatorSerializationException if deserialization fails due to:
+     *                                         <ul>
+     *                                         <li>Invalid or malformed JSON
+     *                                         syntax</li>
+     *                                         <li>Unknown indicator type (class not
+     *                                         found or not in expected
+     *                                         package)</li>
+     *                                         <li>Missing or incompatible
+     *                                         constructor parameters</li>
+     *                                         <li>Constructor instantiation
+     *                                         failures</li>
+     *                                         <li>Class loading or reflection
+     *                                         errors</li>
+     *                                         </ul>
+     *                                         This exception wraps all underlying
+     *                                         deserialization failures, providing a
+     *                                         consistent exception type for error
+     *                                         handling. The original cause is
+     *                                         preserved and can be accessed via
+     *                                         {@link Throwable#getCause()}.
+     * @since 0.19
+     */
+    static Indicator<?> fromJson(BarSeries series, String json) {
+        return IndicatorSerialization.fromJson(series, json);
      * <li>Matches constructor parameters to descriptor values</li>
      * <li>Recursively instantiates child indicators</li>
      * <li>Constructs the indicator using reflection-based constructor matching</li>
