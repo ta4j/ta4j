@@ -241,6 +241,20 @@ public class AverageTrueRangeStopLossRuleTest {
         assertFalse(rule.isSatisfied(9, tradingRecord));
     }
 
+    /**
+     * Tests serialization/deserialization round-trip for
+     * AverageTrueRangeStopLossRule.
+     * <p>
+     * <b>Note:</b> This test may be skipped if serialization is not yet supported
+     * for AverageTrueRangeStopLossRule. The test uses
+     * {@code Assume.assumeNoException()} to gracefully skip when serialization
+     * fails, rather than failing the build. This is intentional - the test serves
+     * as a placeholder until serialization support is implemented.
+     * <p>
+     * When serialization support is added to AverageTrueRangeStopLossRule, this
+     * test should pass automatically. See the TODO comment in
+     * AverageTrueRangeStopLossRule class.
+     */
     @Test
     public void serializeAndDeserialize() {
         var now = Instant.now();

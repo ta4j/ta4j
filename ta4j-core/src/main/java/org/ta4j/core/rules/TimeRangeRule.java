@@ -44,6 +44,11 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  * <p>
  * This rule does not use the {@code tradingRecord}.
  */
+// TODO: Add serialization support for TimeRangeRule. The rule currently does not
+// support serialization/deserialization via RuleSerialization. When implemented, the
+// serializeAndDeserialize test in TimeRangeRuleTest should pass automatically. The
+// serialization should handle the DateTimeIndicator component and the List<TimeRange>
+// parameter (where TimeRange is a record with LocalTime from/to fields).
 public class TimeRangeRule extends AbstractRule {
 
     public record TimeRange(LocalTime from, LocalTime to) {

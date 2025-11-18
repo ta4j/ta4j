@@ -42,6 +42,12 @@ import org.ta4j.core.num.Num;
  * <p>
  * This rule uses the {@code tradingRecord}.
  */
+// TODO: Add serialization support for AverageTrueRangeStopLossRule. The rule currently
+// does not support serialization/deserialization via RuleSerialization. When implemented,
+// the serializeAndDeserialize test in AverageTrueRangeStopLossRuleTest should pass
+// automatically. The serialization should handle the BarSeries parameter, the optional
+// Indicator<Num> referencePrice component, and the int atrBarCount and Number
+// atrCoefficient parameters.
 public class AverageTrueRangeStopLossRule extends AbstractRule {
 
     /**

@@ -81,6 +81,18 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
         assertFalse(rule.isSatisfied(10, null));
     }
 
+    /**
+     * Tests serialization/deserialization round-trip for TimeRangeRule.
+     * <p>
+     * <b>Note:</b> This test may be skipped if serialization is not yet supported
+     * for TimeRangeRule. The test uses {@code Assume.assumeNoException()} to
+     * gracefully skip when serialization fails, rather than failing the build. This
+     * is intentional - the test serves as a placeholder until serialization support
+     * is implemented.
+     * <p>
+     * When serialization support is added to TimeRangeRule, this test should pass
+     * automatically. See the TODO comment in TimeRangeRule class.
+     */
     @Test
     public void serializeAndDeserialize() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

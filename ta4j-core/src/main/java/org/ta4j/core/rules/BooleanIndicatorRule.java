@@ -30,6 +30,10 @@ import org.ta4j.core.TradingRecord;
  * Satisfied when the value of the boolean {@link Indicator indicator} is
  * {@code true}.
  */
+// TODO: Add serialization support for BooleanIndicatorRule. The rule currently does not
+// support serialization/deserialization via RuleSerialization. When implemented, the
+// serializeAndDeserialize test in BooleanIndicatorRuleTest should pass automatically. The
+// serialization should handle the Indicator<Boolean> component parameter.
 public class BooleanIndicatorRule extends AbstractRule {
 
     private final Indicator<Boolean> indicator;

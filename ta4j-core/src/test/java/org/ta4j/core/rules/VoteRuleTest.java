@@ -63,6 +63,18 @@ public class VoteRuleTest {
         assertFalse(new VoteRule(3, rules).isSatisfied(0));
     }
 
+    /**
+     * Tests serialization/deserialization round-trip for VoteRule.
+     * <p>
+     * <b>Note:</b> This test may be skipped if serialization is not yet supported
+     * for VoteRule. The test uses {@code Assume.assumeNoException()} to gracefully
+     * skip when serialization fails, rather than failing the build. This is
+     * intentional - the test serves as a placeholder until serialization support is
+     * implemented.
+     * <p>
+     * When serialization support is added to VoteRule, this test should pass
+     * automatically. See the TODO comment in VoteRule class.
+     */
     @Test
     public void serializeAndDeserialize() {
         BarSeries series = new MockBarSeriesBuilder().withData(1).build();

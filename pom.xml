@@ -74,6 +74,7 @@
 
         <!-- Dependencies -->
         <assertj.version>3.27.6</assertj.version>
+        <commons-math3.version>3.6.1</commons-math3.version>
         <gson.version>2.13.2</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
         <junit-jupiter.version>6.0.0</junit-jupiter.version>
@@ -123,6 +124,11 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-math3</artifactId>
+                <version>${commons-math3.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.opencsv</groupId>

@@ -54,6 +54,18 @@ public class BooleanIndicatorRuleTest {
         assertTrue(rule.isSatisfied(4));
     }
 
+    /**
+     * Tests serialization/deserialization round-trip for BooleanIndicatorRule.
+     * <p>
+     * <b>Note:</b> This test may be skipped if serialization is not yet supported
+     * for BooleanIndicatorRule. The test uses {@code Assume.assumeNoException()} to
+     * gracefully skip when serialization fails, rather than failing the build. This
+     * is intentional - the test serves as a placeholder until serialization support
+     * is implemented.
+     * <p>
+     * When serialization support is added to BooleanIndicatorRule, this test should
+     * pass automatically. See the TODO comment in BooleanIndicatorRule class.
+     */
     @Test
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);

@@ -46,6 +46,11 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  *
  * @since 0.19
  */
+// TODO: Add serialization support for MinuteOfHourRule. The rule currently does not
+// support serialization/deserialization via RuleSerialization. When implemented, the
+// serializeAndDeserialize test in MinuteOfHourRuleTest should pass automatically. The
+// serialization should handle the DateTimeIndicator component and the int[] minutesOfHour
+// parameter (which is stored as a Set<Integer> internally).
 public class MinuteOfHourRule extends AbstractRule {
 
     private final Set<Integer> minutesOfHourSet;

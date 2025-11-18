@@ -59,6 +59,24 @@ public final class RuleSerialization {
     }
 
     /**
+     * Checks if a rule supports serialization/deserialization.
+     * <p>
+     * This method attempts to locate a supported constructor signature for the
+     * rule. If a constructor can be matched, serialization is supported. Otherwise,
+     * the rule cannot be serialized and attempting to serialize it will throw a
+     * {@link RuleSerializationException}.
+     *
+     * @param rule the rule to check
+     * @return {@code true} if the rule supports serialization, {@code false}
+     *         otherwise
+     * @throws NullPointerException if rule is null
+     */
+    public static boolean isSerializationSupported(Rule rule) {
+        Objects.requireNonNull(rule, "rule");
+        return ConstructorMatch.locate(rule) != null;
+    }
+
+    /**
      * Simplifies class names for common types to reduce JSON size. Rules,
      * Indicators, and common java.lang types use simple names.
      *
@@ -86,6 +104,11 @@ public final class RuleSerialization {
      *
      * @param rule rule instance
      * @return descriptor describing the rule
+     * @throws RuleSerializationException if the rule does not support
+     *                                    serialization. Use
+     *                                    {@link #isSerializationSupported(Rule)} to
+     *                                    check support before calling this method.
+     * @throws NullPointerException       if rule is null
      */
     public static ComponentDescriptor describe(Rule rule) {
         Objects.requireNonNull(rule, "rule");
@@ -100,8 +123,13 @@ public final class RuleSerialization {
 
         ConstructorMatch match = ConstructorMatch.locate(rule);
         if (match == null) {
-            throw new IllegalArgumentException("Unable to describe rule " + rule.getClass().getName()
-                    + ": no supported constructor signature found");
+            String ruleClassName = rule.getClass().getSimpleName();
+            String message = String.format(
+                    "Rule '%s' does not support serialization. Serialization support has not yet been implemented for this rule type. "
+                            + "See the TODO comment in the %s class for implementation details. "
+                            + "Use RuleSerialization.isSerializationSupported(rule) to check if a rule supports serialization before attempting to serialize it.",
+                    ruleClassName, ruleClassName);
+            throw new RuleSerializationException(message);
         }
 
         Class<?> ruleClass = rule.getClass();
@@ -197,6 +225,10 @@ public final class RuleSerialization {
      *                   factories
      * @param descriptor descriptor describing the rule
      * @return reconstructed rule
+     * @throws RuleSerializationException if the rule type does not support
+     *                                    deserialization (e.g., no matching
+     *                                    constructor can be found)
+     * @throws NullPointerException       if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return fromDescriptor(series, descriptor, null);
@@ -211,6 +243,10 @@ public final class RuleSerialization {
      * @param descriptor    descriptor describing the rule
      * @param parentContext optional parent context for resolving shared components
      * @return reconstructed rule
+     * @throws RuleSerializationException if the rule type does not support
+     *                                    deserialization (e.g., no matching
+     *                                    constructor can be found)
+     * @throws NullPointerException       if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
             ReconstructionContext parentContext) {
@@ -333,8 +369,13 @@ public final class RuleSerialization {
             }
         }
 
-        throw new IllegalStateException(
-                buildConstructorNotFoundMessage(ruleType, components, filteredParams, constructors));
+        String ruleClassName = ruleType.getSimpleName();
+        String baseMessage = buildConstructorNotFoundMessage(ruleType, components, filteredParams, constructors);
+        String message = String.format(
+                "Rule '%s' does not support deserialization. %s "
+                        + "See the TODO comment in the %s class for implementation details.",
+                ruleClassName, baseMessage, ruleClassName);
+        throw new RuleSerializationException(message);
     }
 
     /**

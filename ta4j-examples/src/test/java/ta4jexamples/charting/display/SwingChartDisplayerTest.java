@@ -146,6 +146,18 @@ class SwingChartDisplayerTest {
         assertThrows(Exception.class, () -> displayer.display(null), "Display should throw exception for null chart");
     }
 
+    /**
+     * Tests that display gracefully handles headless environments.
+     * <p>
+     * <b>Note:</b> This test is intentionally skipped when running in a
+     * non-headless environment (e.g., when a display is available). The test uses
+     * {@code Assume.assumeTrue()} to skip when a display is present, as it
+     * specifically tests behavior in headless environments where GUI operations
+     * should fail gracefully.
+     * <p>
+     * This skip is expected and intentional - the test validates headless
+     * environment handling, which only applies when no display is available.
+     */
     @Test
     void testDisplayHandlesHeadlessEnvironment() {
         // This test only runs in headless environments

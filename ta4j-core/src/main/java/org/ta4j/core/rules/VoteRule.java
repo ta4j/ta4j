@@ -40,6 +40,11 @@ import org.ta4j.core.TradingRecord;
  *
  * @since 0.19
  */
+// TODO: Add serialization support for VoteRule. The rule currently does not support
+// serialization/deserialization via RuleSerialization. When implemented, the
+// serializeAndDeserialize test in VoteRuleTest should pass automatically. The
+// serialization should handle the int requiredVotes parameter and the Rule[] or
+// List<Rule> rules component array.
 public class VoteRule extends AbstractRule {
 
     private final List<Rule> rules;
