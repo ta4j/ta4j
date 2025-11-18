@@ -147,10 +147,22 @@ To execute the workflow successfully, configure the following repository secrets
 | `OSSRH_GPG_PASSPHRASE` | Passphrase for the signing key; also forwarded as `MAVEN_GPG_PASSPHRASE`. |
 | `RELEASE_GIT_NAME` *(optional)* | Overrides the Git author name used for release commits. Defaults to `github.actor`. |
 | `RELEASE_GIT_EMAIL` *(optional)* | Overrides the Git author email for release commits. Defaults to `<actor>@users.noreply.github.com`. |
+| `OSSRH_SECURITY_MASTER_PASSWORD` *(optional)* | Pre-encrypted Maven master password. When present the workflow writes `~/.m2/settings-security.xml` before deploying so that encrypted credentials work in CI. |
 
 Grant the workflow permission to push to the protected `master` branch and to create `release/*` branches and tags. If branch
 protections are enforced, make sure "Allow GitHub Actions to bypass branch protections" is enabled for `master` and that the
 `release/*` pattern permits direct pushes from the `github-actions[bot]` account.
+
+If a release run fails after creating `release/<version>` or the `v<version>` tag, the workflow will refuse to rerun until the
+stale branch/tag is removed. Clean up the previous attempt before triggering the workflow again:
+
+```
+VERSION=0.19
+git push origin --delete "release/${VERSION}"   # remove remote branch
+git push origin --delete "v${VERSION}"          # remove remote tag (if it was pushed)
+git branch -D "release/${VERSION}"              # clean the local branch if it exists
+git tag -d "v${VERSION}"                        # clean the local tag if it exists
+```
 
 &nbsp;
 &nbsp;
