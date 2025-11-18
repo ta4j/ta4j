@@ -50,7 +50,7 @@ jobs:
           master_value="${MAVEN_SECURITY_MASTER}"
           if [[ -z "${master_value}" && -n "${MAVEN_SECURITY_MASTER_PLAIN}" ]]; then
             echo "Encrypting provided plain master password for settings-security.xml"
-            master_value="(mvn --encrypt-master-password "${MAVEN_SECURITY_MASTER_PLAIN}" | awk 'NF{line=$0} END{print line}')"
+            master_value="$(mvn --encrypt-master-password "${MAVEN_SECURITY_MASTER_PLAIN}" | awk 'NF{line=$0} END{print line}')"
           fi
           if [[ -z "${master_value}" ]]; then
             echo "Set OSSRH_SECURITY_MASTER_PASSWORD (encrypted) or OSSRH_SECURITY_MASTER_PASSWORD_PLAIN (unencrypted) secret" >&2
