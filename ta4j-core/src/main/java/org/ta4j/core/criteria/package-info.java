@@ -28,5 +28,9 @@
  * This package contains different criteria which can be used to calculate the
  * performance of a {@link org.ta4j.core.Strategy trading strategy} and to
  * compare two {@link org.ta4j.core.Strategy trading strategies} to each other.
+ * Return-based criteria default to 1-based <em>total</em> returns (neutral
+ * value {@code 1.0}); set {@code -Dta4j.returns.representation=RATE_OF_RETURN}
+ * or use {@link org.ta4j.core.criteria.ReturnRepresentationPolicy} to change
+ * this for a JVM or a single criterion instance.
  */
 package org.ta4j.core.criteria;

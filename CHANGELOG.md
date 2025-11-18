@@ -32,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Testing infrastructure**: Added tests for `DoubleNumFactory` and `DecimalNumFactory`, unit tests around indicator concurrency in preparation for future multithreading features, and `DecimalNumPrecisionPerformanceTest` to demonstrate precision vs performance trade-offs.
 
 ### Changed
+- **Consistent return output policy**: Return-based criteria now default to 1-based total returns and expose configurable representation through `ReturnRepresentationPolicy` and new constructors. Legacy `addBase` constructors are deprecated.
 - **Enhanced rule serialization with custom name preservation**: Improved `RuleSerialization` to preserve custom rule names set via `setName()` during serialization and deserialization. Custom names are now properly distinguished from default JSON-formatted names, enabling better strategy persistence and debugging workflows.
 - **Improved trace logging with rule names**: Enhanced trace logging in `AbstractRule` and `BaseStrategy` to use rule names (custom or default) in log output, making it easier to identify which rules are being evaluated during strategy execution.
 - **Unified logging backend**: Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so examples and tests share a single logging backend. Added Log4j 2 configurations for modules and tests. This simplifies logging configuration and ensures consistent behavior across all modules. Set unit test logging level to INFO and cleaned build output of all extraneous logging. 

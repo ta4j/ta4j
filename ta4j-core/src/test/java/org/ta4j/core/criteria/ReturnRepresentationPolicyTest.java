@@ -21,43 +21,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.pnl;
+package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.criteria.ReturnRepresentation;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
-/**
- * Return (in percentage) criterion, returned in decimal format.
- *
- * <p>
- * This criterion uses the gross return of the positions; trading costs are not
- * deducted from the calculation. It represents the percentage change including
- * the base value.
- *
- * <p>
- * The return of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
- */
-public class GrossReturnCriterion extends AbstractReturnCriterion {
+import org.junit.Test;
 
-    public GrossReturnCriterion() {
-        super();
+public class ReturnRepresentationPolicyTest {
+
+    @Test
+    public void useOverridesDefaultRepresentation() {
+        var original = ReturnRepresentationPolicy.getDefaultRepresentation();
+        try {
+            ReturnRepresentationPolicy.use(ReturnRepresentation.RATE_OF_RETURN);
+            assertSame(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+
+            ReturnRepresentationPolicy.use(ReturnRepresentation.TOTAL_RETURN);
+            assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+        } finally {
+            ReturnRepresentationPolicy.use(original);
+        }
     }
 
-    public GrossReturnCriterion(ReturnRepresentation representation) {
-        super(representation);
+    @Test
+    public void parseMatchesEnumNamesCaseInsensitive() {
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total_return"));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate_of_Return"));
     }
-
-    @Deprecated(since = "0.24.0")
-    public GrossReturnCriterion(boolean addBase) {
-        super(addBase);
-    }
-
-    @Override
-    protected Num calculateReturn(BarSeries series, Position position) {
-        return position.getGrossReturn(series);
-    }
-
 }

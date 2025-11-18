@@ -30,10 +30,12 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
 
 /**
- * Expected Shortfall criterion, returned in decimal format.
+ * Expected Shortfall criterion, honoring the configured return representation.
  *
  * <p>
  * Measures the expected shortfall of the strategy log-return time-series.
@@ -47,13 +49,26 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /** Confidence level as absolute value (e.g. 0.95). */
     private final double confidence;
 
+    private final ReturnRepresentation returnRepresentation;
+
     /**
      * Constructor.
      *
      * @param confidence the confidence level
      */
     public ExpectedShortfallCriterion(double confidence) {
+        this(confidence, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param confidence           the confidence level
+     * @param returnRepresentation the representation used for the result
+     */
+    public ExpectedShortfallCriterion(double confidence, ReturnRepresentation returnRepresentation) {
         this.confidence = confidence;
+        this.returnRepresentation = returnRepresentation;
     }
 
     @Override
@@ -62,13 +77,13 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
         Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
-        return calculateES(returns, confidence);
+        return calculateES(returns, confidence, returnRepresentation);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
-        return calculateES(returns, confidence);
+        return calculateES(returns, confidence, returnRepresentation);
     }
 
     /**
@@ -78,10 +93,11 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
      * @param confidence the confidence level
      * @return the relative Expected Shortfall
      */
-    private static Num calculateES(Returns returns, double confidence) {
+    private static Num calculateES(Returns returns, double confidence, ReturnRepresentation representation) {
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         Num zero = returns.getBarSeries().numFactory().zero();
+        Num one = returns.getBarSeries().numFactory().one();
         if (returnRates.isEmpty()) {
             return zero;
         }
@@ -104,7 +120,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             expectedShortfall = zero;
         }
 
-        return expectedShortfall;
+        return representation.toRepresentationFromLogReturn(expectedShortfall, one);
     }
 
     /** The higher the criterion value, the better. */

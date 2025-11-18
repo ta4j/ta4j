@@ -30,10 +30,12 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
 
 /**
- * Value at Risk criterion, returned in decimal format.
+ * Value at Risk criterion, honoring the configured return representation.
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
@@ -43,13 +45,26 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     /** Confidence level as absolute value (e.g. 0.95). */
     private final Double confidence;
 
+    private final ReturnRepresentation returnRepresentation;
+
     /**
      * Constructor.
      *
      * @param confidence the confidence level
      */
     public ValueAtRiskCriterion(Double confidence) {
+        this(confidence, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param confidence           the confidence level
+     * @param returnRepresentation the representation used for the result
+     */
+    public ValueAtRiskCriterion(Double confidence, ReturnRepresentation returnRepresentation) {
         this.confidence = confidence;
+        this.returnRepresentation = returnRepresentation;
     }
 
     @Override
@@ -58,13 +73,13 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
         Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
-        return calculateVaR(returns, confidence);
+        return calculateVaR(returns, confidence, returnRepresentation);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
-        return calculateVaR(returns, confidence);
+        return calculateVaR(returns, confidence, returnRepresentation);
     }
 
     /**
@@ -74,8 +89,9 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
      * @param confidence the confidence level
      * @return the relative Value at Risk
      */
-    private static Num calculateVaR(Returns returns, double confidence) {
+    private static Num calculateVaR(Returns returns, double confidence, ReturnRepresentation representation) {
         Num zero = returns.getBarSeries().numFactory().zero();
+        Num one = returns.getBarSeries().numFactory().one();
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         if (returnRates.isEmpty()) {
@@ -97,7 +113,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
                 valueAtRisk = zero;
             }
         }
-        return valueAtRisk;
+        return representation.toRepresentationFromLogReturn(valueAtRisk, one);
     }
 
     @Override
