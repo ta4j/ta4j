@@ -39,7 +39,24 @@ jobs:
           server-password: ${{ secrets.OSSRH_PASSWORD }}
           gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-    
+
+      - name: Write Maven security settings
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.OSSRH_SECURITY_MASTER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
+            echo "OSSRH_SECURITY_MASTER_PASSWORD secret must be set to decrypt Maven credentials" >&2
+            exit 1
+          fi
+          mkdir -p "${HOME}/.m2"
+          printf '%s\n' \
+            '<settingsSecurity>' \
+            "  <master>${MAVEN_SECURITY_MASTER}</master>" \
+            '</settingsSecurity>' > "${HOME}/.m2/settings-security.xml"
+          chmod 600 "${HOME}/.m2/settings-security.xml"
+          echo "settings-security.xml created"
 
       - name: Configure Git
         env:
