@@ -65,12 +65,11 @@ jobs:
             exit 0
           fi
           mkdir -p ~/.m2
-          cat <<EOF > ~/.m2/settings-security.xml
-          <?xml version="1.0" encoding="UTF-8"?>
-          <settingsSecurity>
-            <master>${MAVEN_SECURITY_MASTER}</master>
-          </settingsSecurity>
-          EOF
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<settingsSecurity>' \
+            "  <master>${MAVEN_SECURITY_MASTER}</master>" \
+            '</settingsSecurity>' > ~/.m2/settings-security.xml
           chmod 600 ~/.m2/settings-security.xml
           echo "settings-security.xml created"
 
