@@ -87,6 +87,7 @@ jobs:
           chmod 600 ~/.gnupg/gpg-agent.conf
           gpgconf --kill gpg-agent 2>/dev/null || true
           gpgconf --launch gpg-agent 2>/dev/null || true
+          echo "gpg.conf and gpg-agent.conf created"
 
       - name: Build and Test
         run: mvn -B clean test
