@@ -244,5 +244,8 @@ jobs:
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
-      - name: Push Changes
-        run: git push --follow-tags
+      - name: Push Changes Using PAT
+        env:
+          PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git push https://$PAT@github.com/${{ github.repository }} --follow-tags
