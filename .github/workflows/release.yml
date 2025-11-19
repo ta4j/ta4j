@@ -191,6 +191,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add release/${{ steps.versions.outputs.release }}.md
           git commit -am "Release ${{ steps.versions.outputs.release }}"
 
       - name: Tag Release
