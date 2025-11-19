@@ -1,4 +1,4 @@
-name: Check license header
+name: Check License Headers
 permissions:
   contents: read
 
