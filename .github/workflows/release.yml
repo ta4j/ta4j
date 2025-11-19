@@ -1,5 +1,9 @@
 name: Publish Release to Maven Central
 
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +13,11 @@ on:
       nextVersion:
         description: "Next snapshot version (e.g. 0.20-SNAPSHOT)"
         required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
 
 jobs:
   release:
