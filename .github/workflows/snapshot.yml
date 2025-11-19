@@ -75,6 +75,7 @@ jobs:
           echo "settings-security.xml created"
 
       - name: Configure GPG for signing
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p ~/.gnupg
@@ -91,4 +92,7 @@ jobs:
         run: mvn -B clean test
 
       - name: Deploy Snapshot
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B deploy -Psign-snapshots
