@@ -1,4 +1,6 @@
 name: Check license header
+permissions:
+  contents: read
 
 on:
   pull_request:
