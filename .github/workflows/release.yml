@@ -140,6 +140,11 @@ jobs:
           echo "next=$NEXT" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
+      - name: Prepare Release Notes
+        run: |
+          chmod +x scripts/prepare-release.sh
+          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"    
+
       - name: Write Maven settings
         run: |
           mkdir -p ~/.m2

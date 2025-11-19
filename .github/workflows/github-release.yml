@@ -23,6 +23,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      # ------------------------------------------------------------
+      # Determine Tag + Validate Release Notes File
+      # ------------------------------------------------------------
       - name: Determine Version
         id: version
         run: |
@@ -35,6 +38,9 @@ jobs:
           fi
           echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
 
+      # ------------------------------------------------------------
+      # Prepare Release Notes Body
+      # ------------------------------------------------------------
       - name: Read Release Notes
         id: notes
         run: |
@@ -44,10 +50,33 @@ jobs:
           CONTENT="${CONTENT//$'\r'/'%0D'}"
           echo "body=$CONTENT" >> $GITHUB_OUTPUT
 
+      # ------------------------------------------------------------
+      # Build artifacts: core, examples, ALL modules
+      # Produces:
+      #   - *.jar
+      #   - *-javadoc.jar
+      #   - *-sources.jar
+      # ------------------------------------------------------------
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build all module artifacts
+        run: mvn -B -DskipTests package
+
+      # ------------------------------------------------------------
+      # Upload full artifact set to GitHub Release
+      # ------------------------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           body: ${{ steps.notes.outputs.body }}
+          files: |
+            **/target/*.jar
+            **/target/*-sources.jar
+            **/target/*-javadoc.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
