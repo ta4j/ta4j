@@ -35,7 +35,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
 
@@ -51,7 +51,7 @@ The current ***snapshot version*** is `0.19-SNAPSHOT` from the [develop](https:/
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.19-SNAPSHOT</version>
+  <version>0.20-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -60,7 +60,7 @@ You can also download ***example code*** from the maven central repository by ad
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
 ### Getting Help
@@ -149,4 +149,5 @@ The workflow automatically:
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
+
 
