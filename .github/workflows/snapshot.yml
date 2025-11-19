@@ -1,0 +1,40 @@
+name: Publish Snapshots
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Configure Maven Central Credentials
+        run: |
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
+                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Deploy Snapshot
+        run: mvn -B deploy
