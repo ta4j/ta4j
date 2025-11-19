@@ -92,6 +92,7 @@ jobs:
               '    </server>' \
               '  </servers>' \
               '</settings>' > ~/.m2/settings.xml
+            echo "settings.xml created"
 
       - name: Write Maven security settings
         shell: bash
