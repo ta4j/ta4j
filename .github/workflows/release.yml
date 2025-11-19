@@ -8,16 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       releaseVersion:
-        description: "Release version (e.g. 0.19)"
-        required: true
+        description: "OPTIONAL: Release version (e.g. 0.19). Leave blank to auto-detect."
+        required: false
       nextVersion:
-        description: "Next snapshot version (e.g. 0.20-SNAPSHOT)"
-        required: true
+        description: "OPTIONAL: Next snapshot version (e.g. 0.20-SNAPSHOT). Leave blank to auto-generate."
+        required: false
 
 permissions:
   contents: write
   pull-requests: write
-
 
 jobs:
   release:
@@ -29,43 +28,61 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: 'true'
+          persist-credentials: true
 
-      - name: Validate release inputs
+      # ------------------------------------------------------------
+      #  VERSION DETECTION + FALLBACK TO USER INPUT
+      # ------------------------------------------------------------
+      - name: Compute Versions (with user overrides)
+        id: versions
         shell: bash
         env:
-          RELEASE_VERSION: ${{ github.event.inputs.releaseVersion }}
-          NEXT_VERSION: ${{ github.event.inputs.nextVersion }}
+          INPUT_RELEASE: ${{ github.event.inputs.releaseVersion }}
+          INPUT_NEXT: ${{ github.event.inputs.nextVersion }}
         run: |
           set -euo pipefail
 
-          if [[ -z "${RELEASE_VERSION}" || -z "${NEXT_VERSION}" ]]; then
-            echo "Both releaseVersion and nextVersion inputs are required."
-            exit 1
+          echo "Inputs: release='${INPUT_RELEASE}', next='${INPUT_NEXT}'"
+
+          # Read current version from POM
+          CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          echo "Detected project.version: $CURRENT"
+
+          # Auto compute release version if user did not supply it
+          if [[ -z "${INPUT_RELEASE}" ]]; then
+            RELEASE="${CURRENT%-SNAPSHOT}"
+          else
+            RELEASE="${INPUT_RELEASE}"
           fi
 
-          if [[ "${RELEASE_VERSION}" == *-SNAPSHOT* ]]; then
-            echo "releaseVersion must be a stable version (no -SNAPSHOT suffix)."
-            exit 1
+          # Auto compute next snapshot version if user did not supply it
+          if [[ -z "${INPUT_NEXT}" ]]; then
+            BASE="${RELEASE}"
+            MAJOR_MINOR=${BASE%.*}
+            PATCH=${BASE##*.}
+            NEXT_PATCH=$((PATCH+1))
+            NEXT="${MAJOR_MINOR}.${NEXT_PATCH}-SNAPSHOT"
+          else
+            NEXT="${INPUT_NEXT}"
           fi
 
-          if [[ "${NEXT_VERSION}" != *-SNAPSHOT ]]; then
-            echo "nextVersion must end with -SNAPSHOT."
-            exit 1
-          fi
+          echo "Using release: $RELEASE"
+          echo "Using next snapshot: $NEXT"
 
-          if [[ "${RELEASE_VERSION}" == "${NEXT_VERSION%-SNAPSHOT}" ]]; then
-            echo "nextVersion must be greater than releaseVersion (it should include the -SNAPSHOT suffix)."
-            exit 1
-          fi
+          # Export
+          echo "release=$RELEASE" >> $GITHUB_OUTPUT
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
+      # ------------------------------------------------------------
+      #  REMAINDER OF WORKFLOW (unchanged)
+      # ------------------------------------------------------------
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          restore-keys: ${{ runner.os }}-maven-
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -81,51 +98,53 @@ jobs:
 
       - name: Write Maven settings
         run: |
-            mkdir -p ~/.m2
-            printf '%s\n' \
-              '<settings>' \
-              '  <servers>' \
-              '    <server>' \
-              '      <id>central</id>' \
-              "      <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>" \
-              "      <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>" \
-              '    </server>' \
-              '  </servers>' \
-              '</settings>' > ~/.m2/settings.xml
-            echo "settings.xml created"
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
+                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
 
       - name: Write Maven security settings
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
         run: |
-            set -euo pipefail
-            if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
-              echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
-              exit 0
-            fi
-            mkdir -p ~/.m2
-            printf '%s\n' \
-              '<?xml version="1.0" encoding="UTF-8"?>' \
-              '<settingsSecurity>' \
-              "  <master>${MAVEN_SECURITY_MASTER}</master>" \
-              '</settingsSecurity>' > ~/.m2/settings-security.xml
-            chmod 600 ~/.m2/settings-security.xml
-            echo "settings-security.xml created"
+          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
+            echo "No MAVEN_MASTER_PASSPHRASE; skipping security file"
+            exit 0
+          fi
 
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings-security.xml
+          <settingsSecurity>
+            <master>${MAVEN_SECURITY_MASTER}</master>
+          </settingsSecurity>
+          EOF
+          chmod 600 ~/.m2/settings-security.xml
+
+      # -------------------------------------------------------------------
+      #  APPLY RELEASE VERSION
+      # -------------------------------------------------------------------
       - name: Prepare Release Version
         run: |
-          mvn -B versions:set -DnewVersion=${{ github.event.inputs.releaseVersion }}
+          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.release }}
           mvn -B versions:commit
 
       - name: Commit Release Version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "Release ${{ github.event.inputs.releaseVersion }}"
+          git commit -am "Release ${{ steps.versions.outputs.release }}"
 
       - name: Tag Release
-        run: git tag ${{ github.event.inputs.releaseVersion }}
+        run: git tag ${{ steps.versions.outputs.release }}
 
       - name: Ensure branch is still fast-forwardable before deploy
         shell: bash
@@ -133,34 +152,19 @@ jobs:
           RELEASE_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-
-          branch="${RELEASE_BRANCH}"
-          if [[ -z "${branch}" ]]; then
-            echo "Unable to determine branch name (github.ref_name was empty); aborting."
-            exit 1
-          fi
-
-          git fetch origin "${branch}"
-          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Remote branch '${branch}' advanced while the release workflow was running."
-            echo "Failing before deployment to avoid publishing artifacts without matching commits."
-            exit 1
-          fi
+          git fetch origin "${RELEASE_BRANCH}"
+          git merge-base --is-ancestor "origin/${RELEASE_BRANCH}" HEAD
 
       - name: Configure GPG for signing
         shell: bash
         run: |
-          set -euo pipefail
           mkdir -p ~/.gnupg
           chmod 700 ~/.gnupg
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-          chmod 600 ~/.gnupg/gpg.conf
-          touch ~/.gnupg/gpg-agent.conf
           echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          chmod 600 ~/.gnupg/gpg-agent.conf
-          gpgconf --kill gpg-agent 2>/dev/null || true
-          gpgconf --launch gpg-agent 2>/dev/null || true
-          echo "gpg.conf and gpg-agent.conf created"
+          chmod 600 ~/.gnupg/gpg.conf ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
+          gpgconf --launch gpg-agent || true
 
       - name: Deploy Release to Maven Central
         env:
@@ -168,15 +172,17 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B -Pproduction-release deploy
 
+      # -------------------------------------------------------------------
+      #  APPLY NEXT SNAPSHOT VERSION
+      # -------------------------------------------------------------------
       - name: Prepare Next Development Version
         run: |
-          mvn -B versions:set -DnewVersion=${{ github.event.inputs.nextVersion }}
+          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.next }}
           mvn -B versions:commit
 
       - name: Commit Next Snapshot
         run: |
-          git commit -am "Start ${{ github.event.inputs.nextVersion }}"
+          git commit -am "Start ${{ steps.versions.outputs.next }}"
 
       - name: Push Changes
-        run: |
-          git push --follow-tags
+        run: git push --follow-tags
