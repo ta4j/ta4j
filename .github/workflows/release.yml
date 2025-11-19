@@ -51,10 +51,12 @@ jobs:
             exit 0
           fi
           mkdir -p "${HOME}/.m2"
-          printf '%s\n' \
-            '<settingsSecurity>' \
-            "  <master>${MAVEN_SECURITY_MASTER}</master>" \
-            '</settingsSecurity>' > "${HOME}/.m2/settings-security.xml"
+          cat > "${HOME}/.m2/settings-security.xml" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settingsSecurity>
+            <master>${MAVEN_SECURITY_MASTER}</master>
+          </settingsSecurity>
+          EOF
           chmod 600 "${HOME}/.m2/settings-security.xml"
           echo "settings-security.xml created"
 
@@ -159,6 +161,35 @@ jobs:
             echo "Pushing new release branch ${RELEASE_BRANCH}" >&2
             git push --set-upstream origin "${RELEASE_BRANCH}"
           fi
+    
+      - name: Configure Maven settings for deployment
+        if: steps.commit_release.outputs.release_changes == 'true'
+        shell: bash
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        run: |
+          set -eo pipefail
+          mkdir -p "${HOME}/.m2"
+          # Ensure settings.xml exists with server credentials for nexus-staging-maven-plugin
+          # The setup-java action should have created one, but we'll ensure it has the correct server config
+          cat > "${HOME}/.m2/settings.xml" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0
+                    https://maven.apache.org/xsd/settings-1.2.0.xsd">
+            <servers>
+              <server>
+                <id>sonatype-nexus-staging</id>
+                <username>${OSSRH_USERNAME}</username>
+                <password>${OSSRH_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          chmod 600 "${HOME}/.m2/settings.xml"
+          echo "Maven settings.xml configured with server credentials for sonatype-nexus-staging"
     
       - name: Build and deploy artifacts
         if: steps.commit_release.outputs.release_changes == 'true'
