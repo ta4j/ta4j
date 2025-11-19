@@ -1,4 +1,6 @@
 name: Publish Snapshots
+permissions:
+  contents: read
 
 on:
   push:
