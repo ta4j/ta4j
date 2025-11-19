@@ -1,4 +1,6 @@
 name: Validate source code
+permissions:
+  contents: read
 
 on:
   pull_request:
