@@ -78,4 +78,4 @@ jobs:
         run: mvn -B clean test
 
       - name: Deploy Snapshot
-        run: mvn -B deploy
+        run: mvn -B deploy -Psign-snapshots
