@@ -5,8 +5,16 @@ on:
     tags:
       - "*"
 
+concurrency:
+  group: github-release-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
 jobs:
   create_release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
 
     steps:
