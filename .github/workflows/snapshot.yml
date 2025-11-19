@@ -34,23 +34,30 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
+          server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          server-password: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Configure Maven Central credentials
+      - name: Write Maven security settings
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
         run: |
-          mkdir -p ~/.m2
-          cat <<EOF > ~/.m2/settings.xml
-          <settings>
-            <servers>
-              <server>
-                <id>central</id>
-                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
-                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
-              </server>
-            </servers>
-          </settings>
+          set -euo pipefail
+          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
+            echo "OSSRH_SECURITY_MASTER_PASSWORD not set; skipping settings-security.xml generation"
+            exit 0
+          fi
+          mkdir -p "${HOME}/.m2"
+          cat > "${HOME}/.m2/settings-security.xml" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settingsSecurity>
+            <master>${MAVEN_SECURITY_MASTER}</master>
+          </settingsSecurity>
           EOF
+          chmod 600 "${HOME}/.m2/settings-security.xml"
+          echo "settings-security.xml created"
 
       - name: Build and Test
         run: mvn -B clean test
