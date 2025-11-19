@@ -54,8 +54,27 @@ public final class RuleSerialization {
     private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
     private static final String NUM_PACKAGE = "org.ta4j.core.num";
     private static final String JAVA_LANG_PACKAGE = "java.lang";
+    private static final String RULE_ARRAY_PREFIX = "__ruleArray_";
 
     private RuleSerialization() {
+    }
+
+    /**
+     * Checks if a rule supports serialization/deserialization.
+     * <p>
+     * This method attempts to locate a supported constructor signature for the
+     * rule. If a constructor can be matched, serialization is supported. Otherwise,
+     * the rule cannot be serialized and attempting to serialize it will throw a
+     * {@link RuleSerializationException}.
+     *
+     * @param rule the rule to check
+     * @return {@code true} if the rule supports serialization, {@code false}
+     *         otherwise
+     * @throws NullPointerException if rule is null
+     */
+    public static boolean isSerializationSupported(Rule rule) {
+        Objects.requireNonNull(rule, "rule");
+        return ConstructorMatch.locate(rule) != null;
     }
 
     /**
@@ -86,6 +105,11 @@ public final class RuleSerialization {
      *
      * @param rule rule instance
      * @return descriptor describing the rule
+     * @throws RuleSerializationException if the rule does not support
+     *                                    serialization. Use
+     *                                    {@link #isSerializationSupported(Rule)} to
+     *                                    check support before calling this method.
+     * @throws NullPointerException       if rule is null
      */
     public static ComponentDescriptor describe(Rule rule) {
         Objects.requireNonNull(rule, "rule");
@@ -100,8 +124,13 @@ public final class RuleSerialization {
 
         ConstructorMatch match = ConstructorMatch.locate(rule);
         if (match == null) {
-            throw new IllegalArgumentException("Unable to describe rule " + rule.getClass().getName()
-                    + ": no supported constructor signature found");
+            String ruleClassName = rule.getClass().getSimpleName();
+            String message = String.format(
+                    "Rule '%s' does not support serialization. Serialization support has not yet been implemented for this rule type. "
+                            + "See the TODO comment in the %s class for implementation details. "
+                            + "Use RuleSerialization.isSerializationSupported(rule) to check if a rule supports serialization before attempting to serialize it.",
+                    ruleClassName, ruleClassName);
+            throw new RuleSerializationException(message);
         }
 
         Class<?> ruleClass = rule.getClass();
@@ -197,6 +226,10 @@ public final class RuleSerialization {
      *                   factories
      * @param descriptor descriptor describing the rule
      * @return reconstructed rule
+     * @throws RuleSerializationException if the rule type does not support
+     *                                    deserialization (e.g., no matching
+     *                                    constructor can be found)
+     * @throws NullPointerException       if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return fromDescriptor(series, descriptor, null);
@@ -211,6 +244,10 @@ public final class RuleSerialization {
      * @param descriptor    descriptor describing the rule
      * @param parentContext optional parent context for resolving shared components
      * @return reconstructed rule
+     * @throws RuleSerializationException if the rule type does not support
+     *                                    deserialization (e.g., no matching
+     *                                    constructor can be found)
+     * @throws NullPointerException       if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
             ReconstructionContext parentContext) {
@@ -305,11 +342,16 @@ public final class RuleSerialization {
 
         // Filter out internal metadata parameters (enum types, etc.)
         Map<String, Object> filteredParams = new LinkedHashMap<>();
+        Map<String, Object> metadataParams = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : parameters.entrySet()) {
-            if (!entry.getKey().startsWith("__")) {
+            if (entry.getKey().startsWith("__")) {
+                metadataParams.put(entry.getKey(), entry.getValue());
+            } else {
                 filteredParams.put(entry.getKey(), entry.getValue());
             }
         }
+        Map<String, List<Integer>> ruleArrayComponents = extractRuleArrayComponents(components, metadataParams);
+        int totalArgs = computeTotalArgumentCount(components.size(), filteredParams.size(), ruleArrayComponents);
 
         // Try each constructor to find a match
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
@@ -324,8 +366,9 @@ public final class RuleSerialization {
             }
 
             // Try to match remaining parameters
+            Map<String, List<Integer>> ruleArrayCopy = copyRuleArrayComponents(ruleArrayComponents);
             DeserializationMatch match = tryMatchConstructor(constructor, paramTypes, params, startIndex, components,
-                    filteredParams, context);
+                    filteredParams, context, ruleArrayCopy, totalArgs);
             if (match != null) {
                 @SuppressWarnings("unchecked")
                 Constructor<? extends Rule> ruleConstructor = (Constructor<? extends Rule>) constructor;
@@ -333,8 +376,13 @@ public final class RuleSerialization {
             }
         }
 
-        throw new IllegalStateException(
-                buildConstructorNotFoundMessage(ruleType, components, filteredParams, constructors));
+        String ruleClassName = ruleType.getSimpleName();
+        String baseMessage = buildConstructorNotFoundMessage(ruleType, components, filteredParams, constructors);
+        String message = String.format(
+                "Rule '%s' does not support deserialization. %s "
+                        + "See the TODO comment in the %s class for implementation details.",
+                ruleClassName, baseMessage, ruleClassName);
+        throw new RuleSerializationException(message);
     }
 
     /**
@@ -456,9 +504,9 @@ public final class RuleSerialization {
 
     private static DeserializationMatch tryMatchConstructor(Constructor<?> constructor, Class<?>[] paramTypes,
             java.lang.reflect.Parameter[] params, int startIndex, List<ComponentDescriptor> components,
-            Map<String, Object> parameters, ReconstructionContext context) {
+            Map<String, Object> parameters, ReconstructionContext context,
+            Map<String, List<Integer>> ruleArrayComponents, int totalArgs) {
         int paramCount = paramTypes.length - startIndex;
-        int totalArgs = components.size() + parameters.size();
 
         // Must match total argument count
         if (paramCount != totalArgs) {
@@ -481,7 +529,8 @@ public final class RuleSerialization {
         // Try to match each constructor parameter
         for (int i = startIndex; i < paramTypes.length; i++) {
             Class<?> paramType = paramTypes[i];
-            String paramName = params[i].getName();
+            java.lang.reflect.Parameter parameter = params.length > i ? params[i] : null;
+            String paramName = parameterName(parameter, i);
 
             // Try to match from components first (indicators/rules)
             boolean matched = false;
@@ -504,6 +553,52 @@ public final class RuleSerialization {
                         matched = true;
                         break;
                     }
+                }
+            }
+
+            if (!matched && paramType.isArray() && Rule.class.isAssignableFrom(paramType.getComponentType())) {
+                List<Integer> indexes = ruleArrayComponents.remove(paramName);
+                if (indexes == null) {
+                    return null;
+                }
+                Object array = Array.newInstance(paramType.getComponentType(), indexes.size());
+                for (int idx = 0; idx < indexes.size(); idx++) {
+                    int componentIndex = indexes.get(idx);
+                    ComponentDescriptor child = components.get(componentIndex);
+                    Rule childRule = resolveRuleComponent(child, context);
+                    if (childRule == null || !paramType.getComponentType().isInstance(childRule)) {
+                        return null;
+                    }
+                    Array.set(array, idx, childRule);
+                    componentsUsed[componentIndex] = true;
+                }
+                arguments[i] = array;
+                argumentTypes[i] = paramType;
+                matched = true;
+                continue;
+            }
+
+            if (!matched && List.class.isAssignableFrom(paramType)) {
+                Class<?> elementType = getListElementType(parameter);
+                if (elementType != null && Rule.class.isAssignableFrom(elementType)) {
+                    List<Integer> indexes = ruleArrayComponents.remove(paramName);
+                    if (indexes == null) {
+                        return null;
+                    }
+                    List<Rule> ruleList = new ArrayList<>(indexes.size());
+                    for (int componentIndex : indexes) {
+                        ComponentDescriptor child = components.get(componentIndex);
+                        Rule childRule = resolveRuleComponent(child, context);
+                        if (childRule == null || !elementType.isInstance(childRule)) {
+                            return null;
+                        }
+                        ruleList.add(childRule);
+                        componentsUsed[componentIndex] = true;
+                    }
+                    arguments[i] = ruleList;
+                    argumentTypes[i] = paramType;
+                    matched = true;
+                    continue;
                 }
             }
 
@@ -552,10 +647,110 @@ public final class RuleSerialization {
         if (paramsUsed.size() != parameters.size()) {
             return null;
         }
+        if (!ruleArrayComponents.isEmpty()) {
+            return null;
+        }
 
         @SuppressWarnings("unchecked")
         Constructor<? extends Rule> ruleConstructor = (Constructor<? extends Rule>) constructor;
         return new DeserializationMatch(ruleConstructor, arguments, argumentTypes);
+    }
+
+    private static String parameterName(java.lang.reflect.Parameter parameter, int index) {
+        if (parameter != null && parameter.isNamePresent()) {
+            return parameter.getName();
+        }
+        return "arg" + index;
+    }
+
+    private static Rule resolveRuleComponent(ComponentDescriptor component, ReconstructionContext context) {
+        try {
+            if (component.getLabel() != null) {
+                try {
+                    return context.resolveRule(component.getLabel());
+                } catch (IllegalArgumentException ignored) {
+                    // Fall through to descriptor reconstruction
+                }
+            }
+            return RuleSerialization.fromDescriptor(context.series, component, context);
+        } catch (RuntimeException ex) {
+            throw new RuleSerializationException("Failed to resolve rule component: " + component.getType(), ex);
+        }
+    }
+
+    private static Class<?> getListElementType(java.lang.reflect.Parameter parameter) {
+        if (parameter == null) {
+            return null;
+        }
+        Type genericType = parameter.getParameterizedType();
+        if (genericType instanceof ParameterizedType parameterized) {
+            Type[] arguments = parameterized.getActualTypeArguments();
+            if (arguments.length == 1 && arguments[0] instanceof Class<?> clazz) {
+                return clazz;
+            }
+        }
+        return null;
+    }
+
+    private static int computeTotalArgumentCount(int componentCount, int parameterCount,
+            Map<String, List<Integer>> ruleArrayComponents) {
+        int adjustedComponents = componentCount;
+        for (List<Integer> indexes : ruleArrayComponents.values()) {
+            if (indexes != null && indexes.size() > 1) {
+                adjustedComponents -= indexes.size() - 1;
+            }
+        }
+        return adjustedComponents + parameterCount;
+    }
+
+    private static Map<String, List<Integer>> extractRuleArrayComponents(List<ComponentDescriptor> components,
+            Map<String, Object> metadataParams) {
+        if (metadataParams.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Integer> labelIndex = new LinkedHashMap<>();
+        for (int i = 0; i < components.size(); i++) {
+            ComponentDescriptor component = components.get(i);
+            if (component != null && component.getLabel() != null) {
+                labelIndex.put(component.getLabel(), i);
+            }
+        }
+        Map<String, List<Integer>> grouped = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : metadataParams.entrySet()) {
+            if (!entry.getKey().startsWith(RULE_ARRAY_PREFIX)) {
+                continue;
+            }
+            Object raw = entry.getValue();
+            if (!(raw instanceof List<?> labels) || labels.isEmpty()) {
+                continue;
+            }
+            String name = entry.getKey().substring(RULE_ARRAY_PREFIX.length());
+            List<Integer> indexes = new ArrayList<>(labels.size());
+            for (Object labelObj : labels) {
+                if (!(labelObj instanceof String label)) {
+                    continue;
+                }
+                Integer index = labelIndex.get(label);
+                if (index != null) {
+                    indexes.add(index);
+                }
+            }
+            if (!indexes.isEmpty()) {
+                grouped.put(name, indexes);
+            }
+        }
+        return grouped;
+    }
+
+    private static Map<String, List<Integer>> copyRuleArrayComponents(Map<String, List<Integer>> original) {
+        if (original.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        Map<String, List<Integer>> copy = new LinkedHashMap<>(original.size());
+        for (Map.Entry<String, List<Integer>> entry : original.entrySet()) {
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        return copy;
     }
 
     private static boolean isAssignableFrom(Class<?> paramType, ComponentDescriptor child) {
@@ -1073,6 +1268,10 @@ public final class RuleSerialization {
                         arguments.add(Argument.enumArray(name, type, match.value));
                         continue;
                     }
+                    if (Rule.class.isAssignableFrom(componentType)) {
+                        arguments.add(Argument.ruleArray(name, type, (Rule[]) match.value, name));
+                        continue;
+                    }
                     if (isNumericType(componentType)) {
                         arguments.add(Argument.numberArray(name, type, match.value));
                         continue;
@@ -1262,8 +1461,8 @@ public final class RuleSerialization {
     }
 
     private enum ArgumentKind {
-        SERIES, RULE, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY, INT_ARRAY,
-        LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY, CHAIN_LINKS
+        SERIES, RULE, RULE_ARRAY, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY,
+        INT_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY, CHAIN_LINKS
     }
 
     private static final class Argument {
@@ -1288,6 +1487,10 @@ public final class RuleSerialization {
 
         private static Argument rule(String name, Class<?> targetType, Rule rule, String label) {
             return new Argument(ArgumentKind.RULE, name, targetType, rule, label);
+        }
+
+        private static Argument ruleArray(String name, Class<?> targetType, Rule[] rules, String label) {
+            return new Argument(ArgumentKind.RULE_ARRAY, name, targetType, rules, label);
         }
 
         private static Argument indicator(String name, Class<?> targetType, Indicator<?> indicator, String label) {
@@ -1365,6 +1568,21 @@ public final class RuleSerialization {
                 Rule rule = (Rule) value;
                 ComponentDescriptor ruleDescriptor = RuleSerialization.describe(rule, context.visited);
                 context.components.add(applyLabel(ruleDescriptor, label));
+                break;
+            case RULE_ARRAY:
+                Rule[] rules = (Rule[]) value;
+                List<String> labels = new ArrayList<>(rules.length);
+                for (int i = 0; i < rules.length; i++) {
+                    Rule element = rules[i];
+                    if (element == null) {
+                        continue;
+                    }
+                    ComponentDescriptor descriptor = RuleSerialization.describe(element, context.visited);
+                    String elementLabel = label + "Idx" + i;
+                    labels.add(elementLabel);
+                    context.components.add(applyLabel(descriptor, elementLabel));
+                }
+                context.parameters.put("__ruleArray_" + name, labels);
                 break;
             case INDICATOR:
                 Indicator<?> indicator = (Indicator<?>) value;

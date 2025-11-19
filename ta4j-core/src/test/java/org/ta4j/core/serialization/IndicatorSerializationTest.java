@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.serialization;
 
+import java.util.List;
+
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -33,6 +35,7 @@ import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferencePercentageIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
@@ -85,6 +88,26 @@ public class IndicatorSerializationTest {
         assertThat(restored).isInstanceOf(SMAIndicator.class);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(restored.getValue(i)).isEqualTo(original.getValue(i));
+        }
+    }
+
+    @Test
+    public void serializeBooleanFixedIndicator() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        FixedIndicator<Boolean> indicator = new FixedIndicator<>(series, true, false, true);
+
+        ComponentDescriptor descriptor = indicator.toDescriptor();
+        assertThat(descriptor.getParameters()).containsEntry("values", List.of(true, false, true));
+
+        Indicator<?> restored = IndicatorSerialization.fromDescriptor(series, descriptor);
+        assertThat(restored).isInstanceOf(FixedIndicator.class);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(restored.getValue(i)).isEqualTo(indicator.getValue(i));
+        }
+
+        Indicator<?> fromJson = IndicatorSerialization.fromJson(series, indicator.toJson());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(fromJson.getValue(i)).isEqualTo(indicator.getValue(i));
         }
     }
 

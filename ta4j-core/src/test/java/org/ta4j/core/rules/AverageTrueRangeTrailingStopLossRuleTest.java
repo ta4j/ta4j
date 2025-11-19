@@ -35,6 +35,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeTrailingStopLossRuleTest {
@@ -180,6 +182,16 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
     @Test
     public void serializeAndDeserialize() {
         var rule = new AverageTrueRangeTrailingStopLossRule(series, 4, 1.5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void serializeAndDeserializeWithCustomReference() {
+        Num baseline = series.numFactory().numOf(50);
+        FixedIndicator<Num> referencePrice = new FixedIndicator<>(series, baseline, baseline, baseline, baseline,
+                baseline);
+        var rule = new AverageTrueRangeTrailingStopLossRule(series, referencePrice, 5, 2.0);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }

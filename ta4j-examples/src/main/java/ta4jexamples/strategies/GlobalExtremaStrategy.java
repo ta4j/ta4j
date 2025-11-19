@@ -31,6 +31,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -39,7 +40,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -102,11 +103,25 @@ public class GlobalExtremaStrategy {
         final var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        final var highPrices = new HighPriceIndicator(series);
+        final var weekHighPrice = new HighestValueIndicator(highPrices, NB_BARS_PER_WEEK);
+        final var lowPrices = new LowPriceIndicator(series);
+        final var weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
+        final var downWeek = BinaryOperationIndicator.product(weekLowPrice, 1.004);
+        final var upWeek = BinaryOperationIndicator.product(weekHighPrice, 0.996);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "global-extrema-strategy");
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(weekHighPrice)
+                .withIndicatorOverlay(weekLowPrice)
+                .withIndicatorOverlay(downWeek)
+                .withIndicatorOverlay(upWeek)
+                .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "ta4j-examples/log/charts");
     }
 }

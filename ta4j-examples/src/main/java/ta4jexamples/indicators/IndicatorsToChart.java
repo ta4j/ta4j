@@ -23,6 +23,7 @@
  */
 package ta4jexamples.indicators;
 
+import java.awt.Dimension;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -34,6 +35,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.chart.ui.UIUtils;
 import org.jfree.data.time.Day;
+import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -61,9 +63,8 @@ public class IndicatorsToChart {
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
-            String name) {
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
+    private static TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator, String name) {
+        TimeSeries chartTimeSeries = new TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
             chartTimeSeries.add(new Day(Date.from(bar.getEndTime())), indicator.getValue(i).doubleValue());
@@ -81,7 +82,7 @@ public class IndicatorsToChart {
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
-        panel.setPreferredSize(new java.awt.Dimension(500, 270));
+        panel.setPreferredSize(new Dimension(500, 270));
         // Application frame
         ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart");
         frame.setContentPane(panel);

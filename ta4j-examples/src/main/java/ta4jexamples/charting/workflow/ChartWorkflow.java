@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.workflow;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -39,12 +39,20 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Optional;
 
+import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.display.ChartDisplayer;
+import ta4jexamples.charting.display.SwingChartDisplayer;
+import ta4jexamples.charting.storage.ChartStorage;
+import ta4jexamples.charting.storage.FileSystemChartStorage;
+
 /**
  * Facade for composing, displaying, and persisting TA4J charts.
  *
  * <p>
- * The refactored {@link ChartMaker} decomposes responsibilities into dedicated
- * collaborators:
+ * The refactored {@link ChartWorkflow} decomposes responsibilities into
+ * dedicated collaborators:
  * </p>
  * <ul>
  * <li>{@link TradingChartFactory} builds {@link JFreeChart} instances.</li>
@@ -59,7 +67,7 @@ import java.util.Optional;
  *
  * @since 0.19
  */
-public class ChartMaker {
+public class ChartWorkflow {
 
     /**
      * Default chart image width.
@@ -75,34 +83,34 @@ public class ChartMaker {
      */
     static final int DEFAULT_CHART_IMAGE_HEIGHT = 1080;
 
-    private static final Logger LOG = LogManager.getLogger(ChartMaker.class);
+    private static final Logger LOG = LogManager.getLogger(ChartWorkflow.class);
 
     private final TradingChartFactory chartFactory;
     private final ChartDisplayer chartDisplayer;
     private final ChartStorage chartStorage;
 
     /**
-     * Creates a {@link ChartMaker} that supports chart composition and display but
-     * omits chart persistence.
+     * Creates a {@link ChartWorkflow} that supports chart composition and display
+     * but omits chart persistence.
      *
      * @since 0.19
      */
-    public ChartMaker() {
+    public ChartWorkflow() {
         this(new TradingChartFactory(), new SwingChartDisplayer(), ChartStorage.noOp());
     }
 
     /**
-     * Creates a {@link ChartMaker} with filesystem persistence enabled.
+     * Creates a {@link ChartWorkflow} with filesystem persistence enabled.
      *
      * @param chartImageSaveDirectory the directory to store generated chart images
      * @since 0.19
      */
-    public ChartMaker(String chartImageSaveDirectory) {
+    public ChartWorkflow(String chartImageSaveDirectory) {
         this(new TradingChartFactory(), new SwingChartDisplayer(),
                 new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory)));
     }
 
-    ChartMaker(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
+    public ChartWorkflow(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
         this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
         this.chartDisplayer = Objects.requireNonNull(chartDisplayer, "Chart displayer cannot be null");
         this.chartStorage = Objects.requireNonNull(chartStorage, "Chart storage cannot be null");
@@ -116,6 +124,96 @@ public class ChartMaker {
      */
     public ChartBuilder builder() {
         return new ChartBuilder(this, chartFactory);
+    }
+
+    /**
+     * Renders a chart from the provided plan.
+     *
+     * @param plan the chart plan to render
+     * @return the rendered chart
+     */
+    public JFreeChart render(ChartPlan plan) {
+        Objects.requireNonNull(plan, "Chart plan cannot be null");
+        return chartFactory.compose(plan.definition());
+    }
+
+    /**
+     * Displays the chart described by the provided plan.
+     *
+     * @param plan the chart plan
+     */
+    public void display(ChartPlan plan) {
+        displayChart(render(plan));
+    }
+
+    /**
+     * Displays the chart described by the provided plan with a custom window title.
+     *
+     * @param plan        the chart plan
+     * @param windowTitle custom window title
+     */
+    public void display(ChartPlan plan, String windowTitle) {
+        displayChart(render(plan), windowTitle);
+    }
+
+    /**
+     * Saves the chart described by the provided plan using the default storage
+     * strategy.
+     *
+     * @param plan the chart plan
+     * @return the optional path to the saved chart
+     */
+    public Optional<Path> save(ChartPlan plan) {
+        return saveChartImage(render(plan), plan.primarySeries());
+    }
+
+    /**
+     * Saves the chart described by the provided plan with a custom filename.
+     *
+     * @param plan     the chart plan
+     * @param filename desired filename
+     * @return the optional path to the saved chart
+     */
+    public Optional<Path> save(ChartPlan plan, String filename) {
+        return saveChartImage(render(plan), plan.primarySeries(), filename);
+    }
+
+    /**
+     * Saves the chart described by the provided plan to the supplied directory.
+     *
+     * @param plan      the chart plan
+     * @param directory target directory
+     * @return optional saved path
+     */
+    public Optional<Path> save(ChartPlan plan, Path directory) {
+        return saveChartImage(render(plan), plan.primarySeries(), directory);
+    }
+
+    /**
+     * Saves the chart described by the provided plan using string directory and
+     * filename inputs.
+     *
+     * @param plan      the chart plan
+     * @param directory directory expressed as a string
+     * @param filename  optional filename
+     * @return optional saved path
+     */
+    public Optional<Path> save(ChartPlan plan, String directory, String filename) {
+        return saveChartImage(render(plan), plan.primarySeries(), filename, directory);
+    }
+
+    /**
+     * Saves the chart described by the provided plan to the supplied directory with
+     * a custom filename.
+     *
+     * @param plan      the chart plan
+     * @param directory target directory
+     * @param filename  desired filename
+     * @return optional saved path
+     */
+    public Optional<Path> save(ChartPlan plan, Path directory, String filename) {
+        Objects.requireNonNull(directory, "Directory cannot be null");
+        return save(plan, directory.toString(), filename);
     }
 
     /**
@@ -493,73 +591,6 @@ public class ChartMaker {
             LOG.error("Failed to write chart to byte array", ex);
         }
         return out.toByteArray();
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use
-     *             {@link #saveTradingRecordChart(BarSeries, String, TradingRecord)}
-     */
-    @Deprecated
-    public String generateAndSaveChartImage(BarSeries series, String strategyName, TradingRecord tradingRecord) {
-        return saveTradingRecordChart(series, strategyName, tradingRecord).map(Path::toString).orElse(null);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use
-     *             {@link #displayTradingRecordChart(BarSeries, String, TradingRecord)}
-     */
-    @Deprecated
-    public void generateAndDisplayTradingRecordChart(BarSeries series, String strategyName,
-            TradingRecord tradingRecord) {
-        displayTradingRecordChart(series, strategyName, tradingRecord);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use {@link #displayIndicatorChart(BarSeries, Indicator[])}
-     */
-    @Deprecated
-    @SafeVarargs
-    public final void generateAndDisplayChart(BarSeries series, Indicator<Num>... indicators) {
-        displayIndicatorChart(series, indicators);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use
-     *             {@link #createTradingRecordChart(BarSeries, String, TradingRecord)}
-     */
-    @Deprecated
-    public JFreeChart generateChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
-        return createTradingRecordChart(series, strategyName, tradingRecord);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use
-     *             {@link #createTradingRecordChartBytes(BarSeries, String, TradingRecord)}
-     */
-    @Deprecated
-    public byte[] generateChartAsBytes(BarSeries series, String strategyName, TradingRecord tradingRecord) {
-        return createTradingRecordChartBytes(series, strategyName, tradingRecord);
-    }
-
-    /**
-     * Legacy convenience method retained for backwards compatibility.
-     *
-     * @deprecated use {@link #createIndicatorChart(BarSeries, Indicator[])}
-     */
-    @Deprecated
-    @SafeVarargs
-    public final JFreeChart generateChart(BarSeries series, Indicator<Num>... indicators) {
-        return createIndicatorChart(series, indicators);
     }
 
     private void validateTradingInputs(BarSeries series, String strategyName, TradingRecord tradingRecord) {

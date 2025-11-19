@@ -24,6 +24,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
@@ -91,5 +92,40 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
         TimeRangeRule rule = new TimeRangeRule(List.of(range), dateTimeIndicator);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void constructorWithSecondArraysEvaluatesRanges() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T02:30:00Z")).add();
+        series.barBuilder().endTime(Instant.parse("2019-09-17T18:15:00Z")).add();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        int[] from = { LocalTime.of(2, 0).toSecondOfDay(), LocalTime.of(18, 0).toSecondOfDay() };
+        int[] to = { LocalTime.of(3, 0).toSecondOfDay(), LocalTime.of(19, 0).toSecondOfDay() };
+
+        TimeRangeRule rule = new TimeRangeRule(dateTimeIndicator, from, to);
+
+        assertTrue("02:30 should be inside first range", rule.isSatisfied(0, null));
+        assertTrue("18:15 should be inside second range", rule.isSatisfied(1, null));
+    }
+
+    @Test
+    public void constructorWithSecondArraysValidatesLengths() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        int[] from = { LocalTime.of(2, 0).toSecondOfDay() };
+        int[] to = { LocalTime.of(3, 0).toSecondOfDay(), LocalTime.of(4, 0).toSecondOfDay() };
+
+        assertThrows(IllegalArgumentException.class, () -> new TimeRangeRule(dateTimeIndicator, from, to));
+    }
+
+    @Test
+    public void constructorWithSecondArraysValidatesBounds() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        int[] from = { -1 };
+        int[] to = { LocalTime.of(1, 0).toSecondOfDay() };
+
+        assertThrows(IllegalArgumentException.class, () -> new TimeRangeRule(dateTimeIndicator, from, to));
     }
 }

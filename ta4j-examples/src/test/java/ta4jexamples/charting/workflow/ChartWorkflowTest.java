@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.workflow;
 
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.JFreeChart;
@@ -29,6 +29,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.ui.Layer;
 import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,12 +52,15 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.builder.ChartBuilder;
+
 /**
- * Integration tests for {@link ChartMaker}.
+ * Integration tests for {@link ChartWorkflow}.
  *
  * <p>
- * This test class focuses on testing the integration between ChartMaker and its
- * collaborators. Unit tests for specific components are located in:
+ * This test class focuses on testing the integration between ChartWorkflow and
+ * its collaborators. Unit tests for specific components are located in:
  * </p>
  * <ul>
  * <li>{@link FileSystemChartStorageTest} - Chart storage functionality</li>
@@ -64,64 +68,67 @@ import static org.junit.jupiter.api.Assertions.*;
  * <li>{@link TradingChartFactoryTest} - Chart creation functionality</li>
  * </ul>
  */
-public class ChartMakerTest {
+public class ChartWorkflowTest {
 
-    private ChartMaker chartMaker;
+    private ChartWorkflow chartWorkflow;
     private BarSeries barSeries;
     private TradingRecord tradingRecord;
 
     @BeforeEach
     public void setUp() {
-        chartMaker = new ChartMaker();
+        chartWorkflow = new ChartWorkflow();
         barSeries = ChartingTestFixtures.standardDailySeries();
         tradingRecord = ChartingTestFixtures.completedTradeRecord(barSeries);
     }
 
     @Test
     public void testDefaultConstructor() {
-        ChartMaker maker = new ChartMaker();
+        ChartWorkflow maker = new ChartWorkflow();
         assertNotNull(maker);
     }
 
     @Test
     public void testConstructorWithSaveDirectory() {
         String saveDir = "test/charts";
-        ChartMaker maker = new ChartMaker(saveDir);
+        ChartWorkflow maker = new ChartWorkflow(saveDir);
         assertNotNull(maker);
     }
 
     @Test
     public void testConstructorWithNullSaveDirectory() {
-        assertThrows(IllegalArgumentException.class, () -> new ChartMaker(null));
+        assertThrows(IllegalArgumentException.class, () -> new ChartWorkflow(null));
     }
 
     @Test
     public void testConstructorWithEmptySaveDirectory() {
-        assertThrows(IllegalArgumentException.class, () -> new ChartMaker(""));
+        assertThrows(IllegalArgumentException.class, () -> new ChartWorkflow(""));
     }
 
     @Test
     public void testConstructorWithBlankSaveDirectory() {
-        assertThrows(IllegalArgumentException.class, () -> new ChartMaker("   "));
+        assertThrows(IllegalArgumentException.class, () -> new ChartWorkflow("   "));
     }
 
     @Test
     public void testBuilder() {
-        ChartBuilder builder = chartMaker.builder();
+        ChartBuilder builder = chartWorkflow.builder();
         assertNotNull(builder, "Builder should not be null");
     }
 
     @Test
-    public void testBuilderCreatesValidHandle() {
-        ChartHandle handle = chartMaker.builder().withTradingRecord(barSeries, "Test Strategy", tradingRecord).build();
-        assertNotNull(handle, "Handle should not be null");
-        assertNotNull(handle.getChart(), "Chart should not be null");
-        assertEquals(barSeries, handle.getSeries(), "Series should match");
+    public void testBuilderProducesChart() {
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(barSeries)
+                .withTradingRecordOverlay(tradingRecord)
+                .toChart();
+        assertNotNull(chart, "Chart should not be null");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
+                "Chart built through builder should use CombinedDomainXYPlot");
     }
 
     @Test
     public void testGenerateChartWithTradingRecord() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         assertNotNull(chart, "Chart should not be null");
         assertNotNull(chart.getTitle(), "Chart title should not be null");
@@ -130,7 +137,7 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateChartAddsTradeMarkers() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         XYPlot plot = chart.getXYPlot();
 
         assertTrue(plot.getDatasetCount() > 1, "Trade dataset should be present on the chart");
@@ -153,7 +160,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
                 sma);
 
         assertNotNull(chart, "Chart should not be null");
@@ -172,47 +179,47 @@ public class ChartMakerTest {
 
     @Test
     public void testCreateTradingRecordChartWithIndicatorsRejectsNullVarargs() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChart(barSeries,
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.createTradingRecordChart(barSeries,
                 "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
     }
 
     @Test
     public void testCreateTradingRecordChartWithIndicatorsRejectsNullElement() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, null));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.createTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, closePrice, null));
     }
 
     @Test
     public void testSaveTradingRecordChartWithIndicatorsRejectsNullVarargs() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveTradingRecordChart(barSeries, "Test Strategy",
-                tradingRecord, (Indicator<Num>[]) null));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
     }
 
     @Test
     public void testSaveTradingRecordChartWithIndicatorsRejectsNullElement() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, null));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, closePrice, null));
     }
 
     @Test
     public void testCreateTradingRecordChartBytesWithIndicatorsRejectsNullVarargs() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChartBytes(barSeries,
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.createTradingRecordChartBytes(barSeries,
                 "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
     }
 
     @Test
     public void testCreateTradingRecordChartBytesWithIndicatorsRejectsNullElement() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.createTradingRecordChartBytes(barSeries,
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.createTradingRecordChartBytes(barSeries,
                 "Test Strategy", tradingRecord, closePrice, null));
     }
 
     @Test
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullVarargs() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
                 "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
     }
 
@@ -220,32 +227,32 @@ public class ChartMakerTest {
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullElement() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayTradingRecordChart(barSeries,
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
                 "Test Strategy", tradingRecord, closePrice, null));
     }
 
     @Test
     public void testGenerateChartWithNullSeries() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createTradingRecordChart(null, "Test Strategy", tradingRecord));
+                () -> chartWorkflow.createTradingRecordChart(null, "Test Strategy", tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithNullStrategyName() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createTradingRecordChart(barSeries, null, tradingRecord));
+                () -> chartWorkflow.createTradingRecordChart(barSeries, null, tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithEmptyStrategyName() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createTradingRecordChart(barSeries, "", tradingRecord));
+                () -> chartWorkflow.createTradingRecordChart(barSeries, "", tradingRecord));
     }
 
     @Test
     public void testGenerateChartWithNullTradingRecord() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createTradingRecordChart(barSeries, "Test Strategy", null));
+                () -> chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", null));
     }
 
     @Test
@@ -253,7 +260,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        JFreeChart chart = chartMaker.createIndicatorChart(barSeries, closePrice, sma);
+        JFreeChart chart = chartWorkflow.createIndicatorChart(barSeries, closePrice, sma);
 
         assertNotNull(chart, "Chart should not be null");
         assertNotNull(chart.getTitle(), "Chart title should not be null");
@@ -262,25 +269,25 @@ public class ChartMakerTest {
     @Test
     public void testGenerateChartWithNullSeriesForIndicators() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.createIndicatorChart(null, closePrice));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.createIndicatorChart(null, closePrice));
     }
 
     @Test
     public void testGenerateChartWithNullIndicators() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createIndicatorChart(barSeries, (Indicator<Num>[]) null));
+                () -> chartWorkflow.createIndicatorChart(barSeries, (Indicator<Num>[]) null));
     }
 
     @Test
     public void testCreateIndicatorChartWithNullElement() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createIndicatorChart(barSeries, closePrice, null));
+                () -> chartWorkflow.createIndicatorChart(barSeries, closePrice, null));
     }
 
     @Test
     public void testGenerateChartAsBytes() {
-        byte[] chartBytes = chartMaker.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
         assertNotNull(chartBytes, "Chart bytes should not be null");
         assertTrue(chartBytes.length > 0, "Chart bytes should not be empty");
@@ -291,7 +298,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        byte[] chartBytes = chartMaker.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
                 closePrice, sma);
 
         assertNotNull(chartBytes, "Chart bytes should not be null");
@@ -300,13 +307,13 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateChartAsBytesWithNullChart() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.getChartAsByteArray(null));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(null));
     }
 
     @Test
     public void testGetChartAsByteArray() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        byte[] bytes = chartMaker.getChartAsByteArray(chart);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        byte[] bytes = chartWorkflow.getChartAsByteArray(chart);
 
         assertNotNull(bytes, "Bytes should not be null");
         assertTrue(bytes.length > 0, "Bytes should not be empty");
@@ -316,23 +323,24 @@ public class ChartMakerTest {
 
     @Test
     public void testGenerateAndSaveChartImageWithoutSaveDirectory() {
-        assertTrue(chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord).isEmpty(),
+        assertTrue(chartWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord).isEmpty(),
                 "Result should be empty when save directory is not configured");
     }
 
     @Test
     public void testSaveTradingRecordChartWithIndicatorsWithoutSaveDirectory() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertTrue(chartMaker.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice).isEmpty(),
+        assertTrue(
+                chartWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice).isEmpty(),
                 "No-op storage should still return empty optional for indicator overload");
     }
 
     @Test
     public void testGenerateAndSaveChartImageWithSaveDirectory() throws IOException {
         // Create temporary directory for testing
-        Path tempDir = Files.createTempDirectory("chartmaker-test");
+        Path tempDir = Files.createTempDirectory("ChartWorkflow-test");
         try {
-            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
             TradingRecord emptyRecord = new BaseTradingRecord();
             Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "TestStrat", emptyRecord);
             result.ifPresent(path -> assertTrue(Files.exists(path), "Saved chart path should exist"));
@@ -352,9 +360,9 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveTradingRecordChartWithIndicators() throws IOException {
-        Path tempDir = Files.createTempDirectory("chartmaker-indicator-save");
+        Path tempDir = Files.createTempDirectory("ChartWorkflow-indicator-save");
         try {
-            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
             ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
             SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
@@ -379,14 +387,14 @@ public class ChartMakerTest {
     @Test
     public void testGenerateAndSaveChartImageWithNullParameters() {
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.saveTradingRecordChart(null, "Test Strategy", tradingRecord));
+                () -> chartWorkflow.saveTradingRecordChart(null, "Test Strategy", tradingRecord));
     }
 
     @Test
     public void testGenerateAndDisplayTradingRecordChart() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         try {
-            chartMaker.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            chartWorkflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
@@ -401,7 +409,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         try {
-            chartMaker.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
+            chartWorkflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
         } catch (Exception e) {
             String message = e.getMessage();
             if (message != null) {
@@ -413,7 +421,7 @@ public class ChartMakerTest {
 
     @Test
     public void testDisplayChartWithNullChart() {
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.displayChart(null));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayChart(null));
     }
 
     @Test
@@ -421,7 +429,7 @@ public class ChartMakerTest {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         try {
-            chartMaker.displayIndicatorChart(barSeries, closePrice);
+            chartWorkflow.displayIndicatorChart(barSeries, closePrice);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
@@ -436,7 +444,7 @@ public class ChartMakerTest {
     public void testErrorHandlingWithInvalidData() {
         // Test with series that might cause issues
         BarSeries problematicSeries = ChartingTestFixtures.problematicSeries();
-        JFreeChart chart = chartMaker.createTradingRecordChart(problematicSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(problematicSeries, "Test Strategy", tradingRecord);
 
         // Should handle gracefully and return a chart (possibly empty)
         assertNotNull(chart, "Chart should not be null even with problematic data");
@@ -446,7 +454,7 @@ public class ChartMakerTest {
     public void testPathSanitizationSimple() {
         // Test that sanitization doesn't crash the system (without file creation)
         BarSeries seriesWithSpecialChars = ChartingTestFixtures.seriesWithSpecialChars();
-        JFreeChart chart = chartMaker.createTradingRecordChart(seriesWithSpecialChars, "Test Strategy",
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(seriesWithSpecialChars, "Test Strategy",
                 new BaseTradingRecord());
 
         assertNotNull(chart, "Chart should not be null even with special chars in series name");
@@ -459,7 +467,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        JFreeChart chart = chartMaker.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+        JFreeChart chart = chartWorkflow.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
 
         assertNotNull(chart, "Dual-axis chart should not be null");
         assertNotNull(chart.getTitle(), "Chart should have a title");
@@ -472,7 +480,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        JFreeChart chart = chartMaker.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA",
+        JFreeChart chart = chartWorkflow.createDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA",
                 "Custom Chart Title");
 
         assertNotNull(chart, "Dual-axis chart should not be null");
@@ -486,7 +494,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(null, closePrice, "Price", sma, "SMA"));
+                () -> chartWorkflow.createDualAxisChart(null, closePrice, "Price", sma, "SMA"));
     }
 
     @Test
@@ -494,7 +502,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, null, "Price", sma, "SMA"));
+                () -> chartWorkflow.createDualAxisChart(barSeries, null, "Price", sma, "SMA"));
     }
 
     @Test
@@ -502,7 +510,7 @@ public class ChartMakerTest {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", null, "SMA"));
+                () -> chartWorkflow.createDualAxisChart(barSeries, closePrice, "Price", null, "SMA"));
     }
 
     @Test
@@ -511,7 +519,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, closePrice, null, sma, "SMA"));
+                () -> chartWorkflow.createDualAxisChart(barSeries, closePrice, null, sma, "SMA"));
     }
 
     @Test
@@ -520,7 +528,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "", sma, "SMA"));
+                () -> chartWorkflow.createDualAxisChart(barSeries, closePrice, "", sma, "SMA"));
     }
 
     @Test
@@ -529,7 +537,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", sma, null));
+                () -> chartWorkflow.createDualAxisChart(barSeries, closePrice, "Price", sma, null));
     }
 
     @Test
@@ -538,7 +546,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.createDualAxisChart(barSeries, closePrice, "Price", sma, ""));
+                () -> chartWorkflow.createDualAxisChart(barSeries, closePrice, "Price", sma, ""));
     }
 
     @Test
@@ -550,7 +558,7 @@ public class ChartMakerTest {
         // This test just ensures the method doesn't throw an exception
         // In a real test environment, we might mock the display functionality
         try {
-            chartMaker.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+            chartWorkflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             String message = e.getMessage();
@@ -569,7 +577,7 @@ public class ChartMakerTest {
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
         try {
-            chartMaker.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA", "Custom Chart",
+            chartWorkflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA", "Custom Chart",
                     "Custom Window");
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
@@ -585,10 +593,10 @@ public class ChartMakerTest {
     @Test
     public void testDisplayChartWithWindowTitle() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
-            chartMaker.displayChart(chart, "Custom Window Title");
+            chartWorkflow.displayChart(chart, "Custom Window Title");
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             String message = e.getMessage();
@@ -603,10 +611,10 @@ public class ChartMakerTest {
     @Test
     public void testDisplayChartWithNullWindowTitle() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
-            chartMaker.displayChart(chart, null);
+            chartWorkflow.displayChart(chart, null);
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             String message = e.getMessage();
@@ -621,10 +629,10 @@ public class ChartMakerTest {
     @Test
     public void testDisplayChartWithEmptyWindowTitle() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
         try {
-            chartMaker.displayChart(chart, "");
+            chartWorkflow.displayChart(chart, "");
         } catch (Exception e) {
             // In headless environments, this might throw an exception, which is expected
             String message = e.getMessage();
@@ -637,13 +645,13 @@ public class ChartMakerTest {
     }
 
     @Test
-    public void testChartLegendNotDuplicatedWhenReusingChartMaker() {
+    public void testChartLegendNotDuplicatedWhenReusingChartWorkflow() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        // Create a ChartMaker with save directory to enable save functionality
+        // Create a ChartWorkflow with save directory to enable save functionality
         Path tempDir = null;
         try {
-            tempDir = Files.createTempDirectory("chartmaker-test");
-            ChartMaker makerWithSave = new ChartMaker(tempDir.toString());
+            tempDir = Files.createTempDirectory("ChartWorkflow-test");
+            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
 
             // Create a chart
             JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
@@ -663,7 +671,7 @@ public class ChartMakerTest {
 
             // The legend items should not have changed
             assertEquals(legendItemCountBefore, legendItemCountAfter,
-                    "Legend items should not be duplicated when reusing ChartMaker instance");
+                    "Legend items should not be duplicated when reusing ChartWorkflow instance");
 
             // Save the chart image (which uses the same chart instance)
             makerWithSave.saveChartImage(chart, barSeries, "Test Chart");
@@ -700,7 +708,7 @@ public class ChartMakerTest {
         // Filter to count only LegendTitle instances
         int legendCount = 0;
         for (int i = 0; i < subtitleCount; i++) {
-            if (chart.getSubtitle(i) instanceof org.jfree.chart.title.LegendTitle) {
+            if (chart.getSubtitle(i) instanceof LegendTitle) {
                 legendCount++;
             }
         }
@@ -711,10 +719,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectory() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, customDir);
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customDir);
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -736,11 +744,11 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectoryCreatesDirectories() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         Path nestedDir = customDir.resolve("nested").resolve("subdirectory");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, nestedDir);
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, nestedDir);
 
             assertTrue(result.isPresent(), "Chart should be saved even to nested directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -761,10 +769,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectoryUsesCustomDirectoryNotConstructorDirectory() throws IOException {
-        Path constructorDir = Files.createTempDirectory("chartmaker-constructor-dir");
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path constructorDir = Files.createTempDirectory("ChartWorkflow-constructor-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            ChartMaker makerWithConstructorDir = new ChartMaker(constructorDir.toString());
+            ChartWorkflow makerWithConstructorDir = new ChartWorkflow(constructorDir.toString());
             JFreeChart chart = makerWithConstructorDir.createTradingRecordChart(barSeries, "Test Strategy",
                     tradingRecord);
 
@@ -799,16 +807,17 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectoryWorksWithoutConstructorDirectory() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            // ChartMaker created without save directory
-            ChartMaker makerWithoutDir = new ChartMaker();
+            // ChartWorkflow created without save directory
+            ChartWorkflow makerWithoutDir = new ChartWorkflow();
             JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
             // Should still work with custom directory parameter
             Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, customDir);
 
-            assertTrue(result.isPresent(), "Chart should be saved even when ChartMaker has no constructor directory");
+            assertTrue(result.isPresent(),
+                    "Chart should be saved even when ChartWorkflow has no constructor directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
             assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified custom directory");
         } finally {
@@ -826,16 +835,16 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectoryRejectsNullPath() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, (Path) null),
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveChartImage(chart, barSeries, (Path) null),
                 "Should reject null Path directory");
     }
 
     @Test
     public void testSaveChartImageWithPathDirectoryRejectsNullChart() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(null, barSeries, customDir),
+            assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveChartImage(null, barSeries, customDir),
                     "Should reject null chart when saving to Path directory");
         } finally {
             if (Files.exists(customDir)) {
@@ -852,10 +861,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathDirectoryRejectsNullSeries() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, null, customDir),
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveChartImage(chart, null, customDir),
                     "Should reject null BarSeries when saving to Path directory");
         } finally {
             if (Files.exists(customDir)) {
@@ -872,10 +881,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectory() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, null, customDir.toString());
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString());
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -897,11 +906,12 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryAndFileName() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             String customFileName = "MyCustomChart";
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, customFileName, customDir.toString());
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customFileName,
+                    customDir.toString());
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -923,10 +933,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryUsesCustomDirectoryNotConstructorDirectory() throws IOException {
-        Path constructorDir = Files.createTempDirectory("chartmaker-constructor-dir");
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path constructorDir = Files.createTempDirectory("ChartWorkflow-constructor-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            ChartMaker makerWithConstructorDir = new ChartMaker(constructorDir.toString());
+            ChartWorkflow makerWithConstructorDir = new ChartWorkflow(constructorDir.toString());
             JFreeChart chart = makerWithConstructorDir.createTradingRecordChart(barSeries, "Test Strategy",
                     tradingRecord);
 
@@ -962,16 +972,17 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryWorksWithoutConstructorDirectory() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            // ChartMaker created without save directory
-            ChartMaker makerWithoutDir = new ChartMaker();
+            // ChartWorkflow created without save directory
+            ChartWorkflow makerWithoutDir = new ChartWorkflow();
             JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
             // Should still work with custom directory parameter
             Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, null, customDir.toString());
 
-            assertTrue(result.isPresent(), "Chart should be saved even when ChartMaker has no constructor directory");
+            assertTrue(result.isPresent(),
+                    "Chart should be saved even when ChartWorkflow has no constructor directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
             assertTrue(result.get().startsWith(customDir), "Chart should be saved in the specified custom directory");
         } finally {
@@ -989,32 +1000,32 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryRejectsNullDirectory() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         assertThrows(IllegalArgumentException.class,
-                () -> chartMaker.saveChartImage(chart, barSeries, null, (String) null),
+                () -> chartWorkflow.saveChartImage(chart, barSeries, null, (String) null),
                 "Should reject null String directory");
     }
 
     @Test
     public void testSaveChartImageWithStringDirectoryRejectsEmptyDirectory() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, null, ""),
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveChartImage(chart, barSeries, null, ""),
                 "Should reject empty String directory");
     }
 
     @Test
     public void testSaveChartImageWithStringDirectoryRejectsBlankDirectory() {
-        JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        assertThrows(IllegalArgumentException.class, () -> chartMaker.saveChartImage(chart, barSeries, null, "   "),
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.saveChartImage(chart, barSeries, null, "   "),
                 "Should reject blank String directory");
     }
 
     @Test
     public void testSaveChartImageWithStringDirectoryRejectsNullChart() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
             assertThrows(IllegalArgumentException.class,
-                    () -> chartMaker.saveChartImage(null, barSeries, null, customDir.toString()),
+                    () -> chartWorkflow.saveChartImage(null, barSeries, null, customDir.toString()),
                     "Should reject null chart");
         } finally {
             if (Files.exists(customDir)) {
@@ -1031,11 +1042,11 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryRejectsNullSeries() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             assertThrows(IllegalArgumentException.class,
-                    () -> chartMaker.saveChartImage(chart, null, null, customDir.toString()),
+                    () -> chartWorkflow.saveChartImage(chart, null, null, customDir.toString()),
                     "Should reject null series");
         } finally {
             if (Files.exists(customDir)) {
@@ -1052,10 +1063,10 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryAutoGeneratesFileNameWhenNull() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, null, customDir.toString());
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString());
 
             assertTrue(result.isPresent(), "Chart should be saved even with null filename");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1078,11 +1089,12 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithStringDirectoryUsesProvidedFileName() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             String expectedFileName = "MyCustomChartName";
-            Optional<Path> result = chartMaker.saveChartImage(chart, barSeries, expectedFileName, customDir.toString());
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, expectedFileName,
+                    customDir.toString());
 
             assertTrue(result.isPresent(), "Chart should be saved");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1104,13 +1116,13 @@ public class ChartMakerTest {
 
     @Test
     public void testSaveChartImageWithPathAndStringDirectoryProduceSameResult() throws IOException {
-        Path customDir = Files.createTempDirectory("chartmaker-custom-dir");
+        Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
-            JFreeChart chart1 = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            JFreeChart chart2 = chartMaker.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart1 = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+            JFreeChart chart2 = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-            Optional<Path> resultPath = chartMaker.saveChartImage(chart1, barSeries, customDir);
-            Optional<Path> resultString = chartMaker.saveChartImage(chart2, barSeries, null, customDir.toString());
+            Optional<Path> resultPath = chartWorkflow.saveChartImage(chart1, barSeries, customDir);
+            Optional<Path> resultString = chartWorkflow.saveChartImage(chart2, barSeries, null, customDir.toString());
 
             assertTrue(resultPath.isPresent(), "Path version should save chart");
             assertTrue(resultString.isPresent(), "String version should save chart");

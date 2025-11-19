@@ -545,6 +545,9 @@ public final class IndicatorSerialization {
         if (value == null) {
             return null;
         }
+        if (targetType == boolean.class || targetType == Boolean.class) {
+            return convertBooleanValue(value);
+        }
         if (targetType.isArray()) {
             return convertNumericArrayValue(value, targetType, series);
         }
@@ -624,6 +627,16 @@ public final class IndicatorSerialization {
         return new BigDecimal(value.toString());
     }
 
+    private static Boolean convertBooleanValue(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof String string) {
+            return Boolean.parseBoolean(string);
+        }
+        return null;
+    }
+
     private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {
         Map<String, Object> parameters = new LinkedHashMap<>();
         for (FieldView field : collectFields(indicator)) {
@@ -633,6 +646,12 @@ public final class IndicatorSerialization {
                     parameters.put(field.label(), formatNumericList(list));
                 } else if (raw != null && raw.getClass().isArray() && isNumericArray(raw)) {
                     parameters.put(field.label(), formatNumericArray(raw));
+                } else if (raw instanceof List<?> list && isBooleanList(list)) {
+                    parameters.put(field.label(), formatBooleanList(list));
+                } else if (raw != null && raw.getClass().isArray() && isBooleanArray(raw)) {
+                    parameters.put(field.label(), formatBooleanArray(raw));
+                } else if (raw instanceof Boolean) {
+                    parameters.put(field.label(), raw);
                 }
                 continue;
             }
@@ -746,6 +765,45 @@ public final class IndicatorSerialization {
         List<Object> formatted = new ArrayList<>(length);
         for (int i = 0; i < length; i++) {
             formatted.add(formatNumericValue(Array.get(array, i)));
+        }
+        return formatted;
+    }
+
+    private static boolean isBooleanArray(Object array) {
+        int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            if (!(Array.get(array, i) instanceof Boolean)) {
+                return false;
+            }
+        }
+        return length > 0;
+    }
+
+    private static boolean isBooleanList(List<?> list) {
+        if (list.isEmpty()) {
+            return false;
+        }
+        for (Object element : list) {
+            if (!(element instanceof Boolean)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<Boolean> formatBooleanList(List<?> list) {
+        List<Boolean> formatted = new ArrayList<>(list.size());
+        for (Object element : list) {
+            formatted.add((Boolean) element);
+        }
+        return formatted;
+    }
+
+    private static List<Boolean> formatBooleanArray(Object array) {
+        int length = Array.getLength(array);
+        List<Boolean> formatted = new ArrayList<>(length);
+        for (int i = 0; i < length; i++) {
+            formatted.add((Boolean) Array.get(array, i));
         }
         return formatted;
     }

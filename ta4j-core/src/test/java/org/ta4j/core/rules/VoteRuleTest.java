@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -48,6 +49,13 @@ public class VoteRuleTest {
         List<Rule> rules = null;
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, rules));
         assertThrows(IllegalArgumentException.class, () -> new VoteRule(1, Collections.emptyList()));
+    }
+
+    @Test
+    public void testNullEntriesAreRejected() {
+        assertThrows(NullPointerException.class, () -> new VoteRule(1, BooleanRule.TRUE, null));
+        List<Rule> rulesWithNull = Arrays.asList(BooleanRule.TRUE, null);
+        assertThrows(NullPointerException.class, () -> new VoteRule(1, rulesWithNull));
     }
 
     @Test

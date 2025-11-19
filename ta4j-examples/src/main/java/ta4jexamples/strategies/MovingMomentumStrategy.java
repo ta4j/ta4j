@@ -41,7 +41,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -110,11 +110,25 @@ public class MovingMomentumStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
+        EMAIndicator longEma = new EMAIndicator(closePrice, 26);
+        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
+        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
+        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "moving-momentum-strategy");
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(shortEma)
+                .withIndicatorOverlay(longEma)
+                .withSubChart(macd)
+                .withIndicatorOverlay(emaMacd)
+                .withSubChart(stochasticOscillK)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
     }
 }

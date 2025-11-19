@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.renderer;
 
 import org.jfree.chart.renderer.xy.CandlestickRenderer;
 import org.jfree.data.xy.OHLCDataset;
@@ -53,8 +53,8 @@ public class BaseCandleStickRenderer extends CandlestickRenderer {
     public static final Color DEFAULT_UP_COLOR = new Color(0x26A69A);
 
     /**
-     * Color for down candles (close < open). Matches TradingView's default bearish
-     * candle color.
+     * Color for down candles (close {@literal <} open). Matches TradingView's
+     * default bearish candle color.
      *
      * @since 0.19
      */

@@ -259,15 +259,16 @@ public interface BarSeries extends Serializable {
      * between {@code startIndex} (inclusive) and {@code endIndex} (exclusive) of
      * {@code this} instance. The indices of {@code this} and its subseries can be
      * different, i. e. index 0 of the subseries will be the {@code startIndex} of
-     * {@code this}. If {@code startIndex} < this.seriesBeginIndex, then the
-     * subseries will start with the first available bar of {@code this}. If
-     * {@code endIndex} > this.seriesEndIndex, then the subseries will end at the
-     * last available bar of {@code this}.
+     * {@code this}. If {@code startIndex} {@literal <} this.seriesBeginIndex, then
+     * the subseries will start with the first available bar of {@code this}. If
+     * {@code endIndex} {@literal >} this.seriesEndIndex, then the subseries will
+     * end at the last available bar of {@code this}.
      *
      * @param startIndex the startIndex (inclusive)
      * @param endIndex   the endIndex (exclusive)
      * @return a new BarSeries with Bars from startIndex to endIndex-1
-     * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
+     * @throws IllegalArgumentException if endIndex {@literal <=} startIndex or
+     *                                  startIndex {@literal <} 0
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
 

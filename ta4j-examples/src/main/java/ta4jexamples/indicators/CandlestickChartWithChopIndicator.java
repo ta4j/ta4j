@@ -25,6 +25,7 @@ package ta4jexamples.indicators;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Stroke;
 import java.util.Date;
@@ -43,6 +44,7 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.chart.ui.UIUtils;
 import org.jfree.data.time.Second;
+import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultHighLowDataset;
 import org.jfree.data.xy.OHLCDataset;
@@ -110,7 +112,7 @@ public class CandlestickChartWithChopIndicator {
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
+        TimeSeries chartTimeSeries = new TimeSeries("Btc price");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
             chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochMilli())),
@@ -123,7 +125,7 @@ public class CandlestickChartWithChopIndicator {
     private static TimeSeriesCollection createChopDataset(BarSeries series) {
         ChopIndicator indicator = new ChopIndicator(series, CHOP_INDICATOR_TIMEFRAME, CHOP_SCALE_VALUE);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("CHOP_14");
+        TimeSeries chartTimeSeries = new TimeSeries("CHOP_14");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
             if (i < CHOP_INDICATOR_TIMEFRAME)
@@ -195,7 +197,7 @@ public class CandlestickChartWithChopIndicator {
         combinedChartPanel = new ChartPanel(combinedChart);
         combinedChartPanel.setLayout(new GridLayout(0, 1));
         combinedChartPanel.setBackground(Color.LIGHT_GRAY);
-        combinedChartPanel.setPreferredSize(new java.awt.Dimension(740, 300));
+        combinedChartPanel.setPreferredSize(new Dimension(740, 300));
 
         // Application frame
         ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart");

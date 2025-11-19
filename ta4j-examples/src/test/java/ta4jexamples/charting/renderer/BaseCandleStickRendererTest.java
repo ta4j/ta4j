@@ -21,17 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.renderer;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.CandlestickRenderer;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.junit.Test;
 
 import java.awt.*;
 
 import static org.junit.Assert.*;
+
+import ta4jexamples.charting.ChartingTestFixtures;
 
 /**
  * Unit tests for {@link BaseCandleStickRenderer}.
@@ -155,8 +158,7 @@ public class BaseCandleStickRendererTest {
         BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
 
         // Test that it extends CandlestickRenderer
-        assertTrue("Should extend CandlestickRenderer",
-                renderer instanceof org.jfree.chart.renderer.xy.CandlestickRenderer);
+        assertTrue("Should extend CandlestickRenderer", renderer instanceof CandlestickRenderer);
     }
 
     @Test

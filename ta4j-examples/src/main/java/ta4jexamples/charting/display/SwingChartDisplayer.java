@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.display;
 
 import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
@@ -32,6 +32,7 @@ import org.jfree.chart.entity.XYItemEntity;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.XYDataset;
+import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -70,7 +71,7 @@ import javax.swing.event.AncestorListener;
  *
  * @since 0.19
  */
-final class SwingChartDisplayer implements ChartDisplayer {
+public final class SwingChartDisplayer implements ChartDisplayer {
 
     /**
      * System property key for chart display scale configuration.
@@ -358,7 +359,7 @@ final class SwingChartDisplayer implements ChartDisplayer {
                 }
             } else if (dataset instanceof XYSeriesCollection xyCollection) {
                 try {
-                    org.jfree.data.xy.XYSeries series = xyCollection.getSeries(seriesIndex);
+                    XYSeries series = xyCollection.getSeries(seriesIndex);
                     if (series != null && itemIndex < series.getItemCount()) {
                         double x = series.getX(itemIndex).doubleValue();
                         double y = series.getY(itemIndex).doubleValue();

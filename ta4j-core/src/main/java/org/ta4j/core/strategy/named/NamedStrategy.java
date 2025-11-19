@@ -156,7 +156,7 @@ import java.util.stream.Stream;
  * <h2>Serialization</h2>
  * <p>
  * When serialized to JSON (via {@link #toDescriptor()}), the strategy type is
- * always {@value #NamedStrategy}, and the label field contains the compact
+ * always {@link #SERIALIZED_TYPE}, and the label field contains the compact
  * name. The deserialization layer uses {@link #splitLabel(String)} to extract
  * the simple class name and parameters, then looks up the registered type and
  * invokes the varargs constructor.

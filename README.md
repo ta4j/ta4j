@@ -35,7 +35,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
 
@@ -46,12 +46,12 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current ***snapshot version*** is `0.19-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current ***snapshot version*** is `0.20-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.19-SNAPSHOT</version>
+  <version>0.20-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -60,9 +60,21 @@ You can also download ***example code*** from the maven central repository by ad
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
+
+or for the bleeding edge:
+
+```xml
+<dependency>
+  <groupId>org.ta4j</groupId>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.20-SNAPSHOT</version>
+</dependency>
+```
+
+
 ### Getting Help
 The [wiki](https://ta4j.github.io/ta4j-wiki/) is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
@@ -78,79 +90,61 @@ See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduc
 &nbsp;
 &nbsp;
 
-### Preparing a release
+## Release & Snapshot Publishing
 
-Maintainers can automate the mundane parts of the release process with
-`scripts/prepare-release.sh`. The script coordinates Maven's version bump,
-updates documentation snippets, rolls the changelog forward, and stages the
-resulting changes so they are ready to review and commit. The script's
-functionality is validated by `scripts/tests/test_prepare_release.sh`.
+Ta4j uses automated workflows for publishing both snapshot and stable releases.
 
-```
-./scripts/prepare-release.sh
-```
+### Snapshots
 
-By default the script derives the release version from `project.version` in the
-root `pom.xml`, strips the `-SNAPSHOT` suffix, and increments the final numeric
-segment to determine the next development snapshot. You can override either
-value when cutting special releases:
+Every push to `master` triggers a snapshot deployment:
 
 ```
-./scripts/prepare-release.sh --release-version 0.19.1 --next-version 0.20
+mvn deploy
 ```
 
-Run the script from a clean working tree. It stages the updated POM files,
-documentation, and changelog entries automatically (skipping this step when you
-pass `--dry-run`) so you can create the release commit (and follow-up snapshot
-bump) with confidence.
-
-To preview a release (no file writes) run:
+Snapshots are available at:
 
 ```
-./scripts/prepare-release.sh release --dry-run
+https://central.sonatype.com/repository/maven-snapshots/
 ```
 
-Example output of a dry run:
+### Stable Releases
+
+Releases are performed in two phases:
+
+#### 1. Prepare the release notes
 
 ```
-Preparing release:
-  Release version: 1.5.0
-  Next version:    1.6.0-SNAPSHOT
-  Mode:            DRY-RUN (no changes applied)
-
-[DRY-RUN] Would set Maven version to 1.5.0 and update changelog/README.
-[DRY-RUN] Snapshot bump to 1.6.0-SNAPSHOT is handled separately by CI workflow.
-[DRY-RUN] Would update CHANGELOG.md: move 'Unreleased' to '1.5.0' section.
-[DRY-RUN] Would update README.md version references.
-
-release_version=1.5.0
-next_version=1.6.0-SNAPSHOT
-release_notes_file=release/release-notes.md
-
+scripts/prepare-release.sh <version>
 ```
 
-&nbsp;
+This script:
 
-### Automated releases
+- Moves the `Unreleased` changelog section into a new versioned section
+- Resets `Unreleased`
+- Updates README version references
+- Generates `release/<version>.md`
 
-The `Release` workflow (`.github/workflows/release.yml`) automates version bumps, tagging, and publishing to OSSRH/GitHub. It can
-be triggered manually from the **Actions** tab using the optional `release_version` and `next_version` inputs. When the inputs
-are omitted the workflow derives the release number from the root `pom.xml` and calculates the next snapshot version
-automatically.
+#### 2. Trigger the GitHub release workflow
 
-To execute the workflow successfully, configure the following repository secrets:
+From GitHub:
 
-| Secret | Purpose |
-| --- | --- |
-| `OSSRH_USERNAME` / `OSSRH_PASSWORD` | Credentials used by Maven to authenticate with Sonatype OSSRH. |
-| `OSSRH_GPG_PRIVATE_KEY` | ASCII-armored private key for signing the deployed artifacts. |
-| `OSSRH_GPG_PASSPHRASE` | Passphrase for the signing key; also forwarded as `MAVEN_GPG_PASSPHRASE`. |
-| `RELEASE_GIT_NAME` *(optional)* | Overrides the Git author name used for release commits. Defaults to `github.actor`. |
-| `RELEASE_GIT_EMAIL` *(optional)* | Overrides the Git author email for release commits. Defaults to `<actor>@users.noreply.github.com`. |
+**Actions → Publish Release to Maven Central → Run workflow**
 
-Grant the workflow permission to push to the protected `master` branch and to create `release/*` branches and tags. If branch
-protections are enforced, make sure "Allow GitHub Actions to bypass branch protections" is enabled for `master` and that the
-`release/*` pattern permits direct pushes from the `github-actions[bot]` account.
+Provide:
+
+- `releaseVersion` (e.g. `0.20`)
+- `nextVersion` (e.g. `0.21-SNAPSHOT`)
+
+The workflow automatically:
+
+- Updates project version
+- Creates a tag
+- Deploys artifacts to Maven Central
+- Bumps next snapshot
+- Pushes changes
+- Creates a GitHub Release with the generated notes
+
 
 &nbsp;
 &nbsp;
@@ -167,4 +161,6 @@ protections are enforced, make sure "Allow GitHub Actions to bypass branch prote
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
+
+
 

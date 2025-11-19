@@ -36,7 +36,7 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
@@ -87,13 +87,16 @@ public class NetMomentumStrategy {
         LOG.debug("{}'s net profit/loss: {}", strategy.getName(), netProfitLoss);
 
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .addIndicators(rsiIndicator, rsiM)
-                .withAnalysisCriterion(series, tradingRecord, new NetProfitCriterion())
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "net-momentum-strategy");
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
+                .withSubChart(rsiIndicator)
+                .withSubChart(rsiM)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "net-momentum-strategy", "ta4j-examples/log/charts");
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {

@@ -48,6 +48,7 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.DayOfWeekRule;
@@ -56,6 +57,7 @@ import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.VoteRule;
 import org.ta4j.core.rules.XorRule;
 
 /**
@@ -645,6 +647,69 @@ public class RuleSerializationTest {
         TradingRecord restoredRecord = new BaseTradingRecord();
         assertThat(restored.shouldEnter(3, restoredRecord))
                 .isEqualTo(fixture.strategy().shouldEnter(3, originalRecord));
+    }
+
+    // ==================== VoteRule Rule-Array Tests ====================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void describeVoteRuleIncludesRuleArrayMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        VoteRule rule = new VoteRule(2, BooleanRule.TRUE, BooleanRule.FALSE, BooleanRule.TRUE);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        Object metadata = descriptor.getParameters().get("__ruleArray_rules");
+        assertThat(metadata).as("VoteRule metadata should list component labels").isInstanceOf(List.class);
+        List<String> labels = (List<String>) metadata;
+        assertThat(labels).containsExactly("rulesIdx0", "rulesIdx1", "rulesIdx2");
+        assertThat(descriptor.getComponents()).hasSize(3).allSatisfy(component -> {
+            assertThat(component.getLabel()).isNotNull();
+            assertThat(component.getType()).isEqualTo("BooleanRule");
+        });
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+        assertThat(restored).isInstanceOf(VoteRule.class);
+        for (int i = 0; i < series.getBarCount(); i++) {
+            assertThat(restored.isSatisfied(i)).isEqualTo(rule.isSatisfied(i));
+        }
+    }
+
+    @Test
+    public void reconstructVoteRuleFromDescriptorMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+
+        ComponentDescriptor ruleA = ComponentDescriptor.builder()
+                .withType("BooleanRule")
+                .withLabel("rulesIdx0")
+                .withParameters(Map.of("satisfied", true))
+                .build();
+        ComponentDescriptor ruleB = ComponentDescriptor.builder()
+                .withType("BooleanRule")
+                .withLabel("rulesIdx1")
+                .withParameters(Map.of("satisfied", false))
+                .build();
+        ComponentDescriptor ruleC = ComponentDescriptor.builder()
+                .withType("BooleanRule")
+                .withLabel("rulesIdx2")
+                .withParameters(Map.of("satisfied", true))
+                .build();
+
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("VoteRule")
+                .withParameters(
+                        Map.of("requiredVotes", 2, "__ruleArray_rules", List.of("rulesIdx0", "rulesIdx1", "rulesIdx2")))
+                .addComponent(ruleA)
+                .addComponent(ruleB)
+                .addComponent(ruleC)
+                .build();
+
+        Rule reconstructed = RuleSerialization.fromDescriptor(series, descriptor);
+        assertThat(reconstructed).isInstanceOf(VoteRule.class);
+        assertThat(reconstructed.isSatisfied(0)).as("two true votes should satisfy rule").isTrue();
+
+        ComponentDescriptor roundTripped = RuleSerialization.describe(reconstructed);
+        assertThat(roundTripped.getParameters().get("__ruleArray_rules"))
+                .isEqualTo(descriptor.getParameters().get("__ruleArray_rules"));
     }
 
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {

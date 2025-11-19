@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.19-SNAPSHOT</version>
+        <version>0.20-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-core</artifactId>
 
@@ -22,7 +22,6 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
-            <version>3.6.1</version>
         </dependency>
 
         <dependency>

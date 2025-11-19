@@ -90,8 +90,9 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * <p>
      * Performance: Uses a hybrid approach that selects the optimal algorithm based
      * on the limit size relative to the total number of strategies. For small
-     * limits (< 25% of total), uses a heap-based partial sort O(n log k). For
-     * larger limits, uses a full sort O(n log n) which is more cache-friendly.
+     * limits ({@literal <} 25% of total), uses a heap-based partial sort O(n log
+     * k). For larger limits, uses a full sort O(n log n) which is more
+     * cache-friendly.
      *
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
