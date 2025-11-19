@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.RSIIndicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.PercentRankIndicator;
+import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.helpers.StreakIndicator;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Connors RSI indicator.
@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/connorsrsi">
  *      StockCharts: ConnorsRSI</a>
- * @since 0.19
+ * @since 0.20
  */
 public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
@@ -55,7 +55,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * {@code streakRsiPeriod}=2, {@code percentRankPeriod}=100).
      *
      * @param indicator the {@link Indicator} providing the price series
-     * @since 0.19
+     * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator) {
         this(indicator, 3, 2, 100);
@@ -69,7 +69,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * @param streakRsiPeriod   the look-back period for the streak RSI
      * @param percentRankPeriod the look-back period for the percentile rank of
      *                          price changes
-     * @since 0.19
+     * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod, int percentRankPeriod) {
         super(indicator);
@@ -89,7 +89,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         Num priceRsiValue = priceRsi.getValue(index);
         Num streakRsiValue = streakRsi.getValue(index);
         Num percentRankValue = percentRankIndicator.getValue(index);
-        if (isNaN(priceRsiValue) || isNaN(streakRsiValue) || isNaN(percentRankValue)) {
+        if (priceRsiValue.isNaN() || streakRsiValue.isNaN() || percentRankValue.isNaN()) {
             return NaN;
         }
         Num total = priceRsiValue.plus(streakRsiValue).plus(percentRankValue);
@@ -99,130 +99,5 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return percentRankPeriod + 1;
-    }
-
-    private static final class PriceChangeIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-
-        private PriceChangeIndicator(Indicator<Num> indicator) {
-            super(indicator);
-            this.indicator = indicator;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
-                return NaN;
-            }
-            Num current = indicator.getValue(index);
-            Num previous = indicator.getValue(index - 1);
-            if (isNaN(current) || isNaN(previous)) {
-                return NaN;
-            }
-            return current.minus(previous);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 1;
-        }
-    }
-
-    private static final class StreakIndicator extends RecursiveCachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-
-        private StreakIndicator(Indicator<Num> indicator) {
-            super(indicator);
-            this.indicator = indicator;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            Num current = indicator.getValue(index);
-            if (isNaN(current)) {
-                return NaN;
-            }
-            if (index <= beginIndex) {
-                return getBarSeries().numFactory().zero();
-            }
-            Num previousPrice = indicator.getValue(index - 1);
-            if (isNaN(previousPrice)) {
-                return NaN;
-            }
-            Num priceChange = current.minus(previousPrice);
-            if (priceChange.isZero()) {
-                return getBarSeries().numFactory().zero();
-            }
-            Num previousStreak = getValue(index - 1);
-            if (isNaN(previousStreak)) {
-                previousStreak = getBarSeries().numFactory().zero();
-            }
-            Num one = getBarSeries().numFactory().one();
-            if (priceChange.isPositive()) {
-                return previousStreak.isPositive() ? previousStreak.plus(one) : one;
-            }
-            Num negativeOne = one.negate();
-            return previousStreak.isNegative() ? previousStreak.minus(one) : negativeOne;
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 1;
-        }
-    }
-
-    private static final class PercentRankIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final int period;
-
-        private PercentRankIndicator(Indicator<Num> indicator, int period) {
-            super(indicator);
-            this.indicator = indicator;
-            this.period = period;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            Num current = indicator.getValue(index);
-            if (isNaN(current)) {
-                return NaN;
-            }
-            int beginIndex = getBarSeries().getBeginIndex();
-            int startIndex = Math.max(beginIndex, index - period);
-            int valid = 0;
-            int lessThanCount = 0;
-            for (int i = startIndex; i < index; i++) {
-                Num candidate = indicator.getValue(i);
-                if (isNaN(candidate)) {
-                    continue;
-                }
-                valid++;
-                if (candidate.isLessThan(current)) {
-                    lessThanCount++;
-                }
-            }
-            if (valid == 0) {
-                return NaN;
-            }
-            Num hundred = getBarSeries().numFactory().hundred();
-            Num ratio = getBarSeries().numFactory()
-                    .numOf(lessThanCount)
-                    .dividedBy(getBarSeries().numFactory().numOf(valid));
-            return ratio.multipliedBy(hundred);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return period;
-        }
-    }
-
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

@@ -30,12 +30,38 @@ import org.ta4j.core.num.Num;
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
- * Calculates the percentage change between the current and the previous value of
- * an indicator.
+ * Calculates the percentage change between the current and the previous value
+ * of an indicator.
+ *
+ * <p>
+ * This indicator uses <strong>rate of return</strong> representation
+ * (additive). The formula calculates the percentage change as:
  *
  * <pre>
  * PriceChangePercentage = ((currentValue - previousValue) / previousValue) * 100
  * </pre>
+ *
+ * <p>
+ * This is equivalent to:
+ *
+ * <pre>
+ * PriceChangePercentage = (currentValue / previousValue - 1) * 100
+ * </pre>
+ *
+ * <p>
+ * <strong>Representation:</strong> This indicator uses rate of return
+ * representation. For example, if a price moves from 100 to 110, this indicator
+ * returns 10.0 (representing a 10% gain). This differs from total return
+ * representation, which would return 1.10 (representing 110% of the original
+ * value).
+ *
+ * <p>
+ * TODO: <strong>Future compatibility:</strong> Once
+ * {@code ReturnRepresentation} is available (see PR #1376), this indicator may
+ * be extended to support both representations via an optional constructor
+ * parameter.
+ *
+ * @since 0.20
  */
 public class PriceChangePercentageIndicator extends CachedIndicator<Num> {
 
@@ -45,6 +71,7 @@ public class PriceChangePercentageIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator to calculate the percentage change for
+     * @since 0.20
      */
     public PriceChangePercentageIndicator(Indicator<Num> indicator) {
         super(indicator);
@@ -53,12 +80,12 @@ public class PriceChangePercentageIndicator extends CachedIndicator<Num> {
 
     /**
      * Calculates the percentage change between the current value and the previous
-     * value of the indicator.
+     * value of the indicator using rate of return representation.
      *
      * @param index the index of the current bar
-     * @return the percentage change between the current and previous values, or NaN
-     *         if index is within the unstable bar period or if previous value is
-     *         zero
+     * @return the percentage change between the current and previous values (rate
+     *         of return representation), or NaN if index is within the unstable bar
+     *         period or if previous value is zero
      */
     @Override
     protected Num calculate(int index) {
@@ -76,7 +103,23 @@ public class PriceChangePercentageIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        // Calculate the percentage change: ((current - previous) / previous) * 100
+        return calculateRateOfReturnPercentage(currentValue, previousValue);
+    }
+
+    /**
+     * Calculates the rate of return as a percentage.
+     * <p>
+     * This method is structured to allow easy extension when
+     * {@code ReturnRepresentation} support is added. The calculation can be
+     * switched based on the representation type.
+     *
+     * @param currentValue  the current indicator value
+     * @param previousValue the previous indicator value
+     * @return the rate of return as a percentage (e.g., 10.0 for a 10% gain)
+     */
+    protected Num calculateRateOfReturnPercentage(Num currentValue, Num previousValue) {
+        // Rate of return: ((current - previous) / previous) * 100
+        // Equivalent to: (current / previous - 1) * 100
         Num change = currentValue.minus(previousValue);
         Num changeFraction = change.dividedBy(previousValue);
         return changeFraction.multipliedBy(getBarSeries().numFactory().hundred());
@@ -88,4 +131,3 @@ public class PriceChangePercentageIndicator extends CachedIndicator<Num> {
         return 1;
     }
 }
-

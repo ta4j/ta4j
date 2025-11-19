@@ -4,6 +4,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage (GH-000)
+- Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window, extracted from `ConnorsRSIIndicator` for reuse
+- Added `PriceChangeIndicator` helper indicator to calculate the difference between current and previous indicator values
+- Added `PriceChangePercentageIndicator` helper indicator to calculate the percentage change between current and previous indicator values using rate of return representation
+- Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
 
 ## 0.19 (released November 19, 2025)
 

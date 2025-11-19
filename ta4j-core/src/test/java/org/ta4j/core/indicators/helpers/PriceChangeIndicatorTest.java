@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -53,7 +54,7 @@ public class PriceChangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void indicatorShouldRetrieveBarDifference() {
-        assertNumEquals(0, priceChange.getValue(0));
+        assertThat(priceChange.getValue(0).isNaN()).isTrue();
         for (int i = 1; i < 10; i++) {
             Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
             Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
@@ -61,4 +62,3 @@ public class PriceChangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         }
     }
 }
-

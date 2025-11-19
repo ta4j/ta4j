@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -158,6 +159,6 @@ public class StreakIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void unstableBars() {
         var streak = new StreakIndicator(new ClosePriceIndicator(data));
-        assertNumEquals(1, streak.getCountOfUnstableBars());
+        assertThat(streak.getCountOfUnstableBars()).isEqualTo(1);
     }
 }

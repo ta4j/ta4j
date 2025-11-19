@@ -27,12 +27,17 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
- * Calculates the difference between the current and the previous value of an indicator.
+ * Calculates the difference between the current and the previous value of an
+ * indicator.
  *
  * <pre>
  * PriceChange = currentValue - previousValue
  * </pre>
+ *
+ * @since 0.20
  */
 public class PriceChangeIndicator extends CachedIndicator<Num> {
 
@@ -42,9 +47,10 @@ public class PriceChangeIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator to calculate the change for
+     * @since 0.20
      */
     public PriceChangeIndicator(Indicator<Num> indicator) {
-        super(indicator.getBarSeries());
+        super(indicator);
         this.indicator = indicator;
     }
 
@@ -53,12 +59,16 @@ public class PriceChangeIndicator extends CachedIndicator<Num> {
      * the indicator.
      *
      * @param index the index of the current bar
-     * @return the difference between the current and previous values
+     * @return the difference between the current and previous values, or NaN if
+     *         index is within the unstable bar period
      */
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         // Get the value of the previous bar
-        Num previousValue = indicator.getValue(Math.max(0, index - 1));
+        Num previousValue = indicator.getValue(index - 1);
 
         // Get the value of the current bar
         Num currentValue = indicator.getValue(index);
@@ -73,4 +83,3 @@ public class PriceChangeIndicator extends CachedIndicator<Num> {
         return 1;
     }
 }
-

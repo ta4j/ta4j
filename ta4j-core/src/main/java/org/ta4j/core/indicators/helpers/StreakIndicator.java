@@ -51,6 +51,7 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the {@link Indicator} to track streaks for
+     * @since 0.20
      */
     public StreakIndicator(Indicator<Num> indicator) {
         super(indicator);
@@ -86,4 +87,3 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
         return 1;
     }
 }
-
