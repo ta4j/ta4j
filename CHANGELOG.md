@@ -2,6 +2,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+- _No changes yet._
+
+## 0.19 (released November 19, 2025)
+
 ### Breaking
 - **`TradingStatement` is now an interface**: Converted to an interface implemented by `BaseTradingStatement`. This exposes the underlying `Strategy` and `TradingRecord` for advanced analysis workflows. **Action required**: Update any code that directly instantiates `TradingStatement` to use `BaseTradingStatement` instead.
 - **PnL and return criteria refactored into net/gross variants**: Split `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion`, and `ProfitLossPercentageCriterion` into separate net and gross concrete classes. This provides explicit control over whether trading costs are included in calculations. **Action required**: Update imports and class names to use the appropriate net or gross variant based on your analysis needs.
