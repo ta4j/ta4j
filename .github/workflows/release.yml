@@ -21,37 +21,82 @@ permissions:
 
 jobs:
   release:
+    name: Publish Release to Maven Central
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: 'true'
+
+      - name: Validate release inputs
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.releaseVersion }}
+          NEXT_VERSION: ${{ github.event.inputs.nextVersion }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RELEASE_VERSION}" || -z "${NEXT_VERSION}" ]]; then
+            echo "Both releaseVersion and nextVersion inputs are required."
+            exit 1
+          fi
+
+          if [[ "${RELEASE_VERSION}" == *-SNAPSHOT* ]]; then
+            echo "releaseVersion must be a stable version (no -SNAPSHOT suffix)."
+            exit 1
+          fi
+
+          if [[ "${NEXT_VERSION}" != *-SNAPSHOT ]]; then
+            echo "nextVersion must end with -SNAPSHOT."
+            exit 1
+          fi
+
+          if [[ "${RELEASE_VERSION}" == "${NEXT_VERSION%-SNAPSHOT}" ]]; then
+            echo "nextVersion must be greater than releaseVersion (it should include the -SNAPSHOT suffix)."
+            exit 1
+          fi
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
+          cache: maven
+          server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          server-password: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Configure Maven Central credentials
+      - name: Write Maven security settings
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
         run: |
-          mkdir -p ~/.m2
-          cat <<EOF > ~/.m2/settings.xml
-          <settings>
-            <servers>
-              <server>
-                <id>central</id>
-                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
-                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
+            set -euo pipefail
+            if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
+              echo "OSSRH_SECURITY_MASTER_PASSWORD not set; skipping settings-security.xml generation"
+              exit 0
+            fi
+            mkdir -p "${HOME}/.m2"
+            cat > "${HOME}/.m2/settings-security.xml" <<EOF
+            <?xml version="1.0" encoding="UTF-8"?>
+            <settingsSecurity>
+              <master>${MAVEN_SECURITY_MASTER}</master>
+            </settingsSecurity>
+            EOF
+            chmod 600 "${HOME}/.m2/settings-security.xml"
+            echo "settings-security.xml created"
 
       - name: Prepare Release Version
         run: |
@@ -66,6 +111,26 @@ jobs:
 
       - name: Tag Release
         run: git tag ${{ github.event.inputs.releaseVersion }}
+
+      - name: Ensure branch is still fast-forwardable before deploy
+        shell: bash
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          branch="${RELEASE_BRANCH}"
+          if [[ -z "${branch}" ]]; then
+            echo "Unable to determine branch name (github.ref_name was empty); aborting."
+            exit 1
+          fi
+
+          git fetch origin "${branch}"
+          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
+            echo "Remote branch '${branch}' advanced while the release workflow was running."
+            echo "Failing before deployment to avoid publishing artifacts without matching commits."
+            exit 1
+          fi
 
       - name: Deploy Release to Maven Central
         run: mvn -B -Pproduction-release deploy
