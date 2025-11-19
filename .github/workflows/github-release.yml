@@ -1,0 +1,82 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+concurrency:
+  group: github-release-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # ------------------------------------------------------------
+      # Determine Tag + Validate Release Notes File
+      # ------------------------------------------------------------
+      - name: Determine Version
+        id: version
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          NOTES_FILE="release/${TAG}.md"
+          if [[ ! -f "$NOTES_FILE" ]]; then
+            echo "Release notes file $NOTES_FILE not found" >&2
+            exit 1
+          fi
+          echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------------
+      # Prepare Release Notes Body
+      # ------------------------------------------------------------
+      - name: Read Release Notes
+        id: notes
+        run: |
+          CONTENT="$(cat ${{ steps.version.outputs.notes_file }})"
+          CONTENT="${CONTENT//'%'/'%25'}"
+          CONTENT="${CONTENT//$'\n'/'%0A'}"
+          CONTENT="${CONTENT//$'\r'/'%0D'}"
+          echo "body=$CONTENT" >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------------
+      # Build artifacts: core, examples, ALL modules
+      # Produces:
+      #   - *.jar
+      #   - *-javadoc.jar
+      #   - *-sources.jar
+      # ------------------------------------------------------------
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build all module artifacts
+        run: mvn -B -DskipTests package
+
+      # ------------------------------------------------------------
+      # Upload full artifact set to GitHub Release
+      # ------------------------------------------------------------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+          files: |
+            **/target/*.jar
+            **/target/*-sources.jar
+            **/target/*-javadoc.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

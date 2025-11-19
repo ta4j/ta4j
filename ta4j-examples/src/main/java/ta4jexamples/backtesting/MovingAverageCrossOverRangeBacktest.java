@@ -23,8 +23,8 @@
  */
 package ta4jexamples.backtesting;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.indicators.KalmanFilterIndicator;
@@ -32,12 +32,12 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.PerformanceReport;
+import org.ta4j.core.reports.BasePerformanceReport;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.JsonBarsSerializer;
+import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -48,13 +48,13 @@ import java.util.StringJoiner;
 
 public class MovingAverageCrossOverRangeBacktest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MovingAverageCrossOverRangeBacktest.class);
+    private static final Logger LOG = LogManager.getLogger(MovingAverageCrossOverRangeBacktest.class);
     private static final int DEFAULT_DECIMAL_PRECISION = 16;
 
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String resourceName = "ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        String resourceName = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
         InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
                 .getResourceAsStream(resourceName);
         if (resourceStream == null) {
@@ -62,7 +62,7 @@ public class MovingAverageCrossOverRangeBacktest {
             return;
         }
 
-        BarSeries series = JsonBarsSerializer.loadSeries(resourceStream);
+        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
         if (series == null || series.isEmpty()) {
             LOG.error("Bar series was null or empty: {}", series);
             return;
@@ -90,7 +90,7 @@ public class MovingAverageCrossOverRangeBacktest {
 
         LOG.debug("Back-tested {} strategies on {}-bar series using decimal precision of {} in {}", strategies.size(),
                 series.getBarCount(), DEFAULT_DECIMAL_PRECISION, Duration.between(startInstant, Instant.now()));
-        LOG.info(printReport(tradingStatements));
+        LOG.debug(printReport(tradingStatements));
     }
 
     private static Rule createSmaCrossEntryRule(BarSeries series, int shortBarCount, int longBarCount) {
@@ -134,21 +134,21 @@ public class MovingAverageCrossOverRangeBacktest {
         return resultBuilder;
     }
 
-    private static StringBuilder printPerformanceReport(PerformanceReport report) {
+    private static StringBuilder printPerformanceReport(BasePerformanceReport report) {
         StringBuilder resultBuilder = new StringBuilder();
         resultBuilder.append("--------- performance report ---------")
                 .append(System.lineSeparator())
                 .append("total loss: ")
-                .append(report.getTotalLoss())
+                .append(report.totalLoss)
                 .append(System.lineSeparator())
                 .append("total profit: ")
-                .append(report.getTotalProfit())
+                .append(report.totalProfit)
                 .append(System.lineSeparator())
                 .append("total profit loss: ")
-                .append(report.getTotalProfitLoss())
+                .append(report.totalProfitLoss)
                 .append(System.lineSeparator())
                 .append("total profit loss percentage: ")
-                .append(report.getTotalProfitLossPercentage())
+                .append(report.totalProfitLossPercentage)
                 .append(System.lineSeparator())
                 .append("---------------------------");
         return resultBuilder;
