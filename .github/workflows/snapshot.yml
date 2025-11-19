@@ -43,17 +43,16 @@ jobs:
       - name: Write Maven settings
         run: |
           mkdir -p ~/.m2
-          cat <<EOF > ~/.m2/settings.xml
-          <settings>
-            <servers>
-              <server>
-                <id>central</id>
-                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
-                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF    
+          printf '%s\n' \
+            '<settings>' \
+            '  <servers>' \
+            '    <server>' \
+            '      <id>central</id>' \
+            "      <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>" \
+            "      <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>" \
+            '    </server>' \
+            '  </servers>' \
+            '</settings>' > ~/.m2/settings.xml
 
       - name: Write Maven security settings
         shell: bash
