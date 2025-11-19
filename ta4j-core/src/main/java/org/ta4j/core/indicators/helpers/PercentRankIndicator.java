@@ -48,17 +48,17 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * <strong>Percentage Representation:</strong> This indicator uses percentage
  * scale representation (0-100). The calculation converts a ratio (0-1) to a
- * percentage (0-100) by multiplying by 100. For example, a ratio of 0.8
- * becomes 80.0 (representing the 80th percentile). This is neither
- * multiplicative total returns nor additive rate of returns representation, but
- * rather a standard percentage scale conversion.
+ * percentage (0-100) by multiplying by 100. For example, a ratio of 0.8 becomes
+ * 80.0 (representing the 80th percentile). This is neither multiplicative total
+ * returns nor additive rate of returns representation, but rather a standard
+ * percentage scale conversion.
  *
  * <p>
- * TODO: <strong>Future compatibility:</strong> Once {@code ReturnRepresentation}
- * is available (see PR #1376), this indicator may be reviewed to determine if
- * it should support alternative percentage representations or if the current
- * percentage scale representation is appropriate for percentile rank
- * calculations.
+ * TODO: <strong>Future compatibility:</strong> Once
+ * {@code ReturnRepresentation} is available (see PR #1376), this indicator may
+ * be reviewed to determine if it should support alternative percentage
+ * representations or if the current percentage scale representation is
+ * appropriate for percentile rank calculations.
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/percentile-rank.asp">Investopedia:
@@ -122,8 +122,8 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
      * representation.
      * <p>
      * This method is structured to allow easy extension when
-     * {@code ReturnRepresentation} support is added. The conversion can be
-     * switched based on the representation type if needed.
+     * {@code ReturnRepresentation} support is added. The conversion can be switched
+     * based on the representation type if needed.
      *
      * @param ratio the ratio value between 0 and 1
      * @return the percentage value between 0 and 100
