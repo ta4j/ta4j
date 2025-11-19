@@ -104,7 +104,7 @@ public interface Rule {
      * Returns the configured name for this rule.
      *
      * @return a descriptive name or, by default, the same value as
-     *         {@link #toString()}
+     *         {@link Object#toString()}
      * @since 0.19
      */
     default String getName() {

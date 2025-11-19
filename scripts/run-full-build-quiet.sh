@@ -163,7 +163,13 @@ def main(log_path):
                     f"[quiet-build] still running... "
                     f"({format_elapsed(now - start_time)})\n"
                 )
-                sys.stdout.write(message)
+                try:
+                    sys.stdout.write(message)
+                except UnicodeEncodeError:
+                    # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
+                    stdout_encoding = sys.stdout.encoding or "utf-8"
+                    safe_bytes = message.encode(stdout_encoding, errors="replace")
+                    sys.stdout.buffer.write(safe_bytes)
                 sys.stdout.flush()
                 update_last_visible()
 
@@ -181,7 +187,14 @@ def main(log_path):
                     suppressed_counts[text] = suppressed_counts.get(text, 0) + 1
                 else:
                     printed_once.add(text)
-                    sys.stdout.write(text)
+                    # Handle encoding errors when writing to stdout (Windows cp1252 can't encode all Unicode)
+                    try:
+                        sys.stdout.write(text)
+                    except UnicodeEncodeError:
+                        # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
+                        stdout_encoding = sys.stdout.encoding or "utf-8"
+                        safe_bytes = text.encode(stdout_encoding, errors="replace")
+                        sys.stdout.buffer.write(safe_bytes)
                     sys.stdout.flush()
                     update_last_visible()
         log_file.flush()
@@ -192,7 +205,14 @@ def main(log_path):
     if suppressed_counts:
         sys.stdout.write("\n[quiet-build] Suppressed duplicate warnings:\n")
         for message, count in suppressed_counts.items():
-            sys.stdout.write(f"[quiet-build]   ({count} more) {message.strip()}\n")
+            try:
+                sys.stdout.write(f"[quiet-build]   ({count} more) {message.strip()}\n")
+            except UnicodeEncodeError:
+                # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
+                stdout_encoding = sys.stdout.encoding or "utf-8"
+                output = f"[quiet-build]   ({count} more) {message.strip()}\n"
+                safe_bytes = output.encode(stdout_encoding, errors="replace")
+                sys.stdout.buffer.write(safe_bytes)
         sys.stdout.flush()
 
 
