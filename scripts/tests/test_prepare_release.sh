@@ -11,7 +11,7 @@ set -euo pipefail
 #   - Output variables
 # =============================================================================
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/scripts/prepare-release.sh"
 
 cleanup() { [[ -d "$TMP" ]] && rm -rf "$TMP"; }
@@ -33,7 +33,7 @@ expect_file_contains() {
   local file="$1"
   local needle="$2"
   local msg="$3"
-  if ! grep -Fq "$needle" "$file"; then
+  if ! grep -Fq -- "$needle" "$file"; then
     fail "$msg (missing: '$needle')"
   fi
 }
@@ -42,7 +42,7 @@ expect_file_matches() {
   local file="$1"
   local regex="$2"
   local msg="$3"
-  if ! grep -Eq "$regex" "$file"; then
+  if ! grep -Eq -- "$regex" "$file"; then
     fail "$msg (regex mismatch: '$regex')"
   fi
 }
@@ -156,7 +156,7 @@ main() {
   test_missing_unreleased
   test_empty_changelog
 
-  echo "All modern tests passed."
+  echo "All tests passed."
 }
 
 main "$@"

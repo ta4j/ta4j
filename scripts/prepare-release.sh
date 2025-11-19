@@ -70,6 +70,7 @@ if not m:
     # No Unreleased section → create an empty one
     sections = f"## Unreleased\n\n- _No changes yet._\n\n{release_header}\n\n_No changes recorded._\n"
     changelog.write_text(sections)
+    outfile.parent.mkdir(exist_ok=True, parents=True)
     outfile.write_text(f"{release_header}\n\n_No changes recorded._\n")
     sys.exit(0)
 
@@ -105,16 +106,15 @@ PY
 # -----------------------------------------------------------------------------
 update_readme() {
   local version="$1"
+  export VERSION="$version"
 
   # Replace stable versions (no -SNAPSHOT)
-  perl -0pi -e \
-    "s|(<artifactId>ta4j-(?:core|examples)</artifactId>\\s*<version>)[^<]+(</version>)|\\1$version\\2|g" \
-    README.md
+  # Handle ta4j-core and ta4j-examples separately to avoid regex complexity
+  perl -0pi -e 's|(<artifactId>ta4j-core</artifactId>\s*<version>)[^<]+(</version>)|$1$ENV{VERSION}$2|g' README.md
+  perl -0pi -e 's|(<artifactId>ta4j-examples</artifactId>\s*<version>)[^<]+(</version>)|$1$ENV{VERSION}$2|g' README.md
 
   # Update any display text showing latest stable version
-  perl -0pi -e \
-    "s|Current version: \`[0-9]+\.[0-9]+(?:\.[0-9]+)?\`|Current version: \`$version\`|g" \
-    README.md || true
+  perl -0pi -e "s|Current version: \`[0-9]+\\.[0-9]+(\\.[0-9]+)?\`|Current version: \`${version}\`|g" README.md || true
 }
 
 echo "Preparing release: $RELEASE_VERSION"
