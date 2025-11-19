@@ -15,4 +15,3 @@
   wrappers that reset gracefully after encountering `NaN` inputs; this avoids contaminating later bars with an early invalid
   value and keeps look-ahead guarantees intact.
 - Prefer exposing helper methods (e.g., returning the source index of a detected event) when they simplify testing and downstream reuse.
-- Annotate every new public type or method with the current `@since` version (omit the -SNAPSHOT portion if applicable).
