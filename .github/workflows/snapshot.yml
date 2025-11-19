@@ -1,0 +1,59 @@
+name: Publish Snapshots
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: snapshot-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    name: Publish Snapshot to Maven Central
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Configure Maven Central credentials
+        run: |
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>
+                <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Build and Test
+        run: mvn -B clean test
+
+      - name: Deploy Snapshot
+        run: mvn -B deploy

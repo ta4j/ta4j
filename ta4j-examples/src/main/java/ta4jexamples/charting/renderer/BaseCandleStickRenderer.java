@@ -53,8 +53,8 @@ public class BaseCandleStickRenderer extends CandlestickRenderer {
     public static final Color DEFAULT_UP_COLOR = new Color(0x26A69A);
 
     /**
-     * Color for down candles (close < open). Matches TradingView's default bearish
-     * candle color.
+     * Color for down candles (close {@literal <} open). Matches TradingView's
+     * default bearish candle color.
      *
      * @since 0.19
      */

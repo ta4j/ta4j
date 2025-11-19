@@ -1,0 +1,53 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+concurrency:
+  group: github-release-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine Version
+        id: version
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          NOTES_FILE="release/${TAG}.md"
+          if [[ ! -f "$NOTES_FILE" ]]; then
+            echo "Release notes file $NOTES_FILE not found" >&2
+            exit 1
+          fi
+          echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+
+      - name: Read Release Notes
+        id: notes
+        run: |
+          CONTENT="$(cat ${{ steps.version.outputs.notes_file }})"
+          CONTENT="${CONTENT//'%'/'%25'}"
+          CONTENT="${CONTENT//$'\n'/'%0A'}"
+          CONTENT="${CONTENT//$'\r'/'%0D'}"
+          echo "body=$CONTENT" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

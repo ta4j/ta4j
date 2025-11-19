@@ -227,7 +227,7 @@ public class BacktestExecutor {
      * @param progressCallback optional callback for progress updates (receives
      *                         completed count). May be null.
      * @param batchSize        the maximum number of strategies to process in each
-     *                         batch. Ignored if strategy count <=
+     *                         batch. Ignored if strategy count {@literal <=}
      *                         {@value #PARALLEL_THRESHOLD}.
      * @return execution result with trading statements and runtime report
      *

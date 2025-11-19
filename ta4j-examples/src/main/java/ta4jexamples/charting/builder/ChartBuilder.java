@@ -50,7 +50,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 /**
  * Fluent chart builder that mirrors the Java Stream API: users select a base
  * chart, optionally attach overlays/sub-charts, and then invoke a terminal
- * operation ({@link #display()}, {@link #save(String)}, {@link #toChart()}).
+ * operation ({@link TerminalStage#display()},
+ * {@link TerminalStage#save(String)}, {@link TerminalStage#toChart()}).
  *
  * <p>
  * The fluent chain enforces valid transitions via stage interfaces. Calling
