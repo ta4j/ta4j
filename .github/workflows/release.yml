@@ -86,7 +86,7 @@ jobs:
         run: |
             set -euo pipefail
             if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
-              echo "OSSRH_SECURITY_MASTER_PASSWORD not set; skipping settings-security.xml generation"
+              echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
               exit 0
             fi
             mkdir -p "${HOME}/.m2"
