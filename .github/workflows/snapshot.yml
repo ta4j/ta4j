@@ -74,6 +74,19 @@ jobs:
           chmod 600 ~/.m2/settings-security.xml
           echo "settings-security.xml created"
 
+      - name: Configure GPG for signing
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          chmod 600 ~/.gnupg/gpg.conf
+          touch ~/.gnupg/gpg-agent.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          chmod 600 ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent 2>/dev/null || true
+          gpgconf --launch gpg-agent 2>/dev/null || true
+
       - name: Build and Test
         run: mvn -B clean test
 
