@@ -37,7 +37,23 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of an {@link EnterAndHoldCriterion}.
+ * value of an {@link EnterAndHoldCriterion} by using the following formula:
+ *
+ * <pre>
+ * xVersusEnterAndHold = (x - enterAndHold) / (abs(enterAndHold)
+ * </pre>
+ *
+ * <p>
+ * It can be used for absolute or percentage criteria values, for example:
+ *
+ * <ul>
+ * <lI>ProfitVsEnterAndHold = (400$ - 500$) / abs(500$) = -0.2 (i.e., the
+ * trading profit is 20% worse than the profit that would be made by simply
+ * entering and holding)
+ * <li>ProfitLossPercentageVsEnterAndHold = (0.9 - (-0.3)) / abs(-0.3) = +4
+ * (i.e., the trading profit is 400% better than the profit that would be made
+ * by simply entering and holding)
+ * </ul>
  */
 public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -83,7 +99,9 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return criterion.calculate(series, position).dividedBy(enterAndHoldCriterion.calculate(series, position));
+        var x = criterion.calculate(series, position);
+        var enterAndHold = enterAndHoldCriterion.calculate(series, position);
+        return (x.minus(enterAndHold)).dividedBy(enterAndHold.abs());
     }
 
     @Override
@@ -91,8 +109,10 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return series.numFactory().one();
         }
-        return criterion.calculate(series, tradingRecord)
-                .dividedBy(enterAndHoldCriterion.calculate(series, tradingRecord));
+
+        var x = criterion.calculate(series, tradingRecord);
+        var enterAndHold = enterAndHoldCriterion.calculate(series, tradingRecord);
+        return (x.minus(enterAndHold)).dividedBy(enterAndHold.abs());
     }
 
     /** The higher the criterion value, the better. */

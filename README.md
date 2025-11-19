@@ -19,6 +19,14 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
  * [x] Simple integration
  * [x] One more thing: it's MIT licensed
 
+### Serialization utilities
+
+The core module ships with component serializers that convert indicators and strategies into JSON payloads backed by
+`ComponentDescriptor`. Indicators can call `Indicator#toJson()` / `Indicator#fromJson(BarSeries, String)` to persist their
+configuration, while strategies can now rely on `Strategy#toJson()` / `Strategy#fromJson(BarSeries, String)` for
+round-tripping entry and exit rules alongside metadata. These helpers make it easier to store and exchange model parameters
+without hand-rolling JSON glue.
+
 ### Maven configuration
 
 Ta4j is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.
@@ -27,7 +35,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
 
@@ -38,12 +46,12 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current ***snapshot version*** is `0.19-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current ***snapshot version*** is `0.20-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.19-SNAPSHOT</version>
+  <version>0.20-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -52,9 +60,21 @@ You can also download ***example code*** from the maven central repository by ad
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.18</version>
+  <version>0.19</version>
 </dependency>
 ```
+
+or for the bleeding edge:
+
+```xml
+<dependency>
+  <groupId>org.ta4j</groupId>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.20-SNAPSHOT</version>
+</dependency>
+```
+
+
 ### Getting Help
 The [wiki](https://ta4j.github.io/ta4j-wiki/) is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
@@ -66,6 +86,65 @@ Here are some ways for you to contribute to ta4j:
   * Take a look at [How to contribute](https://ta4j.github.io/ta4j-wiki/How-to-contribute)
 
 See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md)
+
+&nbsp;
+&nbsp;
+
+## Release & Snapshot Publishing
+
+Ta4j uses automated workflows for publishing both snapshot and stable releases.
+
+### Snapshots
+
+Every push to `master` triggers a snapshot deployment:
+
+```
+mvn deploy
+```
+
+Snapshots are available at:
+
+```
+https://central.sonatype.com/repository/maven-snapshots/
+```
+
+### Stable Releases
+
+Releases are performed in two phases:
+
+#### 1. Prepare the release notes
+
+```
+scripts/prepare-release.sh <version>
+```
+
+This script:
+
+- Moves the `Unreleased` changelog section into a new versioned section
+- Resets `Unreleased`
+- Updates README version references
+- Generates `release/<version>.md`
+
+#### 2. Trigger the GitHub release workflow
+
+From GitHub:
+
+**Actions → Publish Release to Maven Central → Run workflow**
+
+Provide:
+
+- `releaseVersion` (e.g. `0.20`)
+- `nextVersion` (e.g. `0.21-SNAPSHOT`)
+
+The workflow automatically:
+
+- Updates project version
+- Creates a tag
+- Deploys artifacts to Maven Central
+- Bumps next snapshot
+- Pushes changes
+- Creates a GitHub Release with the generated notes
+
 
 &nbsp;
 &nbsp;
@@ -82,4 +161,6 @@ See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduc
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
+
+
 

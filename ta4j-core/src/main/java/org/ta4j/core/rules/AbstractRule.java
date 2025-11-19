@@ -26,6 +26,8 @@ package org.ta4j.core.rules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -38,6 +40,19 @@ public abstract class AbstractRule implements Rule {
     /** The class name */
     private final String className = getClass().getSimpleName();
 
+    /** Configurable display name */
+    private String name;
+
+    /**
+     * Returns the display name to use in trace logs. Uses the configured name if
+     * set, otherwise falls back to the class name.
+     *
+     * @return display name for tracing
+     */
+    protected String getTraceDisplayName() {
+        return name != null ? name : className;
+    }
+
     /**
      * Traces the {@code isSatisfied()} method calls.
      *
@@ -46,7 +61,60 @@ public abstract class AbstractRule implements Rule {
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+            log.trace("{}#isSatisfied({}): {}", getTraceDisplayName(), index, isSatisfied);
         }
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = name == null || name.isBlank() ? null : name;
+    }
+
+    @Override
+    public String getName() {
+        return name != null ? name : createDefaultName();
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
+
+    /**
+     * Creates the default JSON representation for the rule name. Sub-classes can
+     * override to provide richer metadata.
+     *
+     * @return JSON payload describing the rule
+     */
+    protected String createDefaultName() {
+        return createTypeOnlyName(className);
+    }
+
+    /**
+     * Builds a JSON object containing only the rule type field.
+     *
+     * @param type rule type label
+     * @return JSON string
+     */
+    protected String createTypeOnlyName(String type) {
+        return ComponentSerialization.toJson(ComponentDescriptor.typeOnly(type));
+    }
+
+    /**
+     * Builds a JSON object containing the type plus an optional array of child rule
+     * names.
+     *
+     * @param type       rule type label
+     * @param childNames child rule display names
+     * @return JSON string
+     */
+    protected String createCompositeName(String type, String... childNames) {
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
+        if (childNames != null && childNames.length > 0) {
+            for (String child : childNames) {
+                builder.addComponent(ComponentSerialization.parse(child));
+            }
+        }
+        return ComponentSerialization.toJson(builder.build());
     }
 }

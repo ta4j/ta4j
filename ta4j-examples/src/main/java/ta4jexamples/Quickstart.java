@@ -23,6 +23,8 @@
  */
 package ta4jexamples;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.BarSeries;
@@ -50,6 +52,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class Quickstart {
 
+    private static final Logger LOG = LogManager.getLogger(Quickstart.class);
+
     public static void main(String[] args) {
 
         // Getting a bar series (from any provider: CSV, web service, etc.)
@@ -57,17 +61,18 @@ public class Quickstart {
 
         // Getting the close price of the bars
         Num firstClosePrice = series.getBar(0).getClosePrice();
-        System.out.println("First close price: " + firstClosePrice.doubleValue());
+        LOG.debug("First close price: {}", firstClosePrice.doubleValue());
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         // Here is the same close price:
-        System.out.println(firstClosePrice.isEqual(closePrice.getValue(0))); // equal to firstClosePrice
+        LOG.debug("Close price indicator value equals first close price: {}",
+                firstClosePrice.isEqual(closePrice.getValue(0)));
 
         // Getting the simple moving average (SMA) of the close price over the last 5
         // bars
         SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
         // Here is the 5-bars-SMA value at the 42nd index
-        System.out.println("5-bars-SMA value at the 42nd index: " + shortSma.getValue(42).doubleValue());
+        LOG.debug("5-bars-SMA value at the 42nd index: {}", shortSma.getValue(42).doubleValue());
 
         // Getting a longer SMA (e.g. over the 30 last bars)
         SMAIndicator longSma = new SMAIndicator(closePrice, 30);
@@ -93,21 +98,21 @@ public class Quickstart {
         // Running our juicy trading strategy...
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
-        System.out.println("Number of positions for our strategy: " + tradingRecord.getPositionCount());
+        LOG.debug("Number of positions for our strategy: {}", tradingRecord.getPositionCount());
 
         // Analysis
 
         // Getting the winning positions ratio
         AnalysisCriterion winningPositionsRatio = new PositionsRatioCriterion(PositionFilter.PROFIT);
-        System.out.println("Winning positions ratio: " + winningPositionsRatio.calculate(series, tradingRecord));
+        LOG.debug("Winning positions ratio: {}", winningPositionsRatio.calculate(series, tradingRecord));
         // Getting a risk-reward ratio
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
-        System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
+        LOG.debug("Return over Max Drawdown: {}", romad.calculate(series, tradingRecord));
 
         // Net return of our strategy vs net return of a buy-and-hold strategy
         AnalysisCriterion versusEnterAndHoldCriterion = new VersusEnterAndHoldCriterion(new NetReturnCriterion());
         Num versusEnterAndHold = versusEnterAndHoldCriterion.calculate(series, tradingRecord);
-        System.out.println("Our net return vs buy-and-hold net return: " + versusEnterAndHold);
+        LOG.debug("Our net return vs buy-and-hold net return: {}", versusEnterAndHold);
 
         // Your turn!
     }

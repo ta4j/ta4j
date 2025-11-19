@@ -23,12 +23,16 @@
  */
 package ta4jexamples.strategies;
 
+import org.junit.Assume;
 import org.junit.Test;
+
+import java.awt.GraphicsEnvironment;
 
 public class CCICorrectionStrategyTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         CCICorrectionStrategy.main(null);
     }
 }

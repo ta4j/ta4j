@@ -34,7 +34,9 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 public class AverageTrueRangeStopGainRuleTest {
 
@@ -152,5 +154,21 @@ public class AverageTrueRangeStopGainRuleTest {
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var rule = new AverageTrueRangeStopGainRule(series, 3, 1.5);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void serializeAndDeserializeWithCustomReference() {
+        Num constant = series.numFactory().numOf(20);
+        FixedIndicator<Num> reference = new FixedIndicator<>(series, constant, constant, constant, constant, constant);
+        var rule = new AverageTrueRangeStopGainRule(series, reference, 4, 2.25);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }
