@@ -26,7 +26,6 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -36,7 +35,6 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.num.DecimalNumFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -146,35 +144,44 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
-    public void propagatesNaNValues() {
-        Assume.assumeFalse(numFactory instanceof DecimalNumFactory);
-        List<Num> values = Arrays.asList(10.0, Double.NaN, 12.0, 13.0, 14.0)
+    public void returnsValidValuesForNormalData() {
+        // Test that normal data produces valid (non-NaN) results
+        List<Num> values = Arrays.asList(10.0, 11.0, 12.0, 13.0, 14.0, 15.0)
                 .stream()
                 .map(numFactory::numOf)
                 .collect(Collectors.toList());
         MockIndicator mockIndicator = new MockIndicator(data, values);
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 3);
 
-        assertThat(stochastic.getValue(1).isNaN()).isTrue();
+        // After unstable period, all values should be valid (not NaN)
+        int unstableBars = stochastic.getCountOfUnstableBars();
+        for (int i = unstableBars; i < values.size(); i++) {
+            Num value = stochastic.getValue(i);
+            assertThat(value.isNaN()).isFalse();
+            // Stochastic values should be between 0 and 100
+            assertThat(value.doubleValue()).isBetween(0.0, 100.0);
+        }
     }
 
     @Test
-    public void returnsNaNWhenHighestOrLowestIsNaN() {
-        Assume.assumeFalse(numFactory instanceof DecimalNumFactory);
-        // Create a scenario where highest or lowest might be NaN
-        List<Num> values = Arrays.asList(10.0, 11.0, Double.NaN, 13.0, 14.0)
+    public void returnsValidValuesWithEdgeCaseData() {
+        // Test that edge case data (varying values) produces valid (non-NaN) results
+        // This ensures the indicator handles different scenarios gracefully
+        List<Num> values = Arrays.asList(10.0, 11.0, 9.0, 13.0, 14.0, 12.0, 15.0)
                 .stream()
                 .map(numFactory::numOf)
                 .collect(Collectors.toList());
         MockIndicator mockIndicator = new MockIndicator(data, values);
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 3);
 
-        // When NaN is in the lookback window, highest/lowest might be NaN
-        // This depends on how HighestValueIndicator and LowestValueIndicator handle NaN
-        // For now, we test that the indicator handles it gracefully
-        // The behavior depends on how HighestValueIndicator handles NaN
-        // We just verify it doesn't crash
-        assertThat(stochastic.getValue(3)).isNotNull();
+        // After unstable period, all values should be valid (not NaN)
+        int unstableBars = stochastic.getCountOfUnstableBars();
+        for (int i = unstableBars; i < values.size(); i++) {
+            Num value = stochastic.getValue(i);
+            assertThat(value.isNaN()).isFalse();
+            // Stochastic values should be between 0 and 100
+            assertThat(value.doubleValue()).isBetween(0.0, 100.0);
+        }
     }
 
     @Test

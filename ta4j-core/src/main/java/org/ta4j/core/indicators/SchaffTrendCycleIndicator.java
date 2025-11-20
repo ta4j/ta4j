@@ -95,6 +95,10 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return slowPeriod + cycleLength + smoothingPeriod;
+        // The indicator chain is:
+        // MACD (slowPeriod) -> Stochastic (cycleLength) -> EMA (smoothingPeriod) ->
+        // Stochastic (cycleLength) -> EMA (smoothingPeriod)
+        // Unstable periods are additive through the chain
+        return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
     }
 }
