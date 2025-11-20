@@ -2,7 +2,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
-- _No changes yet._
+- Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and
+  `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence
+- Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave
+  state and surface invalidations for swing-based strategies
+
 
 ## 0.19 (released November 19, 2025)
 
