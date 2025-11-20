@@ -8,11 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
-- Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window, extracted from `ConnorsRSIIndicator` for reuse
+- Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window
 - Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
-- Added `PercentageChangeIndicator` helper indicator to calculate the percentage change between current and previous indicator values using rate of return representation
-- Enhanced `PercentageChangeIndicator` with optional `previousIndicator` parameter to compare current value of one indicator with previous value of another indicator (e.g., comparing current open price with previous close price)
-- Enhanced `PercentageChangeIndicator` with optional `percentageThreshold` parameter to track percentage changes from the last time a threshold was exceeded, consolidating functionality from `DifferencePercentageIndicator`
 - Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
 - Added `StochasticIndicator` as a generic stochastic calculation indicator, extracted from `SchaffTrendCycleIndicator` for reuse
 
