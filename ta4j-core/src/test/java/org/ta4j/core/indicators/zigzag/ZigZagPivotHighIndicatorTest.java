@@ -168,4 +168,35 @@ public class ZigZagPivotHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(0);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void shouldRoundTripSerializeAndDeserialize() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(105).add();
+        series.barBuilder().closePrice(110).add();
+        series.barBuilder().closePrice(108).add();
+        series.barBuilder().closePrice(103).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator stateIndicator = new ZigZagStateIndicator(price, threshold);
+        final ZigZagPivotHighIndicator original = new ZigZagPivotHighIndicator(stateIndicator);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final String json = original.toJson();
+        final Indicator<Boolean> restored = (Indicator<Boolean>) Indicator.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(ZigZagPivotHighIndicator.class);
+        assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
+
+        // Verify the restored indicator produces the same values
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(restored.getValue(i)).isEqualTo(original.getValue(i));
+        }
+    }
 }

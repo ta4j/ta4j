@@ -29,8 +29,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -38,6 +38,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
 
 public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<ZigZagState>, ZigZagState> {
 
@@ -336,5 +337,107 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         final ZigZagState state = indicator.getValue(2);
         assertThat(state.getLastHighIndex()).isEqualTo(1);
         assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(110));
+    }
+
+    @Test
+    public void shouldSerializeToDescriptor() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(105).add();
+        series.barBuilder().closePrice(110).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator original = new ZigZagStateIndicator(price, threshold);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getType()).isEqualTo("ZigZagStateIndicator");
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents())
+                .anySatisfy(component -> component.getType().equals("ClosePriceIndicator"));
+        assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("ConstantIndicator"));
+    }
+
+    @Test
+    public void shouldSerializeToJson() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(105).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator original = new ZigZagStateIndicator(price, threshold);
+
+        final String json = original.toJson();
+        assertThat(json).contains("ZigZagStateIndicator");
+        assertThat(json).contains("ClosePriceIndicator");
+        assertThat(json).contains("ConstantIndicator");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void shouldRoundTripSerializeAndDeserialize() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(105).add();
+        series.barBuilder().closePrice(110).add();
+        series.barBuilder().closePrice(108).add();
+        series.barBuilder().closePrice(103).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator original = new ZigZagStateIndicator(price, threshold);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final String json = original.toJson();
+        final Indicator<ZigZagState> restored = (Indicator<ZigZagState>) Indicator.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(ZigZagStateIndicator.class);
+        assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
+
+        // Verify the restored indicator produces the same values
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final ZigZagState originalState = original.getValue(i);
+            final ZigZagState restoredState = restored.getValue(i);
+            assertThat(restoredState.getLastHighIndex()).isEqualTo(originalState.getLastHighIndex());
+            assertThat(restoredState.getLastLowIndex()).isEqualTo(originalState.getLastLowIndex());
+            assertThat(restoredState.getTrend()).isEqualTo(originalState.getTrend());
+            if (originalState.getLastHighPrice() != null) {
+                assertThat(restoredState.getLastHighPrice()).isEqualByComparingTo(originalState.getLastHighPrice());
+            }
+            if (originalState.getLastLowPrice() != null) {
+                assertThat(restoredState.getLastLowPrice()).isEqualByComparingTo(originalState.getLastLowPrice());
+            }
+        }
+    }
+
+    @Test
+    public void shouldNotSerializeTransientStateFields() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(105).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator original = new ZigZagStateIndicator(price, threshold);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final ComponentDescriptor descriptor = original.toDescriptor();
+
+        // Verify that only constructor parameters (price and reversalAmount indicators)
+        // are serialized
+        // State fields should not be serialized
+        assertThat(descriptor.getParameters()).doesNotContainKey("price");
+        assertThat(descriptor.getParameters()).doesNotContainKey("reversalAmount");
+        assertThat(descriptor.getComponents()).hasSize(2); // Only the two indicator components
     }
 }

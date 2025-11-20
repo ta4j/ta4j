@@ -180,4 +180,35 @@ public class RecentZigZagSwingLowIndicatorTest extends AbstractIndicatorTest<Ind
         assertThat(indicator.getValue(6)).isEqualByComparingTo(numOf(70)); // Third swing low
         assertThat(indicator.getLatestSwingLowIndex(6)).isEqualTo(5);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void shouldRoundTripSerializeAndDeserialize() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(95).add();
+        series.barBuilder().closePrice(90).add();
+        series.barBuilder().closePrice(92).add();
+        series.barBuilder().closePrice(97).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+        final ZigZagStateIndicator stateIndicator = new ZigZagStateIndicator(price, threshold);
+        final RecentZigZagSwingLowIndicator original = new RecentZigZagSwingLowIndicator(stateIndicator, price);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final String json = original.toJson();
+        final Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(RecentZigZagSwingLowIndicator.class);
+        assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
+
+        // Verify the restored indicator produces the same values
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(restored.getValue(i)).isEqualByComparingTo(original.getValue(i));
+        }
+    }
 }
