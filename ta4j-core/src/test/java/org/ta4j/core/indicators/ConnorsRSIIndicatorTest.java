@@ -112,7 +112,11 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         final var closePrice = new ClosePriceIndicator(series);
         final var indicator = new ConnorsRSIIndicator(closePrice, 2, 2, 4);
 
-        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(5);
+        // priceRsi has unstable period = 2, streakRsi has unstable period = 2,
+        // percentRankIndicator has unstable period = 1 (DifferenceIndicator) + 4
+        // (period) - 1 = 4
+        // So max(2, 2, 4) = 4
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
     }
 
     @Test

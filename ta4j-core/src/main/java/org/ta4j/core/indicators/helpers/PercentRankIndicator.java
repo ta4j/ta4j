@@ -139,6 +139,6 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return period;
+        return indicator.getCountOfUnstableBars() + period - 1;
     }
 }

@@ -102,6 +102,8 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return percentRankPeriod + 1;
+        // Return the maximum unstable period of all three components
+        return Math.max(Math.max(priceRsi.getCountOfUnstableBars(), streakRsi.getCountOfUnstableBars()),
+                percentRankIndicator.getCountOfUnstableBars());
     }
 }

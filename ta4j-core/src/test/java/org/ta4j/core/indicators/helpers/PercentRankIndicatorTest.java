@@ -197,10 +197,27 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void returnsCorrectUnstableBarsCount() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        // ClosePriceIndicator has unstable period 0, so formula is: 0 + period - 1
         percentRank = new PercentRankIndicator(closePrice, 5);
-        assertThat(percentRank.getCountOfUnstableBars()).isEqualTo(5);
+        assertThat(percentRank.getCountOfUnstableBars()).isEqualTo(4); // 0 + 5 - 1
 
         percentRank = new PercentRankIndicator(closePrice, 10);
+        assertThat(percentRank.getCountOfUnstableBars()).isEqualTo(9); // 0 + 10 - 1
+    }
+
+    @Test
+    public void returnsCorrectUnstableBarsCountWithUnderlyingIndicatorUnstablePeriod() {
+        // Test that PercentRankIndicator correctly accounts for underlying indicator's
+        // unstable period
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        // DifferenceIndicator has unstable period 1
+        DifferenceIndicator diffIndicator = new DifferenceIndicator(closePrice);
+        percentRank = new PercentRankIndicator(diffIndicator, 5);
+        // Should be: 1 (underlying) + 5 (period) - 1 = 5
+        assertThat(percentRank.getCountOfUnstableBars()).isEqualTo(5);
+
+        percentRank = new PercentRankIndicator(diffIndicator, 10);
+        // Should be: 1 (underlying) + 10 (period) - 1 = 10
         assertThat(percentRank.getCountOfUnstableBars()).isEqualTo(10);
     }
 
