@@ -350,7 +350,8 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         // Test NaN instance
         assertTrue("NaN instance should return true", Num.isNaNOrNull(NaN));
 
-        // Test DoubleNum with Double.NaN (edge case - DoubleNum doesn't override isNaN())
+        // Test DoubleNum with Double.NaN (edge case - DoubleNum doesn't override
+        // isNaN())
         // This should work regardless of which factory is being used for the test
         final Num doubleNaN = DoubleNum.valueOf(Double.NaN);
         assertTrue("DoubleNum with Double.NaN should return true", Num.isNaNOrNull(doubleNaN));
