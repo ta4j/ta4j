@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/r/resistance.asp">Investopedia:
  *      Resistance</a>
- * @since 0.19
+ * @since 0.20
  */
 public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
 
@@ -60,7 +60,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param allowedEqualBars   number of bars on each side that may equal the
      *                           swing-high value
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
             int allowedEqualBars) {
@@ -76,7 +76,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * @param series               the series to analyse
      * @param surroundingLowerBars number of bars on each side that must be strictly
      *                             lower than the swing high
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars) {
         this(new HighPriceIndicator(series), surroundingLowerBars, surroundingLowerBars, 0);
@@ -87,7 +87,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * window.
      *
      * @param series the series to analyse
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineResistanceIndicator(BarSeries series) {
         this(series, 3);

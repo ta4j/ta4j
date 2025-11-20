@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  *      Trendlines</a>
  * @see <a href="https://www.investopedia.com/terms/s/support.asp">Investopedia:
  *      Support</a>
- * @since 0.19
+ * @since 0.20
  */
 public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
 
@@ -58,7 +58,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param allowedEqualBars    number of bars on each side that may equal the
      *                            swing-low value
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineSupportIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
@@ -74,7 +74,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * @param series                the series to analyse
      * @param surroundingHigherBars number of bars on each side that must be
      *                              strictly higher than the swing low
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineSupportIndicator(BarSeries series, int surroundingHigherBars) {
         this(new LowPriceIndicator(series), surroundingHigherBars, surroundingHigherBars, 0);
@@ -84,7 +84,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Builds a support trend line that uses a default three-bar symmetric window.
      *
      * @param series the series to analyse
-     * @since 0.19
+     * @since 0.20
      */
     public TrendLineSupportIndicator(BarSeries series) {
         this(series, 3);

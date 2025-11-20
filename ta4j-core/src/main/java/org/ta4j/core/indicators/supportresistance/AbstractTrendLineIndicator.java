@@ -38,7 +38,7 @@ import org.ta4j.core.num.NumFactory;
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
  *
- * @since 0.19
+ * @since 0.20
  */
 public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
@@ -55,14 +55,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> priceIndicator;
     private final List<Pivot> pivots = new ArrayList<>();
     private final int unstableBars;
-    private int lastScannedIndex = Integer.MIN_VALUE;
+    private transient int lastScannedIndex = Integer.MIN_VALUE;
 
     /**
      * Constructor.
      *
      * @param priceIndicator the indicator that supplies the pivot values
      * @param unstableBars   number of bars regarded as unstable by the indicator
-     * @since 0.19
+     * @since 0.20
      */
     protected AbstractTrendLineIndicator(Indicator<Num> priceIndicator, int unstableBars) {
         super(priceIndicator);
@@ -174,7 +174,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * Returns the indexes of the confirmed pivot points tracked by the indicator.
      *
      * @return an immutable list containing the pivot indexes in chronological order
-     * @since 0.19
+     * @since 0.20
      */
     public List<Integer> getPivotIndexes() {
         final List<Integer> result = new ArrayList<>(pivots.size());

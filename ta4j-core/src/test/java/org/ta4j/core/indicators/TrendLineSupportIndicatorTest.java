@@ -33,6 +33,7 @@ import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
 
 public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -140,6 +141,92 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= finalBeginIndex);
         assertThat(indicator.getPivotIndexes()).containsExactly(11, 13);
         assertThat(indicator.getValue(series.getEndIndex()).isNaN()).isFalse();
+    }
+
+    @Test
+    public void shouldSerializeAndDeserializeIndicator() {
+        final var series = seriesFromLows(9, 7, 10, 11, 12, 6, 9, 13, 8);
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var original = new TrendLineSupportIndicator(lowIndicator, 1, 1, 0);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        // Test serialization to descriptor
+        final ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
+        // unstableBars is serialized from the superclass field (1 + 1 = 2)
+        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 2);
+        // Both swingLowIndicator and priceIndicator are serialized as components
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents())
+                .anySatisfy(component -> component.getType().equals("RecentSwingLowIndicator"));
+        assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("LowPriceIndicator"));
+
+        // Verify transient fields are not serialized
+        assertThat(descriptor.getParameters()).doesNotContainKey("lastScannedIndex");
+        assertThat(descriptor.getParameters()).doesNotContainKey("pivots");
+
+        // Test JSON serialization
+        final String json = original.toJson();
+        assertThat(json).contains("TrendLineSupportIndicator");
+        assertThat(json).contains("\"unstableBars\":2");
+        assertThat(json).contains("RecentSwingLowIndicator");
+        assertThat(json).contains("LowPriceIndicator");
+    }
+
+    @Test
+    public void shouldSerializeAndDeserializeIndicatorWithBarSeriesConstructor() {
+        final var series = seriesFromLows(13, 12, 9, 11, 10, 8, 8, 8, 12, 14);
+        final var original = new TrendLineSupportIndicator(series, 2);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        // Test serialization
+        final ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
+        // unstableBars = 2 + 2 = 4 (precedingHigherBars + followingHigherBars)
+        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 4);
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents())
+                .anySatisfy(component -> component.getType().equals("RecentSwingLowIndicator"));
+        assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("LowPriceIndicator"));
+
+        // Test JSON serialization
+        final String json = original.toJson();
+        assertThat(json).contains("TrendLineSupportIndicator");
+        assertThat(json).contains("\"unstableBars\":4");
+    }
+
+    @Test
+    public void shouldSerializeAndDeserializeIndicatorWithDefaultConstructor() {
+        final var series = seriesFromLows(9, 7, 10, 11, 12, 6, 9, 13, 8);
+        final var original = new TrendLineSupportIndicator(series);
+
+        // Use the indicator to populate stateful fields
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        // Test serialization
+        final ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
+        // unstableBars = 3 + 3 = 6 (default surroundingHigherBars is 3)
+        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 6);
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents())
+                .anySatisfy(component -> component.getType().equals("RecentSwingLowIndicator"));
+        assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("LowPriceIndicator"));
+
+        // Test JSON serialization
+        final String json = original.toJson();
+        assertThat(json).contains("TrendLineSupportIndicator");
+        assertThat(json).contains("\"unstableBars\":6");
     }
 
     private BarSeries seriesFromLows(double... lows) {
