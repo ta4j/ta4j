@@ -27,6 +27,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,8 +45,10 @@ import org.ta4j.core.num.Num;
  */
 public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
-    private final DoubleSmoothedIndicator doubleSmoothedChange;
-    private final DoubleSmoothedIndicator doubleSmoothedAbsoluteChange;
+    @SuppressWarnings("unused")
+    private final Indicator<Num> priceIndicator;
+    private final transient EMAIndicator doubleSmoothedChange;
+    private final transient EMAIndicator doubleSmoothedAbsoluteChange;
     private final int firstSmoothingPeriod;
     private final int secondSmoothingPeriod;
 
@@ -77,19 +81,25 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         }
         this.firstSmoothingPeriod = firstSmoothingPeriod;
         this.secondSmoothingPeriod = secondSmoothingPeriod;
+        this.priceIndicator = indicator;
 
-        PriceChangeIndicator priceChangeIndicator = new PriceChangeIndicator(indicator);
-        this.doubleSmoothedChange = new DoubleSmoothedIndicator(priceChangeIndicator, firstSmoothingPeriod,
-                secondSmoothingPeriod);
-        this.doubleSmoothedAbsoluteChange = new DoubleSmoothedIndicator(
-                new AbsoluteValueIndicator(priceChangeIndicator), firstSmoothingPeriod, secondSmoothingPeriod);
+        PriceChangeIndicator priceChangeIndicator = new PriceChangeIndicator(this.priceIndicator);
+        EMAIndicator firstSmoothingChange = new EMAIndicator(priceChangeIndicator, firstSmoothingPeriod);
+        this.doubleSmoothedChange = new EMAIndicator(firstSmoothingChange, secondSmoothingPeriod);
+
+        UnaryOperationIndicator absolutePriceChange = UnaryOperationIndicator.abs(priceChangeIndicator);
+        EMAIndicator firstSmoothingAbsoluteChange = new EMAIndicator(absolutePriceChange, firstSmoothingPeriod);
+        this.doubleSmoothedAbsoluteChange = new EMAIndicator(firstSmoothingAbsoluteChange, secondSmoothingPeriod);
     }
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num numerator = doubleSmoothedChange.getValue(index);
         Num denominator = doubleSmoothedAbsoluteChange.getValue(index);
-        if (isNaN(numerator) || isNaN(denominator) || denominator.isZero()) {
+        if (Num.isNaNOrNull(numerator) || Num.isNaNOrNull(denominator) || denominator.isZero()) {
             return NaN;
         }
         return numerator.dividedBy(denominator).multipliedBy(getBarSeries().numFactory().hundred());
@@ -97,87 +107,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
+        // Unstable period is the sum of both smoothing periods
         return firstSmoothingPeriod + secondSmoothingPeriod;
-    }
-
-    private static final class PriceChangeIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-
-        private PriceChangeIndicator(Indicator<Num> indicator) {
-            super(indicator);
-            this.indicator = indicator;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
-                return NaN;
-            }
-            Num current = indicator.getValue(index);
-            Num previous = indicator.getValue(index - 1);
-            if (isNaN(current) || isNaN(previous)) {
-                return NaN;
-            }
-            return current.minus(previous);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 1;
-        }
-    }
-
-    private static final class AbsoluteValueIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-
-        private AbsoluteValueIndicator(Indicator<Num> indicator) {
-            super(indicator);
-            this.indicator = indicator;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            Num value = indicator.getValue(index);
-            if (isNaN(value)) {
-                return NaN;
-            }
-            return value.abs();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return indicator.getCountOfUnstableBars();
-        }
-    }
-
-    private static final class DoubleSmoothedIndicator extends CachedIndicator<Num> {
-
-        private final EMAIndicator firstSmoothing;
-        private final EMAIndicator secondSmoothing;
-        private final int unstableBars;
-
-        private DoubleSmoothedIndicator(Indicator<Num> indicator, int firstPeriod, int secondPeriod) {
-            super(indicator);
-            this.firstSmoothing = new EMAIndicator(indicator, firstPeriod);
-            this.secondSmoothing = new EMAIndicator(firstSmoothing, secondPeriod);
-            this.unstableBars = firstPeriod + secondPeriod;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            return secondSmoothing.getValue(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return unstableBars;
-        }
-    }
-
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

@@ -29,6 +29,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
@@ -38,6 +39,7 @@ import org.ta4j.core.num.NumFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOperationIndicator, Num> {
 
@@ -272,5 +274,24 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
         final var result = UnaryOperationIndicator.sqrt(indicator);
 
         assertEquals(series, result.getBarSeries());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void serializationRoundTrip() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, -2, 3, -4, 5, -6).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+        Indicator<Num> priceChange = new PriceChangeIndicator(base);
+        UnaryOperationIndicator original = UnaryOperationIndicator.abs(priceChange);
+
+        String json = original.toJson();
+        Indicator<Num> reconstructed = (Indicator<Num>) Indicator.fromJson(series, json);
+
+        assertThat(reconstructed).isInstanceOf(UnaryOperationIndicator.class);
+        assertEquals(original.toDescriptor(), reconstructed.toDescriptor());
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(original.getValue(i), reconstructed.getValue(i));
+        }
     }
 }

@@ -81,12 +81,12 @@ public class StochasticIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num value = indicator.getValue(index);
-        if (isNaN(value)) {
+        if (Num.isNaNOrNull(value)) {
             return NaN;
         }
         Num highestValue = highest.getValue(index);
         Num lowestValue = lowest.getValue(index);
-        if (isNaN(highestValue) || isNaN(lowestValue)) {
+        if (Num.isNaNOrNull(highestValue) || Num.isNaNOrNull(lowestValue)) {
             return NaN;
         }
         Num range = highestValue.minus(lowestValue);
@@ -102,7 +102,4 @@ public class StochasticIndicator extends CachedIndicator<Num> {
         return lookback;
     }
 
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
-    }
 }

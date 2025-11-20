@@ -145,7 +145,7 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
         Num current = closePrice.getValue(index);
         Num previous = closePrice.getValue(index - 1);
-        if (isNaN(current) || isNaN(previous)) {
+        if (Num.isNaNOrNull(current) || Num.isNaNOrNull(previous)) {
             return NaN.NaN;
         }
         Num currentChange = current.minus(previous);
@@ -156,7 +156,7 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         for (int i = startIndex; i < index; i++) {
             Num candidate = closePrice.getValue(i);
             Num prior = closePrice.getValue(i - 1);
-            if (isNaN(candidate) || isNaN(prior)) {
+            if (Num.isNaNOrNull(candidate) || Num.isNaNOrNull(prior)) {
                 continue;
             }
             Num candidateChange = candidate.minus(prior);
@@ -170,9 +170,5 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
         Num ratio = numFactory.numOf(lessThanCount).dividedBy(numFactory.numOf(valid));
         return ratio.multipliedBy(numFactory.numOf(100));
-    }
-
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

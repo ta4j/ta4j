@@ -13,6 +13,13 @@
 
 ## Test coverage
 - All new indicator classes should be accompanied by comprehensive unit test coverage, both to demonstrate correctness but also to serve as protection against regressions during future changes. Tests covering round trip serialization/deserialization must be included.
+- **🚫 CRITICAL: NEVER SKIP TESTS WITHOUT EXPLICIT USER APPROVAL.** If a serialization roundtrip test fails (e.g., because an indicator uses `UnaryOperationIndicator` which isn't serializable), you MUST:
+  1. Investigate why serialization fails
+  2. Fix the underlying issue (e.g., add serialization support), OR
+  3. Ask the user for explicit approval before removing or skipping the test
+  - **DO NOT** use `Assume.assumeNoException()` or any other mechanism to skip failing tests
+  - **DO NOT** silently catch exceptions and skip test execution
+  - A failing test is a bug that must be fixed, not something to skip
 - When indicators expose helper methods (e.g., returning the source index), test them directly alongside the numeric output.
 - Include scenarios with missing or `NaN` data to ensure indicators react gracefully.
 - Mirror plateau edge cases (equal highs/lows exceeding the allowance) so future contributors keep the NaN/flat-top logic intact.

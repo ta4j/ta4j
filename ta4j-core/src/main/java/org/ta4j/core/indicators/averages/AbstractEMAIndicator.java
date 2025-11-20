@@ -70,13 +70,13 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         Num current = indicator.getValue(index);
 
         // Check for NaN in current value
-        if (isNaN(current)) {
+        if (Num.isNaNOrNull(current)) {
             return NaN;
         }
 
         // Get previous value and check for NaN
         Num prevValue = getValue(index - 1);
-        if (isNaN(prevValue)) {
+        if (Num.isNaNOrNull(prevValue)) {
             // Graceful recovery: reset to current value when previous is NaN
             // This prevents contamination of future values
             return current;
@@ -84,20 +84,6 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
         // Standard EMA calculation
         return prevValue.plus(current.minus(prevValue).multipliedBy(multiplier));
-    }
-
-    /**
-     * Checks if a Num value is NaN.
-     *
-     * <p>
-     * Handles both {@link Num#isNaN()} and {@link Double#isNaN(double)} to properly
-     * detect NaN values from both DecimalNum and DoubleNum implementations.
-     *
-     * @param value the value to check
-     * @return true if the value is NaN, false otherwise
-     */
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 
     @Override
