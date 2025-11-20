@@ -18,7 +18,7 @@
 **Sequential chaining (A -> B -> C):** Typically **additive**, but check if each indicator accounts for its input's unstable period:
 - `EMAIndicator` does **NOT** account for input's unstable period (returns only `barCount`), but propagates NaN in `calculate()`. Chain EMAs by summing: `period1 + period2 + ...`
 - `SMAIndicator` **DOES** account for input: `indicator.getCountOfUnstableBars() + barCount - 1`
-- Earlier periods may be covered by later ones (e.g., `PriceChangeIndicator`'s 1 bar covered by first EMA if `firstPeriod >= 1`)
+- Earlier periods may be covered by later ones (e.g., `DifferenceIndicator`'s 1 bar covered by first EMA if `firstPeriod >= 1`)
 
 **Parallel indicators:** Take **maximum**: `Math.max(indicatorA.getCountOfUnstableBars(), indicatorB.getCountOfUnstableBars())`
 

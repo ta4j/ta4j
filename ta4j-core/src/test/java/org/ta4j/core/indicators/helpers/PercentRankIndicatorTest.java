@@ -226,12 +226,12 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void calculatesPercentRankForPriceChangeIndicator() {
+    public void calculatesPercentRankForDifferenceIndicator() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 9, 12, 11, 10, 13)
                 .build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        PriceChangeIndicator priceChange = new PriceChangeIndicator(closePrice);
+        DifferenceIndicator priceChange = new DifferenceIndicator(closePrice);
         percentRank = new PercentRankIndicator(priceChange, 3);
 
         // At index 4, price change is 11 - 12 = -1
@@ -251,8 +251,8 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 .withData(10, 11, 9, 12, 11, 10, 13)
                 .build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        PriceChangeIndicator priceChange = new PriceChangeIndicator(closePrice);
-        // PriceChangeIndicator has unstable period of 1, so index 0 returns NaN
+        DifferenceIndicator priceChange = new DifferenceIndicator(closePrice);
+        // DifferenceIndicator has unstable period of 1, so index 0 returns NaN
         percentRank = new PercentRankIndicator(priceChange, 5);
 
         // At index 2, price change is 9 - 11 = -2

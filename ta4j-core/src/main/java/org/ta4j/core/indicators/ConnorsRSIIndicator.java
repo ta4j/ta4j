@@ -25,7 +25,7 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.PercentRankIndicator;
-import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.StreakIndicator;
 import org.ta4j.core.num.Num;
 
@@ -78,7 +78,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         }
         this.percentRankPeriod = percentRankPeriod;
 
-        PriceChangeIndicator priceChangeIndicator = new PriceChangeIndicator(indicator);
+        DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(indicator);
         this.priceRsi = new RSIIndicator(indicator, rsiPeriod);
         this.streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
         this.percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);

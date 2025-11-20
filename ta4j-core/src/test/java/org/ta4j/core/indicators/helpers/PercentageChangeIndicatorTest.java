@@ -48,7 +48,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
     private BarSeries barSeries;
 
-    public PriceChangePercentageIndicatorTest(NumFactory numFactory) {
+    public PercentageChangeIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -74,8 +74,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     @Test
     public void indicatorShouldReturnNaNForZeroPreviousValue() {
         BarSeries seriesWithZero = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 10, 20).build();
-        PercentageChangeIndicator indicator = new PercentageChangeIndicator(
-                new ClosePriceIndicator(seriesWithZero));
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(new ClosePriceIndicator(seriesWithZero));
 
         assertThat(indicator.getValue(0).isNaN()).isTrue();
         assertThat(indicator.getValue(1).isNaN()).isTrue(); // Previous value is 0, division by zero
@@ -187,8 +186,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
         // Even though we pass a previousIndicator, it should be ignored when threshold
         // > 0
         FixedIndicator<Num> dummyPrevious = new FixedIndicator<>(series, numOf(999), numOf(998), numOf(997));
-        PercentageChangeIndicator indicator = new PercentageChangeIndicator(mockIndicator, dummyPrevious,
-                numOf(5));
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(mockIndicator, dummyPrevious, numOf(5));
 
         // Should behave the same as without previousIndicator when threshold is set
         assertNumEquals(NaN.NaN, indicator.getValue(0));
@@ -206,7 +204,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Test
     public void indicatorShouldMatchDifferencePercentageIndicatorBehavior() {
-        // Test that PriceChangePercentageIndicator with threshold=0 matches
+        // Test that PercentageChangeIndicator with threshold=0 matches
         // DifferencePercentageIndicator with threshold=0
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<>(series, numOf(100), numOf(101), numOf(98.98),

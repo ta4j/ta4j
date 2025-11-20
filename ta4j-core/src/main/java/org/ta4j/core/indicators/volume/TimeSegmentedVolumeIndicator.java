@@ -28,7 +28,7 @@ import static org.ta4j.core.num.NaN.NaN;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -46,7 +46,7 @@ import org.ta4j.core.num.Num;
  *      Volume (TSV)</a>
  */
 public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
-    private final PriceChangeIndicator closePriceDifference;
+    private final DifferenceIndicator closePriceDifference;
     private final int barCount;
 
     /**
@@ -58,7 +58,7 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
     public TimeSegmentedVolumeIndicator(BarSeries series, int barCount) {
         super(series);
 
-        this.closePriceDifference = new PriceChangeIndicator(new ClosePriceIndicator(series));
+        this.closePriceDifference = new DifferenceIndicator(new ClosePriceIndicator(series));
         this.barCount = barCount;
     }
 

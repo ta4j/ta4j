@@ -29,7 +29,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
-import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
@@ -281,7 +281,7 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
     public void serializationRoundTrip() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, -2, 3, -4, 5, -6).build();
         Indicator<Num> base = new ClosePriceIndicator(series);
-        Indicator<Num> priceChange = new PriceChangeIndicator(base);
+        Indicator<Num> priceChange = new DifferenceIndicator(base);
         UnaryOperationIndicator original = UnaryOperationIndicator.abs(priceChange);
 
         String json = original.toJson();

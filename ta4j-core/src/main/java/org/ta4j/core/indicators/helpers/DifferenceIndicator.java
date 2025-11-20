@@ -34,22 +34,22 @@ import static org.ta4j.core.num.NaN.NaN;
  * indicator.
  *
  * <pre>
- * PriceChange = currentValue - previousValue
+ * Difference = currentValue - previousValue
  * </pre>
  *
  * @since 0.20
  */
-public class PriceChangeIndicator extends CachedIndicator<Num> {
+public class DifferenceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
     /**
      * Constructor.
      *
-     * @param indicator the indicator to calculate the change for
+     * @param indicator the indicator to calculate the difference for
      * @since 0.20
      */
-    public PriceChangeIndicator(Indicator<Num> indicator) {
+    public DifferenceIndicator(Indicator<Num> indicator) {
         super(indicator);
         this.indicator = indicator;
     }

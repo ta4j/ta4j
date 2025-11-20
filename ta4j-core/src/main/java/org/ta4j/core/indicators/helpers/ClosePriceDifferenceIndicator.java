@@ -32,18 +32,18 @@ import org.ta4j.core.BarSeries;
  * ClosePriceDifference = currentBarClosePrice - previousBarClosePrice
  * </pre>
  *
- * @deprecated Use {@link PriceChangeIndicator} with {@link ClosePriceIndicator}
+ * @deprecated Use {@link DifferenceIndicator} with {@link ClosePriceIndicator}
  *             instead. This class will be removed in a future release.
  */
 @Deprecated
-public class ClosePriceDifferenceIndicator extends PriceChangeIndicator {
+public class ClosePriceDifferenceIndicator extends DifferenceIndicator {
 
     /**
      * Constructor.
      *
      * @param series the bar series
      * @deprecated Use
-     *             {@code new PriceChangeIndicator(new ClosePriceIndicator(series))}
+     *             {@code new DifferenceIndicator(new ClosePriceIndicator(series))}
      *             instead.
      */
     @Deprecated

@@ -21,44 +21,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.serialization;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PercentageChangeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
-public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+import static org.assertj.core.api.Assertions.assertThat;
 
-    private DifferenceIndicator priceChange;
-
-    private BarSeries barSeries;
-
-    public PriceChangeIndicatorTest(NumFactory numFactory) {
-        super(numFactory);
-    }
-
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        priceChange = new DifferenceIndicator(new ClosePriceIndicator(barSeries));
-    }
+public class PercentageChangeIndicatorSerializationTest {
 
     @Test
-    public void indicatorShouldRetrieveBarDifference() {
-        assertThat(priceChange.getValue(0).isNaN()).isTrue();
-        for (int i = 1; i < 10; i++) {
-            Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
-            Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
-            assertEquals(priceChange.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
-        }
+    public void trimDecimalParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 1.5, 2, 3, 5).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+        // Use constructor with threshold only (no previousIndicator) for proper
+        // deserialization matching
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(base, 1.5);
+
+        ComponentDescriptor descriptor = indicator.toDescriptor();
+        assertThat(descriptor.getParameters()).containsEntry("percentageThreshold", "1.5");
+
+        String json = indicator.toJson();
+        ComponentDescriptor parsed = ComponentSerialization.parse(json);
+        assertThat(parsed.getParameters()).containsEntry("percentageThreshold", "1.5");
+
+        Indicator<?> reconstructed = Indicator.fromJson(series, json);
+        assertThat(reconstructed).isInstanceOf(PercentageChangeIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
     }
 }

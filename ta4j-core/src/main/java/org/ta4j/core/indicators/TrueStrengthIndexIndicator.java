@@ -27,7 +27,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
-import org.ta4j.core.indicators.helpers.PriceChangeIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
@@ -83,7 +83,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         this.secondSmoothingPeriod = secondSmoothingPeriod;
         this.priceIndicator = indicator;
 
-        PriceChangeIndicator priceChangeIndicator = new PriceChangeIndicator(this.priceIndicator);
+        DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(this.priceIndicator);
         EMAIndicator firstSmoothingChange = new EMAIndicator(priceChangeIndicator, firstSmoothingPeriod);
         this.doubleSmoothedChange = new EMAIndicator(firstSmoothingChange, secondSmoothingPeriod);
 

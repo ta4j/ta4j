@@ -42,7 +42,7 @@ public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     private BarSeries barSeries;
 
-    public PriceChangeIndicatorTest(NumFactory numFactory) {
+    public DifferenceIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
