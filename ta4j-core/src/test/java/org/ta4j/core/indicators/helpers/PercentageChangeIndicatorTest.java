@@ -41,6 +41,8 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 
 public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -219,5 +221,25 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
         assertNumEquals(numOf(-10), indicator.getValue(4));
         assertNumEquals(numOf(9.3), indicator.getValue(5));
         assertNumEquals(numOf(1), indicator.getValue(6));
+    }
+
+    @Test
+    public void trimDecimalParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 1.5, 2, 3, 5).build();
+        Indicator<Num> base = new ClosePriceIndicator(series);
+        // Use constructor with threshold only (no previousIndicator) for proper
+        // deserialization matching
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(base, 1.5);
+
+        ComponentDescriptor descriptor = indicator.toDescriptor();
+        assertThat(descriptor.getParameters()).containsEntry("percentageThreshold", "1.5");
+
+        String json = indicator.toJson();
+        ComponentDescriptor parsed = ComponentSerialization.parse(json);
+        assertThat(parsed.getParameters()).containsEntry("percentageThreshold", "1.5");
+
+        Indicator<?> reconstructed = Indicator.fromJson(series, json);
+        assertThat(reconstructed).isInstanceOf(PercentageChangeIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
     }
 }
