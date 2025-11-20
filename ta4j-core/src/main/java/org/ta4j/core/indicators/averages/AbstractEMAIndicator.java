@@ -74,11 +74,6 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             return NaN;
         }
 
-        // Handle beginIndex (supports non-zero beginIndex)
-        if (index <= beginIndex) {
-            return current;
-        }
-
         // Get previous value and check for NaN
         Num prevValue = getValue(index - 1);
         if (isNaN(prevValue)) {
