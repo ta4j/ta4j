@@ -11,6 +11,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
     - **RecentZigZagSwingLowIndicator**: Returns the price value of the most recently confirmed ZigZag swing low, enabling tracking of support levels and building trend-following strategies.
     - **ZigZagState**: Immutable state object encapsulating ZigZag pattern information at each bar.
     - **ZigZagTrend**: Enum representing the current trend direction (UP, DOWN, UNDEFINED) in a ZigZag pattern.
+- **Trendline support and resistance indicators**: Added trendline indicators in `org.ta4j.core.indicators.supportresistance` package for projecting support and resistance trend lines based on swing points.
+    - **TrendLineSupportIndicator**: Projects a rising or falling support trend line by connecting the two most recent confirmed swing lows. Supports configurable swing detection windows and can work with any price indicator.
+    - **TrendLineResistanceIndicator**: Projects a resistance trend line by connecting the two most recent confirmed swing highs. Supports configurable swing detection windows and can work with any price indicator.
+    - **AbstractTrendLineIndicator**: Abstract base class providing common trendline projection logic for both support and resistance indicators.
 
 ## 0.19 (released November 19, 2025)
 
