@@ -2,7 +2,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **ZigZag pattern indicators**: Added comprehensive ZigZag indicator suite in `org.ta4j.core.indicators.zigzag` package for identifying significant price reversals and swing points. The ZigZag algorithm filters out price movements below a specified threshold to highlight meaningful trend changes.
+    - **ZigZagStateIndicator**: Core indicator that tracks ZigZag pattern state, including confirmed swing highs and lows, current trend direction, and current extreme points. Supports both fixed and dynamic reversal thresholds (e.g., based on ATR).
+    - **ZigZagPivotHighIndicator**: Boolean indicator that returns `true` when a new swing high is confirmed, useful for detecting swing high confirmations in real-time.
+    - **ZigZagPivotLowIndicator**: Boolean indicator that returns `true` when a new swing low is confirmed, useful for detecting swing low confirmations in real-time.
+    - **RecentZigZagSwingHighIndicator**: Returns the price value of the most recently confirmed ZigZag swing high, enabling tracking of resistance levels and building trend-following strategies.
+    - **RecentZigZagSwingLowIndicator**: Returns the price value of the most recently confirmed ZigZag swing low, enabling tracking of support levels and building trend-following strategies.
+    - **ZigZagState**: Immutable state object encapsulating ZigZag pattern information at each bar.
+    - **ZigZagTrend**: Enum representing the current trend direction (UP, DOWN, UNDEFINED) in a ZigZag pattern.
 
 ## 0.19 (released November 19, 2025)
 
