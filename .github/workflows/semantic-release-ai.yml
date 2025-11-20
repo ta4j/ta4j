@@ -1,0 +1,189 @@
+name: AI Semantic Release Scheduler
+
+on:
+  schedule:
+    - cron: "0 9 */14 * *"  # every 14 days
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "Simulate only; do NOT trigger release.yml"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+
+jobs:
+  semantic-release-ai:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Determine last tag
+        id: lasttag
+        run: |
+          last=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          echo "last=$last" >> $GITHUB_OUTPUT
+
+      - name: Collect diff since last release
+        id: diff
+        run: |
+          if [ "${{ steps.lasttag.outputs.last }}" = "none" ]; then
+            diff=$(git log --pretty=format:"%h %s%n%b%n---END---")
+          else
+            diff=$(git log ${{ steps.lasttag.outputs.last }}..HEAD --pretty=format:"%h %s%n%b%n---END---")
+          fi
+
+          diff_json=$(printf '%s' "$diff" | jq -Rsa .)
+          echo "diff=$diff_json" >> $GITHUB_OUTPUT
+
+      - name: Extract Unreleased section from CHANGELOG
+        id: changelog
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "changelog=\"\"" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          unreleased=$(awk '
+            BEGIN{inSection=0}
+            /^## *\[?Unreleased\]?/ {inSection=1; next}
+            /^## / && inSection {exit}
+            inSection {print}
+          ' CHANGELOG.md)
+
+          changelog_json=$(printf '%s' "$unreleased" | jq -Rsa .)
+          echo "changelog=$changelog_json" >> $GITHUB_OUTPUT
+
+      # -------------------------------------------------------------
+      # AI STEP — Semantic Versioning with Strong SemVer Guardrails
+      # -------------------------------------------------------------
+      - name: Ask AI for semantic version bump
+        id: ai
+        run: |
+          payload=$(jq -n \
+            --arg diff "${{ steps.diff.outputs.diff }}" \
+            --arg changelog "${{ steps.changelog.outputs.changelog }}" \
+            '{
+              model: "gpt-4o",
+              temperature: 0,
+              messages: [
+                {
+                  "role": "system",
+                  "content": "You are an expert in Semantic Versioning. STRICT JSON ONLY."
+                },
+                {
+                  "role": "user",
+                  "content": (
+                    "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
+                    "=== DIFF ===\n" + $diff + "\n\n" +
+                    "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
+                    "SemVer Rules:\n" +
+                    "MAJOR: Only when breaking API changes.\n" +
+                    "MINOR: Backward-compatible new features.\n" +
+                    "PATCH: Backward-compatible bug fixes.\n\n" +
+                    "If diff empty or changelog-only → should_release=false.\n" +
+                    "NEVER major without explicit breaking change evidence.\n\n" +
+                    "Return ONLY JSON:\n" +
+                    "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\" }"
+                  )
+                }
+              ]
+            }')
+
+          echo "$payload" > request.json
+
+          response=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://models.inference.ai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview \
+            -d @request.json)
+
+          echo "$response" > response.json
+
+          content=$(jq -r '.choices[0].message.content' response.json)
+          echo "content=$content" >> $GITHUB_OUTPUT
+
+      - name: Parse AI JSON
+        id: parsed
+        run: |
+          echo '${{ steps.ai.outputs.content }}' > ai.json
+          should=$(jq -r '.should_release' ai.json)
+          bump=$(jq -r '.bump' ai.json)
+          echo "should_release=$should" >> $GITHUB_OUTPUT
+          echo "bump=$bump" >> $GITHUB_OUTPUT
+
+      - name: Stop if AI says no release
+        if: steps.parsed.outputs.should_release == 'false'
+        run: echo "No release recommended."
+
+      # -----------------------
+      # Version Computation
+      # -----------------------
+      - name: Compute new version
+        id: version
+        if: steps.parsed.outputs.should_release == 'true'
+        run: |
+          last="${{ steps.lasttag.outputs.last }}"
+
+          if [ "$last" = "none" ]; then
+            major=0; minor=1; patch=0
+          else
+            IFS='.' read -r major minor patch <<< "${last#v}"
+            case "${{ steps.parsed.outputs.bump }}" in
+              major) major=$((major+1)); minor=0; patch=0 ;;
+              minor) minor=$((minor+1)); patch=0 ;;
+              patch) patch=$((patch+1)) ;;
+            esac
+          fi
+
+          new="v${major}.${minor}.${patch}"
+          echo "version=$new" >> $GITHUB_OUTPUT
+
+      # ---------------------------------------------------------
+      # DRY-RUN MODE — Only Output Computed Version
+      # ---------------------------------------------------------
+      - name: Handle Dry Run
+        if: ${{ github.event.inputs.dryRun == 'true' && steps.parsed.outputs.should_release == 'true' }}
+        run: |
+          echo "======================="
+          echo "      DRY RUN MODE      "
+          echo "======================="
+          echo "AI recommends release:"
+          echo "  bump:        ${{ steps.parsed.outputs.bump }}"
+          echo "  version:     ${{ steps.version.outputs.version }}"
+          echo ""
+          echo "(Dry run enabled — skipping release trigger)"
+          exit 0
+
+      # ---------------------------------------------------------
+      # Trigger actual release workflow
+      # ---------------------------------------------------------
+      - name: Trigger publish workflow
+        if: steps.parsed.outputs.should_release == 'true' && github.event.inputs.dryRun != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "release.yml",
+              ref: "master",
+              inputs: {
+                releaseVersion: "${{ steps.version.outputs.version }}"
+              }
+            })
