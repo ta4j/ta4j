@@ -28,18 +28,22 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class WaitForRuleTest {
 
     private TradingRecord tradingRecord;
     private WaitForRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
         tradingRecord = new BaseTradingRecord();
+        series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
     }
 
     @Test
@@ -95,5 +99,12 @@ public class WaitForRuleTest {
         assertFalse(rule.isSatisfied(20, tradingRecord));
         assertFalse(rule.isSatisfied(21, tradingRecord));
         assertTrue(rule.isSatisfied(22, tradingRecord));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        rule = new WaitForRule(Trade.TradeType.BUY, 2);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

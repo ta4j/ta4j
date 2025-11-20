@@ -37,6 +37,7 @@ import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+@SuppressWarnings("deprecation")
 public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private CombineIndicator combinePlus;

@@ -96,4 +96,14 @@ public class OpenedPositionMinimumBarCountRuleTest {
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1, 2, 3)
+                .build();
+        final var rule = new OpenedPositionMinimumBarCountRule(2);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
 }

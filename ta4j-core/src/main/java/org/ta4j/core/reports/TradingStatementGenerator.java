@@ -28,13 +28,11 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Generates a {@link TradingStatement} based on the provided trading record and
- * bar series.
+ * Generates a {@link BaseTradingStatement} based on the provided trading record
+ * and bar series.
  */
-public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
-
-    private final PerformanceReportGenerator performanceReportGenerator;
-    private final PositionStatsReportGenerator positionStatsReportGenerator;
+public record TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
+        PositionStatsReportGenerator positionStatsReportGenerator) implements ReportGenerator<TradingStatement> {
 
     /**
      * Constructor with new {@link PerformanceReportGenerator} and new
@@ -50,18 +48,15 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
      * @param performanceReportGenerator   the {@link PerformanceReportGenerator}
      * @param positionStatsReportGenerator the {@link PositionStatsReportGenerator}
      */
-    public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
-            PositionStatsReportGenerator positionStatsReportGenerator) {
-        this.performanceReportGenerator = performanceReportGenerator;
-        this.positionStatsReportGenerator = positionStatsReportGenerator;
+    public TradingStatementGenerator {
     }
 
     @Override
     public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
+        final BasePerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
                 series);
         final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord,
                 series);
-        return new TradingStatement(strategy, positionStatsReport, performanceReport);
+        return new BaseTradingStatement(strategy, tradingRecord, positionStatsReport, performanceReport);
     }
 }

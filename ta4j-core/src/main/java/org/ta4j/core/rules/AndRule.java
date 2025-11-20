@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
@@ -48,8 +50,9 @@ public class AndRule extends AbstractRule {
      * @param rule2 another trading rule
      */
     public AndRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
+        this.rule1 = Objects.requireNonNull(rule1, "rule1 cannot be null");
+        this.rule2 = Objects.requireNonNull(rule2, "rule2 cannot be null");
+        setName(createCompositeName(getClass().getSimpleName(), rule1.getName(), rule2.getName()));
     }
 
     @Override
