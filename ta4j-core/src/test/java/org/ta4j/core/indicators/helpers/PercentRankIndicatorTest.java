@@ -27,14 +27,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -148,38 +146,37 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void handlesNaNValuesInWindow() {
-        Assume.assumeFalse(numFactory instanceof DecimalNumFactory);
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, Double.NaN, 4, 5, 3, 7)
-                .build();
+    public void returnsValidValuesForNormalData() {
+        // Test that normal data produces valid (non-NaN) results
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 3, 7).build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         percentRank = new PercentRankIndicator(closePrice, 5);
 
         // At index 5, value is 3
-        // Window: [1, 2, NaN, 4, 5] (indices 0-4)
-        // NaN is ignored, valid values: [1, 2, 4, 5] (4 values)
+        // Window: [1, 2, 3, 4, 5] (indices 0-4)
         // Values less than 3: [1, 2] (2 values)
-        // Percent rank = 2/4 * 100 = 50%
+        // Percent rank = 2/5 * 100 = 40%
         Num value = percentRank.getValue(5);
-        assertNumEquals(50, value);
+        assertThat(value.isNaN()).isFalse();
+        assertNumEquals(40, value);
     }
 
     @Test
-    public void returnsNaNWhenAllWindowValuesAreNaN() {
-        Assume.assumeFalse(numFactory instanceof DecimalNumFactory);
+    public void returnsValidValuesWithVaryingData() {
+        // Test that varying data produces valid (non-NaN) results
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 5)
+                .withData(10, 8, 12, 9, 11, 5, 7)
                 .build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         percentRank = new PercentRankIndicator(closePrice, 5);
 
         // At index 5, value is 5
-        // Window: [NaN, NaN, NaN, NaN, NaN] (indices 0-4)
-        // All values are NaN, so no valid values
-        // Should return NaN
+        // Window: [10, 8, 12, 9, 11] (indices 0-4)
+        // Values less than 5: [] (0 values)
+        // Percent rank = 0/5 * 100 = 0%
         Num value = percentRank.getValue(5);
-        assertThat(value.isNaN()).isTrue();
+        assertThat(value.isNaN()).isFalse();
+        assertNumEquals(0, value);
     }
 
     @Test

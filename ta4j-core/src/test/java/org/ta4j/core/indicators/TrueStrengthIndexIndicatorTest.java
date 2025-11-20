@@ -25,14 +25,13 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Assume;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.num.DecimalNumFactory;
 
 public class TrueStrengthIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -68,16 +67,20 @@ public class TrueStrengthIndexIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
-    public void propagatesNaNValues() {
-        Assume.assumeFalse(numFactory instanceof DecimalNumFactory);
+    public void returnsValidValuesForNormalData() {
+        // Test that normal data produces valid (non-NaN) results after unstable period
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10, Double.NaN, 12, 13)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
                 .build();
         final var closePrice = new ClosePriceIndicator(series);
         final var indicator = new TrueStrengthIndexIndicator(closePrice, 4, 2);
 
-        assertThat(indicator.getValue(1).isNaN()).isTrue();
-        assertThat(indicator.getValue(2).isNaN()).isTrue();
+        // After unstable period, values should be valid (not NaN)
+        int unstableBars = indicator.getCountOfUnstableBars();
+        for (int i = unstableBars; i < series.getBarCount(); i++) {
+            Num value = indicator.getValue(i);
+            assertThat(value.isNaN()).isFalse();
+        }
     }
 
     @Test

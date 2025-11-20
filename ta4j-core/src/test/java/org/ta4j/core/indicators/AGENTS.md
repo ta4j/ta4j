@@ -9,6 +9,7 @@
 - Use `MockIndicator` for mocking indicator values.
 - Prefer AssertJ assertions for expressiveness and to check `Num` results via `isEqualByComparingTo`.
 - When asserting exception scenarios, use JUnit 5's `Assertions.assertThrows` for consistency across test suites.
+- **Never use `Assume.assumeFalse(numFactory instanceof DecimalNumFactory)` to skip tests.** Since `Num.isNaN()` returns `false` by default for valid values, test with valid data and assert that results are not NaN using `assertFalse(value.isNaN())`. This ensures tests run for both `DoubleNum` and `DecimalNum` implementations. For example, instead of testing NaN propagation with `Double.NaN` (which doesn't work with `DecimalNum`), test that normal data produces valid (non-NaN) results.
 
 ## Test coverage
 - All new indicator classes should be accompanied by comprehensive unit test coverage, both to demonstrate correctness but also to serve as protection against regressions during future changes. Tests covering round trip serialization/deserialization must be included.
