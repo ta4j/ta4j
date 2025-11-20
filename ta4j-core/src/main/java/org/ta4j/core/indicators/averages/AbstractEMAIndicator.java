@@ -27,8 +27,16 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Base class for Exponential Moving Average implementations.
+ *
+ * <p>
+ * Provides robust NaN handling to prevent contamination of future values when
+ * invalid data is encountered. When a NaN value is detected, it is returned
+ * immediately. If a previous value is NaN, the indicator resets to the current
+ * value to allow graceful recovery.
  */
 public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -52,11 +60,49 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
+        // Return NaN during unstable period
+        int beginIndex = getBarSeries().getBeginIndex();
+        int unstableBars = getCountOfUnstableBars();
+        if (index < beginIndex + unstableBars) {
+            return NaN;
         }
+
+        Num current = indicator.getValue(index);
+
+        // Check for NaN in current value
+        if (isNaN(current)) {
+            return NaN;
+        }
+
+        // Handle beginIndex (supports non-zero beginIndex)
+        if (index <= beginIndex) {
+            return current;
+        }
+
+        // Get previous value and check for NaN
         Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+        if (isNaN(prevValue)) {
+            // Graceful recovery: reset to current value when previous is NaN
+            // This prevents contamination of future values
+            return current;
+        }
+
+        // Standard EMA calculation
+        return prevValue.plus(current.minus(prevValue).multipliedBy(multiplier));
+    }
+
+    /**
+     * Checks if a Num value is NaN.
+     *
+     * <p>
+     * Handles both {@link Num#isNaN()} and {@link Double#isNaN(double)} to properly
+     * detect NaN values from both DecimalNum and DoubleNum implementations.
+     *
+     * @param value the value to check
+     * @return true if the value is NaN, false otherwise
+     */
+    private static boolean isNaN(Num value) {
+        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 
     @Override

@@ -26,8 +26,7 @@ package org.ta4j.core.indicators;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,7 +43,6 @@ import org.ta4j.core.num.Num;
  */
 public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final DoubleSmoothedIndicator doubleSmoothedChange;
     private final DoubleSmoothedIndicator doubleSmoothedAbsoluteChange;
     private final int firstSmoothingPeriod;
@@ -77,7 +75,6 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         if (secondSmoothingPeriod < 1) {
             throw new IllegalArgumentException("Second smoothing period must be a positive integer");
         }
-        this.indicator = indicator;
         this.firstSmoothingPeriod = firstSmoothingPeriod;
         this.secondSmoothingPeriod = secondSmoothingPeriod;
 
@@ -158,14 +155,14 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
     private static final class DoubleSmoothedIndicator extends CachedIndicator<Num> {
 
-        private final SmoothingIndicator firstSmoothing;
-        private final SmoothingIndicator secondSmoothing;
+        private final EMAIndicator firstSmoothing;
+        private final EMAIndicator secondSmoothing;
         private final int unstableBars;
 
         private DoubleSmoothedIndicator(Indicator<Num> indicator, int firstPeriod, int secondPeriod) {
             super(indicator);
-            this.firstSmoothing = new SmoothingIndicator(indicator, firstPeriod);
-            this.secondSmoothing = new SmoothingIndicator(firstSmoothing, secondPeriod);
+            this.firstSmoothing = new EMAIndicator(indicator, firstPeriod);
+            this.secondSmoothing = new EMAIndicator(firstSmoothing, secondPeriod);
             this.unstableBars = firstPeriod + secondPeriod;
         }
 
@@ -177,45 +174,6 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;
-        }
-    }
-
-    private static final class SmoothingIndicator extends RecursiveCachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final Num multiplier;
-        private final int period;
-
-        private SmoothingIndicator(Indicator<Num> indicator, int period) {
-            super(indicator);
-            if (period < 1) {
-                throw new IllegalArgumentException("Smoothing period must be a positive integer");
-            }
-            this.indicator = indicator;
-            this.multiplier = getBarSeries().numFactory().numOf(2.0 / (period + 1));
-            this.period = period;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            Num current = indicator.getValue(index);
-            if (isNaN(current)) {
-                return NaN;
-            }
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
-                return current;
-            }
-            Num previous = getValue(index - 1);
-            if (isNaN(previous)) {
-                return current;
-            }
-            return previous.plus(current.minus(previous).multipliedBy(multiplier));
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return period;
         }
     }
 

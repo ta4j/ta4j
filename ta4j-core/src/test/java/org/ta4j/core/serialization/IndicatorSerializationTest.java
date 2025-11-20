@@ -370,4 +370,5 @@ public class IndicatorSerializationTest {
             return baseValue;
         }
     }
+
 }

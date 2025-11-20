@@ -23,14 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.indicators.MACDIndicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,11 +41,7 @@ import org.ta4j.core.num.Num;
  */
 public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
-    private final MACDIndicator macd;
-    private final StochasticIndicator macdStochastic;
-    private final SmoothingIndicator macdStochasticSmoothed;
-    private final StochasticIndicator cycleStochastic;
-    private final SmoothingIndicator stcSmoothed;
+    private final EMAIndicator stcSmoothed;
     private final int slowPeriod;
     private final int cycleLength;
     private final int smoothingPeriod;
@@ -91,11 +81,11 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         this.cycleLength = cycleLength;
         this.smoothingPeriod = smoothingPeriod;
 
-        this.macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
-        this.macdStochastic = new StochasticIndicator(macd, cycleLength);
-        this.macdStochasticSmoothed = new SmoothingIndicator(macdStochastic, smoothingPeriod);
-        this.cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        this.stcSmoothed = new SmoothingIndicator(cycleStochastic, smoothingPeriod);
+        MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
+        StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
+        EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
+        StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
+        this.stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
     }
 
     @Override
@@ -106,91 +96,5 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return slowPeriod + cycleLength + smoothingPeriod;
-    }
-
-    private static final class StochasticIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final HighestValueIndicator highest;
-        private final LowestValueIndicator lowest;
-        private final int lookback;
-
-        private StochasticIndicator(Indicator<Num> indicator, int lookback) {
-            super(indicator);
-            if (lookback < 1) {
-                throw new IllegalArgumentException("Stochastic look-back length must be a positive integer");
-            }
-            this.indicator = indicator;
-            this.highest = new HighestValueIndicator(indicator, lookback);
-            this.lowest = new LowestValueIndicator(indicator, lookback);
-            this.lookback = lookback;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            Num value = indicator.getValue(index);
-            if (isNaN(value)) {
-                return NaN;
-            }
-            Num highestValue = highest.getValue(index);
-            Num lowestValue = lowest.getValue(index);
-            if (isNaN(highestValue) || isNaN(lowestValue)) {
-                return NaN;
-            }
-            Num range = highestValue.minus(lowestValue);
-            if (range.isZero()) {
-                int beginIndex = getBarSeries().getBeginIndex();
-                return index <= beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
-            }
-            return value.minus(lowestValue).dividedBy(range).multipliedBy(getBarSeries().numFactory().hundred());
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return lookback;
-        }
-    }
-
-    private static final class SmoothingIndicator extends RecursiveCachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final Num multiplier;
-        private final int period;
-
-        private SmoothingIndicator(Indicator<Num> indicator, int period) {
-            super(indicator);
-            if (period < 1) {
-                throw new IllegalArgumentException("Smoothing period must be a positive integer");
-            }
-            this.indicator = indicator;
-            this.multiplier = getBarSeries().numFactory().numOf(2.0 / (period + 1));
-            this.period = period;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            Num current = indicator.getValue(index);
-            if (isNaN(current)) {
-                return NaN;
-            }
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
-                return current;
-            }
-            Num previous = getValue(index - 1);
-            if (isNaN(previous)) {
-                return current;
-            }
-            return previous.plus(current.minus(previous).multipliedBy(multiplier));
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return period;
-        }
-    }
-
-    private static boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

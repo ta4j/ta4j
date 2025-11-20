@@ -86,6 +86,10 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // Return NaN during unstable period
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num priceRsiValue = priceRsi.getValue(index);
         Num streakRsiValue = streakRsi.getValue(index);
         Num percentRankValue = percentRankIndicator.getValue(index);

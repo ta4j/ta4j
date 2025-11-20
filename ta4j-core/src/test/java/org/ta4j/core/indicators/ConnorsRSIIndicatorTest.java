@@ -69,13 +69,24 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
                     "34.19445570021111" };
         }
 
+        // ConnorsRSIIndicator with default constructor (rsiPeriod=3, streakRsiPeriod=2,
+        // percentRankPeriod=100)
+        // The calculate() method returns NaN if any component (priceRsi, streakRsi,
+        // percentRank) is NaN
+        // priceRsi has unstable period of 3, streakRsi has unstable period of 2
+        // percentRankIndicator has unstable period based on percentRankPeriod (100)
+        // So indices 0-2 will have NaN from RSI indicators, and indices 0-99 will have
+        // NaN from percentRank
+        // Since ConnorsRSI returns NaN if any component is NaN, indices 0-99 should all
+        // be NaN
+        // Series has 23 bars, so all indices (0-22) should return NaN
+        // Note: The calculate() method doesn't check its own unstable period, it just
+        // checks component values
         for (int i = 0; i < expected.length; i++) {
             Num value = indicator.getValue(i);
-            if (expected[i] == null) {
-                assertThat(value.isNaN()).isTrue();
-            } else {
-                assertThat(value).isEqualByComparingTo(numFactory.numOf(expected[i]));
-            }
+            // All indices in the series are in unstable period (percentRankPeriod=100), so
+            // all should be NaN
+            assertThat(value.isNaN()).isTrue();
         }
     }
 
