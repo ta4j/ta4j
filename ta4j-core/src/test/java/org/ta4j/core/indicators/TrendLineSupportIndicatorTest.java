@@ -114,16 +114,31 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var lowIndicator = new LowPriceIndicator(series);
         final var indicator = new TrendLineSupportIndicator(lowIndicator, 1, 1, 0);
 
-        final double[] lows = { 12, 11, 9, 10, 13, 8, 9, 11, 7, 10, 12 };
-        for (double low : lows) {
+        final double[] initialLows = { 12, 11, 9, 10, 13, 8, 9, 11, 7, 10, 12 };
+        for (double low : initialLows) {
             final double high = low + 2d;
             series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
             indicator.getValue(series.getEndIndex());
         }
 
-        final int beginIndex = series.getBeginIndex();
-        assertThat(beginIndex).isGreaterThan(0);
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex);
+        final int beginAfterPurging = series.getBeginIndex();
+        assertThat(beginAfterPurging).isGreaterThan(0);
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginAfterPurging);
+        assertThat(indicator.getValue(series.getEndIndex()).isNaN())
+                .as("only one pivot remains so projection should be NaN")
+                .isTrue();
+
+        final double[] additionalLows = { 9, 13, 8, 12 };
+        for (double low : additionalLows) {
+            final double high = low + 2d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+            indicator.getValue(series.getEndIndex());
+        }
+
+        final int finalBeginIndex = series.getBeginIndex();
+        assertThat(finalBeginIndex).isGreaterThan(beginAfterPurging);
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= finalBeginIndex);
+        assertThat(indicator.getPivotIndexes()).containsExactly(11, 13);
         assertThat(indicator.getValue(series.getEndIndex()).isNaN()).isFalse();
     }
 

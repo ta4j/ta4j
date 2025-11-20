@@ -106,6 +106,42 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(valueAtEight).isEqualByComparingTo(slope.multipliedBy(numFactory.numOf(8)).plus(intercept));
     }
 
+    @Test
+    public void shouldPurgeCachedPivotsWhenSeriesLosesLeadingBars() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        series.setMaximumBarCount(5);
+        final var highIndicator = new HighPriceIndicator(series);
+        final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
+
+        final double[] initialHighs = { 12, 13, 15, 14, 16, 17, 15, 14, 18, 16, 15 };
+        for (double high : initialHighs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+            indicator.getValue(series.getEndIndex());
+        }
+
+        final int beginAfterPurging = series.getBeginIndex();
+        assertThat(beginAfterPurging).isGreaterThan(0);
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginAfterPurging);
+        assertThat(indicator.getValue(series.getEndIndex()).isNaN())
+                .as("only one pivot remains so projection should be NaN")
+                .isTrue();
+
+        final double[] additionalHighs = { 17, 15, 18, 16 };
+        for (double high : additionalHighs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+            indicator.getValue(series.getEndIndex());
+        }
+
+        final int finalBeginIndex = series.getBeginIndex();
+        assertThat(finalBeginIndex).isGreaterThan(beginAfterPurging);
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= finalBeginIndex);
+        assertThat(indicator.getPivotIndexes()).containsExactly(11, 13);
+        assertThat(indicator.getValue(series.getEndIndex()).isNaN()).isFalse();
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
