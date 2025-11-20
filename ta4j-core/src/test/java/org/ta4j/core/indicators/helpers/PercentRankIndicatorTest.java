@@ -245,4 +245,45 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         Num expected = numFactory.numOf(100).dividedBy(numFactory.numOf(3));
         assertNumEquals(expected, value);
     }
+
+    @Test
+    public void excludesUnstablePeriodValuesFromUnderlyingIndicator() {
+        // This test verifies that PercentRankIndicator correctly excludes values
+        // from the underlying indicator's unstable period when calculating the window
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 9, 12, 11, 10, 13)
+                .build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        PriceChangeIndicator priceChange = new PriceChangeIndicator(closePrice);
+        // PriceChangeIndicator has unstable period of 1, so index 0 returns NaN
+        percentRank = new PercentRankIndicator(priceChange, 5);
+
+        // At index 2, price change is 9 - 11 = -2
+        // Without the fix: startIndex = max(0, 2-5) = max(0, -3) = 0
+        // Window would include index 0 (NaN from unstable period), which gets skipped
+        // Window: [NaN, 11-10=1] (indices 0-1, but 0 is NaN so only 1 is valid)
+        // With the fix: startIndex = max(0+1, 2-5) = max(1, -3) = 1
+        // Window: [11-10=1] (index 1 only)
+        // Values less than -2: [] (0 values)
+        // Percent rank = 0/1 * 100 = 0%
+        Num value = percentRank.getValue(2);
+        assertNumEquals(0, value);
+
+        // At index 3, price change is 12 - 9 = 3
+        // With fix: startIndex = max(1, 3-5) = max(1, -2) = 1
+        // Window: [11-10=1, 9-11=-2] (indices 1-2)
+        // Values less than 3: [1, -2] (2 values)
+        // Percent rank = 2/2 * 100 = 100%
+        value = percentRank.getValue(3);
+        assertNumEquals(100, value);
+
+        // At index 4, price change is 11 - 12 = -1
+        // With fix: startIndex = max(1, 4-5) = max(1, -1) = 1
+        // Window: [11-10=1, 9-11=-2, 12-9=3] (indices 1-3)
+        // Values less than -1: [-2] (1 value)
+        // Percent rank = 1/3 * 100 = 33.33...%
+        value = percentRank.getValue(4);
+        Num expected = numFactory.numOf(100).dividedBy(numFactory.numOf(3));
+        assertNumEquals(expected, value);
+    }
 }

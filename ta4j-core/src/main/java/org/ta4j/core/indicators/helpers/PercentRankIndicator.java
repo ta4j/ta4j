@@ -95,7 +95,10 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
         }
 
         int beginIndex = getBarSeries().getBeginIndex();
-        int startIndex = Math.max(beginIndex, index - period);
+        // Account for underlying indicator's unstable period to avoid including NaN
+        // values
+        int adjustedBeginIndex = beginIndex + indicator.getCountOfUnstableBars();
+        int startIndex = Math.max(adjustedBeginIndex, index - period);
         int valid = 0;
         int lessThanCount = 0;
         for (int i = startIndex; i < index; i++) {
