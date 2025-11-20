@@ -131,10 +131,9 @@ public class TestUtils {
 
             // Handle NaN values - if both are NaN, they match; if only one is NaN, they
             // don't match
-            if (expectedValue.isNaN() || actualValue.isNaN() || Double.isNaN(expectedValue.doubleValue())
-                    || Double.isNaN(actualValue.doubleValue())) {
-                boolean expectedIsNaN = expectedValue.isNaN() || Double.isNaN(expectedValue.doubleValue());
-                boolean actualIsNaN = actualValue.isNaN() || Double.isNaN(actualValue.doubleValue());
+            if (Num.isNaNOrNull(expectedValue) || Num.isNaNOrNull(actualValue)) {
+                boolean expectedIsNaN = Num.isNaNOrNull(expectedValue);
+                boolean actualIsNaN = Num.isNaNOrNull(actualValue);
                 if (expectedIsNaN != actualIsNaN) {
                     throw new AssertionError(String.format("Failed at index %s: %s expected %s but actual was %s", i,
                             actual.toString(), expectedValue, actualValue));

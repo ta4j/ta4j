@@ -342,4 +342,57 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         }
     }
 
+    @Test
+    public void testIsNaNOrNull() {
+        // Test null value
+        assertTrue("null value should return true", Num.isNaNOrNull(null));
+
+        // Test NaN instance
+        assertTrue("NaN instance should return true", Num.isNaNOrNull(NaN));
+
+        // Test DoubleNum with Double.NaN (edge case - DoubleNum doesn't override isNaN())
+        // This should work regardless of which factory is being used for the test
+        final Num doubleNaN = DoubleNum.valueOf(Double.NaN);
+        assertTrue("DoubleNum with Double.NaN should return true", Num.isNaNOrNull(doubleNaN));
+
+        // Test valid DecimalNum values
+        final Num validDecimal = DecimalNum.valueOf(42.5);
+        assertFalse("Valid DecimalNum should return false", Num.isNaNOrNull(validDecimal));
+
+        // Test valid DoubleNum values
+        final Num validDouble = DoubleNum.valueOf(42.5);
+        assertFalse("Valid DoubleNum should return false", Num.isNaNOrNull(validDouble));
+
+        // Test zero values
+        final Num zero = numOf(0);
+        assertFalse("Zero value should return false", Num.isNaNOrNull(zero));
+
+        // Test negative values
+        final Num negative = numOf(-10.5);
+        assertFalse("Negative value should return false", Num.isNaNOrNull(negative));
+
+        // Test positive values
+        final Num positive = numOf(100.25);
+        assertFalse("Positive value should return false", Num.isNaNOrNull(positive));
+
+        // Test very small values
+        final Num small = numOf(0.0001);
+        assertFalse("Small value should return false", Num.isNaNOrNull(small));
+
+        // Test very large values
+        final Num large = numOf(1e10);
+        assertFalse("Large value should return false", Num.isNaNOrNull(large));
+
+        // Test infinity (if supported by the factory)
+        if (this.numFactory instanceof DoubleNumFactory) {
+            final Num positiveInfinity = DoubleNum.valueOf(Double.POSITIVE_INFINITY);
+            // Double.POSITIVE_INFINITY is not NaN, so should return false
+            assertFalse("Positive infinity should return false", Num.isNaNOrNull(positiveInfinity));
+
+            final Num negativeInfinity = DoubleNum.valueOf(Double.NEGATIVE_INFINITY);
+            // Double.NEGATIVE_INFINITY is not NaN, so should return false
+            assertFalse("Negative infinity should return false", Num.isNaNOrNull(negativeInfinity));
+        }
+    }
+
 }

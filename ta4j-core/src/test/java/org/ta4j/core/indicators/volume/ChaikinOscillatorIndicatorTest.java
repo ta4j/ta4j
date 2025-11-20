@@ -89,12 +89,12 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
         // Chaikin Oscillator uses two EMA indicators (short=3, long=10)
         // The long EMA defines the unstable period (10 bars)
         for (int i = 0; i < 10; i++) {
-            assertThat(co.getValue(i).isNaN() || Double.isNaN(co.getValue(i).doubleValue())).isTrue();
+            assertThat(Num.isNaNOrNull(co.getValue(i))).isTrue();
         }
 
         // After the unstable period, values should be defined (non-NaN)
         for (int i = 10; i < series.getBarCount(); i++) {
-            assertThat(co.getValue(i).isNaN() || Double.isNaN(co.getValue(i).doubleValue())).isFalse();
+            assertThat(Num.isNaNOrNull(co.getValue(i))).isFalse();
         }
     }
 

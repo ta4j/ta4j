@@ -232,15 +232,11 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (int i = series.getBeginIndex() + unstableBars; i <= series.getEndIndex(); i++) {
             Num expected = original.getValue(i);
             Num actual = reconstructed.getValue(i);
-            if (isNaN(expected) || isNaN(actual)) {
-                assertThat(isNaN(actual)).isEqualTo(isNaN(expected));
+            if (Num.isNaNOrNull(expected) || Num.isNaNOrNull(actual)) {
+                assertThat(Num.isNaNOrNull(actual)).isEqualTo(Num.isNaNOrNull(expected));
             } else {
                 assertThat(actual).isEqualTo(expected);
             }
         }
-    }
-
-    private boolean isNaN(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

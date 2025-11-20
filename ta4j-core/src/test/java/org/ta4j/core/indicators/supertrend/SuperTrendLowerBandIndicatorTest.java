@@ -76,7 +76,7 @@ public class SuperTrendLowerBandIndicatorTest {
         // Indices 1-9 may be zero (from previousValue) or NaN (from currentBasic)
         for (int i = 1; i < 10; i++) {
             Num value = superTrendLowerBandIndicator.getValue(i);
-            assertThat(value.isZero() || value.isNaN() || Double.isNaN(value.doubleValue())).isTrue();
+            assertThat(value.isZero() || Num.isNaNOrNull(value)).isTrue();
         }
 
         // After unstable period, check that we can get values (they may still be

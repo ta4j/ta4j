@@ -90,7 +90,7 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num current = indicator.getValue(index);
-        if (current.isNaN() || Double.isNaN(current.doubleValue())) {
+        if (Num.isNaNOrNull(current)) {
             return NaN;
         }
 
@@ -103,7 +103,7 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
         int lessThanCount = 0;
         for (int i = startIndex; i < index; i++) {
             Num candidate = indicator.getValue(i);
-            if (candidate.isNaN() || Double.isNaN(candidate.doubleValue())) {
+            if (Num.isNaNOrNull(candidate)) {
                 continue;
             }
             valid++;

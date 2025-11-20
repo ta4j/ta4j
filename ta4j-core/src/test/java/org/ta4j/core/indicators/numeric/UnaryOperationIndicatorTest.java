@@ -222,12 +222,12 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
                 // DoubleNum doesn't override isNaN(), so we check the underlying double value
                 // For DecimalNum, this should throw NumberFormatException (caught below)
                 assertTrue("pow(" + series.getBar(i).getClosePrice() + ", 0.5) should be NaN, but got: " + halfResult,
-                        halfResult.isNaN() || Double.isNaN(halfResult.doubleValue()));
+                        Num.isNaNOrNull(halfResult));
                 assertTrue("pow(" + series.getBar(i).getClosePrice() + ", 1/3) should be NaN, but got: " + thirdResult,
-                        thirdResult.isNaN() || Double.isNaN(thirdResult.doubleValue()));
+                        Num.isNaNOrNull(thirdResult));
                 assertTrue(
                         "pow(" + series.getBar(i).getClosePrice() + ", 2/3) should be NaN, but got: " + twoThirdsResult,
-                        twoThirdsResult.isNaN() || Double.isNaN(twoThirdsResult.doubleValue()));
+                        Num.isNaNOrNull(twoThirdsResult));
             } catch (NumberFormatException e) {
                 // DecimalNum throws NumberFormatException when Math.pow returns NaN/Infinity
                 // This is also an edge case behavior that should be documented
