@@ -58,7 +58,6 @@ public class LSMAIndicator extends CachedIndicator<Num> {
      *
      * @param indicator an indicator
      * @param barCount  the moving average time window
-     * @param offset    the offset to apply to the indicator
      */
     public LSMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator.getBarSeries());

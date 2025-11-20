@@ -29,7 +29,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,8 +47,10 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
     /**
      * The ATR indicator pre-multiplied with the multiple to give the gain threshold
      */
-    private final Indicator<Num> stopGainThreshold;
+    private final transient Indicator<Num> stopGainThreshold;
     private final Indicator<Num> referencePrice;
+    private final int atrBarCount;
+    private final Number atrCoefficient;
 
     /**
      * Constructor defaulting the reference price to the close price
@@ -70,8 +72,10 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
      */
     public AverageTrueRangeStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.stopGainThreshold = BinaryOperation.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
         this.referencePrice = referencePrice;
+        this.atrBarCount = atrBarCount;
+        this.atrCoefficient = atrCoefficient;
+        this.stopGainThreshold = createStopGainThreshold(series);
     }
 
     /**
@@ -98,5 +102,9 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
         }
 
         return satisfied;
+    }
+
+    private Indicator<Num> createStopGainThreshold(BarSeries series) {
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 }

@@ -29,7 +29,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperation;
+import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -83,7 +83,7 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         }
         this.bodyAveragePeriod = bodyAveragePeriod;
         this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bodyHeightIndicator = UnaryOperation.abs(this.realBodyIndicator);
+        this.bodyHeightIndicator = UnaryOperationIndicator.abs(this.realBodyIndicator);
         this.averageBodyHeightIndicator = new SMAIndicator(this.bodyHeightIndicator, bodyAveragePeriod);
         this.upperShadowIndicator = new UpperShadowIndicator(series);
         this.lowerShadowIndicator = new LowerShadowIndicator(series);

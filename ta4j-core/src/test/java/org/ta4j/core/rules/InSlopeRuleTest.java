@@ -38,10 +38,11 @@ public class InSlopeRuleTest {
 
     private InSlopeRule rulePositiveSlope;
     private InSlopeRule ruleNegativeSlope;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
+        series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
         rulePositiveSlope = new InSlopeRule(indicator, series.numFactory().numOf(20), series.numFactory().numOf(30));
         ruleNegativeSlope = new InSlopeRule(indicator, series.numFactory().numOf(-40), series.numFactory().numOf(-20));
@@ -58,5 +59,13 @@ public class InSlopeRuleTest {
         assertFalse(ruleNegativeSlope.isSatisfied(1));
         assertTrue(ruleNegativeSlope.isSatisfied(5));
         assertFalse(ruleNegativeSlope.isSatisfied(9));
+    }
+
+    @Test
+    public void testSerializationRoundTrip() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rulePositiveSlope);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rulePositiveSlope);
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, ruleNegativeSlope);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, ruleNegativeSlope);
     }
 }

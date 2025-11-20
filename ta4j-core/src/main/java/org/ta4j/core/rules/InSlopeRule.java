@@ -27,7 +27,9 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import java.util.Objects;
+
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -35,26 +37,45 @@ import org.ta4j.core.num.Num;
  * A rule that monitors when an {@link Indicator} shows a specified slope.
  *
  * <p>
- * Satisfied when the difference of the value of the {@link Indicator indicator}
- * and its previous (n-th) value is between the values of {@code maxSlope}
- * or/and {@code minSlope}. It can test both, positive and negative slope.
+ * Satisfied when the difference between the current value of the
+ * {@link Indicator indicator} and its previous (n-th) value is within the
+ * specified slope range. The rule checks that the difference is greater than or
+ * equal to {@code minSlope} (if specified) and less than or equal to
+ * {@code maxSlope} (if specified). It can test both positive and negative
+ * slopes.
+ *
+ * <p>
+ * The {@code nthPrevious} parameter allows comparing with the n-th previous
+ * value instead of just the immediately previous value (which is the default
+ * when {@code nthPrevious} is 1).
  *
  * <p>
  * This rule does not use the {@code tradingRecord}.
  */
 public class InSlopeRule extends AbstractRule {
 
-    /** The actual indicator. */
-    private final Indicator<Num> ref;
+    /**
+     * Reference indicator tracked for slope calculations (serialized for
+     * rebuilding).
+     */
+    private final Indicator<Num> reference;
 
-    /** The previous n-th value of ref. */
-    private final PreviousValueIndicator prev;
+    /** Number of bars separating the reference value from the comparison point. */
+    private final int nthPrevious;
 
-    /** The minimum slope between ref and prev. */
+    /** The minimum slope between the reference indicator and its previous value. */
     private final Num minSlope;
 
-    /** The maximum slope between ref and prev. */
+    /** The maximum slope between the reference indicator and its previous value. */
     private final Num maxSlope;
+
+    /**
+     * The difference indicator used to calculate the slope between the reference
+     * indicator and its previous values. This field stores the calculated
+     * difference which is essential for determining whether the slope falls within
+     * the specified bounds.
+     */
+    private final transient Indicator<Num> difference;
 
     /**
      * Constructor.
@@ -80,6 +101,20 @@ public class InSlopeRule extends AbstractRule {
     }
 
     /**
+     * Creates an InSlopeRule with the specified reference indicator and slope
+     * bounds provided as strings.
+     *
+     * @param ref      the reference indicator
+     * @param minSlope the minimum slope between the reference and previous
+     *                 indicator values, provided as a string
+     * @param maxSlope the maximum slope between the reference and previous
+     *                 indicator values, provided as a string
+     */
+    public InSlopeRule(Indicator<Num> ref, String minSlope, String maxSlope) {
+        this(ref, 1, parseSlope(ref, minSlope), parseSlope(ref, maxSlope));
+    }
+
+    /**
      * Constructor.
      *
      * @param ref         the reference indicator
@@ -102,17 +137,21 @@ public class InSlopeRule extends AbstractRule {
      *                    indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num minSlope, Num maxSlope) {
-        this.ref = ref;
-        this.prev = new PreviousValueIndicator(ref, nthPrevious);
-        this.minSlope = minSlope;
-        this.maxSlope = maxSlope;
+        this.reference = Objects.requireNonNull(ref, "ref");
+        if (nthPrevious < 1) {
+            throw new IllegalArgumentException("nthPrevious must be >= 1");
+        }
+        this.nthPrevious = nthPrevious;
+        this.minSlope = normalizeSlope(minSlope);
+        this.maxSlope = normalizeSlope(maxSlope);
+        this.difference = BinaryOperationIndicator.difference(reference,
+                new PreviousValueIndicator(reference, nthPrevious));
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final var diff = BinaryOperation.difference(ref, prev);
-        final var val = diff.getValue(index);
+        final var val = difference.getValue(index);
         final boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
         final boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
         final boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
@@ -120,5 +159,16 @@ public class InSlopeRule extends AbstractRule {
         final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private static Num parseSlope(Indicator<Num> ref, String slope) {
+        if (slope == null) {
+            return NaN;
+        }
+        return ref.getBarSeries().numFactory().numOf(slope);
+    }
+
+    private static Num normalizeSlope(Num slope) {
+        return slope == null ? NaN : slope;
     }
 }
