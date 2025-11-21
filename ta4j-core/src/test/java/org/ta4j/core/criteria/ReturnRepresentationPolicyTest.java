@@ -35,14 +35,17 @@ public class ReturnRepresentationPolicyTest {
     public void useOverridesDefaultRepresentation() {
         var original = ReturnRepresentationPolicy.getDefaultRepresentation();
         try {
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.RATE_OF_RETURN);
-            assertSame(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.DECIMAL);
+            assertSame(ReturnRepresentation.DECIMAL, ReturnRepresentationPolicy.getDefaultRepresentation());
 
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
-            assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.MULTIPLICATIVE);
+            assertSame(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentationPolicy.getDefaultRepresentation());
 
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
-            assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.LOG);
+            assertSame(ReturnRepresentation.LOG, ReturnRepresentationPolicy.getDefaultRepresentation());
+
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.MULTIPLICATIVE);
+            assertSame(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentationPolicy.getDefaultRepresentation());
         } finally {
             ReturnRepresentationPolicy.setDefaultRepresentation(original);
         }
@@ -51,41 +54,54 @@ public class ReturnRepresentationPolicyTest {
     @Test
     public void settingDefaultRepresentationToNullUsesDefault() {
         ReturnRepresentationPolicy.setDefaultRepresentation(null);
-        assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+        assertSame(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentationPolicy.getDefaultRepresentation());
     }
 
     @Test
     public void parseMatchesEnumNamesCaseInsensitive() {
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total_return"));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate_of_Return"));
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total return"));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("rate-of-return"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("multiplicative"));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("Decimal"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("percentage"));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("log"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("multiplicative"));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("decimal"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("Percentage"));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("Log"));
     }
 
     @Test
     public void parseHandlesExactEnumNames() {
         // Fast path: exact matches
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("TOTAL_RETURN"));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("RATE_OF_RETURN"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("MULTIPLICATIVE"));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("DECIMAL"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("PERCENTAGE"));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("LOG"));
     }
 
     @Test
     public void parseHandlesVariousFormats() {
         // Mixed separators and case
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("Total Return"));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate Of Return"));
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total-return"));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("RATE-OF-RETURN"));
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total___return")); // multiple
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("Multiplicative"));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("Decimal"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("Percentage"));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("Log"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("multiplicative"));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("DECIMAL"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("PERCENTAGE"));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("LOG"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("multiplicative")); // multiple
         // underscores
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("rate   of   return")); // multiple
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("decimal")); // multiple
         // spaces
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("log"));
     }
 
     @Test
     public void parseHandlesWhitespace() {
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("  total_return  "));
-        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("\tRate Of Return\n"));
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, ReturnRepresentation.parse("  MULTIPLICATIVE  "));
+        assertEquals(ReturnRepresentation.DECIMAL, ReturnRepresentation.parse("\tDecimal\n"));
+        assertEquals(ReturnRepresentation.PERCENTAGE, ReturnRepresentation.parse("  percentage  "));
+        assertEquals(ReturnRepresentation.LOG, ReturnRepresentation.parse("  LOG  "));
     }
 
     @Test
@@ -110,8 +126,8 @@ public class ReturnRepresentationPolicyTest {
     public void parseErrorInStream() {
         ReturnRepresentation defaultRepresentation = Optional.ofNullable("GARBAGE IN")
                 .map(ReturnRepresentation::parse)
-                .orElse(ReturnRepresentation.TOTAL_RETURN);
+                .orElse(ReturnRepresentation.MULTIPLICATIVE);
 
-        assertEquals(ReturnRepresentation.TOTAL_RETURN, defaultRepresentation);
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, defaultRepresentation);
     }
 }

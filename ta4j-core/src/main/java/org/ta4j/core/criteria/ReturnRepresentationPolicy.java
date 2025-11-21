@@ -23,24 +23,31 @@
  */
 package org.ta4j.core.criteria;
 
+import org.ta4j.core.analysis.Returns;
+
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Holds the global default {@link ReturnRepresentation} used across Ta4j
  * criteria.
- *
  * <p>
  * The default can be changed at runtime to unify outputs across criteria and
  * backtests:
  *
  * <pre>
- * ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.RATE_OF_RETURN);
+ * ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.DECIMAL);
  * </pre>
- *
+ * <p>
  * A JVM-wide override is also supported via the system property
  * {@value #SYSTEM_PROPERTY}. Allowed values match the names of
  * {@link ReturnRepresentation}.
+ * <p>
+ * This policy is used by {@link Returns} and various criteria classes when no
+ * explicit representation is provided.
+ *
+ * @see ReturnRepresentation
+ * @see Returns
  */
 public final class ReturnRepresentationPolicy {
 
@@ -50,7 +57,7 @@ public final class ReturnRepresentationPolicy {
     private static volatile ReturnRepresentation defaultRepresentation = Optional
             .ofNullable(System.getProperty(SYSTEM_PROPERTY))
             .map(ReturnRepresentation::parse)
-            .orElse(ReturnRepresentation.TOTAL_RETURN);
+            .orElse(ReturnRepresentation.MULTIPLICATIVE);
 
     private ReturnRepresentationPolicy() {
     }
@@ -66,9 +73,9 @@ public final class ReturnRepresentationPolicy {
      * Sets the default return representation used across Ta4j criteria.
      *
      * @param representation the return representation to set as default, or null to
-     *                       reset to TOTAL_RETURN
+     *                       reset to MULTIPLICATIVE
      */
     public static void setDefaultRepresentation(ReturnRepresentation representation) {
-        defaultRepresentation = Objects.requireNonNullElse(representation, ReturnRepresentation.TOTAL_RETURN);
+        defaultRepresentation = Objects.requireNonNullElse(representation, ReturnRepresentation.MULTIPLICATIVE);
     }
 }

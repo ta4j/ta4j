@@ -71,9 +71,9 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        // Use TOTAL_RETURN (1-based) for internal calculations since we multiply
+        // Use MULTIPLICATIVE (1-based) for internal calculations since we multiply
         // amounts
-        grossReturn = new GrossReturnCriterion(ReturnRepresentation.TOTAL_RETURN);
+        grossReturn = new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE);
     }
 
     @Override

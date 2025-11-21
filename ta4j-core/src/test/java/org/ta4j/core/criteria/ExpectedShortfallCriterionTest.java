@@ -100,8 +100,15 @@ public class ExpectedShortfallCriterionTest {
     @Test
     public void calculateWithNoBarsShouldReturnZeroRateOfReturn() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 95d, 100d, 80d, 85d, 70d).build();
-        AnalysisCriterion varCriterion = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion varCriterion = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.DECIMAL);
         assertNumEquals(numFactory.zero(), varCriterion.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion esCriterionMultiplicative = new ExpectedShortfallCriterion(0.95,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(numFactory.one(), esCriterionMultiplicative.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion esCriterionPercentage = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.zero(), esCriterionPercentage.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -110,6 +117,12 @@ public class ExpectedShortfallCriterionTest {
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(0.99), varCriterion.calculate(series, position));
+
+        AnalysisCriterion esCriterionDecimal = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.DECIMAL);
+        assertNumEquals(numFactory.numOf(0.99 - 1), esCriterionDecimal.calculate(series, position));
+
+        AnalysisCriterion esCriterionPercentage = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.numOf((0.99 - 1) * 100), esCriterionPercentage.calculate(series, position));
     }
 
     @Test
@@ -119,8 +132,16 @@ public class ExpectedShortfallCriterionTest {
                 .withData(100d, 104d, 90d, 100d, 95d, 105d)
                 .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        AnalysisCriterion esCriterion = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion esCriterion = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.DECIMAL);
         assertNumEquals(numFactory.numOf((90d / 104) - 1), esCriterion.calculate(series, tradingRecord));
+
+        AnalysisCriterion esCriterionMultiplicative = new ExpectedShortfallCriterion(0.95,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(numFactory.numOf(90d / 104), esCriterionMultiplicative.calculate(series, tradingRecord));
+
+        AnalysisCriterion esCriterionPercentage = new ExpectedShortfallCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.numOf(((90d / 104) - 1) * 100),
+                esCriterionPercentage.calculate(series, tradingRecord));
     }
 
     @Test

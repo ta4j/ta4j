@@ -6,6 +6,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Consistent return output policy**: Return-based criteria now default to 1-based total returns and expose configurable representation through `ReturnRepresentationPolicy` and new constructors. Legacy `addBase` constructors are deprecated.
 - **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
 - **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
+- **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.
 
 ## 0.19 (released November 19, 2025)
 

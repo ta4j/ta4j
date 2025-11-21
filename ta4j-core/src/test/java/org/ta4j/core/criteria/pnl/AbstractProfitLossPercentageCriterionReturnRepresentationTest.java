@@ -51,7 +51,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(0.05, result);
@@ -66,7 +66,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(1.05, result);
@@ -81,7 +81,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(-0.05, result);
@@ -96,7 +96,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(0.95, result);
@@ -104,7 +104,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void calculatePositionWithRateOfReturn_OpenPosition() {
-        // Open positions should return 0.0 for RATE_OF_RETURN (neutral)
+        // Open positions should return 0.0 for DECIMAL (neutral)
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
@@ -112,7 +112,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         record.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
         var position = record.getCurrentPosition();
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(0.0, result);
@@ -120,7 +120,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void calculatePositionWithTotalReturn_OpenPosition() {
-        // Open positions should return 1.0 for TOTAL_RETURN (neutral)
+        // Open positions should return 1.0 for MULTIPLICATIVE (neutral)
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
@@ -128,7 +128,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         record.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
         var position = record.getCurrentPosition();
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(1.0, result);
@@ -144,7 +144,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(0.075, result);
@@ -160,7 +160,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(1.075, result);
@@ -168,13 +168,13 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void calculateTradingRecordWithRateOfReturn_NoPositions() {
-        // No positions should return 0.0 for RATE_OF_RETURN (neutral)
+        // No positions should return 0.0 for DECIMAL (neutral)
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
         var record = new BaseTradingRecord();
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(0.0, result);
@@ -182,13 +182,13 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void calculateTradingRecordWithTotalReturn_NoPositions() {
-        // No positions should return 1.0 for TOTAL_RETURN (neutral)
+        // No positions should return 1.0 for MULTIPLICATIVE (neutral)
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
         var record = new BaseTradingRecord();
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(1.0, result);
@@ -204,7 +204,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(0.025, result);
@@ -220,7 +220,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, record);
 
         assertNumEquals(1.025, result);
@@ -228,13 +228,13 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void grossProfitLossPercentageCriterionWithRateOfReturn() {
-        // Test GrossProfitLossPercentageCriterion with RATE_OF_RETURN
+        // Test GrossProfitLossPercentageCriterion with DECIMAL
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new GrossProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new GrossProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(0.05, result);
@@ -242,13 +242,13 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
     @Test
     public void grossProfitLossPercentageCriterionWithTotalReturn() {
-        // Test GrossProfitLossPercentageCriterion with TOTAL_RETURN
+        // Test GrossProfitLossPercentageCriterion with MULTIPLICATIVE
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new GrossProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterion = new GrossProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(1.05, result);
@@ -262,7 +262,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
 
         try {
             // Set a known default
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.RATE_OF_RETURN);
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.DECIMAL);
 
             var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                     .withData(100, 105)
@@ -273,15 +273,15 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
             var criterion = new NetProfitLossPercentageCriterion();
             var result = criterion.calculate(series, position);
 
-            // Should use RATE_OF_RETURN (0.05, not 1.05)
+            // Should use DECIMAL (0.05, not 1.05)
             assertNumEquals(0.05, result);
 
             // Change default and verify it's used
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.MULTIPLICATIVE);
             var criterion2 = new NetProfitLossPercentageCriterion();
             var result2 = criterion2.calculate(series, position);
 
-            // Should use TOTAL_RETURN (1.05, not 0.05)
+            // Should use MULTIPLICATIVE (1.05, not 0.05)
             assertNumEquals(1.05, result2);
         } finally {
             // Restore original default
@@ -295,19 +295,19 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         var originalDefault = ReturnRepresentationPolicy.getDefaultRepresentation();
 
         try {
-            // Set global default to TOTAL_RETURN
-            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
+            // Set global default to MULTIPLICATIVE
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.MULTIPLICATIVE);
 
             var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                     .withData(100, 105)
                     .build();
             var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-            // Explicitly use RATE_OF_RETURN
-            var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+            // Explicitly use DECIMAL
+            var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
             var result = criterion.calculate(series, position);
 
-            // Should use explicit RATE_OF_RETURN (0.05), not default TOTAL_RETURN (1.05)
+            // Should use explicit DECIMAL (0.05), not default MULTIPLICATIVE (1.05)
             assertNumEquals(0.05, result);
         } finally {
             // Restore original default
@@ -323,7 +323,7 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        var criterion = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
         var result = criterion.calculate(series, position);
 
         assertNumEquals(0.05, result);
@@ -332,8 +332,8 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
     @Test
     public void betterThanWorksWithBothRepresentations() {
         // Verify betterThan() works correctly with both representations
-        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
-        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
+        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
 
         // Both should correctly identify that 0.05 > 0.03 (rate) or 1.05 > 1.03 (total)
         var factory = DoubleNumFactory.getInstance();
@@ -353,8 +353,8 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
         record.exit(1, series.getBar(1).getClosePrice(), series.numFactory().one());
         var position = record.getLastPosition();
 
-        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
-        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
+        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
 
         var resultRate = criterionRate.calculate(series, position);
         var resultTotal = criterionTotal.calculate(series, position);
@@ -372,8 +372,8 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
-        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
+        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
 
         var resultRate = criterionRate.calculate(series, position);
         var resultTotal = criterionTotal.calculate(series, position);
@@ -390,8 +390,8 @@ public class AbstractProfitLossPercentageCriterionReturnRepresentationTest {
                 .build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN);
-        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.TOTAL_RETURN);
+        var criterionRate = new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL);
+        var criterionTotal = new NetProfitLossPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
 
         var resultRate = criterionRate.calculate(series, position);
         var resultTotal = criterionTotal.calculate(series, position);

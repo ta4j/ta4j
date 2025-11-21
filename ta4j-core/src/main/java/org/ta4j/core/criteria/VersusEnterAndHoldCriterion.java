@@ -23,45 +23,73 @@
  */
 package org.ta4j.core.criteria;
 
-import java.math.BigDecimal;
-
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.math.BigDecimal;
+import java.util.Optional;
 
 /**
- * Versus "enter and hold" criterion, returned in decimal format.
+ * Versus "enter and hold" criterion, returned in the configured
+ * {@link ReturnRepresentation} format.
  *
  * <p>
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
  * value of an {@link EnterAndHoldCriterion} by using the following formula:
  *
  * <pre>
- * xVersusEnterAndHold = (x - enterAndHold) / (abs(enterAndHold)
+ * xVersusEnterAndHold = (rate_x - rate_enterAndHold) / abs(rate_enterAndHold)
  * </pre>
  *
  * <p>
- * It can be used for absolute or percentage criteria values, for example:
+ * This criterion automatically detects if the provided criterion uses a
+ * {@link ReturnRepresentation} by calling
+ * {@link AbstractAnalysisCriterion#getReturnRepresentation()}. For criteria
+ * using {@link ReturnRepresentation#MULTIPLICATIVE} representation, values are
+ * automatically converted to rates (by subtracting 1) before comparison to
+ * ensure semantically consistent results across all representations. For other
+ * representations (DECIMAL, PERCENTAGE, LOG) or criteria that don't use return
+ * representations, the values are used directly as rates.
+ *
+ * <p>
+ * The calculated ratio (which represents how much better or worse the strategy
+ * is compared to enter-and-hold) is then converted to the configured
+ * {@link ReturnRepresentation} format. For example, a ratio of 0.5 (50% better)
+ * can be expressed as:
+ * <ul>
+ * <li>DECIMAL: 0.5 (50% better)
+ * <li>PERCENTAGE: 50.0 (50% better)
+ * <li>MULTIPLICATIVE: 1.5 (50% better, as 1 + 0.5)
+ * <li>LOG: ln(1.5) (log representation)
+ * </ul>
+ *
+ * <p>
+ * Examples:
  *
  * <ul>
- * <lI>ProfitVsEnterAndHold = (400$ - 500$) / abs(500$) = -0.2 (i.e., the
- * trading profit is 20% worse than the profit that would be made by simply
- * entering and holding)
- * <li>ProfitLossPercentageVsEnterAndHold = (0.9 - (-0.3)) / abs(-0.3) = +4
- * (i.e., the trading profit is 400% better than the profit that would be made
- * by simply entering and holding)
+ * <li>DECIMAL: Strategy 0.155 vs Buy-and-hold 0.05 → (0.155 - 0.05) / 0.05 =
+ * 2.1 (210% better)
+ * <li>MULTIPLICATIVE: Strategy 1.155 vs Buy-and-hold 1.05 → Automatically
+ * converted to rates: (0.155 - 0.05) / 0.05 = 2.1 (210% better) - same semantic
+ * result
+ * <li>Absolute values: (400$ / 500$) - 1 = -0.2 (20% worse)
  * </ul>
  */
 public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion criterion;
     private final EnterAndHoldCriterion enterAndHoldCriterion;
+    private final ReturnRepresentation returnRepresentation;
 
     /**
-     * Constructor with an entry amount of {@code 1}.
+     * Constructor with an entry amount of {@code 1} and
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation() global default
+     * representation}.
      *
      * @param criterion the criterion to be compared to
      *                  {@link EnterAndHoldCriterion}
@@ -71,19 +99,21 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Constructor with an entry amount of {@code 1}.
+     * Constructor with an entry amount of {@code 1} and
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation() global default
+     * representation}.
      *
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the criterion to be compared to
      *                  {@link EnterAndHoldCriterion}
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
-        this.criterion = criterion;
-        this.enterAndHoldCriterion = new EnterAndHoldCriterion(tradeType, criterion, BigDecimal.ONE);
+        this(tradeType, criterion, BigDecimal.ONE);
     }
 
     /**
-     * Constructor.
+     * Constructor with {@link ReturnRepresentationPolicy#getDefaultRepresentation()
+     * global default representation}.
      *
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the criterion to be compared to
@@ -93,15 +123,34 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @throws NullPointerException if {@code amount} is {@code null}
      */
     public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
+        this(tradeType, criterion, amount, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param tradeType            the {@link TradeType} used to open the position
+     * @param criterion            the criterion to be compared to
+     *                             {@link EnterAndHoldCriterion}
+     * @param amount               the amount to be used to hold the entry position;
+     *                             if {@code null} then {@code 1} is used.
+     * @param returnRepresentation the return representation to use for the output
+     *                             ratio
+     * @throws NullPointerException if {@code amount} or
+     *                              {@code returnRepresentation} is {@code null}
+     */
+    public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount,
+            ReturnRepresentation returnRepresentation) {
         this.criterion = criterion;
         this.enterAndHoldCriterion = new EnterAndHoldCriterion(tradeType, criterion, amount);
+        this.returnRepresentation = returnRepresentation;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         var x = criterion.calculate(series, position);
         var enterAndHold = enterAndHoldCriterion.calculate(series, position);
-        return (x.minus(enterAndHold)).dividedBy(enterAndHold.abs());
+        return calculateComparison(x, enterAndHold, series.numFactory());
     }
 
     @Override
@@ -112,7 +161,76 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
         var x = criterion.calculate(series, tradingRecord);
         var enterAndHold = enterAndHoldCriterion.calculate(series, tradingRecord);
-        return (x.minus(enterAndHold)).dividedBy(enterAndHold.abs());
+        return calculateComparison(x, enterAndHold, series.numFactory());
+    }
+
+    /**
+     * Calculates the comparison ratio, normalizing MULTIPLICATIVE values to rates
+     * first to ensure semantically consistent results. The ratio is then converted
+     * to the configured {@link ReturnRepresentation} format.
+     *
+     * @param x            the strategy value
+     * @param enterAndHold the enter-and-hold value
+     * @param numFactory   the number factory
+     * @return the comparison ratio in the configured return representation format
+     */
+    private Num calculateComparison(Num x, Num enterAndHold, NumFactory numFactory) {
+        // Calculate the ratio as a rate of return (0-based)
+        Num ratio;
+
+        // Check if the criterion uses MULTIPLICATIVE representation
+        Optional<ReturnRepresentation> representation = getReturnRepresentation(criterion);
+        if (representation.isPresent() && representation.get() == ReturnRepresentation.MULTIPLICATIVE) {
+            // Convert MULTIPLICATIVE values to rates before comparison
+            // This ensures semantic consistency: 1.155 vs 1.05 should give the same
+            // result as 0.155 vs 0.05 (both represent 15.5% vs 5% returns)
+            var one = numFactory.one();
+            var rateX = x.minus(one);
+            var rateEnterAndHold = enterAndHold.minus(one);
+            var absRateEnterAndHold = rateEnterAndHold.abs();
+            if (absRateEnterAndHold.isZero()) {
+                // Avoid division by zero - return 0 if enter-and-hold had no return
+                ratio = numFactory.zero();
+            } else {
+                ratio = rateX.minus(rateEnterAndHold).dividedBy(absRateEnterAndHold);
+            }
+        } else {
+            // For non-MULTIPLICATIVE representations, use standard formula
+            var absEnterAndHold = enterAndHold.abs();
+            if (absEnterAndHold.isZero()) {
+                // Avoid division by zero
+                ratio = numFactory.zero();
+            } else {
+                var one = numFactory.one();
+                if (enterAndHold.isNegative()) {
+                    ratio = x.dividedBy(absEnterAndHold).plus(one);
+                } else {
+                    ratio = x.dividedBy(absEnterAndHold).minus(one);
+                }
+            }
+        }
+
+        // Convert the ratio (which is a rate of return) to the configured
+        // representation
+        return returnRepresentation.toRepresentationFromRateOfReturn(ratio);
+    }
+
+    /**
+     * Gets the ReturnRepresentation used by the criterion, if applicable.
+     *
+     * @param criterion the criterion to check
+     * @return the ReturnRepresentation, or empty if not applicable
+     */
+    private Optional<ReturnRepresentation> getReturnRepresentation(AnalysisCriterion criterion) {
+        if (criterion instanceof AbstractAnalysisCriterion) {
+            return ((AbstractAnalysisCriterion) criterion).getReturnRepresentation();
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
     }
 
     /** The higher the criterion value, the better. */

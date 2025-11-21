@@ -28,6 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.*;
 
@@ -43,12 +44,14 @@ public class ReturnsTest {
 
     @Test
     public void returnSize() {
-        for (Returns.ReturnType type : Returns.ReturnType.values()) {
+        // Test with both LOG and DECIMAL representations
+        ReturnRepresentation[] representations = { ReturnRepresentation.LOG, ReturnRepresentation.DECIMAL };
+        for (ReturnRepresentation representation : representations) {
             // No return at index 0
             var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                     .withData(1d, 2d, 3d, 4d, 5d)
                     .build();
-            Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), type);
+            Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), representation);
             assertEquals(4, returns.getSize());
         }
     }
@@ -58,7 +61,7 @@ public class ReturnsTest {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
                 Trade.sellAt(1, sampleBarSeries));
-        Returns return1 = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
+        Returns return1 = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL);
         assertNumEquals(NaN.NaN, return1.getValue(0));
         assertNumEquals(1.0, return1.getValue(1));
     }
@@ -72,7 +75,7 @@ public class ReturnsTest {
                 Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries), Trade.sellAt(4, sampleBarSeries),
                 Trade.sellAt(5, sampleBarSeries), Trade.buyAt(6, sampleBarSeries));
 
-        Returns strategyReturns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
+        Returns strategyReturns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL);
 
         assertNumEquals(NaN.NaN, strategyReturns.getValue(0));
         assertNumEquals(-0.5, strategyReturns.getValue(1));
@@ -91,7 +94,7 @@ public class ReturnsTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(2, sampleBarSeries),
                 Trade.buyAt(5, sampleBarSeries), Trade.buyAt(8, sampleBarSeries), Trade.sellAt(10, sampleBarSeries));
 
-        Returns returns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.LOG);
+        Returns returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.LOG);
 
         assertNumEquals(NaN.NaN, returns.getValue(0));
         assertNumEquals(0, returns.getValue(1));
@@ -113,7 +116,7 @@ public class ReturnsTest {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d)
                 .build();
-        Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), Returns.ReturnType.LOG);
+        Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.LOG);
         assertNumEquals(NaN.NaN, returns.getValue(0));
         assertNumEquals(0, returns.getValue(4));
         assertNumEquals(0, returns.getValue(7));
@@ -142,11 +145,11 @@ public class ReturnsTest {
                 precisionSeries.numFactory().one());
 
         // Return calculation DoubleNum vs PrecisionNum
-        Num arithDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.ARITHMETIC).getValue(1);
-        Num arithPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.ARITHMETIC)
+        Num arithDouble = new Returns(doubleSeries, fullRecordDouble, ReturnRepresentation.DECIMAL).getValue(1);
+        Num arithPrecision = new Returns(precisionSeries, fullRecordPrecision, ReturnRepresentation.DECIMAL)
                 .getValue(1);
-        Num logDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.LOG).getValue(1);
-        Num logPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.LOG).getValue(1);
+        Num logDouble = new Returns(doubleSeries, fullRecordDouble, ReturnRepresentation.LOG).getValue(1);
+        Num logPrecision = new Returns(precisionSeries, fullRecordPrecision, ReturnRepresentation.LOG).getValue(1);
 
         assertNumEquals(DoubleNum.valueOf(-0.08333333333333326), arithDouble);
         final var expectedArithmetic = DecimalNum.valueOf("1.1", highPrecisionContext)

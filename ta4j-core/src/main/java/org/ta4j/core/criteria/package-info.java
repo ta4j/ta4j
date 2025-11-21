@@ -28,9 +28,26 @@
  * This package contains different criteria which can be used to calculate the
  * performance of a {@link org.ta4j.core.Strategy trading strategy} and to
  * compare two {@link org.ta4j.core.Strategy trading strategies} to each other.
- * Return-based criteria default to 1-based <em>total</em> returns (neutral
- * value {@code 1.0}); set {@code -Dta4j.returns.representation=RATE_OF_RETURN}
- * or use {@link org.ta4j.core.criteria.ReturnRepresentationPolicy} to change
- * this for a JVM or a single criterion instance.
+ * <p>
+ * <b>Return Representation System:</b>
+ * <p>
+ * Return-based criteria use a unified representation system for formatting
+ * returns:
+ * <ul>
+ * <li><b>{@link ReturnRepresentation}</b>: Defines return format types
+ * (MULTIPLICATIVE, DECIMAL, PERCENTAGE, LOG) and provides conversion methods
+ * between formats.
+ * <li><b>{@link ReturnRepresentationPolicy}</b>: Manages the global default
+ * return representation used across all criteria. Can be configured via system
+ * property {@code -Dta4j.returns.representation=DECIMAL} or programmatically.
+ * <li><b>{@link org.ta4j.core.analysis.Returns}</b>: Calculates return rates
+ * from positions/trading records and formats them according to a specified
+ * representation.
+ * </ul>
+ * <p>
+ * Return-based criteria default to <em>multiplicative</em> returns (neutral
+ * value {@code 1.0}). The default can be changed globally via
+ * {@link ReturnRepresentationPolicy} or per-criterion by passing a
+ * {@link ReturnRepresentation} to the criterion constructor.
  */
 package org.ta4j.core.criteria;

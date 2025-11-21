@@ -40,22 +40,58 @@ import java.util.Arrays;
  * relevant criterion constructor. All conversion helpers automatically use the
  * {@link org.ta4j.core.num.NumFactory} from the provided {@code Num} parameter
  * to ensure consistent numeric implementations.
+ * <p>
+ * <b>Usage Examples:</b>
+ * <ul>
+ * <li><b>From total return (1-based)</b>: Use
+ * {@link #toRepresentationFromTotalReturn(Num)} when you have a multiplicative
+ * total return (e.g., {@code 1.12} for +12% gain). This is commonly used by
+ * criteria classes that calculate aggregated returns.
+ * <li><b>From rate of return (0-based)</b>: Use
+ * {@link #toRepresentationFromRateOfReturn(Num)} when you have an arithmetic
+ * rate of return (e.g., {@code 0.12} for +12% gain). This is used by
+ * {@link org.ta4j.core.analysis.Returns} when formatting arithmetic returns.
+ * <li><b>From log return</b>: Use {@link #toRepresentationFromLogReturn(Num)}
+ * when you have a log return (e.g., {@code ln(1.12) ≈ 0.113} for +12% gain).
+ * This is used by risk criteria like {@link ValueAtRiskCriterion} and
+ * {@link ExpectedShortfallCriterion}.
+ * </ul>
  *
+ * @see Returns
+ * @see ReturnRepresentationPolicy
  * @since 0.20
  */
 public enum ReturnRepresentation {
 
     /**
-     * 1-based total return. A {@code 0%} move is represented by {@code 1.0} and
-     * {@code +12%} by {@code 1.12}.
+     * Multiplicative return (includes base). A {@code 0%} move is represented by
+     * {@code 1.0} and {@code +12%} by {@code 1.12}. This format represents the
+     * growth factor, where values are multiplied to calculate final amounts.
      */
-    TOTAL_RETURN(true),
+    MULTIPLICATIVE(true),
 
     /**
-     * 0-based rate of return. A {@code 0%} move is represented by {@code 0.0} and
-     * {@code +12%} by {@code 0.12}.
+     * Decimal return (excludes base). A {@code 0%} move is represented by
+     * {@code 0.0} and {@code +12%} by {@code 0.12}. This format represents the
+     * return as a decimal fraction.
      */
-    RATE_OF_RETURN(false);
+    DECIMAL(false),
+
+    /**
+     * Percentage value. A {@code 0%} move is represented by {@code 0.0}, a
+     * {@code +5%} gain by {@code 5.0}, and a {@code -15%} loss by {@code -15.0}.
+     * This representation multiplies the rate of return by 100 for intuitive
+     * percentage display.
+     */
+    PERCENTAGE(false),
+
+    /**
+     * Log return (natural logarithm). Returns are calculated as
+     * {@code ln(P_i/P_(i-1))} and returned as-is. This representation is useful for
+     * statistical analysis and risk calculations (e.g., VaR, Expected Shortfall)
+     * where log returns have desirable mathematical properties.
+     */
+    LOG(false);
 
     private static final Logger log = LoggerFactory.getLogger(ReturnRepresentation.class);
 
@@ -74,39 +110,79 @@ public enum ReturnRepresentation {
 
     /**
      * Converts a multiplicative total return into the configured representation.
+     * <p>
+     * Use this method when you have a total return that includes the base (e.g.,
+     * {@code 1.12} for a +12% gain). This is the format used internally by Ta4j
+     * criteria for aggregated returns.
+     * <p>
+     * Example: Converting {@code 1.12} (total return) to PERCENTAGE yields
+     * {@code 12.0}.
      *
-     * @param totalReturn a 1-based total return
-     * @return the represented return
+     * @param totalReturn a 1-based total return (e.g., {@code 1.12} for +12%)
+     * @return the represented return in the configured format
      */
     public Num toRepresentationFromTotalReturn(Num totalReturn) {
         if (includesBase) {
             return totalReturn;
         }
-        return totalReturn.minus(totalReturn.getNumFactory().one());
+        if (this == LOG) {
+            return totalReturn.log();
+        }
+        var rateOfReturn = totalReturn.minus(totalReturn.getNumFactory().one());
+        if (this == PERCENTAGE) {
+            return rateOfReturn.multipliedBy(totalReturn.getNumFactory().numOf(100));
+        }
+        return rateOfReturn;
     }
 
     /**
      * Converts an arithmetic rate of return (0-based) into the configured
      * representation.
+     * <p>
+     * Use this method when you have an arithmetic rate of return that excludes the
+     * base (e.g., {@code 0.12} for a +12% gain). This is the format used by
+     * {@link Returns} for raw arithmetic returns.
+     * <p>
+     * Example: Converting {@code 0.12} (rate of return) to PERCENTAGE yields
+     * {@code 12.0}.
      *
-     * @param rateOfReturn an arithmetic rate of return
-     * @return the represented return
+     * @param rateOfReturn an arithmetic rate of return (e.g., {@code 0.12} for
+     *                     +12%)
+     * @return the represented return in the configured format
      */
     public Num toRepresentationFromRateOfReturn(Num rateOfReturn) {
         var one = rateOfReturn.getNumFactory().one();
         if (includesBase) {
             return rateOfReturn.plus(one);
         }
+        if (this == LOG) {
+            return rateOfReturn.plus(one).log();
+        }
+        if (this == PERCENTAGE) {
+            return rateOfReturn.multipliedBy(rateOfReturn.getNumFactory().numOf(100));
+        }
         return rateOfReturn;
     }
 
     /**
      * Converts a log-return into the configured representation.
+     * <p>
+     * Use this method when you have a log return calculated as
+     * {@code ln(P_i/P_(i-1))}. This is the format used by risk criteria like
+     * {@link ValueAtRiskCriterion} and {@link ExpectedShortfallCriterion} for
+     * statistical calculations.
+     * <p>
+     * Example: Converting {@code ln(1.12) ≈ 0.113} (log return) to PERCENTAGE
+     * yields approximately {@code 12.0}.
      *
-     * @param logReturn the log-return to convert
-     * @return the represented return
+     * @param logReturn the log-return to convert (e.g., {@code ln(1.12)} for +12%)
+     * @return the represented return in the configured format
      */
     public Num toRepresentationFromLogReturn(Num logReturn) {
+        if (this == LOG) {
+            // Log returns are returned as-is
+            return logReturn;
+        }
         var totalReturn = toTotalReturnFromLogReturn(logReturn);
         return toRepresentationFromTotalReturn(totalReturn);
     }
@@ -122,6 +198,13 @@ public enum ReturnRepresentation {
         if (includesBase) {
             return representedReturn;
         }
+        if (this == PERCENTAGE) {
+            var rateOfReturn = representedReturn.dividedBy(representedReturn.getNumFactory().numOf(100));
+            return rateOfReturn.plus(one);
+        }
+        if (this == LOG) {
+            return representedReturn.exp();
+        }
         return representedReturn.plus(one);
     }
 
@@ -132,6 +215,13 @@ public enum ReturnRepresentation {
      * @return a 0-based rate of return
      */
     public Num toRateOfReturn(Num representedReturn) {
+        if (this == PERCENTAGE) {
+            return representedReturn.dividedBy(representedReturn.getNumFactory().numOf(100));
+        }
+        if (this == LOG) {
+            var one = representedReturn.getNumFactory().one();
+            return representedReturn.exp().minus(one);
+        }
         var one = representedReturn.getNumFactory().one();
         return toTotalReturn(representedReturn).minus(one);
     }
@@ -153,15 +243,15 @@ public enum ReturnRepresentation {
      * @return the matching representation
      */
     public static ReturnRepresentation fromAddBase(boolean addBase) {
-        return addBase ? TOTAL_RETURN : RATE_OF_RETURN;
+        return addBase ? MULTIPLICATIVE : DECIMAL;
     }
 
     /**
      * Parses a representation name in a case-insensitive way.
      * <p>
      * Accepts various formats including spaces, dashes, underscores, and mixed
-     * case. Examples: "total return", "TOTAL_RETURN", "rate-of-return", "Rate Of
-     * Return"
+     * case. Examples: "multiplicative", "MULTIPLICATIVE", "decimal", "Decimal",
+     * "percentage", "Percentage"
      * <p>
      * If parsing fails, an error is logged and {@code null} is returned.
      *

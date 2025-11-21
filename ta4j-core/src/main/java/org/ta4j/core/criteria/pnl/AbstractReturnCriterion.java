@@ -30,6 +30,9 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.util.Optional;
 
 /**
  * Base class for return based criteria.
@@ -77,12 +80,76 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
     }
 
     @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
+    }
+
+    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            return returnRepresentation.toRepresentationFromTotalReturn(calculateReturn(series, position));
+            // Optimize single position calculation by avoiding unnecessary conversions
+            // Calculate total return once, then convert directly to target representation
+            var totalReturn = calculateReturn(series, position);
+            return convertTotalReturnToRepresentation(totalReturn);
         }
-        var numFactory = series.numFactory();
-        return returnRepresentation.toRepresentationFromTotalReturn(numFactory.one());
+        // Open position: return neutral value directly in target representation
+        return getNeutralValue(series.numFactory());
+    }
+
+    /**
+     * Converts a total return to the target representation format. Optimized to
+     * avoid unnecessary add/subtract operations where possible.
+     * <p>
+     * TODO: Further optimization opportunity - For single positions with
+     * DECIMAL/PERCENTAGE representations, we could calculate the rate of return
+     * directly (profit/entryValue) instead of calculating total return
+     * (profit/entryValue + 1) and then subtracting 1. This would require:
+     * <ul>
+     * <li>Adding a method to calculate rate of return directly in subclasses
+     * <li>Using it for single position calculations when representation is not
+     * MULTIPLICATIVE
+     * <li>Keeping total return calculation for multiple positions (which need to
+     * multiply total returns together)
+     * </ul>
+     * This optimization would eliminate the add-then-subtract operation for DECIMAL
+     * and PERCENTAGE representations in single position scenarios.
+     *
+     * @param totalReturn the total return (1-based)
+     * @return the return in the target representation format
+     */
+    private Num convertTotalReturnToRepresentation(Num totalReturn) {
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            return totalReturn;
+        }
+        var numFactory = totalReturn.getNumFactory();
+        var one = numFactory.one();
+        var rateOfReturn = totalReturn.minus(one);
+
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rateOfReturn;
+        }
+        if (returnRepresentation == ReturnRepresentation.PERCENTAGE) {
+            return rateOfReturn.multipliedBy(numFactory.numOf(100));
+        }
+        if (returnRepresentation == ReturnRepresentation.LOG) {
+            return totalReturn.log();
+        }
+        // Fallback to conversion method
+        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
+    }
+
+    /**
+     * Returns the neutral value (no return) in the target representation format.
+     *
+     * @param numFactory the number factory
+     * @return the neutral value in the target representation
+     */
+    private Num getNeutralValue(NumFactory numFactory) {
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            return numFactory.one();
+        }
+        // DECIMAL, PERCENTAGE, and LOG all use 0.0 as neutral
+        return numFactory.zero();
     }
 
     @Override

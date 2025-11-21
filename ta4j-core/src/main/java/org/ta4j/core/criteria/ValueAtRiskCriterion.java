@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
-import org.ta4j.core.criteria.ReturnRepresentation;
-import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Value at Risk criterion, honoring the configured return representation.
@@ -68,18 +68,22 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
+    }
+
+    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || !position.isClosed()) {
-            var one = series.numFactory().one();
-            return returnRepresentation.toRepresentationFromTotalReturn(one);
+            return getNeutralValue(series.numFactory());
         }
-        Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+        Returns returns = new Returns(series, position, ReturnRepresentation.LOG);
         return calculateVaR(returns, confidence, returnRepresentation);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.LOG);
         return calculateVaR(returns, confidence, returnRepresentation);
     }
 
@@ -90,31 +94,43 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
      * @param confidence the confidence level
      * @return the relative Value at Risk
      */
-    private static Num calculateVaR(Returns returns, double confidence, ReturnRepresentation representation) {
+    private Num calculateVaR(Returns returns, double confidence, ReturnRepresentation representation) {
         Num zero = returns.getBarSeries().numFactory().zero();
-        Num one = returns.getBarSeries().numFactory().one();
-        // select non-NaN returns
-        List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
+        // select non-NaN returns (use raw values for statistical calculations)
+        List<Num> returnRates = returns.getRawValues().subList(1, returns.getSize() + 1);
         if (returnRates.isEmpty()) {
-            return representation.toRepresentationFromTotalReturn(one);
+            return getNeutralValue(returns.getBarSeries().numFactory());
         }
 
         Num valueAtRisk = zero;
-        if (!returnRates.isEmpty()) {
-            // F(x_var) >= alpha (=1-confidence)
-            int nInBody = (int) (returns.getSize() * confidence);
-            int nInTail = returns.getSize() - nInBody;
+        // F(x_var) >= alpha (=1-confidence)
+        int nInBody = (int) (returns.getSize() * confidence);
+        int nInTail = returns.getSize() - nInBody;
 
-            // The series is not empty, nInTail > 0
-            Collections.sort(returnRates);
-            valueAtRisk = returnRates.get(nInTail - 1);
+        // The series is not empty, nInTail > 0
+        Collections.sort(returnRates);
+        valueAtRisk = returnRates.get(nInTail - 1);
 
-            // VaR is non-positive
-            if (valueAtRisk.isGreaterThan(zero)) {
-                valueAtRisk = zero;
-            }
+        // VaR is non-positive
+        if (valueAtRisk.isGreaterThan(zero)) {
+            valueAtRisk = zero;
         }
+        // Format the final result according to the representation
         return representation.toRepresentationFromLogReturn(valueAtRisk);
+    }
+
+    /**
+     * Returns the neutral value (no return) in the target representation format.
+     *
+     * @param numFactory the number factory
+     * @return the neutral value in the target representation
+     */
+    private Num getNeutralValue(NumFactory numFactory) {
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            return numFactory.one();
+        }
+        // DECIMAL, PERCENTAGE, and LOG all use 0.0 as neutral
+        return numFactory.zero();
     }
 
     @Override

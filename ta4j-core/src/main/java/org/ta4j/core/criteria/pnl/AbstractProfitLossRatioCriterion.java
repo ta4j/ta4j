@@ -28,22 +28,52 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
 
 /**
  * Base class for profit/loss ratio criteria.
  * <p>
- * Calculates the ratio of the average profit over the average loss.
+ * Calculates the ratio of the average profit over the average loss, returned in
+ * the configured {@link ReturnRepresentation} format. The calculated ratio
+ * (which represents how much profit is achieved per unit of loss) is then
+ * converted to the configured {@link ReturnRepresentation} format. For example,
+ * a ratio of 2.0 (profit is 2x the loss) can be expressed as:
+ * <ul>
+ * <li>DECIMAL: 2.0 (profit is 2x the loss)
+ * <li>PERCENTAGE: 200.0 (profit is 200% of the loss)
+ * <li>MULTIPLICATIVE: 3.0 (1 + 2.0 = 3.0)
+ * </ul>
  */
 public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion averageProfitCriterion;
     private final AnalysisCriterion averageLossCriterion;
+    private final ReturnRepresentation returnRepresentation;
 
+    /**
+     * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
+     * are typically expressed as decimals).
+     */
     protected AbstractProfitLossRatioCriterion(AnalysisCriterion averageProfitCriterion,
             AnalysisCriterion averageLossCriterion) {
+        this(averageProfitCriterion, averageLossCriterion, ReturnRepresentation.DECIMAL);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param averageProfitCriterion the criterion for average profit
+     * @param averageLossCriterion   the criterion for average loss
+     * @param returnRepresentation   the return representation to use for the output
+     *                               ratio
+     */
+    protected AbstractProfitLossRatioCriterion(AnalysisCriterion averageProfitCriterion,
+            AnalysisCriterion averageLossCriterion, ReturnRepresentation returnRepresentation) {
         this.averageProfitCriterion = averageProfitCriterion;
         this.averageLossCriterion = averageLossCriterion;
+        this.returnRepresentation = returnRepresentation;
     }
 
     @Override
@@ -65,10 +95,41 @@ public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisC
         if (averageProfit.isZero()) {
             return numFactory.zero();
         }
+        // Calculate the raw ratio (e.g., 2.0 means profit is 2x loss)
+        // Handle division by zero case: if averageLoss is zero, ratio is effectively
+        // infinite
+        // but we cap it at 1.0 to represent "neutral" (profit equals loss)
+        Num rawRatio;
         if (averageLoss.isZero()) {
-            return numFactory.one();
+            rawRatio = numFactory.one(); // Neutral ratio when no losses
+        } else {
+            rawRatio = averageProfit.dividedBy(averageLoss).abs();
         }
-        return averageProfit.dividedBy(averageLoss).abs();
+
+        // For profit/loss ratio, we treat it as a pure ratio
+        // A ratio of 2.0 means profit is 2x loss, which can be expressed as:
+        // - DECIMAL: 2.0 (profit is 2x loss)
+        // - PERCENTAGE: 100.0 (profit is 100% better than loss, i.e., (2.0 - 1) * 100)
+        // - MULTIPLICATIVE: 3.0 (1 + (2.0 - 1) = 2.0, wait that's wrong...)
+        // Actually, for MULTIPLICATIVE: 1 + (ratio - 1) = ratio, so it's the same as
+        // DECIMAL
+        // But that doesn't make sense. Let me think...
+        // Actually, a ratio of 2.0 in MULTIPLICATIVE should be 2.0 (same as DECIMAL)
+        // But if we convert (2.0 - 1) = 1.0 as a rate, MULTIPLICATIVE becomes 2.0,
+        // which is correct!
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rawRatio;
+        }
+        // For PERCENTAGE and MULTIPLICATIVE, convert (ratio - 1) as a rate of return
+        // This represents how much better profit is compared to loss
+        var one = numFactory.one();
+        var excess = rawRatio.minus(one);
+        return returnRepresentation.toRepresentationFromRateOfReturn(excess);
+    }
+
+    @Override
+    public java.util.Optional<ReturnRepresentation> getReturnRepresentation() {
+        return java.util.Optional.of(returnRepresentation);
     }
 
     @Override

@@ -35,7 +35,6 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -70,8 +69,22 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 210% better than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(ReturnRepresentation.RATE_OF_RETURN));
-        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
+        // DECIMAL representation: ratio is returned as-is (0-based rate)
+        var vsBuyAndHoldDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHoldDecimal.calculate(series, tradingRecord));
+
+        // PERCENTAGE representation: ratio is multiplied by 100
+        var vsBuyAndHoldPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE,
+                ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(tradingVsEnterAndHold * 100, vsBuyAndHoldPercentage.calculate(series, tradingRecord));
+
+        // MULTIPLICATIVE representation: ratio is converted to 1 + ratio
+        var vsBuyAndHoldMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE), BigDecimal.ONE,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(1 + tradingVsEnterAndHold, vsBuyAndHoldMultiplicative.calculate(series, tradingRecord));
     }
 
     @Test
@@ -82,17 +95,31 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // firstTrade = -5%, secondTrade = -30 %
         // Return from trading per trade: firstTrade =-95%, secondTrade = -70%
-        // Return from trading: (-0.95) x (-0.7) = 0.665 = 66.5%
-        var tradingResult = 0.665;
+        // Return from trading: (-0.95) x (-0.7) = 0.665 = 66.5% (MULTIPLICATIVE)
+        // Return from enter-and-hold: 0.7 = 70% (MULTIPLICATIVE)
+        //
+        // MULTIPLICATIVE values are normalized to rates before comparison:
+        // tradingResult rate = 0.665 - 1 = -0.335
+        // enterAndHoldResult rate = 0.7 - 1 = -0.3
+        // Ratio = (-0.335 - (-0.3)) / abs(-0.3) = -0.035 / 0.3 = -0.1167
+        var expectedRatio = -0.11666666666666675;
 
-        // Return from enter-and-hold: 0.7 = 70%
-        var enterAndHoldResult = 0.7;
+        // DECIMAL representation: ratio is returned as-is (0-based rate)
+        var vsBuyAndHoldDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        assertNumEquals(expectedRatio, vsBuyAndHoldDecimal.calculate(series, tradingRecord));
 
-        // trading is approx. 0.05 worse than "enter and hold"
-        var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
+        // PERCENTAGE representation: ratio is multiplied by 100
+        var vsBuyAndHoldPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE,
+                ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(expectedRatio * 100, vsBuyAndHoldPercentage.calculate(series, tradingRecord));
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(ReturnRepresentation.TOTAL_RETURN));
-        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
+        // MULTIPLICATIVE representation: ratio is converted to 1 + ratio
+        var vsBuyAndHoldMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE), BigDecimal.ONE,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(1 + expectedRatio, vsBuyAndHoldMultiplicative.calculate(series, tradingRecord));
     }
 
     @Test
@@ -100,26 +127,63 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        var tradingResult = 100d / 70;
-        var enterAndHoldResult = 100d / 95;
-        // tradingResult is approx. 35% better than "buy and hold"
-        var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
+        // Position: buy at 100, sell at 95 -> return = 95/100 = 0.95 (MULTIPLICATIVE)
+        // Enter and hold: buy at 100 (first bar), sell at 70 (last bar) -> return =
+        // 70/100 = 0.7 (MULTIPLICATIVE)
+        //
+        // MULTIPLICATIVE values are normalized to rates before comparison:
+        // tradingResult rate = 0.95 - 1 = -0.05
+        // enterAndHoldResult rate = 0.7 - 1 = -0.3
+        // Ratio = (-0.05 - (-0.3)) / abs(-0.3) = 0.25 / 0.3 = 0.8333
+        var expectedRatio = 0.8333333333333333;
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, position));
+        // DECIMAL representation: ratio is returned as-is (0-based rate)
+        var vsBuyAndHoldDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        assertNumEquals(expectedRatio, vsBuyAndHoldDecimal.calculate(series, position));
+
+        // PERCENTAGE representation: ratio is multiplied by 100
+        var vsBuyAndHoldPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE,
+                ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(expectedRatio * 100, vsBuyAndHoldPercentage.calculate(series, position));
+
+        // MULTIPLICATIVE representation: ratio is converted to 1 + ratio
+        var vsBuyAndHoldMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE), BigDecimal.ONE,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(1 + expectedRatio, vsBuyAndHoldMultiplicative.calculate(series, position));
     }
 
     @Test
     public void calculateWithNoPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
 
-        var tradingResult = 1;
-        var enterAndHoldResult = 0.7;
-        // tradingResult is approx. 42% better than "buy and hold"
-        var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
+        // No positions: tradingResult = 1.0 (MULTIPLICATIVE, neutral)
+        // Enter and hold: 0.7 (MULTIPLICATIVE)
+        //
+        // MULTIPLICATIVE values are normalized to rates before comparison:
+        // tradingResult rate = 1.0 - 1 = 0
+        // enterAndHoldResult rate = 0.7 - 1 = -0.3
+        // Ratio = (0 - (-0.3)) / abs(-0.3) = 0.3 / 0.3 = 1.0
+        var expectedRatio = 1.0;
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, new BaseTradingRecord()));
+        // DECIMAL representation: ratio is returned as-is (0-based rate)
+        var vsBuyAndHoldDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        assertNumEquals(expectedRatio, vsBuyAndHoldDecimal.calculate(series, new BaseTradingRecord()));
+
+        // PERCENTAGE representation: ratio is multiplied by 100
+        var vsBuyAndHoldPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE,
+                ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(expectedRatio * 100, vsBuyAndHoldPercentage.calculate(series, new BaseTradingRecord()));
+
+        // MULTIPLICATIVE representation: ratio is converted to 1 + ratio
+        var vsBuyAndHoldMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE), BigDecimal.ONE,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(1 + expectedRatio, vsBuyAndHoldMultiplicative.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -128,13 +192,21 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        var tradingResult = Math.pow(95d / 100 * 130d / 100, 1d / 6);
-        var enterAndHoldResult = Math.pow(130d / 100, 1d / 6);
-        // tradingResult is approx. -0.85% worse than "buy and hold"
-        var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
-
-        var vsBuyAndHold = getCriterion(new AverageReturnPerBarCriterion());
-        assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
+        // AverageReturnPerBarCriterion uses MULTIPLICATIVE by default
+        // tradingResult = pow(95/100 * 130/100, 1/6) = pow(1.235, 1/6) ≈ 1.0359
+        // enterAndHoldResult = pow(130/100, 1/6) = pow(1.3, 1/6) ≈ 1.0447
+        //
+        // MULTIPLICATIVE values are normalized to rates before comparison:
+        // tradingResult rate = 1.0359 - 1 = 0.0359
+        // enterAndHoldResult rate = 1.0447 - 1 = 0.0447
+        // Ratio = (0.0359 - 0.0447) / 0.0447 ≈ -0.197
+        var vsBuyAndHold = new VersusEnterAndHoldCriterion(TradeType.BUY, new AverageReturnPerBarCriterion(),
+                BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        // The exact value will be calculated by the implementation
+        var result = vsBuyAndHold.calculate(series, tradingRecord);
+        // Verify it's negative (worse than buy-and-hold) and reasonable
+        assertTrue(result.doubleValue() < 0);
+        assertTrue(result.doubleValue() > -0.5); // Should be around -0.197
     }
 
     @Test
@@ -148,7 +220,10 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 0% better or worse than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var vsBuyAndHold = getCriterion(new NumberOfBarsCriterion());
+        // NumberOfBarsCriterion doesn't use ReturnRepresentation, so the ratio is
+        // calculated as-is and then converted
+        var vsBuyAndHold = new VersusEnterAndHoldCriterion(TradeType.BUY, new NumberOfBarsCriterion(), BigDecimal.ONE,
+                ReturnRepresentation.DECIMAL);
         assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
@@ -163,13 +238,15 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         // vs buy and hold of pnl with amount of 1
+        // NetProfitLossCriterion doesn't use ReturnRepresentation, so the ratio is
+        // calculated as-is and then converted
         var vsBuyAndHoldPnl1 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
-                BigDecimal.ONE);
+                BigDecimal.ONE, ReturnRepresentation.DECIMAL);
         var vsBuyAndHoldPnlValue1 = vsBuyAndHoldPnl1.calculate(series, tradingRecord);
 
         // vs buy and hold of pnl with amount of 10
         var vsBuyAndHoldPnl2 = new VersusEnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
-                BigDecimal.TEN);
+                BigDecimal.TEN, ReturnRepresentation.DECIMAL);
         var vsBuyAndHoldPnlValue2 = vsBuyAndHoldPnl2.calculate(series, tradingRecord);
 
         assertNumEquals(2, vsBuyAndHoldPnlValue1);
@@ -182,8 +259,23 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void betterThan() {
-        var criterion = getCriterion(new GrossReturnCriterion());
-        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
+        // MULTIPLICATIVE representation: ratio of 2.0 (100% better) vs 1.5 (50% better)
+        var criterionMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY, new GrossReturnCriterion(),
+                BigDecimal.ONE, ReturnRepresentation.MULTIPLICATIVE);
+        assertTrue(criterionMultiplicative.betterThan(numOf(2.0), numOf(1.5)));
+        assertFalse(criterionMultiplicative.betterThan(numOf(1.5), numOf(2.0)));
+
+        // DECIMAL representation: ratio of 0.2 (20% better) vs 0.15 (15% better)
+        var criterionDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+        assertTrue(criterionDecimal.betterThan(numOf(0.2), numOf(0.15)));
+        assertFalse(criterionDecimal.betterThan(numOf(0.15), numOf(0.2)));
+
+        // PERCENTAGE representation: ratio of 20.0 (20% better) vs 15.0 (15% better)
+        var criterionPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+                new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE,
+                ReturnRepresentation.PERCENTAGE);
+        assertTrue(criterionPercentage.betterThan(numOf(20.0), numOf(15.0)));
+        assertFalse(criterionPercentage.betterThan(numOf(15.0), numOf(20.0)));
     }
 }

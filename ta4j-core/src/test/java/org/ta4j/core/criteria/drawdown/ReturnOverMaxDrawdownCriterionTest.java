@@ -34,6 +34,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.criteria.AbstractCriterionTest;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -104,6 +105,18 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // Rate of return = (95/100) - 1 = -0.05, drawdown = 0.05
         // Result = -0.05 / 0.05 = -1
         assertNumEquals(-1d, result);
+
+        var ratioCriterionMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        var resultMultiplicative = ratioCriterionMultiplicative.calculate(series, position);
+        // Return = 0.95 (MULTIPLICATIVE), drawdown = 0.05
+        // Result = 0.95 / 0.05 = 19.0
+        assertNumEquals(19.0, resultMultiplicative);
+
+        var ratioCriterionPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+        var resultPercentage = ratioCriterionPercentage.calculate(series, position);
+        // Return = -5.0 (PERCENTAGE), drawdown = 0.05 (always decimal)
+        // Result = -5.0 / 0.05 = -100.0
+        assertNumEquals(-100.0, resultPercentage);
     }
 
     @Test
@@ -127,6 +140,16 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // 10/95
         // No drawdown, so result = rate of return
         assertNumEquals((105d / 95d) - 1, result);
+
+        var criterionMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        var resultMultiplicative = criterionMultiplicative.calculate(series, tradingRecord);
+        // Total return = 105/95, no drawdown, so result = total return
+        assertNumEquals(105d / 95d, resultMultiplicative);
+
+        var criterionPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+        var resultPercentage = criterionPercentage.calculate(series, tradingRecord);
+        // Rate of return = (105/95 - 1) * 100, no drawdown, so result = rate of return
+        assertNumEquals(((105d / 95d) - 1) * 100, resultPercentage);
     }
 
     @Test
@@ -141,6 +164,16 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // Total return = 105/100 = 1.05, rate of return = 0.05
         // No drawdown, so result = rate of return
         assertNumEquals(0.05, result);
+
+        var criterionMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        var resultMultiplicative = criterionMultiplicative.calculate(series, position);
+        // Total return = 1.05, no drawdown, so result = total return
+        assertNumEquals(1.05, resultMultiplicative);
+
+        var criterionPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+        var resultPercentage = criterionPercentage.calculate(series, position);
+        // Rate of return = 5.0, no drawdown, so result = rate of return
+        assertNumEquals(5.0, resultPercentage);
     }
 
     @Test

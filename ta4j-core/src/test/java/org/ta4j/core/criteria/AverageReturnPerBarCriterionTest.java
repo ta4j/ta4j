@@ -96,8 +96,14 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithNoBarsShouldReturnZeroRateOfReturn() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
-        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.DECIMAL);
         assertNumEquals(0, averageProfit.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion averageMultiplicative = new AverageReturnPerBarCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(1, averageMultiplicative.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion averagePercentage = new AverageReturnPerBarCriterion(ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(0, averagePercentage.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -106,15 +112,31 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, position));
+
+        AnalysisCriterion averageDecimal = new AverageReturnPerBarCriterion(ReturnRepresentation.DECIMAL);
+        Num expectedDecimal = numOf(105d / 100).pow(numOf(0.5)).minus(numFactory.one());
+        assertNumEquals(expectedDecimal, averageDecimal.calculate(series, position));
+
+        AnalysisCriterion averagePercentage = new AverageReturnPerBarCriterion(ReturnRepresentation.PERCENTAGE);
+        Num expectedPercentage = expectedDecimal.multipliedBy(numFactory.numOf(100));
+        assertNumEquals(expectedPercentage, averagePercentage.calculate(series, position));
     }
 
     @Test
     public void calculateRateOfReturnRepresentation() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110, 100, 95, 105).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.DECIMAL);
         Num expected = numOf(110d / 100).pow(numOf(1d / 3)).minus(numFactory.one());
         assertNumEquals(expected, averageProfit.calculate(series, tradingRecord));
+
+        AnalysisCriterion averageMultiplicative = new AverageReturnPerBarCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        Num expectedMultiplicative = numOf(110d / 100).pow(numOf(1d / 3));
+        assertNumEquals(expectedMultiplicative, averageMultiplicative.calculate(series, tradingRecord));
+
+        AnalysisCriterion averagePercentage = new AverageReturnPerBarCriterion(ReturnRepresentation.PERCENTAGE);
+        Num expectedPercentage = expected.multipliedBy(numFactory.numOf(100));
+        assertNumEquals(expectedPercentage, averagePercentage.calculate(series, tradingRecord));
     }
 
     @Test

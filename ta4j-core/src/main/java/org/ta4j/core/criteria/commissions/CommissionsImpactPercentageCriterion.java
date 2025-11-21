@@ -27,20 +27,50 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.GrossProfitLossCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Analysis criterion that measures how much commission reduces gross profit.
+ * Analysis criterion that measures how much commission reduces gross profit,
+ * returned in the configured {@link ReturnRepresentation} format.
  *
  * <p>
  * It expresses the commission impact as the percentage of the gross profit or
- * loss.
+ * loss. The calculated ratio (which represents the percentage impact) is then
+ * converted to the configured {@link ReturnRepresentation} format. For example,
+ * a ratio of 0.05 (5% commission impact) can be expressed as:
+ * <ul>
+ * <li>DECIMAL: 0.05 (5% impact)
+ * <li>PERCENTAGE: 5.0 (5% impact)
+ * <li>MULTIPLICATIVE: 1.05 (1 + 0.05 = 1.05)
+ * </ul>
  * </p>
  *
  * @since 0.19
  */
 public final class CommissionsImpactPercentageCriterion extends AbstractAnalysisCriterion {
+
+    private final ReturnRepresentation returnRepresentation;
+
+    /**
+     * Constructor with {@link ReturnRepresentation#DECIMAL} as the default
+     * (percentages are typically expressed as decimals).
+     */
+    public CommissionsImpactPercentageCriterion() {
+        this(ReturnRepresentation.DECIMAL);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param returnRepresentation the return representation to use for the output
+     *                             ratio
+     */
+    public CommissionsImpactPercentageCriterion(ReturnRepresentation returnRepresentation) {
+        this.returnRepresentation = returnRepresentation;
+    }
 
     private static final GrossProfitLossCriterion GROSS_PROFIT_LOSS_CRITERION = new GrossProfitLossCriterion();
     private static final CommissionsCriterion COMMISSION_CRITERION = new CommissionsCriterion();
@@ -68,7 +98,13 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
         if (transactionCost != null) {
             comm = transactionCost.abs();
         }
-        return gross.isZero() ? zero : comm.dividedBy(gross);
+        if (gross.isZero()) {
+            return zero;
+        }
+        // Calculate the ratio as a rate of return (0-based)
+        var ratio = comm.dividedBy(gross);
+        // Convert the ratio to the configured representation
+        return returnRepresentation.toRepresentationFromRateOfReturn(ratio);
     }
 
     /**
@@ -78,14 +114,26 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
      * @param s the bar series used for number creation
      * @param r the trading record containing the positions to evaluate
      * @return the percentage of commission relative to the record gross profit or
-     *         zero when there is no gross profit
+     *         zero when there is no gross profit, in the configured return
+     *         representation format
      */
     @Override
     public Num calculate(BarSeries s, TradingRecord r) {
         var gross = GROSS_PROFIT_LOSS_CRITERION.calculate(s, r).abs();
         var comm = COMMISSION_CRITERION.calculate(s, r).abs();
         var numFactory = s.numFactory();
-        return gross.isZero() ? numFactory.zero() : comm.dividedBy(gross);
+        if (gross.isZero()) {
+            return numFactory.zero();
+        }
+        // Calculate the ratio as a rate of return (0-based)
+        var ratio = comm.dividedBy(gross);
+        // Convert the ratio to the configured representation
+        return returnRepresentation.toRepresentationFromRateOfReturn(ratio);
+    }
+
+    @Override
+    public java.util.Optional<ReturnRepresentation> getReturnRepresentation() {
+        return java.util.Optional.of(returnRepresentation);
     }
 
     /**

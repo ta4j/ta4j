@@ -88,8 +88,15 @@ public class ValueAtRiskCriterionTest {
     @Test
     public void calculateWithNoBarsShouldReturnZeroRateOfReturn() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 95d, 100d, 80d, 85d, 70d).build();
-        AnalysisCriterion varCriterion = new ValueAtRiskCriterion(0.95, ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion varCriterion = new ValueAtRiskCriterion(0.95, ReturnRepresentation.DECIMAL);
         assertNumEquals(numFactory.zero(), varCriterion.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion varCriterionMultiplicative = new ValueAtRiskCriterion(0.95,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(numFactory.one(), varCriterionMultiplicative.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion varCriterionPercentage = new ValueAtRiskCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.zero(), varCriterionPercentage.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -98,6 +105,12 @@ public class ValueAtRiskCriterionTest {
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numFactory.numOf(0.99), varCriterion.calculate(series, position));
+
+        AnalysisCriterion varCriterionDecimal = new ValueAtRiskCriterion(0.95, ReturnRepresentation.DECIMAL);
+        assertNumEquals(numFactory.numOf(0.99 - 1), varCriterionDecimal.calculate(series, position));
+
+        AnalysisCriterion varCriterionPercentage = new ValueAtRiskCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.numOf((0.99 - 1) * 100), varCriterionPercentage.calculate(series, position));
     }
 
     @Test
@@ -107,8 +120,16 @@ public class ValueAtRiskCriterionTest {
                 .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
-        AnalysisCriterion varCriterion = new ValueAtRiskCriterion(0.95, ReturnRepresentation.RATE_OF_RETURN);
+        AnalysisCriterion varCriterion = new ValueAtRiskCriterion(0.95, ReturnRepresentation.DECIMAL);
         assertNumEquals(numFactory.numOf((90d / 104) - 1), varCriterion.calculate(series, tradingRecord));
+
+        AnalysisCriterion varCriterionMultiplicative = new ValueAtRiskCriterion(0.95,
+                ReturnRepresentation.MULTIPLICATIVE);
+        assertNumEquals(numFactory.numOf(90d / 104), varCriterionMultiplicative.calculate(series, tradingRecord));
+
+        AnalysisCriterion varCriterionPercentage = new ValueAtRiskCriterion(0.95, ReturnRepresentation.PERCENTAGE);
+        assertNumEquals(numFactory.numOf(((90d / 104) - 1) * 100),
+                varCriterionPercentage.calculate(series, tradingRecord));
     }
 
     @Test

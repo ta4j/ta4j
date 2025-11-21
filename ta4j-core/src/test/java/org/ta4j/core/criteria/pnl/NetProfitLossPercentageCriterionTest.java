@@ -35,7 +35,7 @@ import org.ta4j.core.num.NumFactory;
 public class NetProfitLossPercentageCriterionTest extends AbstractPnlCriterionTest {
 
     public NetProfitLossPercentageCriterionTest(NumFactory numFactory) {
-        super(params -> new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN), numFactory);
+        super(params -> new NetProfitLossPercentageCriterion(ReturnRepresentation.DECIMAL), numFactory);
     }
 
     @Override
