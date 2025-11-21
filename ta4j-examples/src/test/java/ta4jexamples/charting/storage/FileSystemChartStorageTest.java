@@ -21,20 +21,23 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.storage;
 
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.JFreeChart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import ta4jexamples.charting.ChartingTestFixtures;
 
 /**
  * Unit tests for {@link FileSystemChartStorage}.
@@ -43,7 +46,7 @@ class FileSystemChartStorageTest {
 
     private FileSystemChartStorage storage;
     private BarSeries barSeries;
-    private org.jfree.chart.JFreeChart chart;
+    private JFreeChart chart;
 
     @TempDir
     Path tempDir;
@@ -110,7 +113,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWithNullSeriesName() {
-        BarSeries seriesWithNullName = new MockBarSeriesBuilder().build();
+        BarSeries seriesWithNullName = new BaseBarSeriesBuilder().build();
 
         String chartTitle = "Test Strategy";
         Optional<Path> result = storage.save(chart, seriesWithNullName, chartTitle, 800, 600);
@@ -122,7 +125,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWithEmptySeriesName() {
-        BarSeries seriesWithEmptyName = new MockBarSeriesBuilder().withName("").build();
+        BarSeries seriesWithEmptyName = new BaseBarSeriesBuilder().withName("").build();
 
         String chartTitle = "Test Strategy";
         Optional<Path> result = storage.save(chart, seriesWithEmptyName, chartTitle, 800, 600);
@@ -134,7 +137,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationWhitespaceHandling() {
-        BarSeries seriesWithWhitespace = new MockBarSeriesBuilder().withName("Series   Name  With   Spaces").build();
+        BarSeries seriesWithWhitespace = new BaseBarSeriesBuilder().withName("Series   Name  With   Spaces").build();
 
         Optional<Path> result = storage.save(chart, seriesWithWhitespace, "Strategy  Name", 800, 600);
 
@@ -146,7 +149,7 @@ class FileSystemChartStorageTest {
 
     @Test
     void testPathSanitizationRemovesLeadingAndTrailingDots() {
-        BarSeries seriesWithDots = new MockBarSeriesBuilder().withName("...Series...").build();
+        BarSeries seriesWithDots = new BaseBarSeriesBuilder().withName("...Series...").build();
 
         Optional<Path> result = storage.save(chart, seriesWithDots, "...Strategy...", 800, 600);
 

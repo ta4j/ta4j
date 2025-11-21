@@ -54,6 +54,7 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
     private final AnalysisCriterion criterion;
     private final TradingRecord fullTradingRecord;
     private final List<Trade> allTrades;
+    private final String label;
 
     /**
      * Constructs an AnalysisCriterionIndicator.
@@ -68,6 +69,7 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
         this.criterion = Objects.requireNonNull(criterion, "Criterion cannot be null");
         this.fullTradingRecord = Objects.requireNonNull(tradingRecord, "Trading record cannot be null");
         this.allTrades = new ArrayList<>(tradingRecord.getTrades());
+        this.label = deriveLabel(criterion);
     }
 
     @Override
@@ -112,5 +114,18 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
         Trade[] tradesArray = partialTrades.toArray(new Trade[0]);
         return new BaseTradingRecord(fullTradingRecord.getTransactionCostModel(),
                 fullTradingRecord.getHoldingCostModel(), tradesArray);
+    }
+
+    @Override
+    public String toString() {
+        return label;
+    }
+
+    private static String deriveLabel(AnalysisCriterion criterion) {
+        String simpleName = criterion.getClass().getSimpleName();
+        if (simpleName.endsWith("Criterion") && simpleName.length() > "Criterion".length()) {
+            simpleName = simpleName.substring(0, simpleName.length() - "Criterion".length());
+        }
+        return simpleName.isEmpty() ? criterion.getClass().getSimpleName() : simpleName;
     }
 }

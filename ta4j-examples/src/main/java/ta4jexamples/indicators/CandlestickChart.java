@@ -24,6 +24,7 @@
 package ta4jexamples.indicators;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.util.Date;
 
 import org.jfree.chart.ChartFactory;
@@ -37,6 +38,7 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.chart.ui.UIUtils;
 import org.jfree.data.time.Second;
+import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultHighLowDataset;
 import org.jfree.data.xy.OHLCDataset;
@@ -89,7 +91,7 @@ public class CandlestickChart {
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
+        TimeSeries chartTimeSeries = new TimeSeries("Btc price");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
             chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochMilli())),
@@ -109,7 +111,7 @@ public class CandlestickChart {
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
-        panel.setPreferredSize(new java.awt.Dimension(740, 300));
+        panel.setPreferredSize(new Dimension(740, 300));
         // Application frame
         ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart");
         frame.setContentPane(panel);

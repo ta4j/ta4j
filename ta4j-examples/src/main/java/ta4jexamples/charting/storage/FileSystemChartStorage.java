@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.storage;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -55,13 +55,13 @@ import java.util.Objects;
  *
  * @since 0.19
  */
-final class FileSystemChartStorage implements ChartStorage {
+public final class FileSystemChartStorage implements ChartStorage {
 
     private static final Logger LOG = LogManager.getLogger(FileSystemChartStorage.class);
 
     private final Path rootDirectory;
 
-    FileSystemChartStorage(Path rootDirectory) {
+    public FileSystemChartStorage(Path rootDirectory) {
         Objects.requireNonNull(rootDirectory, "Root directory must be provided");
         this.rootDirectory = rootDirectory;
     }

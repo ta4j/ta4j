@@ -21,28 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.charting;
+package ta4jexamples.charting.compose;
 
-import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.axis.DateAxis;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
+import org.jfree.chart.ui.TextAnchor;
+import org.jfree.data.time.TimeSeriesCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.Num;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import ta4jexamples.charting.AnalysisCriterionIndicator;
+import ta4jexamples.charting.ChartingTestFixtures;
 
 /**
  * Unit tests for {@link TradingChartFactory}.
@@ -230,7 +241,7 @@ class TradingChartFactoryTest {
     void testChartDomainAxisConfiguration() {
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         XYPlot plot = (XYPlot) chart.getPlot();
-        org.jfree.chart.axis.DateAxis domainAxis = (org.jfree.chart.axis.DateAxis) plot.getDomainAxis();
+        DateAxis domainAxis = (DateAxis) plot.getDomainAxis();
 
         assertNotNull(domainAxis, "Domain axis should be a DateAxis");
         assertTrue(domainAxis.isAutoRange(), "Domain axis should be auto-ranging");
@@ -240,7 +251,7 @@ class TradingChartFactoryTest {
     void testChartRangeAxisConfiguration() {
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         XYPlot plot = (XYPlot) chart.getPlot();
-        org.jfree.chart.axis.NumberAxis rangeAxis = (org.jfree.chart.axis.NumberAxis) plot.getRangeAxis();
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
 
         assertNotNull(rangeAxis, "Range axis should be a NumberAxis");
         assertNotNull(rangeAxis, "Range axis should be configured");
@@ -377,4 +388,130 @@ class TradingChartFactoryTest {
         assertNotNull(chart.getTitle().getText(), "Chart title text should not be null");
     }
 
+    @Test
+    void testDomainAxisHasSufficientUpperMargin() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        assertTrue(plot.getDomainAxis().getUpperMargin() >= 0.07,
+                "Domain axis should reserve space for annotations near the last bar");
+    }
+
+    @Test
+    void testAddAnalysisCriterionAddsSecondaryAxisWithLabel() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+
+        factory.addAnalysisCriterionToChart(chart, barSeries, indicator, indicator.toString());
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        NumberAxis axis = (NumberAxis) plot.getRangeAxis(1);
+        assertNotNull(axis, "Secondary axis should be added for criterion overlay");
+        assertEquals("NetProfit", axis.getLabel(), "Axis label should reflect criterion name");
+        assertTrue(plotContainsSeries(plot, "NetProfit"), "Criterion dataset should be added with a descriptive label");
+    }
+
+    @Test
+    void testAddAnalysisCriterionRejectedWhenAxisConfiguredForDifferentLabel() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator netProfit = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+        factory.addAnalysisCriterionToChart(chart, barSeries, netProfit, netProfit.toString());
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        int datasetCountAfterFirst = plot.getDatasetCount();
+
+        AnalysisCriterionIndicator positions = new AnalysisCriterionIndicator(barSeries,
+                new NumberOfPositionsCriterion(), tradingRecord);
+        factory.addAnalysisCriterionToChart(chart, barSeries, positions, positions.toString());
+
+        assertEquals(datasetCountAfterFirst, plot.getDatasetCount(),
+                "Adding a criterion with a conflicting axis label should be rejected");
+        assertEquals(0, countDatasetsForLabel(plot, positions.toString()), "Rejected overlays must not add datasets");
+    }
+
+    @Test
+    void testAddAnalysisCriterionAllowsMultipleDatasetsWhenLabelsMatch() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator first = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+        factory.addAnalysisCriterionToChart(chart, barSeries, first, first.toString());
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        int datasetCountAfterFirst = plot.getDatasetCount();
+
+        AnalysisCriterionIndicator second = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+        factory.addAnalysisCriterionToChart(chart, barSeries, second, second.toString());
+
+        assertEquals(datasetCountAfterFirst + 1, plot.getDatasetCount(),
+                "Matching labels should reuse the axis and add another dataset");
+        assertEquals(2, countDatasetsForLabel(plot, "NetProfit"),
+                "Both datasets should be mapped to the NetProfit axis");
+    }
+
+    @Test
+    void testPositionMarkerNearEndUsesRightAlignedLabel() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        int nearEndStart = barSeries.getEndIndex() - 2;
+        addPosition(record, nearEndStart, barSeries.getEndIndex() - 1, amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        List<IntervalMarker> markers = extractPositionMarkers(plot);
+        assertFalse(markers.isEmpty(), "Position markers should be present");
+        IntervalMarker last = markers.get(markers.size() - 1);
+        assertEquals(TextAnchor.TOP_RIGHT, last.getLabelTextAnchor(),
+                "Markers near the series end should right-align labels");
+    }
+
+    @Test
+    void testPositionMarkerAwayFromEdgesUsesLeftAlignedLabel() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 2, 4, amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        List<IntervalMarker> markers = extractPositionMarkers(plot);
+        assertEquals(1, markers.size(), "Expected a single marker");
+        assertEquals(TextAnchor.TOP_LEFT, markers.get(0).getLabelTextAnchor(),
+                "Non-edge markers should remain left aligned");
+    }
+
+    private boolean plotContainsSeries(XYPlot plot, String seriesName) {
+        return countDatasetsForLabel(plot, seriesName) > 0;
+    }
+
+    private int countDatasetsForLabel(XYPlot plot, String seriesName) {
+        int count = 0;
+        for (int i = 0; i < plot.getDatasetCount(); i++) {
+            if (plot.getDataset(i) instanceof TimeSeriesCollection collection) {
+                for (int seriesIndex = 0; seriesIndex < collection.getSeriesCount(); seriesIndex++) {
+                    if (seriesName.equals(collection.getSeriesKey(seriesIndex))) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    private void addPosition(BaseTradingRecord record, int entryIndex, int exitIndex, Num amount) {
+        record.enter(entryIndex, barSeries.getBar(entryIndex).getClosePrice(), amount);
+        record.exit(exitIndex, barSeries.getBar(exitIndex).getClosePrice(), amount);
+    }
+
+    private List<IntervalMarker> extractPositionMarkers(XYPlot plot) {
+        Collection<?> markers = plot.getDomainMarkers(Layer.BACKGROUND);
+        if (markers == null) {
+            return List.of();
+        }
+        return markers.stream()
+                .filter(IntervalMarker.class::isInstance)
+                .map(IntervalMarker.class::cast)
+                .collect(Collectors.toList());
+    }
 }

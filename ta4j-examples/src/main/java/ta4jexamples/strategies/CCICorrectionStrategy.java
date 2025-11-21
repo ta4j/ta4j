@@ -23,6 +23,8 @@
  */
 package ta4jexamples.strategies;
 
+import java.awt.Color;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
@@ -38,7 +40,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -96,11 +98,20 @@ public class CCICorrectionStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        CCIIndicator longCci = new CCIIndicator(series, 200);
+        CCIIndicator shortCci = new CCIIndicator(series, 5);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "cci-correction-strategy");
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withSubChart(longCci)
+                .withIndicatorOverlay(shortCci)
+                .withLineColor(Color.ORANGE)
+                .withSubChart(new GrossReturnCriterion(), tradingRecord)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "cci-correction-strategy", "ta4j-examples/log/charts");
     }
 }

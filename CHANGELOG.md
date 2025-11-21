@@ -2,6 +2,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Changed
+- **Consistent return output policy**: Return-based criteria now default to 1-based total returns and expose configurable representation through `ReturnRepresentationPolicy` and new constructors. Legacy `addBase` constructors are deprecated.
+- **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
+- **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
+
+## 0.19 (released November 19, 2025)
+
 ### Breaking
 - **`TradingStatement` is now an interface**: Converted to an interface implemented by `BaseTradingStatement`. This exposes the underlying `Strategy` and `TradingRecord` for advanced analysis workflows. **Action required**: Update any code that directly instantiates `TradingStatement` to use `BaseTradingStatement` instead.
 - **PnL and return criteria refactored into net/gross variants**: Split `ProfitLossCriterion`, `ProfitCriterion`, `LossCriterion`, `AverageProfitCriterion`, `AverageLossCriterion`, `ReturnCriterion`, `ProfitLossRatioCriterion`, and `ProfitLossPercentageCriterion` into separate net and gross concrete classes. This provides explicit control over whether trading costs are included in calculations. **Action required**: Update imports and class names to use the appropriate net or gross variant based on your analysis needs.
@@ -32,9 +39,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Testing infrastructure**: Added tests for `DoubleNumFactory` and `DecimalNumFactory`, unit tests around indicator concurrency in preparation for future multithreading features, and `DecimalNumPrecisionPerformanceTest` to demonstrate precision vs performance trade-offs.
 
 ### Changed
-- **Consistent return output policy**: Return-based criteria now default to 1-based total returns and expose configurable representation through `ReturnRepresentationPolicy` and new constructors. Legacy `addBase` constructors are deprecated.
-- **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
-- **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
 - **Enhanced rule serialization with custom name preservation**: Improved `RuleSerialization` to preserve custom rule names set via `setName()` during serialization and deserialization. Custom names are now properly distinguished from default JSON-formatted names, enabling better strategy persistence and debugging workflows.
 - **Improved trace logging with rule names**: Enhanced trace logging in `AbstractRule` and `BaseStrategy` to use rule names (custom or default) in log output, making it easier to identify which rules are being evaluated during strategy execution.
 - **Unified logging backend**: Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so examples and tests share a single logging backend. Added Log4j 2 configurations for modules and tests. This simplifies logging configuration and ensures consistent behavior across all modules. Set unit test logging level to INFO and cleaned build output of all extraneous logging. 

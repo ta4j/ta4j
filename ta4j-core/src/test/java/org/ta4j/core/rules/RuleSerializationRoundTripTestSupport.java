@@ -39,6 +39,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.RuleSerialization;
+import org.ta4j.core.serialization.RuleSerializationException;
 
 /**
  * Shared helper for asserting rule serialization/deserialization round-trips.
@@ -51,7 +52,9 @@ import org.ta4j.core.serialization.RuleSerialization;
  * <p>
  * If serialization or deserialization is not supported for a particular rule
  * type, the test will be skipped using JUnit's {@link Assume} mechanism rather
- * than failing.
+ * than failing. This occurs when a {@link RuleSerializationException} is
+ * thrown, indicating that serialization support has not yet been implemented
+ * for the rule.
  *
  * @since 0.19
  */
@@ -74,7 +77,9 @@ final class RuleSerializationRoundTripTestSupport {
      * <p>
      * If serialization or deserialization is not supported for the rule type, the
      * test will be skipped (using {@link Assume#assumeNoException}) rather than
-     * failing.
+     * failing. This occurs when a {@link RuleSerializationException} is thrown,
+     * indicating that serialization support has not yet been implemented for the
+     * rule.
      *
      * @param series the bar series to use for rule deserialization
      * @param rule   the rule to test for round-trip serialization

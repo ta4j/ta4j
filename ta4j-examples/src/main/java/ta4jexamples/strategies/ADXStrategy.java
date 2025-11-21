@@ -38,7 +38,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -100,11 +100,25 @@ public class ADXStrategy {
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
 
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        SMAIndicator smaIndicator = new SMAIndicator(closePriceIndicator, 50);
+        int adxBarCount = 14;
+        ADXIndicator adxIndicator = new ADXIndicator(series, adxBarCount);
+        PlusDIIndicator plusDIIndicator = new PlusDIIndicator(series, adxBarCount);
+        MinusDIIndicator minusDIIndicator = new MinusDIIndicator(series, adxBarCount);
+
         // Charting
-        new ChartMaker().builder()
-                .withTradingRecord(series, strategy.getName(), tradingRecord)
-                .build()
-                .display()
-                .save("ta4j-examples/log/charts", "adx-strategy");
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(smaIndicator)
+                .withSubChart(adxIndicator)
+                .withIndicatorOverlay(plusDIIndicator)
+                .withIndicatorOverlay(minusDIIndicator)
+                .withSubChart(new GrossReturnCriterion(), tradingRecord)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "adx-strategy", "ta4j-examples/log/charts");
     }
 }

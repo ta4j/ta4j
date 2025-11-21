@@ -1,17 +1,17 @@
-name: Release
+name: Publish Release to Maven Central
 
-concurrency: 
-  group: release-${{ github.repository }} 
+concurrency:
+  group: release-${{ github.repository }}
   cancel-in-progress: true
 
 on:
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Release version (e.g. 0.19)'
+      releaseVersion:
+        description: "OPTIONAL: Release version (e.g. 0.19). Leave blank to auto-detect."
         required: false
-      next_version:
-        description: 'Next snapshot version (e.g. 0.20-SNAPSHOT)'
+      nextVersion:
+        description: "OPTIONAL: Next snapshot version (e.g. 0.20-SNAPSHOT). Leave blank to auto-generate."
         required: false
 
 permissions:
@@ -20,253 +20,238 @@ permissions:
 
 jobs:
   release:
+    name: Publish Release to Maven Central
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: 21
           cache: maven
-          server-id: sonatype-nexus-staging
-          server-username: ${{ secrets.OSSRH_USERNAME }}
-          server-password: ${{ secrets.OSSRH_PASSWORD }}
-          gpg-private-key: ${{ secrets.OSSRH_GPG_PRIVATE_KEY }}
-          gpg-passphrase: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-    
+          server-id: central
+          server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          server-password: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Configure Git
-        env:
-          RELEASE_GIT_NAME: ${{ secrets.RELEASE_GIT_NAME }}
-          RELEASE_GIT_EMAIL: ${{ secrets.RELEASE_GIT_EMAIL }}
-        run: |
-          git config user.name "${RELEASE_GIT_NAME:-${GITHUB_ACTOR}}"
-          git config user.email "${RELEASE_GIT_EMAIL:-${GITHUB_ACTOR}@users.noreply.github.com}"
-
-      - name: Prepare release
-        id: prepare_release
+      # ------------------------------------------------------------
+      #  VERSION DETECTION + FALLBACK TO USER INPUT
+      # ------------------------------------------------------------
+      - name: Compute Versions (with user overrides)
+        id: versions
         shell: bash
         env:
-          INPUT_RELEASE_VERSION: ${{ github.event.inputs.release_version }}
-          INPUT_NEXT_VERSION: ${{ github.event.inputs.next_version }}
+          INPUT_RELEASE: ${{ github.event.inputs.releaseVersion }}
+          INPUT_NEXT: ${{ github.event.inputs.nextVersion }}
         run: |
-          set -eo pipefail
-          args=()
-          if [[ -n "${INPUT_RELEASE_VERSION}" ]]; then
-            args+=(--release-version "${INPUT_RELEASE_VERSION}")
+          set -euo pipefail
+
+          echo "Inputs: release='${INPUT_RELEASE}', next='${INPUT_NEXT}'"
+
+          # Read current version from POM (Maven is now available)
+          CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          echo "Detected project.version: $CURRENT"
+
+          # Validate that we got a version from POM
+          if [[ -z "${CURRENT}" ]]; then
+            echo "Error: Failed to read project.version from pom.xml"
+            exit 1
           fi
-          if [[ -n "${INPUT_NEXT_VERSION}" ]]; then
-            args+=(--next-version "${INPUT_NEXT_VERSION}")
-          fi
-          if [[ ! -x scripts/prepare-release.sh ]]; then
-            if [[ -f scripts/prepare-release.sh ]]; then
-              chmod +x scripts/prepare-release.sh
-            else
-              echo "scripts/prepare-release.sh not found or not executable" >&2
+
+          # Auto compute release version if user did not supply it
+          if [[ -z "${INPUT_RELEASE}" ]]; then
+            # CRITICAL: Validate current version is a SNAPSHOT before stripping
+            # This prevents attempting to re-release an already-released version
+            if [[ "${CURRENT}" != *-SNAPSHOT ]]; then
+              echo "Error: Current version '${CURRENT}' is not a SNAPSHOT version."
+              echo "Cannot auto-detect release version from a non-SNAPSHOT version."
+              echo "Please provide an explicit releaseVersion input or ensure the POM contains a SNAPSHOT version."
               exit 1
             fi
-          fi
-
-          eval "$(scripts/prepare-release.sh release "${args[@]}")"
-          # Validate required outputs
-          if [[ -z "${release_version:-}" ]]; then
-            echo "release_version was not produced by scripts/prepare-release.sh" >&2
-            exit 1
-          fi
-          if [[ -z "${release_notes_file:-}" ]]; then
-            echo "release_notes_file was not produced by scripts/prepare-release.sh" >&2
-            exit 1
-          fi
-          echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
-          echo "next_version=${next_version:-}" >> "$GITHUB_OUTPUT"
-          echo "release_notes_file=${release_notes_file}" >> "$GITHUB_OUTPUT"
-
-      - name: Create release branch
-        id: create_release_branch
-        shell: bash
-        run: |
-          set -eo pipefail
-          RELEASE_VERSION="${{ steps.prepare_release.outputs.release_version }}"
-          if [[ -z "${RELEASE_VERSION}" ]]; then
-            echo "No release_version provided; aborting" >&2
-            exit 1
-          fi
-          BRANCH="release/${RELEASE_VERSION}"
-          git checkout -b "${BRANCH}"
-          echo "release_branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-
-      - name: Commit release changes
-        id: commit_release
-        shell: bash
-        run: |
-          set -eo pipefail
-          git add .
-          if git diff --cached --quiet; then
-            echo "No release changes detected; skipping release steps"
-            echo "release_changes=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "chore: release ${{ steps.prepare_release.outputs.release_version }}"
-          echo "release_changes=true" >> "$GITHUB_OUTPUT"
-
-      - name: Push release branch
-        if: steps.commit_release.outputs.release_changes == 'true'
-        env:
-          RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
-        run: |
-          set -eo pipefail
-          git push --set-upstream origin "$RELEASE_BRANCH"
-    
-      - name: Build and deploy artifacts
-        if: steps.commit_release.outputs.release_changes == 'true'
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-          GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
-        run: |
-          set -eo pipefail
-          mvn -B clean license:format formatter:format deploy -P sonatype-oss-release
-    
-      - name: Collect release artifacts
-        if: steps.commit_release.outputs.release_changes == 'true'
-        shell: bash
-        run: |
-          set -eo pipefail
-          mkdir -p release-artifacts
-          # Include common artifacts: jars, poms, sources, javadoc
-          while IFS= read -r file; do
-            dest="release-artifacts/${file#./}"
-            mkdir -p "$(dirname "$dest")"
-            cp "$file" "$dest"
-          done < <(find . -type f \( -path '*/target/*.jar' -o -path '*/target/*.pom' -o -path '*/target/*-sources.jar' -o -path '*/target/*-javadoc.jar' \))
-          cp "${{ steps.prepare_release.outputs.release_notes_file }}" release-artifacts/RELEASE_NOTES.md
-    
-      - name: Upload workflow artifacts
-        if: steps.commit_release.outputs.release_changes == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ta4j-${{ steps.prepare_release.outputs.release_version }}
-          path: release-artifacts
-    
-      - name: Create annotated tag
-        if: steps.commit_release.outputs.release_changes == 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
-        run: |
-          set -eo pipefail
-          git tag -a "v${RELEASE_VERSION}" -m "ta4j ${RELEASE_VERSION}"
-          git push origin "v${RELEASE_VERSION}"
-    
-      - name: Publish GitHub release
-        if: steps.commit_release.outputs.release_changes == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.prepare_release.outputs.release_version }}
-          name: ta4j ${{ steps.prepare_release.outputs.release_version }}
-          body_path: ${{ steps.prepare_release.outputs.release_notes_file }}
-          files: |
-            release-artifacts/**/*.jar
-            release-artifacts/**/*.pom
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Fast-forward default branch with release commit
-        if: steps.commit_release.outputs.release_changes == 'true'
-        env:
-          RELEASE_BRANCH: ${{ steps.create_release_branch.outputs.release_branch }}
-        run: |
-          set -eo pipefail
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
-          echo "Ensuring ${DEFAULT_BRANCH} contains the release commit from ${RELEASE_BRANCH}"
-          git checkout "${DEFAULT_BRANCH}"
-          git pull --ff-only origin "${DEFAULT_BRANCH}"
-          git merge --ff-only "${RELEASE_BRANCH}"
-          git push origin "${DEFAULT_BRANCH}"
-
-      - name: Verify release content on default branch
-        if: steps.commit_release.outputs.release_changes == 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.prepare_release.outputs.release_version }}
-        run: |
-          set -eo pipefail
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
-          git checkout "${DEFAULT_BRANCH}"
-          if ! grep -Eq "^## ${RELEASE_VERSION} \(" CHANGELOG.md; then
-            echo "CHANGELOG.md does not contain release section for ${RELEASE_VERSION}" >&2
-            exit 1
-          fi
-          if ! grep -F "<version>${RELEASE_VERSION}</version>" README.md; then
-            echo "README.md does not contain dependency references for ${RELEASE_VERSION}" >&2
-            exit 1
-          fi
-
-      - name: Prepare next snapshot on default branch
-        if: steps.commit_release.outputs.release_changes == 'true'
-        id: prepare_snapshot
-        shell: bash
-        env:
-          NEXT_VERSION: ${{ steps.prepare_release.outputs.next_version }}
-        run: |
-          set -eo pipefail
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
-          echo "Using default branch: ${DEFAULT_BRANCH}"
-          git checkout "${DEFAULT_BRANCH}"
-          git pull --ff-only origin "${DEFAULT_BRANCH}"
-          git clean -fdx
-          if [[ ! -x scripts/prepare-release.sh ]]; then
-            if [[ -f scripts/prepare-release.sh ]]; then
-              chmod +x scripts/prepare-release.sh
-            else
-              echo "scripts/prepare-release.sh not found or not executable" >&2
-              exit 1
-            fi
-          fi
-          eval "$(scripts/prepare-release.sh snapshot --next-version "${NEXT_VERSION}")"
-          if git diff --cached --quiet; then
-            echo "snapshot_changes=false" >> "$GITHUB_OUTPUT"
+            RELEASE="${CURRENT%-SNAPSHOT}"
+            echo "Auto-detected release version: ${RELEASE} (from ${CURRENT})"
           else
-            git add .
-            # Do not commit here; create-pull-request will create the branch & commit
-            echo "snapshot_changes=true" >> "$GITHUB_OUTPUT"
+            RELEASE="${INPUT_RELEASE}"
           fi
-    
-      - name: Sanitize next version for branch
-        if: steps.commit_release.outputs.release_changes == 'true'
-        id: sanitize_next
-        shell: bash
+
+          # Validate release version doesn't contain SNAPSHOT
+          if [[ "${RELEASE}" == *-SNAPSHOT* ]]; then
+            echo "Error: releaseVersion must be a stable version (no -SNAPSHOT suffix). Got: ${RELEASE}"
+            exit 1
+          fi
+
+          # Auto compute next snapshot version if user did not supply it
+          if [[ -z "${INPUT_NEXT}" ]]; then
+            BASE="${RELEASE}"
+            # Handle version increment: supports major.minor or major.minor.patch
+            if [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+              # Format: major.minor -> major.minor+1
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              NEXT="${MAJOR}.$((MINOR+1))-SNAPSHOT"
+            elif [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              # Format: major.minor.patch -> major.minor.patch+1
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              PATCH="${BASH_REMATCH[3]}"
+              NEXT="${MAJOR}.${MINOR}.$((PATCH+1))-SNAPSHOT"
+            else
+              echo "Error: Unsupported version format '${BASE}'. Expected major.minor or major.minor.patch"
+              exit 1
+            fi
+          else
+            NEXT="${INPUT_NEXT}"
+          fi
+
+          # Validate next version ends with SNAPSHOT
+          if [[ "${NEXT}" != *-SNAPSHOT ]]; then
+            echo "Error: nextVersion must end with -SNAPSHOT. Got: ${NEXT}"
+            exit 1
+          fi
+
+          # Validate next version is greater than release version
+          NEXT_BASE="${NEXT%-SNAPSHOT}"
+          if [[ "${NEXT_BASE}" == "${RELEASE}" ]]; then
+            echo "Error: nextVersion (${NEXT_BASE}) must be greater than releaseVersion (${RELEASE})"
+            exit 1
+          fi
+
+          echo "Using release: $RELEASE"
+          echo "Using next snapshot: $NEXT"
+
+          # Export
+          echo "release=$RELEASE" >> $GITHUB_OUTPUT
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Prepare Release Notes
         run: |
-          set -eo pipefail
-          RAW_NEXT="${{ steps.prepare_release.outputs.next_version }}"
-          if [[ -z "${RAW_NEXT}" ]]; then
-            echo "safe_next_branch=next-snapshot" >> "$GITHUB_OUTPUT"
+          chmod +x scripts/prepare-release.sh
+          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"    
+
+      - name: Write Maven settings
+        run: |
+          mkdir -p ~/.m2
+          printf '%s\n' \
+            '<settings>' \
+            '  <servers>' \
+            '    <server>' \
+            '      <id>central</id>' \
+            "      <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>" \
+            "      <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>" \
+            '    </server>' \
+            '  </servers>' \
+            '</settings>' > ~/.m2/settings.xml
+          echo "settings.xml created"
+
+      - name: Write Maven security settings
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
+            echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
             exit 0
           fi
-          # Replace invalid branch characters with '-', collapse multiple '-' and trim
-          SAFE=$(printf '%s' "${RAW_NEXT}" | sed -E 's/[^A-Za-z0-9._-]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
-          SAFE="${SAFE:-next-snapshot}"
-          echo "safe_next_branch=${SAFE}" >> "$GITHUB_OUTPUT"
-    
-      - name: Create pull request for next snapshot
-        if: steps.commit_release.outputs.release_changes == 'true' && steps.prepare_snapshot.outputs.snapshot_changes == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: chore/${{ steps.sanitize_next.outputs.safe_next_branch }}-prep
-          title: |
-            chore: prepare for ${{ steps.prepare_release.outputs.next_version }}
-          body: |
-            ## Summary
-            - bump project version to ${{ steps.prepare_release.outputs.next_version }}
-            - reset the changelog to "Unreleased"
-          commit-message: |
-            chore: prepare for next development iteration
-          delete-branch: true
+          mkdir -p ~/.m2
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<settingsSecurity>' \
+            "  <master>${MAVEN_SECURITY_MASTER}</master>" \
+            '</settingsSecurity>' > ~/.m2/settings-security.xml
+          chmod 600 ~/.m2/settings-security.xml
+          echo "settings-security.xml created"
+
+      # -------------------------------------------------------------------
+      #  APPLY RELEASE VERSION
+      # -------------------------------------------------------------------
+      - name: Prepare Release Version
+        run: |
+          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.release }}
+          mvn -B versions:commit
+
+      - name: Commit Release Version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add release/${{ steps.versions.outputs.release }}.md
+          git commit -am "Release ${{ steps.versions.outputs.release }}"
+
+      - name: Tag Release
+        run: git tag -a ${{ steps.versions.outputs.release }} -m "Release ${{ steps.versions.outputs.release }}"
+
+      - name: Ensure branch is still fast-forwardable before deploy
+        shell: bash
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          branch="${RELEASE_BRANCH}"
+          if [[ -z "${branch}" ]]; then
+            echo "Unable to determine branch name (github.ref_name was empty); aborting."
+            exit 1
+          fi
+
+          git fetch origin "${branch}"
+          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
+            echo "Remote branch '${branch}' advanced while the release workflow was running."
+            echo "Failing before deployment to avoid publishing artifacts without matching commits."
+            exit 1
+          fi
+
+      - name: Configure GPG for signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          chmod 600 ~/.gnupg/gpg.conf
+          touch ~/.gnupg/gpg-agent.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          chmod 600 ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent 2>/dev/null || true
+          gpgconf --launch gpg-agent 2>/dev/null || true
+          echo "gpg.conf and gpg-agent.conf created"
+
+      - name: Deploy Release to Maven Central
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -Pproduction-release deploy
+
+      # -------------------------------------------------------------------
+      #  APPLY NEXT SNAPSHOT VERSION
+      # -------------------------------------------------------------------
+      - name: Prepare Next Development Version
+        run: |
+          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.next }}
+          mvn -B versions:commit
+
+      - name: Commit Next Snapshot
+        run: |
+          git commit -am "Start ${{ steps.versions.outputs.next }}"
+
+      - name: Push Changes Using PAT
+        env:
+          PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git push https://$PAT@github.com/${{ github.repository }} --follow-tags

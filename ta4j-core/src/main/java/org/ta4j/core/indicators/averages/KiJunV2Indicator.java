@@ -53,9 +53,9 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator       an indicator
-     * @param barCount        the Simple Moving Average time frame
-     * @param polynomialOrder the degree of the polynomial, default 2
+     * @param highPrice the high price indicator
+     * @param lowPrice  the low price indicator
+     * @param barCount  the Simple Moving Average time frame
      */
     public KiJunV2Indicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, int barCount) {
         super(highPrice.getBarSeries());
