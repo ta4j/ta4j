@@ -75,7 +75,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             var one = series.numFactory().one();
-            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
+            return returnRepresentation.toRepresentationFromTotalReturn(one);
         }
         Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
         return calculateES(returns, confidence, returnRepresentation);
@@ -100,7 +100,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         Num zero = returns.getBarSeries().numFactory().zero();
         Num one = returns.getBarSeries().numFactory().one();
         if (returnRates.isEmpty()) {
-            return representation.toRepresentationFromTotalReturn(one, one);
+            return representation.toRepresentationFromTotalReturn(one);
         }
         Num expectedShortfall = zero;
         // F(x_var) >= alpha (=1-confidence)
@@ -121,7 +121,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             expectedShortfall = zero;
         }
 
-        return representation.toRepresentationFromLogReturn(expectedShortfall, one);
+        return representation.toRepresentationFromLogReturn(expectedShortfall);
     }
 
     /** The higher the criterion value, the better. */

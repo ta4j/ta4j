@@ -63,20 +63,12 @@ public final class ReturnRepresentationPolicy {
     }
 
     /**
-     * Sets the JVM-wide default representation for return-based criteria.
+     * Sets the default return representation used across Ta4j criteria.
      *
-     * @param representation the representation to use
-     */
-    public static void use(ReturnRepresentation representation) {
-        setDefaultRepresentation(representation);
-    }
-
-    /**
-     * Sets the JVM-wide default representation for return-based criteria.
-     *
-     * @param representation the representation to use
+     * @param representation the return representation to set as default, or null to
+     *                       reset to TOTAL_RETURN
      */
     public static void setDefaultRepresentation(ReturnRepresentation representation) {
-        defaultRepresentation = Objects.requireNonNull(representation, "representation");
+        defaultRepresentation = Objects.requireNonNullElse(representation, ReturnRepresentation.TOTAL_RETURN);
     }
 }

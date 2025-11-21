@@ -79,11 +79,10 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            return returnRepresentation.toRepresentationFromTotalReturn(calculateReturn(series, position),
-                    series.numFactory().one());
+            return returnRepresentation.toRepresentationFromTotalReturn(calculateReturn(series, position));
         }
         var numFactory = series.numFactory();
-        return returnRepresentation.toRepresentationFromTotalReturn(numFactory.one(), numFactory.one());
+        return returnRepresentation.toRepresentationFromTotalReturn(numFactory.one());
     }
 
     @Override
@@ -93,7 +92,7 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
                 .stream()
                 .map(p -> calculateReturn(series, p))
                 .reduce(one, Num::multipliedBy);
-        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn, one);
+        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
     }
 
     @Override

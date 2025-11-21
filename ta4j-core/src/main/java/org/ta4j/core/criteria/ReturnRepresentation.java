@@ -23,10 +23,11 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.Locale;
-import java.util.Objects;
-
 import org.ta4j.core.num.Num;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 /**
  * Normalizes how percentage/return based criteria are exposed to users.
@@ -36,10 +37,11 @@ import org.ta4j.core.num.Num;
  * {@code ReturnRepresentation} defines how that internal value is returned to
  * callers. The global default can be overridden via
  * {@link ReturnRepresentationPolicy} or by passing a representation to the
- * relevant criterion constructor. All conversion helpers expect the provided
- * {@code one} value to be produced by the same
- * {@link org.ta4j.core.num.NumFactory} used by the surrounding
- * {@link org.ta4j.core.BarSeries} to avoid mixing numeric implementations.
+ * relevant criterion constructor. All conversion helpers automatically use the
+ * {@link org.ta4j.core.num.NumFactory} from the provided {@code Num} parameter
+ * to ensure consistent numeric implementations.
+ *
+ * @since 0.20
  */
 public enum ReturnRepresentation {
 
@@ -54,6 +56,8 @@ public enum ReturnRepresentation {
      * {@code +12%} by {@code 0.12}.
      */
     RATE_OF_RETURN(false);
+
+    private static final Logger log = LoggerFactory.getLogger(ReturnRepresentation.class);
 
     private final boolean includesBase;
 
@@ -72,51 +76,49 @@ public enum ReturnRepresentation {
      * Converts a multiplicative total return into the configured representation.
      *
      * @param totalReturn a 1-based total return
-     * @param one         the numeric {@code 1}
      * @return the represented return
      */
-    public Num toRepresentationFromTotalReturn(Num totalReturn, Num one) {
+    public Num toRepresentationFromTotalReturn(Num totalReturn) {
         if (includesBase) {
             return totalReturn;
         }
-        return totalReturn.minus(one);
+        return totalReturn.minus(totalReturn.getNumFactory().one());
     }
 
     /**
      * Converts an arithmetic rate of return (0-based) into the configured
      * representation.
      *
-     * @param rate an arithmetic rate of return
-     * @param one  the numeric {@code 1}
+     * @param rateOfReturn an arithmetic rate of return
      * @return the represented return
      */
-    public Num toRepresentationFromRate(Num rate, Num one) {
+    public Num toRepresentationFromRateOfReturn(Num rateOfReturn) {
+        var one = rateOfReturn.getNumFactory().one();
         if (includesBase) {
-            return rate.plus(one);
+            return rateOfReturn.plus(one);
         }
-        return rate;
+        return rateOfReturn;
     }
 
     /**
      * Converts a log-return into the configured representation.
      *
      * @param logReturn the log-return to convert
-     * @param one       the numeric {@code 1}
      * @return the represented return
      */
-    public Num toRepresentationFromLogReturn(Num logReturn, Num one) {
-        var totalReturn = toTotalReturnFromLogReturn(logReturn, one);
-        return toRepresentationFromTotalReturn(totalReturn, one);
+    public Num toRepresentationFromLogReturn(Num logReturn) {
+        var totalReturn = toTotalReturnFromLogReturn(logReturn);
+        return toRepresentationFromTotalReturn(totalReturn);
     }
 
     /**
      * Converts a represented value into a multiplicative total return.
      *
      * @param representedReturn the return expressed using this representation
-     * @param one               the numeric {@code 1}
      * @return a 1-based total return
      */
-    public Num toTotalReturn(Num representedReturn, Num one) {
+    public Num toTotalReturn(Num representedReturn) {
+        var one = representedReturn.getNumFactory().one();
         if (includesBase) {
             return representedReturn;
         }
@@ -127,21 +129,20 @@ public enum ReturnRepresentation {
      * Converts a represented value into a 0-based rate of return.
      *
      * @param representedReturn the return expressed using this representation
-     * @param one               the numeric {@code 1}
      * @return a 0-based rate of return
      */
-    public Num toRateOfReturn(Num representedReturn, Num one) {
-        return toTotalReturn(representedReturn, one).minus(one);
+    public Num toRateOfReturn(Num representedReturn) {
+        var one = representedReturn.getNumFactory().one();
+        return toTotalReturn(representedReturn).minus(one);
     }
 
     /**
      * Converts a log return into a multiplicative total return.
      *
      * @param logReturn the log-return to convert
-     * @param one       the numeric {@code 1}
      * @return a 1-based total return
      */
-    public Num toTotalReturnFromLogReturn(Num logReturn, Num one) {
+    public Num toTotalReturnFromLogReturn(Num logReturn) {
         return logReturn.exp();
     }
 
@@ -157,16 +158,89 @@ public enum ReturnRepresentation {
 
     /**
      * Parses a representation name in a case-insensitive way.
+     * <p>
+     * Accepts various formats including spaces, dashes, underscores, and mixed
+     * case. Examples: "total return", "TOTAL_RETURN", "rate-of-return", "Rate Of
+     * Return"
+     * <p>
+     * If parsing fails, an error is logged and {@code null} is returned.
      *
      * @param name the textual representation name
-     * @return the matching representation
+     * @return the matching representation, or {@code null} if parsing fails
      */
     public static ReturnRepresentation parse(String name) {
-        Objects.requireNonNull(name, "name");
-        String normalized = name.trim()
-                .toUpperCase(Locale.ROOT)
-                .replaceAll("[^A-Z0-9]+", "_")
-                .replaceAll("^_+|_+$", "");
-        return ReturnRepresentation.valueOf(normalized);
+        if (name == null) {
+            log.warn("Cannot parse null representation name. Valid values are: {}", Arrays.toString(values()));
+            return null;
+        }
+
+        // Fast path: try exact match first (case-sensitive)
+        try {
+            return valueOf(name);
+        } catch (IllegalArgumentException ignored) {
+            // Continue to normalization
+        }
+
+        // Normalize the input: trim, uppercase, replace non-alphanumeric with
+        // underscore
+        String normalized = normalizeEnumName(name);
+
+        if (normalized.isEmpty()) {
+            log.warn("Cannot parse empty or invalid representation name: \"{}\". Valid values are: {}", name,
+                    Arrays.toString(values()));
+            return null;
+        }
+
+        try {
+            return valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            log.warn("Cannot parse representation name: \"{}\" (normalized: \"{}\"). Valid values are: {}", name,
+                    normalized, Arrays.toString(values()));
+            return null;
+        }
+    }
+
+    /**
+     * Normalizes a string to match enum naming conventions. Converts to uppercase,
+     * replaces non-alphanumeric characters with underscores, and removes
+     * leading/trailing underscores.
+     *
+     * @param name the name to normalize
+     * @return the normalized name
+     */
+    private static String normalizeEnumName(String name) {
+        if (name == null || name.isEmpty()) {
+            return "";
+        }
+
+        // Use StringBuilder for better performance than regex
+        StringBuilder builder = new StringBuilder(name.length());
+        boolean lastWasUnderscore = false;
+        boolean hasValidChar = false;
+
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+
+            if (Character.isLetterOrDigit(ch)) {
+                builder.append(Character.toUpperCase(ch));
+                lastWasUnderscore = false;
+                hasValidChar = true;
+            } else if (!lastWasUnderscore && hasValidChar) {
+                // Only add underscore if we've seen a valid character and last wasn't
+                // underscore
+                // This handles multiple consecutive separators
+                builder.append('_');
+                lastWasUnderscore = true;
+            }
+            // Skip other characters (spaces, dashes, etc.)
+        }
+
+        // Remove trailing underscore if present
+        int length = builder.length();
+        if (length > 0 && builder.charAt(length - 1) == '_') {
+            builder.setLength(length - 1);
+        }
+
+        return builder.toString();
     }
 }

@@ -23,10 +23,11 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-
 import org.junit.Test;
+
+import java.util.Optional;
+
+import static org.junit.Assert.*;
 
 public class ReturnRepresentationPolicyTest {
 
@@ -34,17 +35,23 @@ public class ReturnRepresentationPolicyTest {
     public void useOverridesDefaultRepresentation() {
         var original = ReturnRepresentationPolicy.getDefaultRepresentation();
         try {
-            ReturnRepresentationPolicy.use(ReturnRepresentation.RATE_OF_RETURN);
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.RATE_OF_RETURN);
             assertSame(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
 
             ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
             assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
 
-            ReturnRepresentationPolicy.use(ReturnRepresentation.TOTAL_RETURN);
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
             assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
         } finally {
-            ReturnRepresentationPolicy.use(original);
+            ReturnRepresentationPolicy.setDefaultRepresentation(original);
         }
+    }
+
+    @Test
+    public void settingDefaultRepresentationToNullUsesDefault() {
+        ReturnRepresentationPolicy.setDefaultRepresentation(null);
+        assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
     }
 
     @Test
@@ -53,5 +60,58 @@ public class ReturnRepresentationPolicyTest {
         assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate_of_Return"));
         assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total return"));
         assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("rate-of-return"));
+    }
+
+    @Test
+    public void parseHandlesExactEnumNames() {
+        // Fast path: exact matches
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("TOTAL_RETURN"));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("RATE_OF_RETURN"));
+    }
+
+    @Test
+    public void parseHandlesVariousFormats() {
+        // Mixed separators and case
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("Total Return"));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate Of Return"));
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total-return"));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("RATE-OF-RETURN"));
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total___return")); // multiple
+        // underscores
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("rate   of   return")); // multiple
+        // spaces
+    }
+
+    @Test
+    public void parseHandlesWhitespace() {
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("  total_return  "));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("\tRate Of Return\n"));
+    }
+
+    @Test
+    public void parseReturnsNullOnInvalidName() {
+        ReturnRepresentation result = ReturnRepresentation.parse("invalid_name");
+        assertNull(result);
+    }
+
+    @Test
+    public void parseReturnsNullOnEmptyString() {
+        ReturnRepresentation result = ReturnRepresentation.parse("   ");
+        assertNull(result);
+    }
+
+    @Test
+    public void parseReturnsNullOnNull() {
+        ReturnRepresentation result = ReturnRepresentation.parse(null);
+        assertNull(result);
+    }
+
+    @Test
+    public void parseErrorInStream() {
+        ReturnRepresentation defaultRepresentation = Optional.ofNullable("GARBAGE IN")
+                .map(ReturnRepresentation::parse)
+                .orElse(ReturnRepresentation.TOTAL_RETURN);
+
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, defaultRepresentation);
     }
 }

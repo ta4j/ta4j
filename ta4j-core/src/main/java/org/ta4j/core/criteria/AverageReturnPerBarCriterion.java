@@ -66,12 +66,12 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         // Therefore, we need to use "pow" to accurately capture the compounding effect.
         var one = series.numFactory().one();
         if (bars.isZero()) {
-            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
+            return returnRepresentation.toRepresentationFromTotalReturn(one);
         }
         var representedReturn = netReturn.calculate(series, position);
-        var totalReturn = returnRepresentation.toTotalReturn(representedReturn, one);
+        var totalReturn = returnRepresentation.toTotalReturn(representedReturn);
         var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
-        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn, one);
+        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn);
     }
 
     @Override
@@ -79,12 +79,12 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         var bars = numberOfBars.calculate(series, tradingRecord);
         var one = series.numFactory().one();
         if (bars.isZero()) {
-            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
+            return returnRepresentation.toRepresentationFromTotalReturn(one);
         }
         var representedReturn = this.netReturn.calculate(series, tradingRecord);
-        var totalReturn = returnRepresentation.toTotalReturn(representedReturn, one);
+        var totalReturn = returnRepresentation.toTotalReturn(representedReturn);
         var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
-        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn, one);
+        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn);
     }
 
     /** The higher the criterion value, the better. */
