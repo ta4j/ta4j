@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
@@ -70,7 +71,9 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        grossReturn = new GrossReturnCriterion();
+        // Use TOTAL_RETURN (1-based) for internal calculations since we multiply
+        // amounts
+        grossReturn = new GrossReturnCriterion(ReturnRepresentation.TOTAL_RETURN);
     }
 
     @Override

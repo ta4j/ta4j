@@ -28,15 +28,42 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
 
 /**
  * Base class for profit/loss percentage criteria.
  * <p>
  * Calculates the aggregated profit or loss in percent relative to the entry
- * price of each position.
+ * price of each position. Handles the output {@link ReturnRepresentation
+ * representation}. Internally the criterion works with rates of return (a
+ * neutral value of {@code 0.0}). The representation is applied before values
+ * are returned to callers.
  */
 public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
+
+    /**
+     * Output representation used for this criterion.
+     */
+    protected final ReturnRepresentation returnRepresentation;
+
+    /**
+     * Constructor with {@link ReturnRepresentationPolicy#getDefaultRepresentation()
+     * global default representation}.
+     */
+    protected AbstractProfitLossPercentageCriterion() {
+        this(ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param returnRepresentation the return representation to use
+     */
+    protected AbstractProfitLossPercentageCriterion(ReturnRepresentation returnRepresentation) {
+        this.returnRepresentation = returnRepresentation;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -46,9 +73,11 @@ public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnal
             if (entryValue.isZero()) {
                 return numFactory.zero();
             }
-            return profit(position).dividedBy(entryValue).multipliedBy(numFactory.hundred());
+            var rate = profit(position).dividedBy(entryValue);
+            var totalReturn = rate.plus(numFactory.one());
+            return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
         }
-        return numFactory.zero();
+        return returnRepresentation.toRepresentationFromTotalReturn(numFactory.one());
     }
 
     @Override
@@ -70,9 +99,11 @@ public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnal
                 .reduce(zero, Num::plus);
 
         if (totalEntryPrice.isZero()) {
-            return zero;
+            return returnRepresentation.toRepresentationFromTotalReturn(numFactory.one());
         }
-        return totalProfit.dividedBy(totalEntryPrice).multipliedBy(numFactory.hundred());
+        var rate = totalProfit.dividedBy(totalEntryPrice);
+        var totalReturn = rate.plus(numFactory.one());
+        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
     }
 
     @Override

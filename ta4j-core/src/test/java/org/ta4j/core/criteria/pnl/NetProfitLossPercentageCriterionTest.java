@@ -28,49 +28,50 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class NetProfitLossPercentageCriterionTest extends AbstractPnlCriterionTest {
 
     public NetProfitLossPercentageCriterionTest(NumFactory numFactory) {
-        super(params -> new NetProfitLossPercentageCriterion(), numFactory);
+        super(params -> new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN), numFactory);
     }
 
     @Override
     protected void handleCalculateWithProfits(Num result) {
-        assertNumEquals(10.5, result);
+        assertNumEquals(0.105, result);
     }
 
     @Override
     protected void handleCalculateWithLosses(Num result) {
-        assertNumEquals(-19.325, result);
+        assertNumEquals(-0.19325, result);
     }
 
     @Override
     protected void handleCalculateOnlyWithProfitPositions(Num result) {
-        assertNumEquals(7.5, result);
+        assertNumEquals(0.075, result);
     }
 
     @Override
     protected void handleCalculateOnlyWithProfitPositions2(Num result) {
-        assertNumEquals(12.5, result);
+        assertNumEquals(0.125, result);
     }
 
     @Override
     protected void handleCalculateOnlyWithLossPositions(Num result) {
-        assertNumEquals(-17.5, result);
+        assertNumEquals(-0.175, result);
     }
 
     @Override
     protected void handleCalculateProfitWithShortPositions(Num result) {
-        assertNumEquals(-21.21212121, result);
+        assertNumEquals(-0.2121212121, result);
     }
 
     @Override
     protected void handleBetterThan(AnalysisCriterion criterion) {
-        assertTrue(criterion.betterThan(numOf(5), numOf(3)));
-        assertFalse(criterion.betterThan(numOf(3), numOf(5)));
+        assertTrue(criterion.betterThan(numOf(0.05), numOf(0.03)));
+        assertFalse(criterion.betterThan(numOf(0.03), numOf(0.05)));
     }
 
     @Override
@@ -80,7 +81,7 @@ public class NetProfitLossPercentageCriterionTest extends AbstractPnlCriterionTe
 
     @Override
     protected void handleCalculateWithOpenedPosition(Num result) {
-        assertNumEquals(10, result);
+        assertNumEquals(0.1, result);
     }
 
     @Override

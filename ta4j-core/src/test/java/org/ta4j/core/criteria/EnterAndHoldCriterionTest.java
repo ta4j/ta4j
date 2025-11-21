@@ -37,6 +37,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
@@ -57,19 +58,21 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // buy and hold of GrossReturnCriterion
         var buyAndHoldReturn = getCriterion(new GrossReturnCriterion());
-        assertNumEquals(105d / 100, buyAndHoldReturn.calculate(series, position));
+        assertNumEquals(1.05, buyAndHoldReturn.calculate(series, position));
 
         // sell and hold of GrossReturnCriterion
         var sellAndHoldReturn = getCriterion(TradeType.SELL, new GrossReturnCriterion());
         assertNumEquals(0.95, sellAndHoldReturn.calculate(series, position));
 
         // buy and hold of PnlPercentageCriterion
-        var buyAndHoldPnlPercentage = getCriterion(new NetProfitLossPercentageCriterion());
-        assertNumEquals(5, buyAndHoldPnlPercentage.calculate(series, position));
+        var buyAndHoldPnlPercentage = getCriterion(
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(0.05, buyAndHoldPnlPercentage.calculate(series, position));
 
         // sell and hold of PnlPercentageCriterion
-        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL, new NetProfitLossPercentageCriterion());
-        assertNumEquals(-5, sellAndHoldPnlPercentage.calculate(series, position));
+        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL,
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(-0.05, sellAndHoldPnlPercentage.calculate(series, position));
     }
 
     @Test
@@ -85,12 +88,14 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertNumEquals(1.3, sellAndHoldReturn.calculate(series, new BaseTradingRecord()));
 
         // buy and hold of NetProfitLossPercentageCriterion
-        var buyAndHoldPnlPercentage = getCriterion(new NetProfitLossPercentageCriterion());
-        assertNumEquals(-30, buyAndHoldPnlPercentage.calculate(series, new BaseTradingRecord()));
+        var buyAndHoldPnlPercentage = getCriterion(
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(-0.30, buyAndHoldPnlPercentage.calculate(series, new BaseTradingRecord()));
 
         // sell and hold of NetProfitLossPercentageCriterion
-        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL, new NetProfitLossPercentageCriterion());
-        assertNumEquals(30, sellAndHoldPnlPercentage.calculate(series, new BaseTradingRecord()));
+        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL,
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(0.30, sellAndHoldPnlPercentage.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -110,12 +115,14 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertNumEquals(0.95, sellAndHoldReturn.calculate(series, tradingRecord));
 
         // buy and hold of NetProfitLossPercentageCriterion
-        var buyAndHoldPnlPercentage = getCriterion(new NetProfitLossPercentageCriterion());
-        assertNumEquals(5, buyAndHoldPnlPercentage.calculate(series, tradingRecord));
+        var buyAndHoldPnlPercentage = getCriterion(
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(0.05, buyAndHoldPnlPercentage.calculate(series, tradingRecord));
 
         // sell and hold of NetProfitLossPercentageCriterion
-        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL, new NetProfitLossPercentageCriterion());
-        assertNumEquals(-5, sellAndHoldPnlPercentage.calculate(series, tradingRecord));
+        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL,
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(-0.05, sellAndHoldPnlPercentage.calculate(series, tradingRecord));
     }
 
     @Test
@@ -133,12 +140,14 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertNumEquals(1.3, sellAndHoldReturn.calculate(series, tradingRecord));
 
         // buy and hold of NetProfitLossPercentageCriterion
-        var buyAndHoldPnlPercentage = getCriterion(new NetProfitLossPercentageCriterion());
-        assertNumEquals(-30, buyAndHoldPnlPercentage.calculate(series, tradingRecord));
+        var buyAndHoldPnlPercentage = getCriterion(
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(-0.30, buyAndHoldPnlPercentage.calculate(series, tradingRecord));
 
         // sell and hold of NetProfitLossPercentageCriterion
-        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL, new NetProfitLossPercentageCriterion());
-        assertNumEquals(30, sellAndHoldPnlPercentage.calculate(series, tradingRecord));
+        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL,
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertNumEquals(0.30, sellAndHoldPnlPercentage.calculate(series, tradingRecord));
     }
 
     @Test
@@ -156,7 +165,7 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         var buyAndHoldPnl = new EnterAndHoldCriterion(TradeType.BUY, new NetProfitLossCriterion(),
                 BigDecimal.valueOf(10));
         var buyAndHoldPnlValue = buyAndHoldPnl.calculate(series, tradingRecord);
-        assertNumEquals(5 * 10d, buyAndHoldPnlValue);
+        assertNumEquals(50.0, buyAndHoldPnlValue);
     }
 
     @Test
@@ -173,14 +182,16 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertFalse(sellAndHoldReturn.betterThan(numOf(0.6), numOf(0.9)));
 
         // buy and hold of PnlPercentageCriterion
-        var buyAndHoldPnlPercentage = getCriterion(new NetProfitLossPercentageCriterion());
-        assertTrue(buyAndHoldPnlPercentage.betterThan(numOf(1.3), numOf(1.1)));
-        assertFalse(buyAndHoldPnlPercentage.betterThan(numOf(0.6), numOf(0.9)));
+        var buyAndHoldPnlPercentage = getCriterion(
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertTrue(buyAndHoldPnlPercentage.betterThan(numOf(0.3), numOf(0.1)));
+        assertFalse(buyAndHoldPnlPercentage.betterThan(numOf(-0.4), numOf(-0.1)));
 
         // sell and hold of PnlPercentageCriterion
-        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL, new NetProfitLossPercentageCriterion());
-        assertTrue(sellAndHoldPnlPercentage.betterThan(numOf(1.3), numOf(1.1)));
-        assertFalse(sellAndHoldPnlPercentage.betterThan(numOf(0.6), numOf(0.9)));
+        var sellAndHoldPnlPercentage = getCriterion(TradeType.SELL,
+                new NetProfitLossPercentageCriterion(ReturnRepresentation.RATE_OF_RETURN));
+        assertTrue(sellAndHoldPnlPercentage.betterThan(numOf(0.3), numOf(0.1)));
+        assertFalse(sellAndHoldPnlPercentage.betterThan(numOf(-0.4), numOf(-0.1)));
     }
 
     @Test
