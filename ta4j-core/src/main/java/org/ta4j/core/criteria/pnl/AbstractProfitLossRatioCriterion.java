@@ -70,7 +70,8 @@ import org.ta4j.core.num.Num;
  * <li><b>DECIMAL</b>: 2.0 (profit is 2x the loss)
  * <li><b>PERCENTAGE</b>: 100.0 (profit is 100% better than loss, i.e., (2.0 -
  * 1) * 100)
- * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + (2.0 - 1) = 3.0, meaning 200% better)
+ * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + 2.0 = 3.0, meaning profit is 200% better
+ * than loss)
  * </ul>
  *
  * <p>
@@ -163,17 +164,19 @@ public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisC
         // A ratio of 2.0 means profit is 2x loss, which can be expressed as:
         // - DECIMAL: 2.0 (profit is 2x loss)
         // - PERCENTAGE: 100.0 (profit is 100% better than loss, i.e., (2.0 - 1) * 100)
-        // - MULTIPLICATIVE: 3.0 (1 + (2.0 - 1) = 2.0, wait that's wrong...)
-        // Actually, for MULTIPLICATIVE: 1 + (ratio - 1) = ratio, so it's the same as
-        // DECIMAL
-        // But that doesn't make sense. Let me think...
-        // Actually, a ratio of 2.0 in MULTIPLICATIVE should be 2.0 (same as DECIMAL)
-        // But if we convert (2.0 - 1) = 1.0 as a rate, MULTIPLICATIVE becomes 2.0,
-        // which is correct!
+        // - MULTIPLICATIVE: 3.0 (1 + 2.0 = 3.0, meaning profit is 200% better than
+        // loss)
         if (returnRepresentation == ReturnRepresentation.DECIMAL) {
             return rawRatio;
         }
-        // For PERCENTAGE and MULTIPLICATIVE, convert (ratio - 1) as a rate of return
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            // For MULTIPLICATIVE, return 1 + rawRatio to represent the multiplicative
+            // factor
+            // A ratio of 2.0 becomes 3.0 (1 + 2.0), meaning profit is 200% better
+            var one = numFactory.one();
+            return rawRatio.plus(one);
+        }
+        // For PERCENTAGE, convert (ratio - 1) as a rate of return
         // This represents how much better profit is compared to loss
         var one = numFactory.one();
         var excess = rawRatio.minus(one);

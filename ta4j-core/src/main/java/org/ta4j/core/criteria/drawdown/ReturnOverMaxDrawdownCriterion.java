@@ -109,7 +109,11 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
      */
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
         this.returnRepresentation = returnRepresentation;
-        this.netReturnCriterion = new NetReturnCriterion(returnRepresentation);
+        // Always use DECIMAL (0-based) for internal calculation since the formula
+        // requires
+        // "net return without base" (rate of return). The final ratio will be converted
+        // to the desired representation.
+        this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
     }
 
     @Override
@@ -119,20 +123,32 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
             return numFactory.zero();
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        // Get the net return in the configured representation
+        // Get the net return in DECIMAL (0-based) for the formula calculation
         var netReturn = netReturnCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
-            // If no drawdown, return the net return (already in the correct representation)
-            return netReturn;
+            // If no drawdown, convert the net return to the desired representation
+            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
-        // For backward compatibility with existing tests, divide the already-converted
-        // return
-        // by the drawdown. The result is in the same representation as the return.
-        // Then convert the ratio to the desired representation.
+        // Calculate ratio: net return (0-based) / drawdown
+        // Both are in DECIMAL format, so the ratio is also in DECIMAL
         var rawRatio = netReturn.dividedBy(maxDrawdown);
-        // Convert the ratio: first convert back to rate, then to desired representation
-        var rateRatio = returnRepresentation.toRateOfReturn(rawRatio);
-        return returnRepresentation.toRepresentationFromRateOfReturn(rateRatio);
+        // Convert the ratio to the desired representation
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rawRatio;
+        }
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
+            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
+            var one = numFactory.one();
+            var zero = numFactory.zero();
+            if (rawRatio.isGreaterThanOrEqual(zero)) {
+                return rawRatio.plus(one);
+            } else {
+                return rawRatio;
+            }
+        }
+        // For PERCENTAGE, multiply the ratio by 100
+        return rawRatio.multipliedBy(numFactory.numOf(100));
     }
 
     @Override
@@ -142,20 +158,32 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
             return numFactory.zero(); // penalise no-trade strategies
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        // Get the net return in the configured representation
+        // Get the net return in DECIMAL (0-based) for the formula calculation
         var netReturn = netReturnCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
-            // If no drawdown, return the net return (already in the correct representation)
-            return netReturn; // perfect equity curve
+            // If no drawdown, convert the net return to the desired representation
+            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
-        // For backward compatibility with existing tests, divide the already-converted
-        // return
-        // by the drawdown. The result is in the same representation as the return.
-        // Then convert the ratio to the desired representation.
+        // Calculate ratio: net return (0-based) / drawdown
+        // Both are in DECIMAL format, so the ratio is also in DECIMAL
         var rawRatio = netReturn.dividedBy(maxDrawdown);
-        // Convert the ratio: first convert back to rate, then to desired representation
-        var rateRatio = returnRepresentation.toRateOfReturn(rawRatio);
-        return returnRepresentation.toRepresentationFromRateOfReturn(rateRatio);
+        // Convert the ratio to the desired representation
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rawRatio;
+        }
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
+            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
+            var one = numFactory.one();
+            var zero = numFactory.zero();
+            if (rawRatio.isGreaterThanOrEqual(zero)) {
+                return rawRatio.plus(one);
+            } else {
+                return rawRatio;
+            }
+        }
+        // For PERCENTAGE, multiply the ratio by 100
+        return rawRatio.multipliedBy(numFactory.numOf(100));
     }
 
     @Override
