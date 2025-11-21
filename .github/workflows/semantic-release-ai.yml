@@ -109,9 +109,48 @@ jobs:
             echo "audit:short_circuit=false"
           fi
 
-      - name: No release — empty diff and changelog
+      - name: No release - empty diff and changelog
         if: steps.gate.outputs.proceed != 'true'
         run: echo "No release recommended (empty diff and changelog)."
+
+      - name: Obtain OIDC token for model call
+        id: oidc
+        if: steps.gate.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          aud="models.github.ai"
+
+          raw=$(curl -sLS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${aud}")
+          token=$(printf '%s' "$raw" | jq -r '.value')
+
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "Failed to fetch OIDC token" >&2
+            exit 1
+          fi
+
+          echo "::add-mask::$token"
+
+          TOKEN="$token" AUD="$aud" python - <<'PY'
+            import base64, json, os, sys, time
+            token = os.environ["TOKEN"]
+            aud = os.environ["AUD"]
+            try:
+                header, payload, _ = token.split(".")
+                pad = "=" * (-len(payload) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(payload + pad))
+            except Exception as exc:
+                sys.exit(f"Bad JWT: {exc}")
+            if claims.get("aud") != aud:
+                sys.exit(f"aud mismatch: {claims.get('aud')}")
+            if claims.get("iss") != "https://token.actions.githubusercontent.com":
+                sys.exit("iss mismatch")
+            if claims.get("exp", 0) <= time.time():
+                sys.exit("token expired")
+            print("claims ok")
+          PY
+
+          echo "token=$token" >> $GITHUB_OUTPUT
 
       # -------------------------------------------------------------
       # AI STEP - Semantic Versioning with Strong SemVer Guardrails
@@ -119,6 +158,8 @@ jobs:
       - name: Ask AI for semantic version bump
         id: ai
         if: steps.gate.outputs.proceed == 'true'
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
         run: |
           jq -n \
             --argjson diff '${{ steps.diff.outputs.diff }}' \
@@ -166,7 +207,7 @@ jobs:
             response=$(curl -s --fail -X POST \
               --max-time 30 \
               -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.MODELS_PAT }}" \
+              -H "Authorization: Bearer $OIDC_TOKEN" \
               https://models.github.ai/inference/chat/completions \
               -d @request.json)
             status=$?
