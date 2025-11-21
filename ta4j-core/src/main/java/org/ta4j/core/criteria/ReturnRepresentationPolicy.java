@@ -35,7 +35,7 @@ import java.util.Optional;
  * backtests:
  *
  * <pre>
- * ReturnRepresentationPolicy.use(ReturnRepresentation.RATE_OF_RETURN);
+ * ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.RATE_OF_RETURN);
  * </pre>
  *
  * A JVM-wide override is also supported via the system property
