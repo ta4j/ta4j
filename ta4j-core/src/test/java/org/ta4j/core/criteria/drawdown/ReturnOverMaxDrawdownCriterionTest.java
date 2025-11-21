@@ -64,7 +64,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals((netProfit + 1) / ((peak - low) / peak), result);
+        assertNumEquals(netProfit / ((peak - low) / peak), result);
     }
 
     @Test
@@ -75,7 +75,11 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals(2d * (20d / 3d), result);
+        // Total return = (2/1) * (20/3) = 40/3, rate of return = 40/3 - 1 = 37/3
+        // If there's no drawdown, result = rate of return
+        var totalReturn = 2d * (20d / 3d);
+        var rateOfReturn = totalReturn - 1;
+        assertNumEquals(rateOfReturn, result);
     }
 
     @Test
@@ -97,7 +101,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = ratioCriterion.calculate(series, position);
 
-        assertNumEquals((95d / 100) / ((1d - 0.95d)), result);
+        // Rate of return = (95/100) - 1 = -0.05, drawdown = 0.05
+        // Result = -0.05 / 0.05 = -1
+        assertNumEquals(-1d, result);
     }
 
     @Test
@@ -117,7 +123,10 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals((105d / 100d) * (100d / 95d), result);
+        // Total return = (105/100) * (100/95) = 105/95, rate of return = 105/95 - 1 =
+        // 10/95
+        // No drawdown, so result = rate of return
+        assertNumEquals((105d / 95d) - 1, result);
     }
 
     @Test
@@ -129,7 +138,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, position);
 
-        assertNumEquals(105d / 100d, result);
+        // Total return = 105/100 = 1.05, rate of return = 0.05
+        // No drawdown, so result = rate of return
+        assertNumEquals(0.05, result);
     }
 
     @Test

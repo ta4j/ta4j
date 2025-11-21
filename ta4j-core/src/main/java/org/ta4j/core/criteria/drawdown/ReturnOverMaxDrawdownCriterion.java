@@ -29,7 +29,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
-import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
@@ -47,7 +46,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     public ReturnOverMaxDrawdownCriterion() {
-        this(ReturnRepresentationPolicy.getDefaultRepresentation());
+        this(ReturnRepresentation.RATE_OF_RETURN);
     }
 
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
