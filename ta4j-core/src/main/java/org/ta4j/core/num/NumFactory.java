@@ -79,6 +79,22 @@ public interface NumFactory {
     Num numOf(String number);
 
     /**
+     * Calculates the exponential of {@code value} using the numeric type provided
+     * by this factory.
+     * <p>
+     * Implementations may override this to provide higher-precision calculations.
+     * The default implementation delegates to {@link Math#exp(double)} and converts
+     * the result back into the factory's {@link Num} type, which may reduce
+     * precision for high-precision implementations.
+     *
+     * @param value the exponent input
+     * @return {@code e^value}
+     */
+    default Num exp(Num value) {
+        return numOf(Math.exp(value.doubleValue()));
+    }
+
+    /**
      * Determines whether num instance has been produced by this factory
      *
      * @param num to test

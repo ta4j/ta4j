@@ -27,6 +27,15 @@ configuration, while strategies can now rely on `Strategy#toJson()` / `Strategy#
 round-tripping entry and exit rules alongside metadata. These helpers make it easier to store and exchange model parameters
 without hand-rolling JSON glue.
 
+### Return representation policy
+
+Return-based analysis criteria default to 1-based total returns (e.g., {@code 1.12} = +12%). Applications that prefer
+0-based rates of return can change the JVM-wide default with the system property
+`-Dta4j.returns.representation=RATE_OF_RETURN` or programmatically via
+`ReturnRepresentationPolicy.setDefaultRepresentation(...)`. Individual criteria also accept a
+`ReturnRepresentation` in their constructors for per-instance control. Accepted values are flexible (`total return`,
+`TOTAL_RETURN`, `total-return`, etc.) and parsed case-insensitively.
+
 ### Maven configuration
 
 Ta4j is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.

@@ -35,6 +35,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -69,7 +70,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // tradingResult is approx. 210% better than "buy and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(false));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(ReturnRepresentation.RATE_OF_RETURN));
         assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 
@@ -90,7 +91,7 @@ public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
         // trading is approx. 0.05 worse than "enter and hold"
         var tradingVsEnterAndHold = xVsEnterAndHold(tradingResult, enterAndHoldResult);
 
-        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(true));
+        var vsBuyAndHold = getCriterion(new GrossReturnCriterion(ReturnRepresentation.TOTAL_RETURN));
         assertNumEquals(tradingVsEnterAndHold, vsBuyAndHold.calculate(series, tradingRecord));
     }
 

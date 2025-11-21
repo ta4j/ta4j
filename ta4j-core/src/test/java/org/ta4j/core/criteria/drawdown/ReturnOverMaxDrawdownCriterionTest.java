@@ -64,7 +64,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals(netProfit / ((peak - low) / peak), result);
+        assertNumEquals((netProfit + 1) / ((peak - low) / peak), result);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals(2d * (20d / 3d) - 1, result);
+        assertNumEquals(2d * (20d / 3d), result);
     }
 
     @Test
@@ -117,7 +117,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
-        assertNumEquals((105d / 100d) * (100d / 95d) - 1, result);
+        assertNumEquals((105d / 100d) * (100d / 95d), result);
     }
 
     @Test

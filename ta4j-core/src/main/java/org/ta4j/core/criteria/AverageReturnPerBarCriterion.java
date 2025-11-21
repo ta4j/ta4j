@@ -26,11 +26,14 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the average return per bar criterion, returned in decimal format.
+ * Calculates the average return per bar criterion, honoring the configured
+ * return representation.
  *
  * <p>
  * It uses the following formula to accurately capture the compounding effect of
@@ -42,8 +45,18 @@ import org.ta4j.core.num.Num;
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private final NetReturnCriterion netReturn = new NetReturnCriterion();
+    private final NetReturnCriterion netReturn;
+    private final ReturnRepresentation returnRepresentation;
     private final NumberOfBarsCriterion numberOfBars = new NumberOfBarsCriterion();
+
+    public AverageReturnPerBarCriterion() {
+        this(ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    public AverageReturnPerBarCriterion(ReturnRepresentation returnRepresentation) {
+        this.returnRepresentation = returnRepresentation;
+        this.netReturn = new NetReturnCriterion(returnRepresentation);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -53,9 +66,12 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         // Therefore, we need to use "pow" to accurately capture the compounding effect.
         var one = series.numFactory().one();
         if (bars.isZero()) {
-            return one;
+            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
         }
-        return netReturn.calculate(series, position).pow(one.dividedBy(bars));
+        var representedReturn = netReturn.calculate(series, position);
+        var totalReturn = returnRepresentation.toTotalReturn(representedReturn, one);
+        var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
+        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn, one);
     }
 
     @Override
@@ -63,10 +79,12 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         var bars = numberOfBars.calculate(series, tradingRecord);
         var one = series.numFactory().one();
         if (bars.isZero()) {
-            return one;
+            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
         }
-        var netReturn = this.netReturn.calculate(series, tradingRecord);
-        return netReturn.pow(one.dividedBy(bars));
+        var representedReturn = this.netReturn.calculate(series, tradingRecord);
+        var totalReturn = returnRepresentation.toTotalReturn(representedReturn, one);
+        var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
+        return returnRepresentation.toRepresentationFromTotalReturn(perBarTotalReturn, one);
     }
 
     /** The higher the criterion value, the better. */
