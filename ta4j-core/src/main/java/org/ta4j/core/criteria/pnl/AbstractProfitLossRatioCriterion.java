@@ -36,15 +36,55 @@ import org.ta4j.core.num.Num;
  * Base class for profit/loss ratio criteria.
  * <p>
  * Calculates the ratio of the average profit over the average loss, returned in
- * the configured {@link ReturnRepresentation} format. The calculated ratio
- * (which represents how much profit is achieved per unit of loss) is then
- * converted to the configured {@link ReturnRepresentation} format. For example,
- * a ratio of 2.0 (profit is 2x the loss) can be expressed as:
+ * the configured {@link ReturnRepresentation} format. This ratio represents how
+ * much profit is achieved per unit of loss, which is a key metric for
+ * evaluating strategy quality.
+ *
+ * <p>
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * is converted to the configured representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation (used by GrossProfitLossRatioCriterion, NetProfitLossRatioCriterion)
+ * var profitLossRatio = new GrossProfitLossRatioCriterion();
+ * // Result: 2.0 means average profit is 2x the average loss
+ *
+ * // PERCENTAGE representation
+ * var profitLossRatioPercentage = new GrossProfitLossRatioCriterion(ReturnRepresentation.PERCENTAGE);
+ * // Result: 100.0 means average profit is 100% better than average loss (i.e., 2x)
+ *
+ * // MULTIPLICATIVE representation
+ * var profitLossRatioMultiplicative = new GrossProfitLossRatioCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 3.0 means average profit is 200% better than average loss (1 + 2.0 = 3.0)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 2.0 (profit is 2x the loss) can be
+ * expressed as:
  * <ul>
- * <li>DECIMAL: 2.0 (profit is 2x the loss)
- * <li>PERCENTAGE: 200.0 (profit is 200% of the loss)
- * <li>MULTIPLICATIVE: 3.0 (1 + 2.0 = 3.0)
+ * <li><b>DECIMAL</b>: 2.0 (profit is 2x the loss)
+ * <li><b>PERCENTAGE</b>: 100.0 (profit is 100% better than loss, i.e., (2.0 -
+ * 1) * 100)
+ * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + (2.0 - 1) = 3.0, meaning 200% better)
  * </ul>
+ *
+ * <p>
+ * <b>Special Cases:</b>
+ * <ul>
+ * <li>If there are no losses (averageLoss = 0), the ratio is set to 1.0
+ * (neutral, meaning profit equals loss)
+ * <li>If there are no profits (averageProfit = 0), the ratio is 0.0
+ * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
+ * @see org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion
+ * @see org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion
  */
 public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
@@ -55,6 +95,12 @@ public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisC
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
      * are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 2.0 means profit is 2x the
+     * loss). Use the other constructor to specify a different representation.
+     *
+     * @param averageProfitCriterion the criterion for average profit
+     * @param averageLossCriterion   the criterion for average loss
      */
     protected AbstractProfitLossRatioCriterion(AnalysisCriterion averageProfitCriterion,
             AnalysisCriterion averageLossCriterion) {
@@ -62,12 +108,19 @@ public abstract class AbstractProfitLossRatioCriterion extends AbstractAnalysisC
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents how much profit is achieved per unit of loss. See the class
+     * javadoc for examples of how ratios are expressed in different formats.
      *
      * @param averageProfitCriterion the criterion for average profit
      * @param averageLossCriterion   the criterion for average loss
      * @param returnRepresentation   the return representation to use for the output
-     *                               ratio
+     *                               ratio (e.g.,
+     *                               {@link ReturnRepresentation#DECIMAL},
+     *                               {@link ReturnRepresentation#PERCENTAGE},
+     *                               {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     protected AbstractProfitLossRatioCriterion(AnalysisCriterion averageProfitCriterion,
             AnalysisCriterion averageLossCriterion, ReturnRepresentation returnRepresentation) {

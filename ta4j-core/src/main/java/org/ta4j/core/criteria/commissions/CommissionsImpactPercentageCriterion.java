@@ -38,16 +38,44 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * It expresses the commission impact as the percentage of the gross profit or
- * loss. The calculated ratio (which represents the percentage impact) is then
- * converted to the configured {@link ReturnRepresentation} format. For example,
- * a ratio of 0.05 (5% commission impact) can be expressed as:
- * <ul>
- * <li>DECIMAL: 0.05 (5% impact)
- * <li>PERCENTAGE: 5.0 (5% impact)
- * <li>MULTIPLICATIVE: 1.05 (1 + 0.05 = 1.05)
- * </ul>
- * </p>
+ * loss. This helps users understand the real impact of transaction costs on
+ * strategy performance.
  *
+ * <p>
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * (which represents the percentage impact) is converted to the configured
+ * representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation
+ * var commissionImpact = new CommissionsImpactPercentageCriterion();
+ * // Result: 0.05 means commissions reduce gross profit by 5%
+ *
+ * // PERCENTAGE representation
+ * var commissionImpactPercentage = new CommissionsImpactPercentageCriterion(ReturnRepresentation.PERCENTAGE);
+ * // Result: 5.0 means commissions reduce gross profit by 5%
+ *
+ * // MULTIPLICATIVE representation
+ * var commissionImpactMultiplicative = new CommissionsImpactPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 1.05 means commissions reduce gross profit by 5% (1 + 0.05 = 1.05)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 0.05 (5% commission impact) can be
+ * expressed as:
+ * <ul>
+ * <li><b>DECIMAL</b>: 0.05 (5% impact)
+ * <li><b>PERCENTAGE</b>: 5.0 (5% impact)
+ * <li><b>MULTIPLICATIVE</b>: 1.05 (1 + 0.05 = 1.05)
+ * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  * @since 0.19
  */
 public final class CommissionsImpactPercentageCriterion extends AbstractAnalysisCriterion {
@@ -57,16 +85,27 @@ public final class CommissionsImpactPercentageCriterion extends AbstractAnalysis
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default
      * (percentages are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 0.05 means 5% commission
+     * impact). Use the other constructor to specify a different representation.
      */
     public CommissionsImpactPercentageCriterion() {
         this(ReturnRepresentation.DECIMAL);
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents the percentage impact of commissions on gross profit. See
+     * the class javadoc for examples of how ratios are expressed in different
+     * formats.
      *
      * @param returnRepresentation the return representation to use for the output
-     *                             ratio
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public CommissionsImpactPercentageCriterion(ReturnRepresentation returnRepresentation) {
         this.returnRepresentation = returnRepresentation;

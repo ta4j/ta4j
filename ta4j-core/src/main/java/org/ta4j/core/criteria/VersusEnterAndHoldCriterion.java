@@ -57,20 +57,49 @@ import java.util.Optional;
  * representations, the values are used directly as rates.
  *
  * <p>
- * The calculated ratio (which represents how much better or worse the strategy
- * is compared to enter-and-hold) is then converted to the configured
- * {@link ReturnRepresentation} format. For example, a ratio of 0.5 (50% better)
- * can be expressed as:
+ * <b>Return Representation:</b> The calculated ratio (which represents how much
+ * better or worse the strategy is compared to enter-and-hold) is converted to
+ * the configured {@link ReturnRepresentation} format. This criterion defaults
+ * to the global default from {@link ReturnRepresentationPolicy}, but you can
+ * override it per-instance via the constructor.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default representation (from ReturnRepresentationPolicy)
+ * var vsBuyHold = new VersusEnterAndHoldCriterion(TradeType.BUY,
+ *         new GrossReturnCriterion(ReturnRepresentation.DECIMAL));
+ *
+ * // Explicit DECIMAL representation (default for ratios)
+ * var vsBuyHoldDecimal = new VersusEnterAndHoldCriterion(TradeType.BUY,
+ *         new GrossReturnCriterion(ReturnRepresentation.DECIMAL), BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+ * // Result: 0.5 means strategy is 50% better than buy-and-hold
+ *
+ * // PERCENTAGE representation
+ * var vsBuyHoldPercentage = new VersusEnterAndHoldCriterion(TradeType.BUY,
+ *         new GrossReturnCriterion(ReturnRepresentation.PERCENTAGE), BigDecimal.ONE, ReturnRepresentation.PERCENTAGE);
+ * // Result: 50.0 means strategy is 50% better than buy-and-hold
+ *
+ * // MULTIPLICATIVE representation
+ * var vsBuyHoldMultiplicative = new VersusEnterAndHoldCriterion(TradeType.BUY,
+ *         new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE), BigDecimal.ONE,
+ *         ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 1.5 means strategy is 50% better (1 + 0.5 = 1.5)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 0.5 (strategy is 50% better than
+ * buy-and-hold) can be expressed as:
  * <ul>
- * <li>DECIMAL: 0.5 (50% better)
- * <li>PERCENTAGE: 50.0 (50% better)
- * <li>MULTIPLICATIVE: 1.5 (50% better, as 1 + 0.5)
- * <li>LOG: ln(1.5) (log representation)
+ * <li><b>DECIMAL</b>: 0.5 (50% better)
+ * <li><b>PERCENTAGE</b>: 50.0 (50% better)
+ * <li><b>MULTIPLICATIVE</b>: 1.5 (1 + 0.5 = 1.5, meaning 50% better)
+ * <li><b>LOG</b>: ln(1.5) ≈ 0.405 (log representation)
  * </ul>
  *
  * <p>
- * Examples:
- *
+ * <b>Calculation Examples:</b>
  * <ul>
  * <li>DECIMAL: Strategy 0.155 vs Buy-and-hold 0.05 → (0.155 - 0.05) / 0.05 =
  * 2.1 (210% better)
@@ -79,6 +108,9 @@ import java.util.Optional;
  * result
  * <li>Absolute values: (400$ / 500$) - 1 = -0.2 (20% worse)
  * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  */
 public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -127,7 +159,12 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents how much better or worse the strategy is compared to
+     * enter-and-hold. See the class javadoc for examples of how ratios are
+     * expressed in different formats.
      *
      * @param tradeType            the {@link TradeType} used to open the position
      * @param criterion            the criterion to be compared to
@@ -135,7 +172,10 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @param amount               the amount to be used to hold the entry position;
      *                             if {@code null} then {@code 1} is used.
      * @param returnRepresentation the return representation to use for the output
-     *                             ratio
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      * @throws NullPointerException if {@code amount} or
      *                              {@code returnRepresentation} is {@code null}
      */

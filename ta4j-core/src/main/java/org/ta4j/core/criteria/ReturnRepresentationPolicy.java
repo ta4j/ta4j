@@ -43,11 +43,25 @@ import java.util.Optional;
  * {@value #SYSTEM_PROPERTY}. Allowed values match the names of
  * {@link ReturnRepresentation}.
  * <p>
+ * <b>Usage Notes:</b>
+ * <ul>
+ * <li><b>Return-based criteria</b> (e.g.,
+ * {@link org.ta4j.core.criteria.pnl.NetReturnCriterion}) use this policy as
+ * their default representation.
+ * <li><b>Ratio-producing criteria</b> (e.g.,
+ * {@link VersusEnterAndHoldCriterion},
+ * {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion})
+ * typically default to {@link ReturnRepresentation#DECIMAL} regardless of this
+ * policy, as ratios are conventionally expressed as decimals. However, you can
+ * override the representation per-criterion via constructors.
+ * </ul>
+ * <p>
  * This policy is used by {@link Returns} and various criteria classes when no
  * explicit representation is provided.
  *
  * @see ReturnRepresentation
  * @see Returns
+ * @see VersusEnterAndHoldCriterion
  */
 public final class ReturnRepresentationPolicy {
 

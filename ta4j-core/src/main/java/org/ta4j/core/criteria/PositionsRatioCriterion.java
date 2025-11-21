@@ -41,14 +41,40 @@ import org.ta4j.core.num.Num;
  * </ul>
  *
  * <p>
- * The calculated ratio (which represents the percentage of positions) is then
- * converted to the configured {@link ReturnRepresentation} format. For example,
- * a ratio of 0.5 (50% winning positions) can be expressed as:
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * (which represents the percentage of positions) is converted to the configured
+ * representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation
+ * var winRatio = PositionsRatioCriterion.WinningPositionsRatioCriterion();
+ * // Result: 0.5 means 50% of positions are winning
+ *
+ * // PERCENTAGE representation
+ * var winRatioPercentage = new PositionsRatioCriterion(PositionFilter.PROFIT, ReturnRepresentation.PERCENTAGE);
+ * // Result: 50.0 means 50% of positions are winning
+ *
+ * // MULTIPLICATIVE representation
+ * var winRatioMultiplicative = new PositionsRatioCriterion(PositionFilter.PROFIT, ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 1.5 means 50% of positions are winning (1 + 0.5 = 1.5)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 0.5 (50% winning positions) can be
+ * expressed as:
  * <ul>
- * <li>DECIMAL: 0.5 (50% of positions)
- * <li>PERCENTAGE: 50.0 (50% of positions)
- * <li>MULTIPLICATIVE: 1.5 (1 + 0.5 = 1.5)
+ * <li><b>DECIMAL</b>: 0.5 (50% of positions)
+ * <li><b>PERCENTAGE</b>: 50.0 (50% of positions)
+ * <li><b>MULTIPLICATIVE</b>: 1.5 (1 + 0.5 = 1.5)
  * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  */
 public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
@@ -77,6 +103,10 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
      * are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 0.5 means 50% of positions
+     * are winning/losing). Use the other constructor to specify a different
+     * representation.
      *
      * @param positionFilter consider either the winning or losing positions
      */
@@ -85,11 +115,18 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents the percentage of winning or losing positions. See the class
+     * javadoc for examples of how ratios are expressed in different formats.
      *
      * @param positionFilter       consider either the winning or losing positions
      * @param returnRepresentation the return representation to use for the output
-     *                             ratio
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public PositionsRatioCriterion(PositionFilter positionFilter, ReturnRepresentation returnRepresentation) {
         this.positionFilter = positionFilter;

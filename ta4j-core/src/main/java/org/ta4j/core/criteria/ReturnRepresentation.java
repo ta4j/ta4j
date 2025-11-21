@@ -50,15 +50,32 @@ import java.util.Arrays;
  * <li><b>From rate of return (0-based)</b>: Use
  * {@link #toRepresentationFromRateOfReturn(Num)} when you have an arithmetic
  * rate of return (e.g., {@code 0.12} for +12% gain). This is used by
- * {@link org.ta4j.core.analysis.Returns} when formatting arithmetic returns.
+ * {@link org.ta4j.core.analysis.Returns} when formatting arithmetic returns and
+ * by ratio-producing criteria (e.g., {@link VersusEnterAndHoldCriterion},
+ * {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion}) when
+ * converting ratio outputs.
  * <li><b>From log return</b>: Use {@link #toRepresentationFromLogReturn(Num)}
  * when you have a log return (e.g., {@code ln(1.12) ≈ 0.113} for +12% gain).
  * This is used by risk criteria like {@link ValueAtRiskCriterion} and
  * {@link ExpectedShortfallCriterion}.
  * </ul>
+ * <p>
+ * <b>Ratio-Producing Criteria:</b> Criteria that produce ratios or percentages
+ * (e.g., {@link VersusEnterAndHoldCriterion},
+ * {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion},
+ * {@link PositionsRatioCriterion}) use
+ * {@link #toRepresentationFromRateOfReturn(Num)} to convert ratio outputs. For
+ * example, a ratio of 0.5 (50% better) can be expressed as:
+ * <ul>
+ * <li>DECIMAL: 0.5
+ * <li>PERCENTAGE: 50.0
+ * <li>MULTIPLICATIVE: 1.5 (1 + 0.5)
+ * </ul>
+ * See each ratio-producing criterion's javadoc for specific examples.
  *
  * @see Returns
  * @see ReturnRepresentationPolicy
+ * @see VersusEnterAndHoldCriterion
  * @since 0.20
  */
 public enum ReturnRepresentation {

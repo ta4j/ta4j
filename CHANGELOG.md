@@ -4,6 +4,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **Consistent return output policy**: Return-based criteria now default to 1-based total returns and expose configurable representation through `ReturnRepresentationPolicy` and new constructors. Legacy `addBase` constructors are deprecated.
+- **Ratio-producing criteria now support ReturnRepresentation**: All criteria that produce ratios or percentages are now `ReturnRepresentation` aware, allowing users to format ratio outputs consistently across their analysis. Updated criteria include:
+  - `VersusEnterAndHoldCriterion`: Compares strategy performance vs. buy-and-hold (e.g., 0.5 = 50% better, can be expressed as 0.5, 50.0, or 1.5 depending on representation)
+  - `ReturnOverMaxDrawdownCriterion`: Reward-to-risk ratio (e.g., 2.0 = return is 2x drawdown)
+  - `PositionsRatioCriterion`: Percentage of winning/losing positions (e.g., 0.5 = 50% winning)
+  - `InPositionPercentageCriterion`: Percentage of time in market (e.g., 0.5 = 50% of time)
+  - `CommissionsImpactPercentageCriterion`: Commission impact as percentage (e.g., 0.05 = 5% impact)
+  - `AbstractProfitLossRatioCriterion` (and subclasses): Profit-to-loss ratio (e.g., 2.0 = profit is 2x loss)
+  
+  All ratio criteria default to `ReturnRepresentation.DECIMAL` (ratios are typically expressed as decimals). Users can override the representation per-criterion via constructors or globally via `ReturnRepresentationPolicy`. See each criterion's javadoc for detailed examples of how ratios are expressed in different formats.
 - **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
 - **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
 - **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.

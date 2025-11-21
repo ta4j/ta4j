@@ -42,15 +42,40 @@ import org.ta4j.core.num.Num;
  * </pre>
  *
  * <p>
- * The calculated ratio (which represents how much return is achieved per unit
- * of drawdown) is then converted to the configured {@link ReturnRepresentation}
- * format. For example, a ratio of 2.0 (return is 2x the drawdown) can be
- * expressed as:
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * (which represents how much return is achieved per unit of drawdown) is
+ * converted to the configured representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation
+ * var romad = new ReturnOverMaxDrawdownCriterion();
+ * // Result: 2.0 means return is 2x the maximum drawdown
+ *
+ * // PERCENTAGE representation
+ * var romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+ * // Result: 200.0 means return is 200% of the maximum drawdown
+ *
+ * // MULTIPLICATIVE representation
+ * var romadMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 3.0 means return is 200% better than drawdown (1 + 2.0 = 3.0)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 2.0 (return is 2x the drawdown) can
+ * be expressed as:
  * <ul>
- * <li>DECIMAL: 2.0 (return is 2x the drawdown)
- * <li>PERCENTAGE: 200.0 (return is 200% of the drawdown)
- * <li>MULTIPLICATIVE: 3.0 (1 + 2.0 = 3.0, meaning 200% better)
+ * <li><b>DECIMAL</b>: 2.0 (return is 2x the drawdown)
+ * <li><b>PERCENTAGE</b>: 200.0 (return is 200% of the drawdown)
+ * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + 2.0 = 3.0, meaning 200% better)
  * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
@@ -61,16 +86,26 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
      * are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 2.0 means return is 2x the
+     * drawdown). Use the other constructor to specify a different representation.
      */
     public ReturnOverMaxDrawdownCriterion() {
         this(ReturnRepresentation.DECIMAL);
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents how much return is achieved per unit of drawdown. See the
+     * class javadoc for examples of how ratios are expressed in different formats.
      *
      * @param returnRepresentation the return representation to use for the output
-     *                             ratio
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
         this.returnRepresentation = returnRepresentation;

@@ -35,17 +35,44 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * The criterion compares the time covered by open positions to the overall
- * trading period and expresses it as a percentage. The calculated ratio (which
- * represents the percentage of time in position) is then converted to the
- * configured {@link ReturnRepresentation} format. For example, a ratio of 0.5
- * (50% of time in position) can be expressed as:
- * <ul>
- * <li>DECIMAL: 0.5 (50% of time)
- * <li>PERCENTAGE: 50.0 (50% of time)
- * <li>MULTIPLICATIVE: 1.5 (1 + 0.5 = 1.5)
- * </ul>
- * </p>
+ * trading period and expresses it as a percentage. This helps users understand
+ * capital utilization and exposure.
  *
+ * <p>
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * (which represents the percentage of time in position) is converted to the
+ * configured representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation
+ * var inPosition = new InPositionPercentageCriterion();
+ * // Result: 0.5 means strategy is in position 50% of the time
+ *
+ * // PERCENTAGE representation
+ * var inPositionPercentage = new InPositionPercentageCriterion(ReturnRepresentation.PERCENTAGE);
+ * // Result: 50.0 means strategy is in position 50% of the time
+ *
+ * // MULTIPLICATIVE representation
+ * var inPositionMultiplicative = new InPositionPercentageCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 1.5 means strategy is in position 50% of the time (1 + 0.5 = 1.5)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 0.5 (50% of time in position) can be
+ * expressed as:
+ * <ul>
+ * <li><b>DECIMAL</b>: 0.5 (50% of time)
+ * <li><b>PERCENTAGE</b>: 50.0 (50% of time)
+ * <li><b>MULTIPLICATIVE</b>: 1.5 (1 + 0.5 = 1.5)
+ * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  * @since 0.19
  */
 public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
@@ -55,16 +82,26 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default
      * (percentages are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 0.5 means 50% of time in
+     * position). Use the other constructor to specify a different representation.
      */
     public InPositionPercentageCriterion() {
         this(ReturnRepresentation.DECIMAL);
     }
 
     /**
-     * Constructor.
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents the percentage of time the strategy is in position. See the
+     * class javadoc for examples of how ratios are expressed in different formats.
      *
      * @param returnRepresentation the return representation to use for the output
-     *                             ratio
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public InPositionPercentageCriterion(ReturnRepresentation returnRepresentation) {
         this.returnRepresentation = returnRepresentation;
