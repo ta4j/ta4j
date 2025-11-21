@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -39,11 +40,11 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class RecentFractalSwingHighIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public RecentSwingHighIndicatorTest(NumFactory numFactory) {
+    public RecentFractalSwingHighIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -54,7 +55,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void shouldReturnMostRecentSwingHigh() {
-        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
+        final var indicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
 
         assertThat(indicator.getValue(0).isNaN()).isTrue();
         assertThat(indicator.getValue(3).isNaN()).isTrue();
@@ -78,7 +79,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
     @Test
     public void shouldDelayConfirmationUntilFollowingBarsAvailable() {
-        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
+        final var indicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
 
         assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(2);
         assertThat(indicator.getValue(5)).isEqualByComparingTo(numOf(15));
@@ -93,8 +94,8 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void shouldAllowFlatTopsWhenEqualBarsPermitted() {
         final var plateauSeries = createSeriesFromHighs(9, 11, 10, 12, 12, 9, 8, 7);
-        final var noEquals = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 0);
-        final var withEquals = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 1);
+        final var noEquals = new RecentFractalSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 0);
+        final var withEquals = new RecentFractalSwingHighIndicator(new HighPriceIndicator(plateauSeries), 2, 2, 1);
 
         assertThat(noEquals.getValue(6).isNaN()).isTrue();
         assertThat(noEquals.getLatestSwingIndex(6)).isEqualTo(-1);
@@ -106,7 +107,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void shouldRejectFlatTopsThatExceedEqualAllowance() {
         final var plateauSeries = createSeriesFromHighs(8, 12, 12, 12, 12, 10, 8, 7);
-        final var indicator = new RecentSwingHighIndicator(new HighPriceIndicator(plateauSeries), 1, 2, 1);
+        final var indicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(plateauSeries), 1, 2, 1);
 
         assertThat(indicator.getValue(6).isNaN()).isTrue();
         assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(-1);
@@ -116,7 +117,8 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
     public void shouldPropagateNaNFromUnderlyingIndicator() {
         final var baseSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 17, 16, 14, 18, 16, 13);
         final var highIndicator = new HighPriceIndicator(baseSeries);
-        final var indicatorWithNaNFollowing = new RecentSwingHighIndicator(indicatorWithNaN(highIndicator, 6), 2, 2, 0);
+        final var indicatorWithNaNFollowing = new RecentFractalSwingHighIndicator(indicatorWithNaN(highIndicator, 6), 2,
+                2, 0);
 
         assertThat(indicatorWithNaNFollowing.getValue(7)).isEqualByComparingTo(numOf(15));
         assertThat(indicatorWithNaNFollowing.getLatestSwingIndex(7)).isEqualTo(2);
@@ -124,7 +126,7 @@ public class RecentSwingHighIndicatorTest extends AbstractIndicatorTest<Indicato
 
         final var shortSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 9, 8);
         final var shortIndicator = new HighPriceIndicator(shortSeries);
-        final var indicator = new RecentSwingHighIndicator(indicatorWithNaN(shortIndicator, 3), 2, 2, 0);
+        final var indicator = new RecentFractalSwingHighIndicator(indicatorWithNaN(shortIndicator, 3), 2, 2, 0);
 
         assertThat(indicator.getValue(5).isNaN()).isTrue();
         assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(-1);

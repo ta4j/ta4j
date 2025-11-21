@@ -25,7 +25,10 @@ package org.ta4j.core.indicators.zigzag;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -66,15 +69,15 @@ import org.ta4j.core.num.Num;
  */
 public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
 
-    private final Indicator<Num> price; // typically High or Close
+    private final Indicator<Num> price; // typically High, Low, or Close
     private final Indicator<Num> reversalAmount; // threshold in price units
 
     /**
      * Constructs a ZigZagStateIndicator.
      *
      * @param price          the price indicator to analyze (typically
-     *                       {@code HighPriceIndicator} or
-     *                       {@code ClosePriceIndicator})
+     *                       {@code HighPriceIndicator}, {@code LowPriceIndicator},
+     *                       or {@code ClosePriceIndicator})
      * @param reversalAmount the reversal threshold indicator. A swing point is
      *                       confirmed when price reverses by at least this amount.
      *                       Can be a fixed value (e.g., using
@@ -86,6 +89,15 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         super(price);
         this.price = price;
         this.reversalAmount = reversalAmount;
+    }
+
+    public ZigZagStateIndicator(Indicator<Num> price, Number reversalAmount) {
+        this(price, new ConstantIndicator<Num>(price.getBarSeries(),
+                price.getBarSeries().numFactory().numOf(reversalAmount)));
+    }
+
+    public ZigZagStateIndicator(BarSeries series) {
+        this(new ClosePriceIndicator(series), new ATRIndicator(series, 14));
     }
 
     @Override

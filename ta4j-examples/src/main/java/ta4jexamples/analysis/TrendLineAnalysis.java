@@ -33,6 +33,8 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
@@ -71,22 +73,22 @@ public class TrendLineAnalysis {
         }
 
         // Create support trendline indicator
-        TrendLineSupportIndicator supportTrendLine = new TrendLineSupportIndicator(series, 5);
+        TrendLineSupportIndicator fractalSupportTrendLine = new TrendLineSupportIndicator(series, 5);
+        TrendLineSupportIndicator zigzagSupportTrendLine = new TrendLineSupportIndicator(new RecentZigZagSwingLowIndicator(series), 5, 5);
 
         // Create resistance trendline indicator
-        TrendLineResistanceIndicator resistanceTrendLine = new TrendLineResistanceIndicator(series, 5);
+        TrendLineResistanceIndicator fractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5);
+        TrendLineResistanceIndicator zigzagResistanceTrendLine = new TrendLineResistanceIndicator(new RecentZigZagSwingHighIndicator(series), 5, 5);
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         chartWorkflow.builder()
                 .withTitle("Support and Resistance Trendlines")
                 .withSeries(series)
-                .withIndicatorOverlay(supportTrendLine)
-                .withLineColor(Color.GREEN)
-                .withLineWidth(2.0f)
-                .withIndicatorOverlay(resistanceTrendLine)
-                .withLineColor(Color.RED)
-                .withLineWidth(2.0f)
+                .withIndicatorOverlay(fractalSupportTrendLine).withLineColor(Color.GREEN).withLineWidth(2.0f)
+                .withIndicatorOverlay(zigzagSupportTrendLine).withLineColor(Color.BLUE).withLineWidth(2.0f)
+                .withIndicatorOverlay(fractalResistanceTrendLine).withLineColor(Color.RED).withLineWidth(2.0f)
+                .withIndicatorOverlay(zigzagResistanceTrendLine).withLineColor(Color.YELLOW).withLineWidth(2.0f)
                 .display();
     }
 

@@ -23,8 +23,12 @@
  */
 package org.ta4j.core.indicators.zigzag;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.RecentSwingLowIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import static org.ta4j.core.num.NaN.NaN;
@@ -61,7 +65,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Low</a>
  * @since 0.20
  */
-public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> {
+public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> implements RecentSwingLowIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
     private final Indicator<Num> price;
@@ -81,6 +85,11 @@ public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> {
         super(price);
         this.stateIndicator = stateIndicator;
         this.price = price;
+    }
+
+    public RecentZigZagSwingLowIndicator(BarSeries series) {
+        this(new ZigZagStateIndicator(new LowPriceIndicator(series), new ATRIndicator(series, 14)),
+                new LowPriceIndicator(series));
     }
 
     @Override
@@ -105,8 +114,26 @@ public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> {
         return stateIndicator.getValue(index).getLastLowIndex();
     }
 
+    /**
+     * Returns the index of the most recent confirmed swing low as of the given
+     * index. This method implements the {@link RecentSwingLowIndicator} interface.
+     *
+     * @param index the bar index to evaluate
+     * @return the index of the most recent confirmed swing low, or {@code -1} if no
+     *         swing low has been confirmed yet
+     */
+    @Override
+    public int getLatestSwingIndex(int index) {
+        return getLatestSwingLowIndex(index);
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return 0;
+    }
+
+    @Override
+    public Indicator<Num> getPriceIndicator() {
+        return price;
     }
 }

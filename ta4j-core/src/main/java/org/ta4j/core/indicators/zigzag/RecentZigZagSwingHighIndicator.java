@@ -25,6 +25,10 @@ package org.ta4j.core.indicators.zigzag;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.RecentSwingHighIndicator;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import static org.ta4j.core.num.NaN.NaN;
@@ -61,7 +65,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      High</a>
  * @since 0.20
  */
-public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> {
+public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> implements RecentSwingHighIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
     private final Indicator<Num> price; // same price as used in stateIndicator
@@ -81,6 +85,11 @@ public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> {
         super(price);
         this.stateIndicator = stateIndicator;
         this.price = price;
+    }
+
+    public RecentZigZagSwingHighIndicator(BarSeries series) {
+        this(new ZigZagStateIndicator(new HighPriceIndicator(series), new ATRIndicator(series, 14)),
+                new HighPriceIndicator(series));
     }
 
     @Override
@@ -105,8 +114,26 @@ public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> {
         return stateIndicator.getValue(index).getLastHighIndex();
     }
 
+    /**
+     * Returns the index of the most recent confirmed swing high as of the given
+     * index. This method implements the {@link RecentSwingHighIndicator} interface.
+     *
+     * @param index the bar index to evaluate
+     * @return the index of the most recent confirmed swing high, or {@code -1} if
+     *         no swing high has been confirmed yet
+     */
+    @Override
+    public int getLatestSwingIndex(int index) {
+        return getLatestSwingHighIndex(index);
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return 0;
+    }
+
+    @Override
+    public Indicator<Num> getPriceIndicator() {
+        return price;
     }
 }

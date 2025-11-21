@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.supportresistance;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentSwingLowIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -50,7 +51,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Builds a support trend line from an arbitrary indicator that provides the
      * values inspected by the underlying swing-low detector.
      *
-     * @param indicator           the indicator supplying the candidate swing-low
+     * @param priceIndicator      the indicator supplying the candidate swing-low
      *                            values
      * @param precedingHigherBars number of immediately preceding bars that must be
      *                            strictly higher than a swing low
@@ -60,11 +61,26 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            swing-low value
      * @since 0.20
      */
-    public TrendLineSupportIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
+    public TrendLineSupportIndicator(Indicator<Num> priceIndicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
-        super(indicator, precedingHigherBars + followingHigherBars);
-        this.swingLowIndicator = new RecentSwingLowIndicator(indicator, precedingHigherBars, followingHigherBars,
-                allowedEqualBars);
+        this(new RecentFractalSwingLowIndicator(priceIndicator, precedingHigherBars, followingHigherBars,
+                allowedEqualBars), precedingHigherBars, followingHigherBars);
+    }
+
+    /**
+     * Builds a support trend line from a swing-low indicator implementation.
+     *
+     * @param recentSwingLowIndicator the swing-low indicator to use
+     * @param precedingHigherBars     number of immediately preceding bars that must
+     *                                be strictly higher than a swing low
+     * @param followingHigherBars     number of immediately following bars that must
+     *                                be strictly higher than a swing low
+     * @since 0.20
+     */
+    public TrendLineSupportIndicator(RecentSwingLowIndicator recentSwingLowIndicator, int precedingHigherBars,
+            int followingHigherBars) {
+        super(recentSwingLowIndicator.getPriceIndicator(), precedingHigherBars + followingHigherBars);
+        this.swingLowIndicator = recentSwingLowIndicator;
     }
 
     /**
