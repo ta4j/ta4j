@@ -1,5 +1,9 @@
 name: AI Semantic Release Scheduler
 
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
 on:
   schedule:
     - cron: "0 9 */14 * *"  # every 14 days
@@ -32,7 +36,15 @@ jobs:
       - name: Determine last tag
         id: lasttag
         run: |
-          last=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          last="none"
+          while IFS= read -r tag; do
+            if [[ "$tag" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
+              last="$tag"
+              break
+            fi
+          done <<< "$(git tag --sort=-v:refname)"
+
+          echo "audit:last_semver_tag=$last"
           echo "last=$last" >> $GITHUB_OUTPUT
 
       - name: Collect diff since last release
@@ -48,11 +60,16 @@ jobs:
           fi
 
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
+          if [ -z "$sanitized" ]; then
+            count=0
+          else
+            count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
+          fi
 
           echo "audit:diff_lines=$count limit=$limit sanitized=true"
           diff_json=$(printf '%s' "$sanitized" | jq -Rsa .)
           echo "diff=$diff_json" >> $GITHUB_OUTPUT
+          echo "lines=$count" >> $GITHUB_OUTPUT
 
       - name: Extract Unreleased section from CHANGELOG
         id: changelog
@@ -71,14 +88,37 @@ jobs:
           ' CHANGELOG.md)
 
           changelog_json=$(printf '%s' "$unreleased" | jq -Rsa .)
+          changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
           echo "audit:changelog_present=true"
           echo "changelog=$changelog_json" >> $GITHUB_OUTPUT
+          echo "length=$changelog_len" >> $GITHUB_OUTPUT
+
+      - name: Short-circuit when nothing changed
+        id: gate
+        run: |
+          diff_lines=${{ steps.diff.outputs.lines }}
+          changelog_len=${{ steps.changelog.outputs.length }}
+          diff_lines=${diff_lines:-0}
+          changelog_len=${changelog_len:-0}
+
+          if [ "$diff_lines" -eq 0 ] && [ "$changelog_len" -eq 0 ]; then
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "audit:short_circuit=true reason=\"empty diff and changelog\""
+          else
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            echo "audit:short_circuit=false"
+          fi
+
+      - name: No release — empty diff and changelog
+        if: steps.gate.outputs.proceed != 'true'
+        run: echo "No release recommended (empty diff and changelog)."
 
       # -------------------------------------------------------------
       # AI STEP - Semantic Versioning with Strong SemVer Guardrails
       # -------------------------------------------------------------
       - name: Ask AI for semantic version bump
         id: ai
+        if: steps.gate.outputs.proceed == 'true'
         run: |
           jq -n \
             --argjson diff '${{ steps.diff.outputs.diff }}' \
@@ -116,12 +156,33 @@ jobs:
           fi
 
           echo "audit:request_json_valid=true"
-          echo "audit:external_call target=models.github.ai payload=request.json contains=sanitized_diff,changelog"
-          response=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://models.github.ai/inference/chat/completions \
-            -d @request.json)
+          echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
+          attempts=3
+          backoff=2
+          response=""
+          status=0
+
+          for attempt in $(seq 1 "$attempts"); do
+            response=$(curl -s --fail -X POST \
+              --max-time 30 \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.MODELS_PAT }}" \
+              https://models.github.ai/inference/chat/completions \
+              -d @request.json)
+            status=$?
+            [ "$status" -eq 0 ] && break
+
+            echo "audit:ai_request_retry attempt=$attempt status=$status backoff=${backoff}s" >&2
+            if [ "$attempt" -lt "$attempts" ]; then
+              sleep "$backoff"
+              backoff=$((backoff * 2))
+            fi
+          done
+
+          if [ "$status" -ne 0 ] || [ -z "$response" ]; then
+            echo "audit:ai_request_failed attempts=$attempts status=$status" >&2
+            exit 1
+          fi
 
           echo "$response" > response.json
           resp_size=$(wc -c < response.json | tr -d ' ')
@@ -146,6 +207,7 @@ jobs:
 
       - name: Parse AI JSON
         id: parsed
+        if: steps.gate.outputs.proceed == 'true'
         run: |
           raw_content='${{ steps.ai.outputs.content }}'
           parsed_ok=false
@@ -189,12 +251,12 @@ jobs:
           if [ "$last" = "none" ]; then
             major=0; minor=0; patch=0
           else
-            if [[ "$last" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?$ ]]; then
+            if [[ "$last" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
               major=${BASH_REMATCH[1]}
               minor=${BASH_REMATCH[2]}
               patch=${BASH_REMATCH[3]:-0}
             else
-              echo "Last tag '$last' does not match SemVer pattern." >&2
+              echo "Last tag '$last' does not match SemVer pattern (allowing prerelease/build)." >&2
               exit 1
             fi
           fi
@@ -238,15 +300,16 @@ jobs:
         if: steps.parsed.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MODELS_PAT }}
           script: |
             const version = "${{ steps.version.outputs.version }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=master version=${version}`);
+            const ref = "${{ github.event.repository.default_branch }}";
+            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: "release.yml",
-              ref: "master",
+              ref,
               inputs: {
                 releaseVersion: version
               }
