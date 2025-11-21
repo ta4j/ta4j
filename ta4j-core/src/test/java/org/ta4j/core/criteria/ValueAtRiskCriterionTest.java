@@ -86,6 +86,13 @@ public class ValueAtRiskCriterionTest {
     }
 
     @Test
+    public void calculateWithNoBarsShouldReturnZeroRateOfReturn() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 95d, 100d, 80d, 85d, 70d).build();
+        AnalysisCriterion varCriterion = new ValueAtRiskCriterion(0.95, ReturnRepresentation.RATE_OF_RETURN);
+        assertNumEquals(numFactory.zero(), varCriterion.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
     public void calculateWithBuyAndHold() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 99d).build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));

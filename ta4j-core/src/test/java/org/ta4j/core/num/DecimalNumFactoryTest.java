@@ -58,4 +58,12 @@ class DecimalNumFactoryTest {
         assertFalse(decimalFactory.produces(doubleFactory.one()));
     }
 
+    @Test
+    void shouldComputeExpUsingConfiguredPrecision() {
+        NumFactory highPrecisionFactory = DecimalNumFactory.getInstance(40);
+        Num e = highPrecisionFactory.exp(highPrecisionFactory.one());
+
+        assertNumEquals("2.718281828459045235360287471352662497761", e);
+    }
+
 }

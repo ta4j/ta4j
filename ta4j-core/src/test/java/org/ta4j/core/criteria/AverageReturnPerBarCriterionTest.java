@@ -35,6 +35,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
@@ -93,11 +94,27 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateWithNoBarsShouldReturnZeroRateOfReturn() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 100, 80, 85, 70).build();
+        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        assertNumEquals(0, averageProfit.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
     public void calculateWithOnePosition() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105).build();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, position));
+    }
+
+    @Test
+    public void calculateRateOfReturnRepresentation() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110, 100, 95, 105).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        AnalysisCriterion averageProfit = new AverageReturnPerBarCriterion(ReturnRepresentation.RATE_OF_RETURN);
+        Num expected = numOf(110d / 100).pow(numOf(1d / 3)).minus(numFactory.one());
+        assertNumEquals(expected, averageProfit.calculate(series, tradingRecord));
     }
 
     @Test

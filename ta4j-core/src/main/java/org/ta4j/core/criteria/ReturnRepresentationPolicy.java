@@ -68,6 +68,15 @@ public final class ReturnRepresentationPolicy {
      * @param representation the representation to use
      */
     public static void use(ReturnRepresentation representation) {
+        setDefaultRepresentation(representation);
+    }
+
+    /**
+     * Sets the JVM-wide default representation for return-based criteria.
+     *
+     * @param representation the representation to use
+     */
+    public static void setDefaultRepresentation(ReturnRepresentation representation) {
         defaultRepresentation = Objects.requireNonNull(representation, "representation");
     }
 }

@@ -37,6 +37,9 @@ public class ReturnRepresentationPolicyTest {
             ReturnRepresentationPolicy.use(ReturnRepresentation.RATE_OF_RETURN);
             assertSame(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
 
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.TOTAL_RETURN);
+            assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
+
             ReturnRepresentationPolicy.use(ReturnRepresentation.TOTAL_RETURN);
             assertSame(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentationPolicy.getDefaultRepresentation());
         } finally {
@@ -48,5 +51,7 @@ public class ReturnRepresentationPolicyTest {
     public void parseMatchesEnumNamesCaseInsensitive() {
         assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total_return"));
         assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("Rate_of_Return"));
+        assertEquals(ReturnRepresentation.TOTAL_RETURN, ReturnRepresentation.parse("total return"));
+        assertEquals(ReturnRepresentation.RATE_OF_RETURN, ReturnRepresentation.parse("rate-of-return"));
     }
 }

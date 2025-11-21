@@ -70,7 +70,8 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || !position.isClosed()) {
-            return series.numFactory().zero();
+            var one = series.numFactory().one();
+            return returnRepresentation.toRepresentationFromTotalReturn(one, one);
         }
         Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
         return calculateVaR(returns, confidence, returnRepresentation);
@@ -95,7 +96,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         if (returnRates.isEmpty()) {
-            return zero;
+            return representation.toRepresentationFromTotalReturn(one, one);
         }
 
         Num valueAtRisk = zero;

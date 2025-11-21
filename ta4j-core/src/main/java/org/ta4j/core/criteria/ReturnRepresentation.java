@@ -36,7 +36,10 @@ import org.ta4j.core.num.Num;
  * {@code ReturnRepresentation} defines how that internal value is returned to
  * callers. The global default can be overridden via
  * {@link ReturnRepresentationPolicy} or by passing a representation to the
- * relevant criterion constructor.
+ * relevant criterion constructor. All conversion helpers expect the provided
+ * {@code one} value to be produced by the same
+ * {@link org.ta4j.core.num.NumFactory} used by the surrounding
+ * {@link org.ta4j.core.BarSeries} to avoid mixing numeric implementations.
  */
 public enum ReturnRepresentation {
 
@@ -102,7 +105,7 @@ public enum ReturnRepresentation {
      * @return the represented return
      */
     public Num toRepresentationFromLogReturn(Num logReturn, Num one) {
-        var totalReturn = one.getNumFactory().numOf(Math.exp(logReturn.doubleValue()));
+        var totalReturn = toTotalReturnFromLogReturn(logReturn, one);
         return toRepresentationFromTotalReturn(totalReturn, one);
     }
 
@@ -118,6 +121,28 @@ public enum ReturnRepresentation {
             return representedReturn;
         }
         return representedReturn.plus(one);
+    }
+
+    /**
+     * Converts a represented value into a 0-based rate of return.
+     *
+     * @param representedReturn the return expressed using this representation
+     * @param one               the numeric {@code 1}
+     * @return a 0-based rate of return
+     */
+    public Num toRateOfReturn(Num representedReturn, Num one) {
+        return toTotalReturn(representedReturn, one).minus(one);
+    }
+
+    /**
+     * Converts a log return into a multiplicative total return.
+     *
+     * @param logReturn the log-return to convert
+     * @param one       the numeric {@code 1}
+     * @return a 1-based total return
+     */
+    public Num toTotalReturnFromLogReturn(Num logReturn, Num one) {
+        return one.getNumFactory().exp(logReturn);
     }
 
     /**
@@ -138,6 +163,10 @@ public enum ReturnRepresentation {
      */
     public static ReturnRepresentation parse(String name) {
         Objects.requireNonNull(name, "name");
-        return ReturnRepresentation.valueOf(name.trim().toUpperCase(Locale.ROOT));
+        String normalized = name.trim()
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
+        return ReturnRepresentation.valueOf(normalized);
     }
 }

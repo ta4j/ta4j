@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.num;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
 
 public class DecimalNumFactory implements NumFactory {
@@ -103,6 +104,29 @@ public class DecimalNumFactory implements NumFactory {
     @Override
     public Num numOf(final String number) {
         return DecimalNum.valueOf(number, this.mathContext);
+    }
+
+    @Override
+    public Num exp(Num value) {
+        final DecimalNum decimalValue = (DecimalNum) value;
+        final MathContext precisionContext = decimalValue.getMathContext();
+
+        BigDecimal term = BigDecimal.ONE;
+        BigDecimal sum = BigDecimal.ONE;
+        final BigDecimal exponent = decimalValue.bigDecimalValue();
+
+        int i = 1;
+        while (term.signum() != 0) {
+            term = term.multiply(exponent, precisionContext).divide(BigDecimal.valueOf(i), precisionContext);
+            final BigDecimal next = sum.add(term, precisionContext);
+            if (next.compareTo(sum) == 0) {
+                break;
+            }
+            sum = next;
+            i++;
+        }
+
+        return DecimalNum.valueOf(sum, precisionContext);
     }
 
 }
