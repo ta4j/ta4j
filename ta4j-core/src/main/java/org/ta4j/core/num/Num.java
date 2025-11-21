@@ -133,6 +133,13 @@ public interface Num extends Comparable<Num>, Serializable {
     Num log();
 
     /**
+     * Returns a {@code Num} whose value is {@code e^this}.
+     *
+     * @return {@code e^this}
+     */
+    Num exp();
+
+    /**
      * Returns a {@code Num} whose value is {@code √(this)}.
      *
      * @return {@code √(this)}

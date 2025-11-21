@@ -142,7 +142,7 @@ public enum ReturnRepresentation {
      * @return a 1-based total return
      */
     public Num toTotalReturnFromLogReturn(Num logReturn, Num one) {
-        return one.getNumFactory().exp(logReturn);
+        return logReturn.exp();
     }
 
     /**
