@@ -214,7 +214,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         }
 
         Num currentValue = indicator.getValue(index);
-        if (currentValue.isNaN() || currentValue.isZero()) {
+        if (Num.isNaNOrNull(currentValue) || currentValue.isZero()) {
             return NaN;
         }
 
@@ -240,7 +240,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         Num previousValue = sourceForPrevious.getValue(index - 1);
 
         // Check for NaN or zero previous value (division by zero)
-        if (previousValue.isNaN() || previousValue.isZero()) {
+        if (Num.isNaNOrNull(previousValue) || previousValue.isZero()) {
             return NaN;
         }
 
@@ -256,7 +256,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     private void setLastNotification(int index) {
         Num value = indicator.getValue(index);
-        if (value.isNaN() || value.isZero()) {
+        if (Num.isNaNOrNull(value) || value.isZero()) {
             return;
         }
         if (lastNotification == null) {
