@@ -11,7 +11,7 @@
 name: AI Semantic Release Scheduler
 
 concurrency:
-  group: release-${{ github.repository }}
+  group: semantic-release-ai-${{ github.repository }}
   cancel-in-progress: true
 
 on:
@@ -37,6 +37,7 @@ jobs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
+      dry_run: ${{ steps.run_meta.outputs.dry_run }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -57,6 +58,27 @@ jobs:
             fi
           done <<< "$(git tag --sort=-v:refname)"
           echo "last=$last" >> $GITHUB_OUTPUT
+
+      - name: Capture event and dry-run flag
+        id: run_meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+        run: |
+          event="${EVENT_NAME:-}"
+          raw="${DRY_RUN_INPUT:-}"
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
+            dry_run=true
+          else
+            dry_run=false
+          fi
+
+          echo "audit:event_name=$event"
+          echo "audit:dry_run_input_raw='${raw}'"
+          echo "audit:dry_run_normalized=$dry_run"
+          echo "dry_run=$dry_run" >> $GITHUB_OUTPUT
 
       - name: Collect diff since last release
         id: diff
@@ -335,7 +357,7 @@ jobs:
             *) echo "Invalid bump value: $bump" >&2; exit 1 ;;
           esac
 
-          new="v${major}.${minor}.${patch}"
+          new="${major}.${minor}.${patch}"
 
           if git rev-parse "refs/tags/$new" >/dev/null 2>&1; then
             echo "Computed tag $new already exists. Aborting." >&2
@@ -343,6 +365,26 @@ jobs:
           fi
 
           echo "version=$new" >> $GITHUB_OUTPUT
+
+      - name: Debug decision summary
+        if: always()
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ steps.run_meta.outputs.dry_run }}
+          PROCEED: ${{ steps.gate.outputs.proceed }}
+          TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
+          SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
+          BUMP: ${{ steps.parsed.outputs.bump }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "decision:event_name=${EVENT_NAME:-}"
+          echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
+          echo "decision:gate_proceed=${PROCEED:-}"
+          echo "decision:token_present=${TOKEN_PRESENT:-}"
+          echo "decision:should_release=${SHOULD_RELEASE:-}"
+          echo "decision:bump=${BUMP:-}"
+          echo "decision:computed_version=${VERSION:-}"
 
   # Human approval job: only runs for major bumps and uses a protected environment to require reviewers.
   # Create an environment named `major-release` and configure required reviewers in repo settings.
@@ -367,8 +409,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       ${{ needs.analyze.outputs.should_release == 'true' &&
-         needs.analyze.outputs.bump != 'major' &&
-         (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+         needs.analyze.outputs.bump != 'major'
       }}
     steps:
       - name: Trigger publish workflow
@@ -377,15 +418,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ needs.analyze.outputs.version }}";
+            const dryRun = "${{ needs.analyze.outputs.dry_run }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version}`);
+            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: "release.yml",
               ref,
               inputs: {
-                releaseVersion: version
+                releaseVersion: version,
+                dryRun
               }
             })
 
@@ -396,8 +439,7 @@ jobs:
     if: >
       ${{ needs.analyze.outputs.should_release == 'true' &&
          needs.analyze.outputs.bump == 'major' &&
-         needs.approval.result == 'success' &&
-         (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+         needs.approval.result == 'success'
       }}
     steps:
       - name: Trigger publish workflow
@@ -406,15 +448,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ needs.analyze.outputs.version }}";
+            const dryRun = "${{ needs.analyze.outputs.dry_run }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version}`);
+            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: "release.yml",
               ref,
               inputs: {
-                releaseVersion: version
+                releaseVersion: version,
+                dryRun
               }
             })
 
@@ -423,7 +467,7 @@ jobs:
     name: Dry-run output
     runs-on: ubuntu-latest
     needs: analyze
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' && needs.analyze.outputs.should_release == 'true' }}
+    if: ${{ needs.analyze.outputs.dry_run == 'true' && needs.analyze.outputs.should_release == 'true' }}
     steps:
       - name: Show dry-run results
         run: |
