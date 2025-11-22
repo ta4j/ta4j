@@ -34,6 +34,9 @@ jobs:
   analyze:
     name: Analyze changes & ask AI
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     outputs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
@@ -52,7 +55,7 @@ jobs:
         run: |
           last="none"
           while IFS= read -r tag; do
-            if [[ "$tag" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
+            if echo "$tag" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
               last="$tag"
               break
             fi
@@ -181,6 +184,7 @@ jobs:
           set -euo pipefail
 
           # Build the JSON request using jq and safe string args.
+          echo "build.request_json:build.start"
           jq -n \
             --arg diff "${{ steps.diff.outputs.diff }}" \
             --arg changelog "${{ steps.changelog.outputs.changelog }}" \
@@ -209,6 +213,7 @@ jobs:
               ]
             }' > request.json
 
+          echo "build.request_json:validate.start"
           if ! jq -e '.model and .messages and (.messages | length > 0)' request.json > /dev/null; then
             echo "audit:request_json_valid=false" >&2
             exit 1
@@ -311,10 +316,13 @@ jobs:
           if [ "$last" = "none" ]; then
             major=0; minor=0; patch=0
           else
-            if [[ "$last" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
-              major=${BASH_REMATCH[1]}
-              minor=${BASH_REMATCH[2]}
-              patch=${BASH_REMATCH[3]:-0}
+            if echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
+              parsed=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1 \2 \3/')
+              set -- $parsed
+              major=$1
+              minor=$2
+              patch=${3#.}
+              patch=${patch:-0}
             else
               echo "Last tag '$last' does not match SemVer pattern (allowing prerelease/build)." >&2
               exit 1
