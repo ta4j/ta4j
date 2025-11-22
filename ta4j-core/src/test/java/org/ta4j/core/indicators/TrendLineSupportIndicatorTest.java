@@ -56,8 +56,11 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(1).isNaN()).isTrue();
 
         assertThat(indicator.getValue(2)).isEqualByComparingTo(lowIndicator.getValue(2));
-        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
+        // Swing low at index 5 needs to be confirmed at index 6 (followingHigherBars=1)
+        indicator.getValue(6); // Discover swing point at index 5
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        // Verify swing point value is returned at the swing point index
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
 
         final var numFactory = series.numFactory();
         final var x1 = numFactory.numOf(2);
@@ -252,8 +255,11 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(1).isNaN()).isTrue();
 
         assertThat(indicator.getValue(2)).isEqualByComparingTo(lowIndicator.getValue(2));
-        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
+        // Swing low at index 5 needs to be confirmed at index 6 (followingHigherBars=1)
+        indicator.getValue(6); // Discover swing point at index 5
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        // Verify swing point value is returned at the swing point index
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
 
         // Verify the price indicator was extracted correctly
         final var numFactory = series.numFactory();

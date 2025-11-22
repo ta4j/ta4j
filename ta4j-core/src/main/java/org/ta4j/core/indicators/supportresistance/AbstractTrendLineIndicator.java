@@ -84,7 +84,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return NaN;
         }
-        updateSwingPointCache(getBarSeries().getEndIndex());
+        updateSwingPointCache(index);
         final int beginIndex = getBarSeries().getBeginIndex();
         final SwingPointPair pair = findSwingPointPairForIndex(index);
         if (pair == null) {

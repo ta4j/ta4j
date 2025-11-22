@@ -56,8 +56,11 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(1).isNaN()).isTrue();
 
         assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
-        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
+        // Swing high at index 5 needs to be confirmed at index 6 (followingLowerBars=1)
+        indicator.getValue(6); // Discover swing point at index 5
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        // Verify swing point value is returned at the swing point index
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
 
         final var numFactory = series.numFactory();
         final var x1 = numFactory.numOf(2);
@@ -76,15 +79,27 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var highIndicator = new HighPriceIndicator(series);
         final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
 
-        for (int i = 0; i <= 4; i++) {
-            indicator.getValue(i);
+        // Discover all swing points by calling getValue up to the end
+        // Don't call getValue(4) in the loop to avoid caching a value calculated
+        // before the swing point at index 5 is discovered
+        for (int i = 0; i <= 6; i++) {
+            if (i != 4) {
+                indicator.getValue(i);
+            }
         }
+        // Now call getValue(4) after all swing points are discovered
+        indicator.getValue(4);
 
         final var numFactory = series.numFactory();
         final var pivotIndexes = indicator.getPivotIndexes();
         assertThat(pivotIndexes).hasSize(3);
-        final int lowerPivotIndex = pivotIndexes.get(1);
-        final int upperPivotIndex = pivotIndexes.get(2);
+        assertThat(pivotIndexes).containsExactly(1, 3, 5);
+
+        // When calculating value at index 4, findSwingPointPairForIndex uses:
+        // - The last swing point with index <= 4 (index 3)
+        // - The first swing point with index > 4 (index 5)
+        final int lowerPivotIndex = 3;
+        final int upperPivotIndex = 5;
         final var x1 = numFactory.numOf(lowerPivotIndex);
         final var x2 = numFactory.numOf(upperPivotIndex);
         final var y1 = highIndicator.getValue(lowerPivotIndex);
@@ -94,7 +109,6 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var expected = slope.multipliedBy(numFactory.numOf(4)).plus(intercept);
 
         assertThat(indicator.getValue(4)).isEqualByComparingTo(expected);
-        assertThat(indicator.getPivotIndexes()).containsExactly(1, 3, 5);
     }
 
     @Test
@@ -259,8 +273,11 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(1).isNaN()).isTrue();
 
         assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
-        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
+        // Swing high at index 5 needs to be confirmed at index 6 (followingLowerBars=1)
+        indicator.getValue(6); // Discover swing point at index 5
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        // Verify swing point value is returned at the swing point index
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
 
         // Verify the price indicator was extracted correctly
         final var numFactory = series.numFactory();
