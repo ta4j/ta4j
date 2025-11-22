@@ -151,6 +151,7 @@ jobs:
           # mask token in logs and set as environment variable for subsequent steps (do not expose in outputs)
           echo "::add-mask::$token"
           echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
+          export OIDC_TOKEN="$token"
           export AUD="$aud"
 
           # sanity-check token claims locally
