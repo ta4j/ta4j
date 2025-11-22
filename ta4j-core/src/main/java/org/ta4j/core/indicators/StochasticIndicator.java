@@ -50,7 +50,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/stochasticoscillator.asp">Investopedia:
  *      Stochastic Oscillator</a>
- * @since 0.19
+ * @since 0.20
  */
 public class StochasticIndicator extends CachedIndicator<Num> {
 

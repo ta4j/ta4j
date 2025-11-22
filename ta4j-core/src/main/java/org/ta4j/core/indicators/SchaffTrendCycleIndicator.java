@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/articles/forex/10/schaff-trend-cycle-indicator.asp">
  *      Investopedia: Schaff Trend Cycle Indicator</a>
- * @since 0.19
+ * @since 0.20
  */
 public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
@@ -51,7 +51,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * {@code cycleLength}=10, {@code smoothingPeriod}=3).
      *
      * @param indicator the base {@link Indicator}
-     * @since 0.19
+     * @since 0.20
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator) {
         this(indicator, 23, 50, 10, 3);
@@ -66,7 +66,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * @param cycleLength     the stochastic look-back length
      * @param smoothingPeriod the EMA smoothing period applied to the stochastic
      *                        calculations
-     * @since 0.19
+     * @since 0.20
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
             int smoothingPeriod) {

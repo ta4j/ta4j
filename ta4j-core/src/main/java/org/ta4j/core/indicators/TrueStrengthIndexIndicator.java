@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/true-strength-index">
  *      StockCharts: True Strength Index (TSI)</a>
- * @since 0.19
+ * @since 0.20
  */
 public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
@@ -56,7 +56,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
      * Constructor using the common (25, 13) smoothing periods.
      *
      * @param indicator the {@link Indicator} containing the price series
-     * @since 0.19
+     * @since 0.20
      */
     public TrueStrengthIndexIndicator(Indicator<Num> indicator) {
         this(indicator, 25, 13);
@@ -69,7 +69,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
      *                              series
      * @param firstSmoothingPeriod  the long look-back period (commonly 25)
      * @param secondSmoothingPeriod the short look-back period (commonly 13)
-     * @since 0.19
+     * @since 0.20
      */
     public TrueStrengthIndexIndicator(Indicator<Num> indicator, int firstSmoothingPeriod, int secondSmoothingPeriod) {
         super(indicator);
