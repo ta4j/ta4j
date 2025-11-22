@@ -56,9 +56,17 @@ jobs:
           default_branch="${{ github.event.repository.default_branch }}"
           git fetch origin "$default_branch" --tags
 
-          last=$(git describe --tags --abbrev=0 --first-parent --match 'v*[0-9]*' "$default_branch" 2>/dev/null || echo "none")
+          last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$default_branch" 2>/dev/null || true)
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$default_branch" 2>/dev/null || true)
+          fi
+
+          if [ -z "$last" ]; then
+            last="none"
+          fi
+
           echo "last=$last" >> $GITHUB_OUTPUT
-          echo "audit:last_tag=$last default_branch=$default_branch first_parent_only=true"
+          echo "audit:last_tag=$last default_branch=$default_branch first_parent_only=true prefer_no_v_tags=true"
 
       - name: Capture event and normalize dry run flag
         id: run_meta
@@ -85,7 +93,7 @@ jobs:
         id: pom_version
         run: |
           set -euo pipefail
-          version=$(python -c $'import xml.etree.ElementTree as ET\nimport sys\n\ndef find_version(path):\n    tree = ET.parse(path)\n    root = tree.getroot()\n    def find_first(elem):\n        if elem is None:\n            return None\n        for child in elem:\n            if child.tag.endswith(\"version\"):\n                text = (child.text or \"\").strip()\n                if text:\n                    return text\n        return None\n    return find_first(root) or find_first(root.find(\"./{*}parent\"))\n\nver = find_version(\"pom.xml\")\nif not ver:\n    sys.exit(1)\nprint(ver)\n') || { echo \"Could not read <version> from pom.xml\" >&2; exit 1; }
+          version=$(python3 -c $'import xml.etree.ElementTree as ET\nimport sys\n\ndef find_version(path):\n    tree = ET.parse(path)\n    root = tree.getroot()\n    def find_first(elem):\n        if elem is None:\n            return None\n        for child in elem:\n            if child.tag.endswith(\"version\"):\n                text = (child.text or \"\").strip()\n                if text:\n                    return text\n        return None\n    return find_first(root) or find_first(root.find(\"./{*}parent\"))\n\nver = find_version(\"pom.xml\")\nif not ver:\n    sys.exit(1)\nprint(ver)\n') || { echo \"Could not read <version> from pom.xml\" >&2; exit 1; }
 
           base="$version"
           is_snapshot=false
@@ -301,20 +309,25 @@ jobs:
         env:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
           backoff=2
           response_status=0
+          : > response.json
 
           for attempt in $(seq 1 "$attempts"); do
-            response_status=$(curl -s -o response.json -w '%{http_code}' \
+            if response_status=$(curl -s -o response.json -w '%{http_code}' \
               -X POST --max-time 30 \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GH_MODELS_TOKEN" \
               https://models.github.ai/inference/chat/completions \
-              --data-binary @request.json)
+              --data-binary @request.json); then
+              :
+            else
+              response_status="000"
+            fi
 
             if [ "$response_status" -eq 200 ]; then
               break
@@ -479,8 +492,8 @@ jobs:
             exit 1
           fi
 
-          if git rev-parse "refs/tags/$new" >/dev/null 2>&1; then
-            echo "Computed tag $new already exists. Aborting." >&2
+          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1; then
+            echo "Computed tag $new (or v$new) already exists. Aborting." >&2
             exit 1
           fi
 

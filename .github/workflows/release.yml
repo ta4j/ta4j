@@ -448,18 +448,28 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
         run: |
-          if git rev-parse "refs/tags/$RELEASE_VERSION" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+          exists=false
+          found=""
+
+          for candidate in "$RELEASE_VERSION" "v$RELEASE_VERSION"; do
+            if git rev-parse "refs/tags/$candidate" >/dev/null 2>&1; then
+              exists=true
+              found="$candidate"
+              break
+            fi
+          done
+
+          echo "exists=$exists" >> $GITHUB_OUTPUT
+          echo "existing_tag=$found" >> $GITHUB_OUTPUT
 
       - name: Fail if tag exists
         if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists == 'true'
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
         run: |
-          echo "Error: tag '$RELEASE_VERSION' already exists. Aborting before creating a duplicate tag."
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting before creating a duplicate tag."
           exit 1
 
       - name: Create release tag
@@ -541,7 +551,8 @@ jobs:
         env:
           GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
         run: |
-          git push https://$GH_TA4J_REPO_TOKEN@github.com/${{ github.repository }} --follow-tags
+          git remote set-url origin "https://x-access-token:${GH_TA4J_REPO_TOKEN}@github.com/${{ github.repository }}"
+          git push origin HEAD --follow-tags
 
       # -----------------------
       # Summary
