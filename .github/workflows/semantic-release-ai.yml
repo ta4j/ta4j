@@ -28,7 +28,6 @@ on:
 permissions:
   contents: write
   actions: write
-  id-token: write
 
 jobs:
   analyze:
@@ -132,61 +131,30 @@ jobs:
         if: steps.gate.outputs.proceed != 'true'
         run: echo "No release recommended (empty diff and changelog)."
 
-      - name: Obtain OIDC token for model call
-        id: oidc
+      - name: Ensure GH_MODELS_TOKEN is available
+        id: model_token
         if: steps.gate.outputs.proceed == 'true'
+        env:
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
-          set -euo pipefail
-          aud="models.github.ai"
-
-          raw=$(curl -sLS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${aud}")
-          token=$(printf '%s' "$raw" | jq -r '.value')
-
-          if [ -z "$token" ] || [ "$token" = "null" ]; then
-            echo "Failed to fetch OIDC token" >&2
-            exit 1
+          if [ -z "${GH_MODELS_TOKEN:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+            echo "audit:models_token_present=false"
+            exit 0
           fi
 
-          # mask token in logs and set as environment variable for subsequent steps (do not expose in outputs)
-          echo "::add-mask::$token"
-          echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
-          export OIDC_TOKEN="$token"
-          export AUD="$aud"
+          echo "::add-mask::$GH_MODELS_TOKEN"
+          echo "GH_MODELS_TOKEN=$GH_MODELS_TOKEN" >> $GITHUB_ENV
+          echo "present=true" >> $GITHUB_OUTPUT
+          echo "audit:models_token_present=true"
 
-          # sanity-check token claims locally
-          python3 - <<'PY'
-          import base64
-          import json
-          import os
-          import sys
-          import time
-
-          token = os.environ.get("OIDC_TOKEN", "")
-          aud = os.environ.get("AUD", "")
-
-          try:
-              header, payload, _ = token.split(".")
-              pad = "=" * (-len(payload) % 4)
-              claims = json.loads(base64.urlsafe_b64decode(payload + pad))
-          except Exception as exc:
-              sys.exit(f"Bad JWT: {exc}")
-
-          if claims.get("aud") != aud:
-              sys.exit(f"aud mismatch: {claims.get('aud')}")
-          if claims.get("iss") != "https://token.actions.githubusercontent.com":
-              sys.exit("iss mismatch")
-          if claims.get("exp", 0) <= time.time():
-              sys.exit("token expired")
-
-          print("claims ok")
-          PY
+      - name: No release - missing GH_MODELS_TOKEN
+        if: steps.gate.outputs.proceed == 'true' && steps.model_token.outputs.present != 'true'
+        run: echo "GH_MODELS_TOKEN not provided; skipping release."
 
       - name: Ask AI for semantic version bump
         id: ai
-        if: steps.gate.outputs.proceed == 'true'
-        env:
-          OIDC_TOKEN: ${{ env.OIDC_TOKEN }}
+        if: steps.gate.outputs.proceed == 'true' && steps.model_token.outputs.present == 'true'
         run: |
           set -euo pipefail
 
@@ -240,7 +208,7 @@ jobs:
             response_status=$(curl -s -o response.json -w '%{http_code}' \
               -X POST --max-time 30 \
               -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $OIDC_TOKEN" \
+              -H "Authorization: Bearer $GH_MODELS_TOKEN" \
               https://models.github.ai/inference/chat/completions \
               --data-binary @request.json)
 
@@ -291,22 +259,32 @@ jobs:
       - name: Parse AI JSON
         id: parsed
         if: steps.gate.outputs.proceed == 'true'
+        env:
+          MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
         run: |
-          raw_content='${{ steps.ai.outputs.content }}'
+          model_token_present="${MODEL_TOKEN_PRESENT:-false}"
           parsed_ok=false
 
-          if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+          if [ "$model_token_present" != "true" ]; then
+            echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
+            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing"}' > ai.json
             parsed_ok=true
           else
-            extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
-            if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
-              parsed_ok=true
-            fi
-          fi
+            raw_content='${{ steps.ai.outputs.content }}'
 
-          if ! $parsed_ok; then
-            echo "AI response not valid JSON. Defaulting to no release." >&2
-            echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON"}' > ai.json
+            if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+              parsed_ok=true
+            else
+              extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
+              if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
+                parsed_ok=true
+              fi
+            fi
+
+            if ! $parsed_ok; then
+              echo "AI response not valid JSON. Defaulting to no release." >&2
+              echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON"}' > ai.json
+            fi
           fi
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
