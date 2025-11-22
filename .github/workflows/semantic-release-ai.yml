@@ -190,8 +190,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          diff_decoded=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d)
-          changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d)
+          diff_decoded=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
+          changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
 
           # Build the JSON request using jq and safe string args.
           echo "build.request_json:build.start"
@@ -234,32 +234,34 @@ jobs:
 
           attempts=3
           backoff=2
-          response=""
-          status=0
+          response_status=0
 
           for attempt in $(seq 1 "$attempts"); do
-            response=$(curl -s --fail -X POST \
-              --max-time 30 \
+            response_status=$(curl -s -o response.json -w '%{http_code}' \
+              -X POST --max-time 30 \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $OIDC_TOKEN" \
               https://models.github.ai/inference/chat/completions \
-              -d @request.json)
-            status=$?
-            [ "$status" -eq 0 ] && break
+              --data-binary @request.json)
 
-            echo "audit:ai_request_retry attempt=$attempt status=$status backoff=${backoff}s" >&2
+            if [ "$response_status" -eq 200 ]; then
+              break
+            fi
+
+            echo "audit:ai_request_retry attempt=$attempt status=$response_status backoff=${backoff}s" >&2
             if [ "$attempt" -lt "$attempts" ]; then
               sleep "$backoff"
               backoff=$((backoff * 2))
             fi
           done
 
-          if [ "$status" -ne 0 ] || [ -z "$response" ]; then
-            echo "audit:ai_request_failed attempts=$attempts status=$status" >&2
+          if [ "$response_status" -ne 200 ]; then
+            echo "audit:ai_request_failed attempts=$attempts status=$response_status" >&2
+            echo "response (truncated to 500 chars):"
+            head -c 500 response.json || true
             exit 1
           fi
 
-          echo "$response" > response.json
           resp_size=$(wc -c < response.json | tr -d ' ')
           echo "audit:ai_response_bytes=$resp_size saved_to=response.json"
 
