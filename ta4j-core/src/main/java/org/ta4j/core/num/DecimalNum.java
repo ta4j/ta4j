@@ -595,6 +595,26 @@ public final class DecimalNum implements Num {
     }
 
     @Override
+    public Num exp() {
+        BigDecimal term = BigDecimal.ONE;
+        BigDecimal sum = BigDecimal.ONE;
+        final BigDecimal exponent = this.delegate;
+
+        int i = 1;
+        while (term.signum() != 0) {
+            term = term.multiply(exponent, this.mathContext).divide(BigDecimal.valueOf(i), this.mathContext);
+            final BigDecimal next = sum.add(term, this.mathContext);
+            if (next.compareTo(sum) == 0) {
+                break;
+            }
+            sum = next;
+            i++;
+        }
+
+        return DecimalNum.valueOf(sum, this.mathContext);
+    }
+
+    @Override
     public Num abs() {
         return new DecimalNum(this.delegate.abs(), this.mathContext);
     }

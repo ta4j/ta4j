@@ -25,6 +25,7 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,6 +46,11 @@ public class GrossReturnCriterion extends AbstractReturnCriterion {
         super();
     }
 
+    public GrossReturnCriterion(ReturnRepresentation representation) {
+        super(representation);
+    }
+
+    @Deprecated(since = "0.24.0")
     public GrossReturnCriterion(boolean addBase) {
         super(addBase);
     }

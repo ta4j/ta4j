@@ -28,46 +28,167 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion (also known as "RoMaD"), returned in decimal
- * format.
+ * Reward risk ratio criterion (also known as "RoMaD"), returned in the
+ * configured {@link ReturnRepresentation} format.
  *
  * <pre>
  * RoMaD = {@link NetReturnCriterion net return (without base)} / {@link MaximumDrawdownCriterion maximum drawdown}
  * </pre>
+ *
+ * <p>
+ * <b>Return Representation:</b> This criterion defaults to
+ * {@link ReturnRepresentation#DECIMAL} (ratios are typically expressed as
+ * decimals), but you can override it via the constructor. The calculated ratio
+ * (which represents how much return is achieved per unit of drawdown) is
+ * converted to the configured representation format.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ *
+ * <pre>{@code
+ * // Default DECIMAL representation
+ * var romad = new ReturnOverMaxDrawdownCriterion();
+ * // Result: 2.0 means return is 2x the maximum drawdown
+ *
+ * // PERCENTAGE representation
+ * var romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+ * // Result: 200.0 means return is 200% of the maximum drawdown
+ *
+ * // MULTIPLICATIVE representation
+ * var romadMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * // Result: 3.0 means return is 200% better than drawdown (1 + 2.0 = 3.0)
+ * }</pre>
+ *
+ * <p>
+ * <b>Ratio Format Examples:</b> A ratio of 2.0 (return is 2x the drawdown) can
+ * be expressed as:
+ * <ul>
+ * <li><b>DECIMAL</b>: 2.0 (return is 2x the drawdown)
+ * <li><b>PERCENTAGE</b>: 200.0 (return is 200% of the drawdown)
+ * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + 2.0 = 3.0, meaning 200% better)
+ * </ul>
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion netReturnCriterion = new NetReturnCriterion(false);
+    private final AnalysisCriterion netReturnCriterion;
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
+    private final ReturnRepresentation returnRepresentation;
+
+    /**
+     * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
+     * are typically expressed as decimals).
+     * <p>
+     * The ratio output will be in DECIMAL format (e.g., 2.0 means return is 2x the
+     * drawdown). Use the other constructor to specify a different representation.
+     */
+    public ReturnOverMaxDrawdownCriterion() {
+        this(ReturnRepresentation.DECIMAL);
+    }
+
+    /**
+     * Constructor with explicit return representation.
+     * <p>
+     * Use this constructor to specify how the ratio output should be formatted. The
+     * ratio represents how much return is achieved per unit of drawdown. See the
+     * class javadoc for examples of how ratios are expressed in different formats.
+     *
+     * @param returnRepresentation the return representation to use for the output
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
+     */
+    public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
+        this.returnRepresentation = returnRepresentation;
+        // Always use DECIMAL (0-based) for internal calculation since the formula
+        // requires
+        // "net return without base" (rate of return). The final ratio will be converted
+        // to the desired representation.
+        this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        var numFactory = series.numFactory();
         if (position.isOpened()) {
-            return series.numFactory().zero();
+            return numFactory.zero();
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        // Get the net return in DECIMAL (0-based) for the formula calculation
         var netReturn = netReturnCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
-            return netReturn;
+            // If no drawdown, convert the net return to the desired representation
+            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
-        return netReturn.dividedBy(maxDrawdown);
+        // Calculate ratio: net return (0-based) / drawdown
+        // Both are in DECIMAL format, so the ratio is also in DECIMAL
+        var rawRatio = netReturn.dividedBy(maxDrawdown);
+        // Convert the ratio to the desired representation
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rawRatio;
+        }
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
+            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
+            var one = numFactory.one();
+            var zero = numFactory.zero();
+            if (rawRatio.isGreaterThanOrEqual(zero)) {
+                return rawRatio.plus(one);
+            } else {
+                return rawRatio;
+            }
+        }
+        // For PERCENTAGE, multiply the ratio by 100
+        return rawRatio.multipliedBy(numFactory.numOf(100));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        var numFactory = series.numFactory();
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numFactory().zero(); // penalise no-trade strategies
+            return numFactory.zero(); // penalise no-trade strategies
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        // Get the net return in DECIMAL (0-based) for the formula calculation
         var netReturn = netReturnCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
-            return netReturn; // perfect equity curve
+            // If no drawdown, convert the net return to the desired representation
+            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
-        return netReturn.dividedBy(maxDrawdown); // regular RoMaD
+        // Calculate ratio: net return (0-based) / drawdown
+        // Both are in DECIMAL format, so the ratio is also in DECIMAL
+        var rawRatio = netReturn.dividedBy(maxDrawdown);
+        // Convert the ratio to the desired representation
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rawRatio;
+        }
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
+            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
+            var one = numFactory.one();
+            var zero = numFactory.zero();
+            if (rawRatio.isGreaterThanOrEqual(zero)) {
+                return rawRatio.plus(one);
+            } else {
+                return rawRatio;
+            }
+        }
+        // For PERCENTAGE, multiply the ratio by 100
+        return rawRatio.multipliedBy(numFactory.numOf(100));
+    }
+
+    @Override
+    public java.util.Optional<ReturnRepresentation> getReturnRepresentation() {
+        return java.util.Optional.of(returnRepresentation);
     }
 
     /** The higher the criterion value, the better. */

@@ -227,6 +227,11 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public Num exp() {
+        return new DoubleNum(Math.exp(this.delegate));
+    }
+
+    @Override
     public Num abs() {
         return new DoubleNum(Math.abs(this.delegate));
     }

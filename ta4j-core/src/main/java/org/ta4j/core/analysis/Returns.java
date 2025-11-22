@@ -31,59 +31,76 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
  * Allows to compute the return rate of a price time-series.
+ * <p>
+ * Returns are calculated and formatted according to the specified
+ * {@link ReturnRepresentation}. Use {@link ReturnRepresentation#LOG} for log
+ * returns, or {@link ReturnRepresentation#DECIMAL},
+ * {@link ReturnRepresentation#MULTIPLICATIVE}, or
+ * {@link ReturnRepresentation#PERCENTAGE} for arithmetic returns in different
+ * formats.
+ * <p>
+ * The default representation (when not explicitly specified) is obtained from
+ * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
+ *
+ * @see ReturnRepresentation
+ * @see ReturnRepresentationPolicy
  */
 public class Returns implements Indicator<Num> {
 
-    public enum ReturnType {
-        LOG {
-            @Override
-            public Num calculate(Num xNew, Num xOld) {
-                // r_i = ln(P_i/P_(i-1))
-                return (xNew.dividedBy(xOld)).log();
-            }
-        },
-        ARITHMETIC {
-            @Override
-            public Num calculate(Num xNew, Num xOld) {
-                // r_i = P_i/P_(i-1) - 1
-                return xNew.dividedBy(xOld).minus(one);
-            }
-        };
-
-        /**
-         * @return the single return rate
-         */
-        public abstract Num calculate(Num xNew, Num xOld);
-    }
-
-    private final ReturnType type;
+    private final ReturnRepresentation representation;
 
     /** The bar series. */
     private final BarSeries barSeries;
 
-    /** The return rates. */
+    /**
+     * The raw return rates (before formatting).
+     * <p>
+     * Stores log returns if {@code representation == LOG}, otherwise stores
+     * arithmetic returns in DECIMAL format (0-based, e.g., 0.12 for +12%). Used by
+     * {@link #getRawValues()} for statistical calculations.
+     */
+    private final List<Num> rawValues;
+
+    /**
+     * The formatted return rates (according to the configured representation).
+     * <p>
+     * Values are formatted during calculation using
+     * {@link ReturnRepresentation#toRepresentationFromRateOfReturn(Num)} for
+     * arithmetic returns, or returned as-is for log returns.
+     */
     private final List<Num> values;
 
-    /** Unit element for efficient arithmetic return computation. */
-    private static Num one;
+    /**
+     * Constructor with default representation from
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
+     *
+     * @param barSeries the bar series
+     * @param position  a single position
+     */
+    public Returns(BarSeries barSeries, Position position) {
+        this(barSeries, position, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
 
     /**
      * Constructor.
      *
-     * @param barSeries the bar series
-     * @param position  a single position
-     * @param type      the ReturnType
+     * @param barSeries      the bar series
+     * @param position       a single position
+     * @param representation the return representation (determines both calculation
+     *                       method and output format)
      */
-    public Returns(BarSeries barSeries, Position position, ReturnType type) {
-        one = barSeries.numFactory().one();
+    public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation) {
         this.barSeries = barSeries;
-        this.type = type;
+        this.representation = representation;
         // at index 0, there is no return
+        rawValues = new ArrayList<>(Collections.singletonList(NaN.NaN));
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
         calculate(position, barSeries.getEndIndex());
 
@@ -91,17 +108,29 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor with default representation from
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
      *
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
-     * @param type          the ReturnType
      */
-    public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
-        one = barSeries.numFactory().one();
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord) {
+        this(barSeries, tradingRecord, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries      the bar series
+     * @param tradingRecord  the trading record
+     * @param representation the return representation (determines both calculation
+     *                       method and output format)
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation) {
         this.barSeries = barSeries;
-        this.type = type;
+        this.representation = representation;
         // at index 0, there is no return
+        rawValues = new ArrayList<>(Collections.singletonList(NaN.NaN));
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
         calculate(tradingRecord);
 
@@ -109,19 +138,30 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * @return the return rates
+     * @return the return rates (formatted according to the configured
+     *         representation)
      */
     public List<Num> getValues() {
+        // Values are already formatted during calculate()
         return values;
     }
 
     /**
      * @param index the bar index
-     * @return the return rate value at the index-th position
+     * @return the return rate value at the index-th position (formatted according
+     *         to the configured representation)
      */
     @Override
     public Num getValue(int index) {
+        // Values are already formatted during calculate()
         return values.get(index);
+    }
+
+    /**
+     * @return the raw return rates (before formatting)
+     */
+    public List<Num> getRawValues() {
+        return rawValues;
     }
 
     @Override
@@ -155,8 +195,11 @@ public class Returns implements Indicator<Num> {
         int endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
         final int entryIndex = position.getEntry().getIndex();
         int begin = entryIndex + 1;
-        if (begin > values.size()) {
-            values.addAll(Collections.nCopies(begin - values.size(), barSeries.numFactory().zero()));
+        if (begin > rawValues.size()) {
+            int paddingSize = begin - rawValues.size();
+            Num zero = barSeries.numFactory().zero();
+            rawValues.addAll(Collections.nCopies(paddingSize, zero));
+            values.addAll(Collections.nCopies(paddingSize, zero));
         }
 
         int startingIndex = Math.max(begin, 1);
@@ -169,15 +212,23 @@ public class Returns implements Indicator<Num> {
         Num lastPrice = position.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
             Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
+            Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
             if (position.getEntry().isBuy()) {
-                strategyReturn = assetReturn;
+                strategyReturn = rawReturn;
             } else {
-                strategyReturn = assetReturn.multipliedBy(minusOne);
+                strategyReturn = rawReturn.multipliedBy(minusOne);
             }
-            values.add(strategyReturn);
+            rawValues.add(strategyReturn);
+            // Format the return according to the configured representation
+            if (representation == ReturnRepresentation.LOG) {
+                // Log returns are returned as-is (no conversion needed)
+                values.add(strategyReturn);
+            } else {
+                // Raw return is already in DECIMAL format (arithmetic return)
+                values.add(representation.toRepresentationFromRateOfReturn(strategyReturn));
+            }
             // update base price
             lastPrice = barSeries.getBar(i).getClosePrice();
         }
@@ -190,14 +241,22 @@ public class Returns implements Indicator<Num> {
             exitPrice = barSeries.getBar(endIndex).getClosePrice();
         }
 
+        Num rawReturn = calculateReturn(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
         Num strategyReturn;
-        Num assetReturn = type.calculate(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
         if (position.getEntry().isBuy()) {
-            strategyReturn = assetReturn;
+            strategyReturn = rawReturn;
         } else {
-            strategyReturn = assetReturn.multipliedBy(minusOne);
+            strategyReturn = rawReturn.multipliedBy(minusOne);
         }
-        values.add(strategyReturn);
+        rawValues.add(strategyReturn);
+        // Format the return according to the configured representation
+        if (representation == ReturnRepresentation.LOG) {
+            // Log returns are returned as-is (no conversion needed)
+            values.add(strategyReturn);
+        } else {
+            // Raw return is already in DECIMAL format (arithmetic return)
+            values.add(representation.toRepresentationFromRateOfReturn(strategyReturn));
+        }
     }
 
     /**
@@ -212,14 +271,36 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Pads {@link #values} with zeros up until {@code endIndex}.
+     * Calculates the raw return between two prices.
+     *
+     * @param xNew the new price
+     * @param xOld the old price
+     * @return the raw return (log return if representation is LOG, arithmetic
+     *         return otherwise)
+     */
+    private Num calculateReturn(Num xNew, Num xOld) {
+        if (representation == ReturnRepresentation.LOG) {
+            // r_i = ln(P_i/P_(i-1))
+            return (xNew.dividedBy(xOld)).log();
+        } else {
+            // r_i = P_i/P_(i-1) - 1 (arithmetic return, which is DECIMAL format)
+            var one = barSeries.numFactory().one();
+            return xNew.dividedBy(xOld).minus(one);
+        }
+    }
+
+    /**
+     * Pads {@link #rawValues} and {@link #values} with zeros up until
+     * {@code endIndex}.
      *
      * @param endIndex the end index
      */
     private void fillToTheEnd(int endIndex) {
-        if (endIndex >= values.size()) {
-            values.addAll(
-                    Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numFactory().zero()));
+        if (endIndex >= rawValues.size()) {
+            int paddingSize = barSeries.getEndIndex() - rawValues.size() + 1;
+            Num zero = barSeries.numFactory().zero();
+            rawValues.addAll(Collections.nCopies(paddingSize, zero));
+            values.addAll(Collections.nCopies(paddingSize, zero));
         }
     }
 }
