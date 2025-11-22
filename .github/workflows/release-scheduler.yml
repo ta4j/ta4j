@@ -53,14 +53,12 @@ jobs:
       - name: Determine last tag
         id: lasttag
         run: |
-          last="none"
-          while IFS= read -r tag; do
-            if echo "$tag" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
-              last="$tag"
-              break
-            fi
-          done <<< "$(git tag --sort=-v:refname)"
+          default_branch="${{ github.event.repository.default_branch }}"
+          git fetch origin "$default_branch" --tags
+
+          last=$(git describe --tags --abbrev=0 --first-parent --match 'v*[0-9]*' "$default_branch" 2>/dev/null || echo "none")
           echo "last=$last" >> $GITHUB_OUTPUT
+          echo "audit:last_tag=$last default_branch=$default_branch first_parent_only=true"
 
       - name: Capture event and normalize dry run flag
         id: run_meta
@@ -82,6 +80,50 @@ jobs:
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Read version from pom.xml
+        id: pom_version
+        run: |
+          set -euo pipefail
+          version=$(python - <<'PY'
+import xml.etree.ElementTree as ET
+
+def read_version(path: str) -> str:
+    tree = ET.parse(path)
+    root = tree.getroot()
+    def find_first(elem):
+        for child in elem:
+            if child.tag.endswith("version"):
+                text = (child.text or "").strip()
+                if text:
+                    return text
+        return None
+
+    version = find_first(root)
+    if not version:
+        parent = root.find("./{*}parent")
+        if parent is not None:
+            version = find_first(parent)
+    return version or ""
+
+ver = read_version("pom.xml")
+if not ver:
+    raise SystemExit("Could not read <version> from pom.xml")
+print(ver)
+PY
+)
+
+          base="$version"
+          is_snapshot=false
+          if [[ "$version" == *-SNAPSHOT ]]; then
+            base="${version%-SNAPSHOT}"
+            is_snapshot=true
+          fi
+
+          echo "audit:pom_version=$version base=$base snapshot=$is_snapshot"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "base=$base" >> $GITHUB_OUTPUT
+          echo "snapshot=$is_snapshot" >> $GITHUB_OUTPUT
 
       # -----------------------
       # Change Detection
@@ -221,23 +263,15 @@ jobs:
           diff_decoded=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
           changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
 
-          # Extract current version from last tag (normalize: remove 'v' prefix and prerelease/build metadata)
+          current_version="${{ steps.pom_version.outputs.version }}"
+          base_version="${{ steps.pom_version.outputs.base }}"
           last_tag="${{ steps.lasttag.outputs.last }}"
-          if [ "$last_tag" = "none" ]; then
-            current_version="0.0.0"
-          else
-            # Remove 'v' prefix and any prerelease/build metadata, extract just X.Y.Z
-            current_version=$(printf '%s\n' "$last_tag" | sed -E 's/^v?([0-9]+\.[0-9]+(\.[0-9]+)?).*$/\1/')
-            # Ensure we have patch version
-            if ! echo "$current_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-              if echo "$current_version" | grep -Eq '^[0-9]+\.[0-9]+$'; then
-                current_version="${current_version}.0"
-              else
-                current_version="0.0.0"
-              fi
-            fi
+
+          if [ -z "$current_version" ]; then
+            echo "audit:current_version_missing=true" >&2
+            exit 1
           fi
-          echo "audit:current_version=$current_version"
+          echo "audit:current_version_source=pom.xml value=$current_version base=$base_version last_tag=$last_tag"
 
           # Read SemVer rules from file if it exists and has content, otherwise use defaults
           semver_rules_file=".github/workflows/release-scheduler-semver-rules.txt"
@@ -256,6 +290,7 @@ jobs:
             --arg changelog "$changelog_decoded" \
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
+            --arg last_tag "$last_tag" \
             --arg model "openai/gpt-4o" \
             --arg temp "0" \
             '{
@@ -266,7 +301,8 @@ jobs:
                 { role: "user", content:
                   (
                     "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
-                    "Current version: " + $current_version + "\n\n" +
+                    "Current version (from pom.xml): " + $current_version + "\n" +
+                    "Last default-branch tag: " + $last_tag + "\n\n" +
                     "=== DIFF (truncated, sanitized) ===\n" + $diff + "\n\n" +
                     "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
                     "SemVer Rules:\n" + $semver_rules + "\n" +
@@ -414,21 +450,44 @@ jobs:
         if: steps.parsed.outputs.should_release == 'true'
         run: |
           last="${{ steps.lasttag.outputs.last }}"
+          current="${{ steps.pom_version.outputs.version }}"
+          base="${{ steps.pom_version.outputs.base }}"
           bump="${{ steps.parsed.outputs.bump }}"
 
-          if [ "$last" = "none" ]; then
-            major=0; minor=0; patch=0
+          if [ -z "$current" ] || [ -z "$base" ]; then
+            echo "Failed to read version from pom.xml" >&2
+            exit 1
+          fi
+
+          # Normalize base version (allow major.minor or major.minor.patch)
+          if [[ "$base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch=0
+          elif [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
           else
-            if echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
-              parsed=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1 \2 \3/')
-              set -- $parsed
-              major=$1
-              minor=$2
-              patch=${3#.}
-              patch=${patch:-0}
-            else
-              echo "Last tag '$last' does not match SemVer pattern (allowing prerelease/build)." >&2
-              exit 1
+            echo "POM version '$current' (base '$base') is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
+            exit 1
+          fi
+
+          # Prevent regressions relative to last default-branch tag
+          if [ "$last" != "none" ] && echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
+            last_norm=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1.\2\3/')
+            last_norm=${last_norm:-}
+            last_norm=${last_norm%.}
+            if echo "$last_norm" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+              last_norm="${last_norm}.0"
+            fi
+
+            if [ -n "$last_norm" ]; then
+              highest=$(printf '%s\n' "$last_norm" "$base" | sort -V | tail -n1)
+              if [ "$highest" != "$base" ]; then
+                echo "POM base version '$base' is behind the last default-branch tag '$last_norm'; refusing to compute a lower release." >&2
+                exit 1
+              fi
             fi
           fi
 
@@ -440,6 +499,11 @@ jobs:
           esac
 
           new="${major}.${minor}.${patch}"
+
+          if [ "$(printf '%s\n' "$base" "$new" | sort -V | head -n1)" != "$base" ]; then
+            echo "Computed version '$new' would be lower than pom.xml base '$base'." >&2
+            exit 1
+          fi
 
           if git rev-parse "refs/tags/$new" >/dev/null 2>&1; then
             echo "Computed tag $new already exists. Aborting." >&2
@@ -463,6 +527,9 @@ jobs:
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
           VERSION: ${{ steps.version.outputs.version }}
+          POM_VERSION: ${{ steps.pom_version.outputs.version }}
+          POM_BASE: ${{ steps.pom_version.outputs.base }}
+          LAST_TAG: ${{ steps.lasttag.outputs.last }}
         run: |
           echo "decision:event_name=${EVENT_NAME:-}"
           echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
@@ -472,6 +539,8 @@ jobs:
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
           echo "decision:computed_version=${VERSION:-}"
+          echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
+          echo "decision:last_default_branch_tag=${LAST_TAG:-}"
 
   # Human approval job: only runs for major bumps and uses a protected environment to require reviewers.
   # Create an environment named `major-release` and configure required reviewers in repo settings.

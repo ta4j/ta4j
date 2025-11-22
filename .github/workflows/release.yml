@@ -269,6 +269,24 @@ jobs:
             exit 1
           fi
 
+          if [[ "${CURRENT}" == *-SNAPSHOT ]]; then
+            CURRENT_BASE="${CURRENT%-SNAPSHOT}"
+          else
+            CURRENT_BASE="${CURRENT}"
+          fi
+
+          if [[ -z "${CURRENT_BASE}" ]]; then
+            echo "Error: unable to determine current base version from pom.xml"
+            exit 1
+          fi
+
+          # Prevent downgrading the version relative to pom.xml
+          if [[ "$(printf '%s\n' "${CURRENT_BASE}" "${RELEASE}" | sort -V | head -n1)" != "${CURRENT_BASE}" ]]; then
+            echo "Error: releaseVersion (${RELEASE}) is lower than the current pom.xml version (${CURRENT_BASE})."
+            echo "Refusing to release a version lower than the POM."
+            exit 1
+          fi
+
           echo "release=$RELEASE" >> $GITHUB_OUTPUT
 
       - name: Determine next snapshot version
