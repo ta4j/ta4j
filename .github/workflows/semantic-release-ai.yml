@@ -34,9 +34,6 @@ jobs:
   analyze:
     name: Analyze changes & ask AI
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     outputs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
