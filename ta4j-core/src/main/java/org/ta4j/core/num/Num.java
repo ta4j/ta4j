@@ -133,6 +133,13 @@ public interface Num extends Comparable<Num>, Serializable {
     Num log();
 
     /**
+     * Returns a {@code Num} whose value is {@code e^this}.
+     *
+     * @return {@code e^this}
+     */
+    Num exp();
+
+    /**
      * Returns a {@code Num} whose value is {@code √(this)}.
      *
      * @return {@code √(this)}
@@ -300,6 +307,29 @@ public interface Num extends Comparable<Num>, Serializable {
      */
     default double doubleValue() {
         return getDelegate().doubleValue();
+    }
+
+    /**
+     * Checks if a Num value is null or NaN.
+     *
+     * <p>
+     * This method performs comprehensive NaN detection by checking:
+     * <ul>
+     * <li>If the value is null</li>
+     * <li>If {@link Num#isNaN()} returns true</li>
+     * <li>If the underlying double value is {@link Double#NaN} (handles DoubleNum
+     * edge cases)</li>
+     * </ul>
+     *
+     * <p>
+     * This is necessary because {@link DoubleNumFactory} can surface
+     * {@link Double#NaN} values that may not satisfy {@link Num#isNaN()}.
+     *
+     * @param value the value to check, may be null
+     * @return true if the value is null or NaN, false otherwise
+     */
+    static boolean isNaNOrNull(Num value) {
+        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 
     /**
