@@ -14,10 +14,6 @@ concurrency:
   group: release-${{ github.repository }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 on:
   schedule:
     - cron: "0 9 */14 * *"  # every 14 days
@@ -56,7 +52,7 @@ jobs:
         run: |
           last="none"
           while IFS= read -r tag; do
-            if [[ "$tag" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
+            if echo "$tag" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
               last="$tag"
               break
             fi
@@ -155,12 +151,17 @@ jobs:
           # mask token in logs and set as environment variable for subsequent steps (do not expose in outputs)
           echo "::add-mask::$token"
           echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
+          export AUD="$aud"
 
           # sanity-check token claims locally
-          cat > /tmp/check_token.py <<'PY'
-          import base64, json, os, sys, time
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import sys
+          import time
 
-          token = os.environ.get("TOKEN", "")
+          token = os.environ.get("OIDC_TOKEN", "")
           aud = os.environ.get("AUD", "")
 
           try:
@@ -179,7 +180,6 @@ jobs:
 
           print("claims ok")
           PY
-          TOKEN="$token" AUD="$aud" python3 /tmp/check_token.py
 
       - name: Ask AI for semantic version bump
         id: ai
@@ -190,6 +190,7 @@ jobs:
           set -euo pipefail
 
           # Build the JSON request using jq and safe string args.
+          echo "build.request_json:build.start"
           jq -n \
             --arg diff "${{ steps.diff.outputs.diff }}" \
             --arg changelog "${{ steps.changelog.outputs.changelog }}" \
@@ -218,6 +219,7 @@ jobs:
               ]
             }' > request.json
 
+          echo "build.request_json:validate.start"
           if ! jq -e '.model and .messages and (.messages | length > 0)' request.json > /dev/null; then
             echo "audit:request_json_valid=false" >&2
             exit 1
@@ -320,10 +322,13 @@ jobs:
           if [ "$last" = "none" ]; then
             major=0; minor=0; patch=0
           else
-            if [[ "$last" =~ ^v?([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:[-+].*)?$ ]]; then
-              major=${BASH_REMATCH[1]}
-              minor=${BASH_REMATCH[2]}
-              patch=${BASH_REMATCH[3]:-0}
+            if echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
+              parsed=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1 \2 \3/')
+              set -- $parsed
+              major=$1
+              minor=$2
+              patch=${3#.}
+              patch=${patch:-0}
             else
               echo "Last tag '$last' does not match SemVer pattern (allowing prerelease/build)." >&2
               exit 1
