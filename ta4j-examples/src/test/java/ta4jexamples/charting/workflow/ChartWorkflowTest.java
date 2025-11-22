@@ -54,6 +54,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.display.ChartDisplayer;
+import ta4jexamples.charting.storage.ChartStorage;
 
 /**
  * Integration tests for {@link ChartWorkflow}.
@@ -1141,6 +1145,150 @@ public class ChartWorkflowTest {
                     }
                 });
             }
+        }
+    }
+
+    // ========== ChartPlan display with title tests ==========
+
+    @Test
+    public void testDisplayChartPlanUsesTitleFromPlan() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a title
+        String expectedTitle = "Test Chart Title";
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle(expectedTitle).toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify the window title was passed correctly
+        assertEquals(expectedTitle, mockDisplayer.getLastWindowTitle(),
+                "Window title should match the title from ChartPlan");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsNull() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan without a title (null)
+        ChartPlan plan = workflow.builder()
+                .withSeries(barSeries)
+                // No withTitle() call - title will be null
+                .toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (null window title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is null, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsEmpty() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with an empty title
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("").toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (empty title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is empty, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsBlank() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a blank title (whitespace only)
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("   ").toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (blank title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is blank, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanWithExplicitWindowTitleOverridesPlanTitle() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a title
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("Plan Title").toPlan();
+
+        // Display the plan with an explicit window title (should override plan title)
+        String explicitTitle = "Explicit Window Title";
+        workflow.display(plan, explicitTitle);
+
+        // Verify the explicit window title was used, not the plan title
+        assertEquals(explicitTitle, mockDisplayer.getLastWindowTitle(),
+                "Explicit window title should override plan title");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    /**
+     * Mock implementation of ChartDisplayer that records the window title and chart
+     * passed to it for testing purposes.
+     */
+    private static class MockChartDisplayer implements ChartDisplayer {
+        private JFreeChart lastChart;
+        private String lastWindowTitle;
+        private boolean displayWithoutTitleCalled;
+
+        @Override
+        public void display(JFreeChart chart) {
+            this.lastChart = chart;
+            this.lastWindowTitle = null;
+            this.displayWithoutTitleCalled = true;
+        }
+
+        @Override
+        public void display(JFreeChart chart, String windowTitle) {
+            this.lastChart = chart;
+            this.lastWindowTitle = windowTitle;
+            this.displayWithoutTitleCalled = false;
+        }
+
+        JFreeChart getLastChart() {
+            return lastChart;
+        }
+
+        String getLastWindowTitle() {
+            return lastWindowTitle;
+        }
+
+        boolean wasDisplayCalledWithoutTitle() {
+            return displayWithoutTitleCalled;
         }
     }
 

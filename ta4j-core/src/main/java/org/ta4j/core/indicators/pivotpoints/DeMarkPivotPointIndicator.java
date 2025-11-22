@@ -25,13 +25,10 @@ package org.ta4j.core.indicators.pivotpoints;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.time.temporal.IsoFields;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,9 +44,8 @@ import org.ta4j.core.num.Num;
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points">
  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-overlays/pivot-points</a>
  */
-public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
+public class DeMarkPivotPointIndicator extends AbstractPivotPointIndicator {
 
-    private final TimeLevel timeLevel;
     private final Num two;
     private final Num four;
 
@@ -85,23 +81,13 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
      *                    after the first complete month
      */
     public DeMarkPivotPointIndicator(BarSeries series, TimeLevel timeLevelId) {
-        super(series);
-        this.timeLevel = timeLevelId;
+        super(series, timeLevelId);
         this.two = getBarSeries().numFactory().two();
         this.four = getBarSeries().numFactory().numOf(4);
     }
 
     @Override
-    protected Num calculate(int index) {
-        return calcPivotPoint(getBarsOfPreviousPeriod(index));
-    }
-
-    @Override
-    public int getCountOfUnstableBars() {
-        return 0;
-    }
-
-    private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
+    protected Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;
         Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
@@ -126,74 +112,6 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         return x.dividedBy(four);
-    }
-
-    /**
-     * Calculates the indices of the bars of the previous period
-     *
-     * @param index index of the current bar
-     * @return list of indices of the bars of the previous period
-     */
-    public List<Integer> getBarsOfPreviousPeriod(int index) {
-        List<Integer> previousBars = new ArrayList<>();
-
-        if (timeLevel == TimeLevel.BARBASED) {
-            previousBars.add(Math.max(0, index - 1));
-            return previousBars;
-        }
-        if (index == 0) {
-            return previousBars;
-        }
-
-        final Bar currentBar = getBarSeries().getBar(index);
-        // step back while bar-1 in same period (day, week, etc):
-        while (index - 1 > getBarSeries().getBeginIndex()
-                && getPeriod(getBarSeries().getBar(index - 1)) == getPeriod(currentBar)) {
-            index--;
-        }
-
-        // index = last bar in same period, index-1 = first bar in previous period
-        long previousPeriod = getPreviousPeriod(currentBar, index - 1);
-        while (index - 1 > getBarSeries().getBeginIndex()
-                && getPeriod(getBarSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
-            index--;
-            previousBars.add(index);
-        }
-        return previousBars;
-    }
-
-    private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
-        var zonedEndTime = bar.getZonedEndTime();
-        switch (timeLevel) {
-        case DAY: // return previous day
-            int prevCalendarDay = zonedEndTime.minusDays(1).getDayOfYear();
-            // skip weekend and holidays:
-            var previousZonedEndTime = getBarSeries().getBar(indexOfPreviousBar).getZonedEndTime();
-            while (previousZonedEndTime.getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0) {
-                prevCalendarDay--;
-            }
-            return prevCalendarDay;
-        case WEEK: // return previous week
-            return zonedEndTime.minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
-            return zonedEndTime.minusMonths(1).getMonthValue();
-        default: // return previous year
-            return zonedEndTime.minusYears(1).getYear();
-        }
-    }
-
-    private long getPeriod(Bar bar) {
-        var zonedEndTime = bar.getZonedEndTime();
-        switch (timeLevel) {
-        case DAY: // return previous day
-            return zonedEndTime.getDayOfYear();
-        case WEEK: // return previous week
-            return zonedEndTime.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
-            return zonedEndTime.getMonthValue();
-        default: // return previous year
-            return zonedEndTime.getYear();
-        }
     }
 
 }

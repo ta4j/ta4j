@@ -143,7 +143,12 @@ public class ChartWorkflow {
      * @param plan the chart plan
      */
     public void display(ChartPlan plan) {
-        displayChart(render(plan));
+        String windowTitle = plan.definition().title();
+        if (windowTitle != null && !windowTitle.trim().isEmpty()) {
+            displayChart(render(plan), windowTitle);
+        } else {
+            displayChart(render(plan));
+        }
     }
 
     /**

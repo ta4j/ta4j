@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -39,11 +40,11 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries series;
 
-    public RecentSwingLowIndicatorTest(NumFactory numFactory) {
+    public RecentFractalSwingLowIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -54,7 +55,7 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void shouldReturnMostRecentSwingLow() {
-        final var indicator = new RecentSwingLowIndicator(new LowPriceIndicator(series), 2, 2, 0);
+        final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 2, 2, 0);
 
         assertThat(indicator.getValue(0).isNaN()).isTrue();
         assertThat(indicator.getValue(3).isNaN()).isTrue();
@@ -78,7 +79,7 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void shouldDelayConfirmationUntilFollowingBarsAvailable() {
-        final var indicator = new RecentSwingLowIndicator(new LowPriceIndicator(series), 2, 2, 0);
+        final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 2, 2, 0);
 
         assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(2);
         assertThat(indicator.getValue(5)).isEqualByComparingTo(numOf(7));
@@ -93,8 +94,8 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
     @Test
     public void shouldAllowRoundedBottomsWhenEqualBarsPermitted() {
         final var roundedSeries = createSeriesFromLows(9, 7, 8, 6, 6, 9, 10, 11);
-        final var noEquals = new RecentSwingLowIndicator(new LowPriceIndicator(roundedSeries), 2, 2, 0);
-        final var withEquals = new RecentSwingLowIndicator(new LowPriceIndicator(roundedSeries), 2, 2, 1);
+        final var noEquals = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 2, 2, 0);
+        final var withEquals = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 2, 2, 1);
 
         assertThat(noEquals.getValue(6).isNaN()).isTrue();
         assertThat(noEquals.getLatestSwingIndex(6)).isEqualTo(-1);
@@ -106,7 +107,7 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
     @Test
     public void shouldRejectRoundedBottomsThatExceedEqualAllowance() {
         final var roundedSeries = createSeriesFromLows(10, 6, 4, 4, 4, 4, 6, 7, 8);
-        final var indicator = new RecentSwingLowIndicator(new LowPriceIndicator(roundedSeries), 1, 2, 1);
+        final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 1, 2, 1);
 
         assertThat(indicator.getValue(7).isNaN()).isTrue();
         assertThat(indicator.getLatestSwingIndex(7)).isEqualTo(-1);
@@ -116,7 +117,8 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
     public void shouldPropagateNaNFromUnderlyingIndicator() {
         final var baseSeries = createSeriesFromLows(12, 10, 7, 8, 9, 6, 7, 8, 5, 7, 8);
         final var lowIndicator = new LowPriceIndicator(baseSeries);
-        final var indicatorWithNaNFollowing = new RecentSwingLowIndicator(indicatorWithNaN(lowIndicator, 7), 2, 2, 0);
+        final var indicatorWithNaNFollowing = new RecentFractalSwingLowIndicator(indicatorWithNaN(lowIndicator, 7), 2,
+                2, 0);
 
         assertThat(indicatorWithNaNFollowing.getValue(7)).isEqualByComparingTo(numOf(7));
         assertThat(indicatorWithNaNFollowing.getLatestSwingIndex(7)).isEqualTo(2);
@@ -124,7 +126,7 @@ public class RecentSwingLowIndicatorTest extends AbstractIndicatorTest<Indicator
 
         final var shortSeries = createSeriesFromLows(12, 10, 7, 8, 9, 6, 7);
         final var shortIndicator = new LowPriceIndicator(shortSeries);
-        final var indicator = new RecentSwingLowIndicator(indicatorWithNaN(shortIndicator, 2), 2, 2, 0);
+        final var indicator = new RecentFractalSwingLowIndicator(indicatorWithNaN(shortIndicator, 2), 2, 2, 0);
 
         assertThat(indicator.getValue(6).isNaN()).isTrue();
         assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(-1);

@@ -21,41 +21,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
-
-import org.ta4j.core.Indicator;
-import org.ta4j.core.num.Num;
+package org.ta4j.core.indicators.zigzag;
 
 /**
- * Interface for indicators that identify the most recently confirmed swing
- * high.
+ * Represents the current trend direction in a ZigZag pattern.
  * <p>
- * A swing high is a price point that is higher than the surrounding price
- * points. Different implementations may use different algorithms to identify
- * swing highs (e.g., fractal-based window detection, ZigZag pattern detection).
+ * The ZigZag indicator identifies significant price reversals by filtering out
+ * price movements below a specified threshold. This enum tracks the current
+ * direction of the trend being tracked by the ZigZag algorithm.
  *
- * @see <a href=
- *      "https://www.investopedia.com/terms/s/swinghigh.asp">Investopedia: Swing
- *      High</a>
+ * @see ZigZagStateIndicator
  * @since 0.20
  */
-public interface RecentSwingHighIndicator extends Indicator<Num> {
+public enum ZigZagTrend {
+    /**
+     * The trend is moving upward. The ZigZag is tracking a rising leg and looking
+     * for a swing high that will be confirmed when price reverses down by at least
+     * the reversal threshold.
+     */
+    UP,
 
     /**
-     * Returns the index of the most recent confirmed swing high that can be
-     * evaluated with the data available up to {@code index}.
-     *
-     * @param index the current evaluation index
-     * @return the index of the most recent swing high or {@code -1} if none can be
-     *         confirmed yet
+     * The trend is moving downward. The ZigZag is tracking a falling leg and
+     * looking for a swing low that will be confirmed when price reverses up by at
+     * least the reversal threshold.
      */
-    int getLatestSwingIndex(int index);
+    DOWN,
 
     /**
-     * Returns the underlying price indicator used by this swing high indicator to
-     * retrieve price values at pivot indices.
-     *
-     * @return the price indicator that supplies the values at pivot indices
+     * The trend direction has not yet been determined. This occurs at the beginning
+     * of the bar series before the first reversal threshold is met.
      */
-    Indicator<Num> getPriceIndicator();
+    UNDEFINED
 }

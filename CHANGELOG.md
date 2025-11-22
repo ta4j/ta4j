@@ -3,6 +3,21 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## Unreleased
 
 ### Added
+- **ZigZag pattern indicators**: Added comprehensive ZigZag indicator suite in `org.ta4j.core.indicators.zigzag` package for identifying significant price reversals and swing points. The ZigZag algorithm filters out price movements below a specified threshold to highlight meaningful trend changes.
+    - **ZigZagStateIndicator**: Core indicator that tracks ZigZag pattern state, including confirmed swing highs and lows, current trend direction, and current extreme points. Supports both fixed and dynamic reversal thresholds (e.g., based on ATR).
+    - **ZigZagPivotHighIndicator**: Boolean indicator that returns `true` when a new swing high is confirmed, useful for detecting swing high confirmations in real-time.
+    - **ZigZagPivotLowIndicator**: Boolean indicator that returns `true` when a new swing low is confirmed, useful for detecting swing low confirmations in real-time.
+    - **RecentZigZagSwingHighIndicator**: Returns the price value of the most recently confirmed ZigZag swing high, enabling tracking of resistance levels and building trend-following strategies.
+    - **RecentZigZagSwingLowIndicator**: Returns the price value of the most recently confirmed ZigZag swing low, enabling tracking of support levels and building trend-following strategies.
+    - **ZigZagState**: Immutable state object encapsulating ZigZag pattern information at each bar.
+    - **ZigZagTrend**: Enum representing the current trend direction (UP, DOWN, UNDEFINED) in a ZigZag pattern.
+- **Trendline support and resistance indicators**: Added trendline indicators in `org.ta4j.core.indicators.supportresistance` package for projecting support and resistance trend lines based on swing points.
+    - **TrendLineSupportIndicator**: Projects a rising or falling support trend line by connecting the two most recent confirmed swing lows. Supports configurable swing detection windows and can work with any price indicator.
+    - **TrendLineResistanceIndicator**: Projects a resistance trend line by connecting the two most recent confirmed swing highs. Supports configurable swing detection windows and can work with any price indicator.
+    - **AbstractTrendLineIndicator**: Abstract base class providing common trendline projection logic for both support and resistance indicators.
+
+### Fixed
+- **Support/resistance trendlines**: Backfilled trend line segments between confirmed swing points so projections stay straight and anchored on the pivot highs/lows instead of stepping around confirmation bars.
 - **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
 
 ## 0.19 (released November 19, 2025)
