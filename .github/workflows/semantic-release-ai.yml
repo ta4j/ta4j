@@ -153,23 +153,28 @@ jobs:
           echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
 
           # sanity-check token claims locally
-          printf '%s\n' \
-            'import base64, json, os, sys, time' \
-            'token = os.environ.get("TOKEN", "")' \
-            'aud = os.environ.get("AUD", "")' \
-            'try:' \
-            '    header, payload, _ = token.split(".")' \
-            '    pad = "=" * (-len(payload) % 4)' \
-            '    claims = json.loads(base64.urlsafe_b64decode(payload + pad))' \
-            'except Exception as exc:' \
-            '    sys.exit(f"Bad JWT: {exc}")' \
-            'if claims.get("aud") != aud:' \
-            '    sys.exit(f"aud mismatch: {claims.get(\"aud\")}")' \
-            'if claims.get("iss") != "https://token.actions.githubusercontent.com":' \
-            '    sys.exit("iss mismatch")' \
-            'if claims.get("exp", 0) <= time.time():' \
-            '    sys.exit("token expired")' \
-            'print("claims ok")' > /tmp/check_token.py
+          cat > /tmp/check_token.py <<'PY'
+          import base64, json, os, sys, time
+
+          token = os.environ.get("TOKEN", "")
+          aud = os.environ.get("AUD", "")
+
+          try:
+              header, payload, _ = token.split(".")
+              pad = "=" * (-len(payload) % 4)
+              claims = json.loads(base64.urlsafe_b64decode(payload + pad))
+          except Exception as exc:
+              sys.exit(f"Bad JWT: {exc}")
+
+          if claims.get("aud") != aud:
+              sys.exit(f"aud mismatch: {claims.get('aud')}")
+          if claims.get("iss") != "https://token.actions.githubusercontent.com":
+              sys.exit("iss mismatch")
+          if claims.get("exp", 0) <= time.time():
+              sys.exit("token expired")
+
+          print("claims ok")
+          PY
           TOKEN="$token" AUD="$aud" python3 /tmp/check_token.py
 
       - name: Ask AI for semantic version bump
