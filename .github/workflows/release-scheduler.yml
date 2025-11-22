@@ -39,6 +39,9 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       dryRun: ${{ steps.run_meta.outputs.dryRun }}
     steps:
+      # -----------------------
+      # Setup and Discovery
+      # -----------------------
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
@@ -59,7 +62,7 @@ jobs:
           done <<< "$(git tag --sort=-v:refname)"
           echo "last=$last" >> $GITHUB_OUTPUT
 
-      - name: Capture event and dry run flag
+      - name: Capture event and normalize dry run flag
         id: run_meta
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -80,15 +83,18 @@ jobs:
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
+      # -----------------------
+      # Change Detection
+      # -----------------------
       - name: Collect diff since last release
         id: diff
+        env:
+          LAST_TAG: ${{ steps.lasttag.outputs.last }}
         run: |
-          last="${{ steps.lasttag.outputs.last }}"
-
-          if [ "$last" = "none" ]; then
+          if [ "$LAST_TAG" = "none" ]; then
             raw_log=$(git log --no-merges --pretty=format:"%s")
           else
-            raw_log=$(git log "$last"..HEAD --no-merges --pretty=format:"%s")
+            raw_log=$(git log "$LAST_TAG"..HEAD --no-merges --pretty=format:"%s")
           fi
 
           # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to limit chars
@@ -106,6 +112,17 @@ jobs:
           diff_b64=$(printf '%s' "$sanitized" | base64 -w0)
           echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
           echo "lines=$count" >> $GITHUB_OUTPUT
+
+      - name: Check if CHANGELOG exists
+        id: changelog_exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+            echo "audit:changelog_present=false"
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+            echo "audit:changelog_present=true"
+          fi
 
       - name: Extract Unreleased section from CHANGELOG
         id: changelog
@@ -133,7 +150,10 @@ jobs:
           echo "changelog_b64=$changelog_b64" >> $GITHUB_OUTPUT
           echo "length=$changelog_len" >> $GITHUB_OUTPUT
 
-      - name: Short-circuit when nothing changed
+      # -----------------------
+      # Gate Checks
+      # -----------------------
+      - name: Check if changes detected
         id: gate
         run: |
           diff_lines=${{ steps.diff.outputs.lines }}
@@ -153,7 +173,7 @@ jobs:
         if: steps.gate.outputs.proceed != 'true'
         run: echo "No release recommended (empty diff and changelog)."
 
-      - name: Ensure GH_MODELS_TOKEN is available
+      - name: Check for GH_MODELS_TOKEN
         id: model_token
         if: steps.gate.outputs.proceed == 'true'
         env:
@@ -170,7 +190,7 @@ jobs:
           echo "present=true" >> $GITHUB_OUTPUT
           echo "audit:models_token_present=true"
 
-      - name: Short-circuit when GH_MODELS_TOKEN missing
+      - name: Check token gate
         id: token_gate
         if: steps.gate.outputs.proceed == 'true'
         run: |
@@ -189,8 +209,11 @@ jobs:
         if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed != 'true'
         run: echo "GH_MODELS_TOKEN not provided; skipping release."
 
-      - name: Ask AI for semantic version bump
-        id: ai
+      # -----------------------
+      # AI Analysis
+      # -----------------------
+      - name: Build and validate AI request JSON
+        id: build_request
         if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
         run: |
           set -euo pipefail
@@ -235,6 +258,14 @@ jobs:
           fi
 
           echo "audit:request_json_valid=true"
+
+      - name: Call AI API with retry
+        id: ai_call
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        env:
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+        run: |
+          set -euo pipefail
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
@@ -260,20 +291,30 @@ jobs:
             fi
           done
 
-          if [ "$response_status" -ne 200 ]; then
-            echo "audit:ai_request_failed attempts=$attempts status=$response_status" >&2
-            echo "response (truncated to 500 chars):"
-            head -c 500 response.json || true
-            fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$response_status"')"}'
-            delim="AI_RESP_$(date +%s%N)"
-            {
-              echo "content<<$delim"
-              printf '%s\n' "$fallback"
-              echo "$delim"
-            } >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          echo "response_status=$response_status" >> $GITHUB_OUTPUT
 
+      - name: Handle AI API failure
+        id: ai_failure
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
+        env:
+          RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
+          ATTEMPTS: 3
+        run: |
+          echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS" >&2
+          echo "response (truncated to 500 chars):"
+          head -c 500 response.json || true
+          fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$RESPONSE_STATUS"')"}'
+          delim="AI_RESP_$(date +%s%N)"
+          {
+            echo "content<<$delim"
+            printf '%s\n' "$fallback"
+            echo "$delim"
+          } >> $GITHUB_OUTPUT
+
+      - name: Extract AI response content
+        id: ai
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200'
+        run: |
           resp_size=$(wc -c < response.json | tr -d ' ')
           echo "audit:ai_response_bytes=$resp_size saved_to=response.json"
 
@@ -381,6 +422,9 @@ jobs:
 
           echo "version=$new" >> $GITHUB_OUTPUT
 
+      # -----------------------
+      # Summary
+      # -----------------------
       - name: Debug decision summary
         if: always()
         env:
