@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
@@ -34,7 +36,7 @@ import org.ta4j.core.num.Num;
  * Tracks consecutive up or down movements in the indicator values. Returns
  * positive integers (1, 2, 3, ...) for consecutive up movements, negative
  * integers (-1, -2, -3, ...) for consecutive down movements, and zero when the
- * value doesn't change or at the beginning of the series.
+ * value doesn't change. Returns NaN during the unstable period (first bar).
  *
  * <p>
  * The streak resets when the direction changes. For example, if the indicator
@@ -60,6 +62,11 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // Return NaN during unstable period
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         int beginIndex = getBarSeries().getBeginIndex();
         Num current = indicator.getValue(index);
 

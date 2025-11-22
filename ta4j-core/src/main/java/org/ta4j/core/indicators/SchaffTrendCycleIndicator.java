@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.num.Num;
@@ -90,6 +92,9 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return stcSmoothed.getValue(index);
     }
 

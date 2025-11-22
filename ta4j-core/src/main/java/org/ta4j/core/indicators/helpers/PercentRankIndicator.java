@@ -89,6 +89,9 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num current = indicator.getValue(index);
         if (Num.isNaNOrNull(current)) {
             return NaN;

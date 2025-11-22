@@ -208,6 +208,11 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
+        // Return NaN during unstable period
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         Num currentValue = indicator.getValue(index);
         if (currentValue.isNaN() || currentValue.isZero()) {
             return NaN;
@@ -229,9 +234,6 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         }
 
         // Simple case: compare with previous bar
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
 
         // Determine which indicator to use for previous value
         Indicator<Num> sourceForPrevious = (previousIndicator != null) ? previousIndicator : indicator;

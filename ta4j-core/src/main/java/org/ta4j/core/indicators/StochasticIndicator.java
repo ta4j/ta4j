@@ -80,6 +80,9 @@ public class StochasticIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num value = indicator.getValue(index);
         if (Num.isNaNOrNull(value)) {
             return NaN;
