@@ -97,22 +97,7 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
     }
 
     /**
-     * Converts a total return to the target representation format. Optimized to
-     * avoid unnecessary add/subtract operations where possible.
-     * <p>
-     * TODO: Further optimization opportunity - For single positions with
-     * DECIMAL/PERCENTAGE representations, we could calculate the rate of return
-     * directly (profit/entryValue) instead of calculating total return
-     * (profit/entryValue + 1) and then subtracting 1. This would require:
-     * <ul>
-     * <li>Adding a method to calculate rate of return directly in subclasses
-     * <li>Using it for single position calculations when representation is not
-     * MULTIPLICATIVE
-     * <li>Keeping total return calculation for multiple positions (which need to
-     * multiply total returns together)
-     * </ul>
-     * This optimization would eliminate the add-then-subtract operation for DECIMAL
-     * and PERCENTAGE representations in single position scenarios.
+     * Converts a total return to the target representation format
      *
      * @param totalReturn the total return (1-based)
      * @return the return in the target representation format
