@@ -1,4 +1,4 @@
-MAJOR: Only when breaking API changes in core APIs.
+MAJOR: Only when breaking API changes in core APIs (public documented interfaces).
 MINOR: Backward-compatible new features.
 PATCH: Backward-compatible bug fixes.
 

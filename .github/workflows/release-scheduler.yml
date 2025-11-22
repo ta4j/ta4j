@@ -85,33 +85,7 @@ jobs:
         id: pom_version
         run: |
           set -euo pipefail
-          version=$(python - <<'PY'
-import xml.etree.ElementTree as ET
-
-def read_version(path: str) -> str:
-    tree = ET.parse(path)
-    root = tree.getroot()
-    def find_first(elem):
-        for child in elem:
-            if child.tag.endswith("version"):
-                text = (child.text or "").strip()
-                if text:
-                    return text
-        return None
-
-    version = find_first(root)
-    if not version:
-        parent = root.find("./{*}parent")
-        if parent is not None:
-            version = find_first(parent)
-    return version or ""
-
-ver = read_version("pom.xml")
-if not ver:
-    raise SystemExit("Could not read <version> from pom.xml")
-print(ver)
-PY
-)
+          version=$(python -c $'import xml.etree.ElementTree as ET\nimport sys\n\ndef find_version(path):\n    tree = ET.parse(path)\n    root = tree.getroot()\n    def find_first(elem):\n        if elem is None:\n            return None\n        for child in elem:\n            if child.tag.endswith(\"version\"):\n                text = (child.text or \"\").strip()\n                if text:\n                    return text\n        return None\n    return find_first(root) or find_first(root.find(\"./{*}parent\"))\n\nver = find_version(\"pom.xml\")\nif not ver:\n    sys.exit(1)\nprint(ver)\n') || { echo \"Could not read <version> from pom.xml\" >&2; exit 1; }
 
           base="$version"
           is_snapshot=false
@@ -279,7 +253,7 @@ PY
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Only when breaking API changes in core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\n\nIf diff empty or changelog-only should_release=false.\nNEVER major without explicit breaking change evidence.\n\nVersion awareness: Consider the current version when determining the bump type.\nIf the current version is pre-1.0.0 (e.g., 0.x.y), the project is in beta/unstable phase.\nBreaking changes in pre-1.0.0 versions are more acceptable and may only warrant a MINOR bump rather than MAJOR.\n"
+            semver_rules="MAJOR: Only when breaking API changes in core APIs (public documented interfaces).\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\n\nIf diff empty or changelog-only should_release=false.\nNEVER major without explicit breaking change evidence.\n\nVersion awareness: Consider the current version when determining the bump type.\nIf the current version is pre-1.0.0 (e.g., 0.x.y), the project is in beta/unstable phase.\nBreaking changes in pre-1.0.0 versions are more acceptable and may only warrant a MINOR bump rather than MAJOR.\n"
             echo "audit:semver_rules_source=default"
           fi
 
