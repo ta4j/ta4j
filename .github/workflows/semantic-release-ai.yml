@@ -259,7 +259,13 @@ jobs:
             echo "audit:ai_request_failed attempts=$attempts status=$response_status" >&2
             echo "response (truncated to 500 chars):"
             head -c 500 response.json || true
-            exit 1
+            fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$response_status"')"}'
+            {
+              echo "content<<'EOF'"
+              printf '%s\n' "$fallback"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            exit 0
           fi
 
           resp_size=$(wc -c < response.json | tr -d ' ')
