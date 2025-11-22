@@ -194,6 +194,14 @@ jobs:
           git add release/${{ steps.versions.outputs.release }}.md
           git commit -am "Release ${{ steps.versions.outputs.release }}"
 
+      - name: Ensure tag does not already exist
+        run: |
+          tag="${{ steps.versions.outputs.release }}"
+          if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Error: tag '$tag' already exists. Aborting before creating a duplicate tag."
+            exit 1
+          fi
+
       - name: Tag Release
         run: git tag -a ${{ steps.versions.outputs.release }} -m "Release ${{ steps.versions.outputs.release }}"
 

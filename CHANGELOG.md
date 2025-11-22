@@ -18,6 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Fixed
 - **Support/resistance trendlines**: Backfilled trend line segments between confirmed swing points so projections stay straight and anchored on the pivot highs/lows instead of stepping around confirmation bars.
+- **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
 
 ## 0.19 (released November 19, 2025)
 
