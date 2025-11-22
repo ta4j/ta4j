@@ -154,26 +154,35 @@ jobs:
           # mask token in logs and set as environment variable for subsequent steps (do not expose in outputs)
           echo "::add-mask::$token"
           echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
+          export AUD="$aud"
 
           # sanity-check token claims locally
-          printf '%s\n' \
-            'import base64, json, os, sys, time' \
-            'token = os.environ.get("TOKEN", "")' \
-            'aud = os.environ.get("AUD", "")' \
-            'try:' \
-            '    header, payload, _ = token.split(".")' \
-            '    pad = "=" * (-len(payload) % 4)' \
-            '    claims = json.loads(base64.urlsafe_b64decode(payload + pad))' \
-            'except Exception as exc:' \
-            '    sys.exit(f"Bad JWT: {exc}")' \
-            'if claims.get("aud") != aud:' \
-            '    sys.exit(f"aud mismatch: {claims.get(\"aud\")}")' \
-            'if claims.get("iss") != "https://token.actions.githubusercontent.com":' \
-            '    sys.exit("iss mismatch")' \
-            'if claims.get("exp", 0) <= time.time():' \
-            '    sys.exit("token expired")' \
-            'print("claims ok")' > /tmp/check_token.py
-          TOKEN="$token" AUD="$aud" python3 /tmp/check_token.py
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import sys
+          import time
+
+          token = os.environ.get("OIDC_TOKEN", "")
+          aud = os.environ.get("AUD", "")
+
+          try:
+              header, payload, _ = token.split(".")
+              pad = "=" * (-len(payload) % 4)
+              claims = json.loads(base64.urlsafe_b64decode(payload + pad))
+          except Exception as exc:
+              sys.exit(f"Bad JWT: {exc}")
+
+          if claims.get("aud") != aud:
+              sys.exit(f"aud mismatch: {claims.get('aud')}")
+          if claims.get("iss") != "https://token.actions.githubusercontent.com":
+              sys.exit("iss mismatch")
+          if claims.get("exp", 0) <= time.time():
+              sys.exit("token expired")
+
+          print("claims ok")
+          PY
 
       - name: Ask AI for semantic version bump
         id: ai
