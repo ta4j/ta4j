@@ -1,8 +1,17 @@
+# Flow:
+#  - analyze (checkout, diff, changelog, AI decision, compute version) -> job outputs
+#  - approval (environment-protected) -> runs only when bump == "major"
+#  - publish -> depends on analyze and approval (approval is only required for major bumps)
+#
+#
+# IMPORTANT: create the environment "major-release" and configure required reviewers.
+# The approval job will pause in the Actions UI until an approver clicks Approve/Reject.
+
 name: AI Semantic Release Scheduler
 
 concurrency:
   group: release-${{ github.repository }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   schedule:
@@ -19,11 +28,16 @@ permissions:
   contents: write
   actions: write
   id-token: write
+  issues: write  # used only if you later want to open approval issues (not used in this version)
 
 jobs:
-  semantic-release-ai:
+  analyze:
+    name: Analyze changes & ask AI
     runs-on: ubuntu-latest
-
+    outputs:
+      should_release: ${{ steps.parsed.outputs.should_release }}
+      bump: ${{ steps.parsed.outputs.bump }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -43,8 +57,6 @@ jobs:
               break
             fi
           done <<< "$(git tag --sort=-v:refname)"
-
-          echo "audit:last_semver_tag=$last"
           echo "last=$last" >> $GITHUB_OUTPUT
 
       - name: Collect diff since last release
@@ -59,7 +71,11 @@ jobs:
             raw_log=$(git log "$last"..HEAD --no-merges --pretty=format:"%s" -n "$limit")
           fi
 
+          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to limit chars
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
+          # truncate to first 15000 chars to keep AI payload bounded
+          sanitized=$(printf '%s' "$sanitized" | cut -c1-15000)
+
           if [ -z "$sanitized" ]; then
             count=0
           else
@@ -77,6 +93,7 @@ jobs:
           if [ ! -f CHANGELOG.md ]; then
             echo "audit:changelog_present=false"
             echo "changelog=\"\"" >> $GITHUB_OUTPUT
+            echo "length=0" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -86,6 +103,9 @@ jobs:
             /^## / && inSection {exit}
             inSection {print}
           ' CHANGELOG.md)
+
+          # truncate to keep payload bounded
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-15000)
 
           changelog_json=$(printf '%s' "$unreleased" | jq -Rsa .)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -129,52 +149,51 @@ jobs:
             exit 1
           fi
 
+          # mask token in logs and set as environment variable for subsequent steps (do not expose in outputs)
           echo "::add-mask::$token"
+          echo "OIDC_TOKEN=$token" >> $GITHUB_ENV
 
-          TOKEN="$token" AUD="$aud" python - <<'PY'
-            import base64, json, os, sys, time
-            token = os.environ["TOKEN"]
-            aud = os.environ["AUD"]
-            try:
-                header, payload, _ = token.split(".")
-                pad = "=" * (-len(payload) % 4)
-                claims = json.loads(base64.urlsafe_b64decode(payload + pad))
-            except Exception as exc:
-                sys.exit(f"Bad JWT: {exc}")
-            if claims.get("aud") != aud:
-                sys.exit(f"aud mismatch: {claims.get('aud')}")
-            if claims.get("iss") != "https://token.actions.githubusercontent.com":
-                sys.exit("iss mismatch")
-            if claims.get("exp", 0) <= time.time():
-                sys.exit("token expired")
-            print("claims ok")
-          PY
+          # sanity-check token claims locally
+          printf '%s\n' \
+            'import base64, json, os, sys, time' \
+            'token = os.environ.get("TOKEN", "")' \
+            'aud = os.environ.get("AUD", "")' \
+            'try:' \
+            '    header, payload, _ = token.split(".")' \
+            '    pad = "=" * (-len(payload) % 4)' \
+            '    claims = json.loads(base64.urlsafe_b64decode(payload + pad))' \
+            'except Exception as exc:' \
+            '    sys.exit(f"Bad JWT: {exc}")' \
+            'if claims.get("aud") != aud:' \
+            '    sys.exit(f"aud mismatch: {claims.get(\"aud\")}")' \
+            'if claims.get("iss") != "https://token.actions.githubusercontent.com":' \
+            '    sys.exit("iss mismatch")' \
+            'if claims.get("exp", 0) <= time.time():' \
+            '    sys.exit("token expired")' \
+            'print("claims ok")' > /tmp/check_token.py
+          TOKEN="$token" AUD="$aud" python3 /tmp/check_token.py
 
-          echo "token=$token" >> $GITHUB_OUTPUT
-
-      # -------------------------------------------------------------
-      # AI STEP - Semantic Versioning with Strong SemVer Guardrails
-      # -------------------------------------------------------------
       - name: Ask AI for semantic version bump
         id: ai
         if: steps.gate.outputs.proceed == 'true'
         env:
-          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          OIDC_TOKEN: ${{ env.OIDC_TOKEN }}
         run: |
+          set -euo pipefail
+
+          # Build the JSON request using jq and safe string args.
           jq -n \
-            --argjson diff '${{ steps.diff.outputs.diff }}' \
-            --argjson changelog '${{ steps.changelog.outputs.changelog }}' \
+            --arg diff "${{ steps.diff.outputs.diff }}" \
+            --arg changelog "${{ steps.changelog.outputs.changelog }}" \
+            --arg model "openai/gpt-4o" \
+            --arg temp "0" \
             '{
-              model: "openai/gpt-4o",
-              temperature: 0,
+              model: $model,
+              temperature: ($temp | tonumber),
               messages: [
-                {
-                  "role": "system",
-                  "content": "You are an expert in Semantic Versioning. STRICT JSON ONLY."
-                },
-                {
-                  "role": "user",
-                  "content": (
+                { role: "system", content: "You are an expert in Semantic Versioning. STRICT JSON ONLY." },
+                { role: "user", content:
+                  (
                     "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
                     "=== DIFF (truncated, sanitized) ===\n" + $diff + "\n\n" +
                     "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
@@ -198,6 +217,7 @@ jobs:
 
           echo "audit:request_json_valid=true"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
+
           attempts=3
           backoff=2
           response=""
@@ -318,32 +338,41 @@ jobs:
 
           echo "version=$new" >> $GITHUB_OUTPUT
 
-      # ---------------------------------------------------------
-      # DRY-RUN MODE - Only Output Computed Version
-      # ---------------------------------------------------------
-      - name: Handle Dry Run
-        if: ${{ github.event.inputs.dry_run == 'true' && steps.parsed.outputs.should_release == 'true' }}
+  # Human approval job: only runs for major bumps and uses a protected environment to require reviewers.
+  # Create an environment named `major-release` and configure required reviewers in repo settings.
+  approval:
+    name: Major release approval (human)
+    needs: analyze
+    runs-on: ubuntu-latest
+    if: ${{ needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' }}
+    environment:
+      name: major-release
+    steps:
+      - name: Wait for approval (environment protects this job)
         run: |
-          echo "======================="
-          echo "      DRY RUN MODE      "
-          echo "======================="
-          echo "AI recommends release:"
-          echo "  bump:        ${{ steps.parsed.outputs.bump }}"
-          echo "  version:     ${{ steps.version.outputs.version }}"
-          echo ""
-          echo "(Dry run enabled - skipping release trigger)"
-          exit 0
+          echo "This job is blocked until an authorized reviewer approves or rejects in the GitHub UI."
+          echo "Computed version to approve: ${{ needs.analyze.outputs.version }}"
+          echo "Approvers must use the Environments UI or the Actions run page to approve."
 
-      # ---------------------------------------------------------
-      # Trigger actual release workflow
-      # ---------------------------------------------------------
+  # Publish job: runs automatically for non-major bumps, and after approval for major bumps.
+  publish:
+    name: Trigger publish workflow
+    needs: [analyze, approval]
+    runs-on: ubuntu-latest
+    if: >
+      ${{ needs.analyze.outputs.should_release == 'true' &&
+         (
+           needs.analyze.outputs.bump != 'major' ||
+           needs.approval.result == 'success'
+         )
+      }}
+    steps:
       - name: Trigger publish workflow
-        if: steps.parsed.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.MODELS_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const version = "${{ steps.version.outputs.version }}";
+            const version = "${{ needs.analyze.outputs.version }}";
             const ref = "${{ github.event.repository.default_branch }}";
             console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version}`);
             await github.rest.actions.createWorkflowDispatch({
@@ -355,3 +384,21 @@ jobs:
                 releaseVersion: version
               }
             })
+
+  # Dry-run convenience job to show recommendation without dispatching (only when triggered via workflow_dispatch with dry_run=true)
+  dry_run_output:
+    name: Dry-run output
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == true && needs.analyze.outputs.should_release == 'true' }}
+    steps:
+      - name: Show dry-run results
+        run: |
+          echo "======================="
+          echo "      DRY RUN MODE     "
+          echo "======================="
+          echo "AI recommends release:"
+          echo "  bump:    ${{ needs.analyze.outputs.bump }}"
+          echo "  version: ${{ needs.analyze.outputs.version }}"
+          echo ""
+          echo "(Dry run enabled - skipping release trigger)"
