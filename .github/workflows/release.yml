@@ -29,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -----------------------
+      # Setup and Validation
+      # -----------------------
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
@@ -51,76 +54,136 @@ jobs:
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
-      - name: Verify required secrets and resources
-        id: verify_secrets
+      - name: Check for MAVEN_CENTRAL_TOKEN_USER
+        id: check_maven_user
         env:
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
           MAVEN_CENTRAL_TOKEN_USER: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
-          MAVEN_CENTRAL_TOKEN_PASS: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
         run: |
-          set -euo pipefail
-
-          # Define required secrets/resources
-          required=(
-            "MAVEN_CENTRAL_TOKEN_USER:Required for Maven Central authentication"
-            "MAVEN_CENTRAL_TOKEN_PASS:Required for Maven Central authentication"
-            "GPG_PRIVATE_KEY:Required for signing artifacts with GPG"
-            "GPG_PASSPHRASE:Required for GPG key decryption and signing"
-            "GH_TA4J_REPO_TOKEN:Required for pushing tags and commits to repository"
-          )
-          
-          missing=()
-          missing_descriptions=()
-          
-          # Check each required secret
-          for entry in "${required[@]}"; do
-            name="${entry%%:*}"
-            description="${entry#*:}"
-            
-            if [ -z "${!name:-}" ]; then
-              missing+=("$name")
-              missing_descriptions+=("$description")
-            fi
-          done
-
-          # Handle missing secrets based on dry run mode
-          if [ "${#missing[@]}" -gt 0 ]; then
-            if [ "${DRY_RUN:-false}" = "true" ]; then
-              echo "::warning::DRY RUN MODE: Missing required secrets/resources detected"
-              echo "::warning::The following required resources are not configured:"
-              for i in "${!missing[@]}"; do
-                echo "::warning::  - ${missing[$i]}: ${missing_descriptions[$i]}"
-              done
-              echo "::warning::A real (non-dry-run) execution would fail without these resources."
-              echo "::warning::Please configure these secrets in the repository settings before running a real release."
-              echo "audit:missing_secrets_in_dry_run=${missing[*]}"
-            else
-              echo "::error::RELEASE FAILED: Missing required secrets/resources"
-              echo "::error::The following required resources are not configured:"
-              for i in "${!missing[@]}"; do
-                echo "::error::  - ${missing[$i]}: ${missing_descriptions[$i]}"
-              done
-              echo ""
-              echo "::error::REQUIRED SECRETS:"
-              echo "::error::  1. MAVEN_CENTRAL_TOKEN_USER - Maven Central username/token"
-              echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
-              echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
-              echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
-              echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub Personal Access Token with repo permissions"
-              echo ""
-              echo "::error::Please configure these secrets in:"
-              echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
-              echo ""
-              exit 1
-            fi
+          if [ -z "${MAVEN_CENTRAL_TOKEN_USER:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
           else
-            echo "✓ All required secrets and resources are present"
-            echo "audit:all_required_secrets_present=true"
+            echo "present=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check for MAVEN_CENTRAL_TOKEN_PASS
+        id: check_maven_pass
+        env:
+          MAVEN_CENTRAL_TOKEN_PASS: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+        run: |
+          if [ -z "${MAVEN_CENTRAL_TOKEN_PASS:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for GPG_PRIVATE_KEY
+        id: check_gpg_key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for GPG_PASSPHRASE
+        id: check_gpg_passphrase
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "${GPG_PASSPHRASE:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for GH_TA4J_REPO_TOKEN
+        id: check_gh_token
+        env:
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+        run: |
+          if [ -z "${GH_TA4J_REPO_TOKEN:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Collect missing secrets
+        id: collect_missing
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          MAVEN_USER: ${{ steps.check_maven_user.outputs.present }}
+          MAVEN_PASS: ${{ steps.check_maven_pass.outputs.present }}
+          GPG_KEY: ${{ steps.check_gpg_key.outputs.present }}
+          GPG_PASS: ${{ steps.check_gpg_passphrase.outputs.present }}
+          GH_TOKEN: ${{ steps.check_gh_token.outputs.present }}
+        run: |
+          missing=()
+          if [ "${MAVEN_USER:-false}" != "true" ]; then
+            missing+=("MAVEN_CENTRAL_TOKEN_USER")
+          fi
+          if [ "${MAVEN_PASS:-false}" != "true" ]; then
+            missing+=("MAVEN_CENTRAL_TOKEN_PASS")
+          fi
+          if [ "${GPG_KEY:-false}" != "true" ]; then
+            missing+=("GPG_PRIVATE_KEY")
+          fi
+          if [ "${GPG_PASS:-false}" != "true" ]; then
+            missing+=("GPG_PASSPHRASE")
+          fi
+          if [ "${GH_TOKEN:-false}" != "true" ]; then
+            missing+=("GH_TA4J_REPO_TOKEN")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "missing=${missing[*]}" >> $GITHUB_OUTPUT
+            echo "has_missing=true" >> $GITHUB_OUTPUT
+          else
+            echo "missing=" >> $GITHUB_OUTPUT
+            echo "has_missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Handle missing secrets in dry-run mode
+        if: steps.collect_missing.outputs.has_missing == 'true' && steps.dry_run.outputs.dryRun == 'true'
+        env:
+          MISSING: ${{ steps.collect_missing.outputs.missing }}
+        run: |
+          echo "::warning::DRY RUN MODE: Missing required secrets/resources detected"
+          echo "::warning::The following required resources are not configured: ${MISSING}"
+          echo "::warning::A real (non-dry-run) execution would fail without these resources."
+          echo "::warning::Please configure these secrets in the repository settings before running a real release."
+          echo "audit:missing_secrets_in_dry_run=${MISSING}"
+
+      - name: Fail if secrets missing in non-dry-run mode
+        if: steps.collect_missing.outputs.has_missing == 'true' && steps.dry_run.outputs.dryRun != 'true'
+        env:
+          MISSING: ${{ steps.collect_missing.outputs.missing }}
+        run: |
+          echo "::error::RELEASE FAILED: Missing required secrets/resources"
+          echo "::error::The following required resources are not configured: ${MISSING}"
+          echo ""
+          echo "::error::REQUIRED SECRETS:"
+          echo "::error::  1. MAVEN_CENTRAL_TOKEN_USER - Maven Central username/token"
+          echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
+          echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
+          echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+          echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub Personal Access Token with repo permissions"
+          echo ""
+          echo "::error::Please configure these secrets in:"
+          echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
+          echo ""
+          exit 1
+
+      - name: All secrets verified
+        if: steps.collect_missing.outputs.has_missing != 'true'
+        run: |
+          echo "✓ All required secrets and resources are present"
+          echo "audit:all_required_secrets_present=true"
+
+      # -----------------------
+      # Environment Setup
+      # -----------------------
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -129,7 +192,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Set up Java
+      - name: Set up Java (dry-run without publishing secrets)
+        if: steps.dry_run.outputs.dryRun == 'true' && steps.collect_missing.outputs.has_missing == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Set up Java with publishing secrets
+        if: steps.dry_run.outputs.dryRun != 'true' || steps.collect_missing.outputs.has_missing != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -141,34 +213,44 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      # ------------------------------------------------------------
-      #  VERSION DETECTION + FALLBACK TO USER INPUT
-      # ------------------------------------------------------------
-      - name: Compute Versions (with user overrides)
-        id: versions
+      # -----------------------
+      # Version Detection
+      # -----------------------
+      - name: Read current version from POM
+        id: read_current
         shell: bash
-        env:
-          INPUT_RELEASE: ${{ github.event.inputs.releaseVersion }}
-          INPUT_NEXT: ${{ github.event.inputs.nextVersion }}
         run: |
-          set -euo pipefail
-
-          echo "Inputs: release='${INPUT_RELEASE}', next='${INPUT_NEXT}'"
-
-          # Read current version from POM (Maven is now available)
           CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
           echo "Detected project.version: $CURRENT"
-
-          # Validate that we got a version from POM
+          
           if [[ -z "${CURRENT}" ]]; then
             echo "Error: Failed to read project.version from pom.xml"
             exit 1
           fi
+          
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
-          # Auto compute release version if user did not supply it
+      - name: Capture user input versions
+        id: user_input
+        env:
+          INPUT_RELEASE: ${{ github.event.inputs.releaseVersion }}
+          INPUT_NEXT: ${{ github.event.inputs.nextVersion }}
+        run: |
+          echo "Inputs: release='${INPUT_RELEASE}', next='${INPUT_NEXT}'"
+          echo "release_input=${INPUT_RELEASE:-}" >> $GITHUB_OUTPUT
+          echo "next_input=${INPUT_NEXT:-}" >> $GITHUB_OUTPUT
+
+      - name: Determine release version
+        id: determine_release
+        shell: bash
+        env:
+          CURRENT: ${{ steps.read_current.outputs.current }}
+          INPUT_RELEASE: ${{ steps.user_input.outputs.release_input }}
+        run: |
+          set -euo pipefail
+
           if [[ -z "${INPUT_RELEASE}" ]]; then
             # CRITICAL: Validate current version is a SNAPSHOT before stripping
-            # This prevents attempting to re-release an already-released version
             if [[ "${CURRENT}" != *-SNAPSHOT ]]; then
               echo "Error: Current version '${CURRENT}' is not a SNAPSHOT version."
               echo "Cannot auto-detect release version from a non-SNAPSHOT version."
@@ -187,7 +269,35 @@ jobs:
             exit 1
           fi
 
-          # Auto compute next snapshot version if user did not supply it
+          if [[ "${CURRENT}" == *-SNAPSHOT ]]; then
+            CURRENT_BASE="${CURRENT%-SNAPSHOT}"
+          else
+            CURRENT_BASE="${CURRENT}"
+          fi
+
+          if [[ -z "${CURRENT_BASE}" ]]; then
+            echo "Error: unable to determine current base version from pom.xml"
+            exit 1
+          fi
+
+          # Prevent downgrading the version relative to pom.xml
+          if [[ "$(printf '%s\n' "${CURRENT_BASE}" "${RELEASE}" | sort -V | head -n1)" != "${CURRENT_BASE}" ]]; then
+            echo "Error: releaseVersion (${RELEASE}) is lower than the current pom.xml version (${CURRENT_BASE})."
+            echo "Refusing to release a version lower than the POM."
+            exit 1
+          fi
+
+          echo "release=$RELEASE" >> $GITHUB_OUTPUT
+
+      - name: Determine next snapshot version
+        id: determine_next
+        shell: bash
+        env:
+          RELEASE: ${{ steps.determine_release.outputs.release }}
+          INPUT_NEXT: ${{ steps.user_input.outputs.next_input }}
+        run: |
+          set -euo pipefail
+
           if [[ -z "${INPUT_NEXT}" ]]; then
             BASE="${RELEASE}"
             # Handle version increment: supports major.minor or major.minor.patch
@@ -223,14 +333,25 @@ jobs:
             exit 1
           fi
 
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Export version outputs
+        id: versions
+        shell: bash
+        env:
+          RELEASE: ${{ steps.determine_release.outputs.release }}
+          NEXT: ${{ steps.determine_next.outputs.next }}
+          CURRENT: ${{ steps.read_current.outputs.current }}
+        run: |
           echo "Using release: $RELEASE"
           echo "Using next snapshot: $NEXT"
-
-          # Export
           echo "release=$RELEASE" >> $GITHUB_OUTPUT
           echo "next=$NEXT" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
+      # -----------------------
+      # Release Preparation
+      # -----------------------
       - name: Dry-run mode notice
         if: steps.dry_run.outputs.dryRun == 'true'
         run: |
@@ -241,10 +362,14 @@ jobs:
           chmod +x scripts/prepare-release.sh
           scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"
 
-      - name: Write Maven settings
+      - name: Create Maven settings directory
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mkdir -p ~/.m2
+
+      - name: Write Maven settings.xml
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: |
           printf '%s\n' \
             '<settings>' \
             '  <servers>' \
@@ -257,18 +382,25 @@ jobs:
             '</settings>' > ~/.m2/settings.xml
           echo "settings.xml created"
 
-      - name: Write Maven security settings
+      - name: Check for MAVEN_MASTER_PASSPHRASE
+        id: check_maven_master
         if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
+        run: |
+          if [ -z "${MAVEN_SECURITY_MASTER:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Write Maven settings-security.xml
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_maven_master.outputs.present == 'true'
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
         run: |
           set -euo pipefail
-          if [[ -z "${MAVEN_SECURITY_MASTER:-}" ]]; then
-            echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
-            exit 0
-          fi
-          mkdir -p ~/.m2
           printf '%s\n' \
             '<?xml version="1.0" encoding="UTF-8"?>' \
             '<settingsSecurity>' \
@@ -277,35 +409,75 @@ jobs:
           chmod 600 ~/.m2/settings-security.xml
           echo "settings-security.xml created"
 
-      # -------------------------------------------------------------------
-      #  APPLY RELEASE VERSION
-      # -------------------------------------------------------------------
-      - name: Prepare Release Version
+      - name: Skip Maven security settings (not configured)
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_maven_master.outputs.present != 'true'
+        run: |
+          echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
+
+      # -----------------------
+      # Apply Release Version
+      # -----------------------
+      - name: Set Maven version to release
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+        run: |
+          mvn -B versions:set -DnewVersion=$RELEASE_VERSION
+
+      - name: Commit Maven version change
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.release }}
           mvn -B versions:commit
 
-      - name: Commit Release Version
+      - name: Configure git user
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add release/${{ steps.versions.outputs.release }}.md
-          git commit -am "Release ${{ steps.versions.outputs.release }}"
 
-      - name: Ensure tag does not already exist
+      - name: Commit release version and notes
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          tag="${{ steps.versions.outputs.release }}"
-          if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
-            echo "Error: tag '$tag' already exists. Aborting before creating a duplicate tag."
-            exit 1
-          fi
+          git add release/${{ steps.versions.outputs.release }}.md
+          git add -u
+          git commit -am "Release ${{ steps.versions.outputs.release }}"
 
-      - name: Tag Release
+      - name: Check if tag already exists
+        id: check_tag
         if: steps.dry_run.outputs.dryRun != 'true'
-        run: git tag -a ${{ steps.versions.outputs.release }} -m "Release ${{ steps.versions.outputs.release }}"
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+        run: |
+          exists=false
+          found=""
+
+          for candidate in "$RELEASE_VERSION" "v$RELEASE_VERSION"; do
+            if git rev-parse "refs/tags/$candidate" >/dev/null 2>&1; then
+              exists=true
+              found="$candidate"
+              break
+            fi
+          done
+
+          echo "exists=$exists" >> $GITHUB_OUTPUT
+          echo "existing_tag=$found" >> $GITHUB_OUTPUT
+
+      - name: Fail if tag exists
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+        run: |
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting before creating a duplicate tag."
+          exit 1
+
+      - name: Create release tag
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+        run: |
+          git tag -a $RELEASE_VERSION -m "Release $RELEASE_VERSION"
 
       - name: Ensure branch is still fast-forwardable before deploy
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -328,6 +500,9 @@ jobs:
             exit 1
           fi
 
+      # -----------------------
+      # Deployment
+      # -----------------------
       - name: Configure GPG for signing
         if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
@@ -351,16 +526,22 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B -Pproduction-release deploy
 
-      # -------------------------------------------------------------------
-      #  APPLY NEXT SNAPSHOT VERSION
-      # -------------------------------------------------------------------
-      - name: Prepare Next Development Version
+      # -----------------------
+      # Apply Next Snapshot Version
+      # -----------------------
+      - name: Set Maven version to next snapshot
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          NEXT_VERSION: ${{ steps.versions.outputs.next }}
+        run: |
+          mvn -B versions:set -DnewVersion=$NEXT_VERSION
+
+      - name: Commit Maven version change for next
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.next }}
           mvn -B versions:commit
 
-      - name: Commit Next Snapshot
+      - name: Commit next snapshot version
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
@@ -370,8 +551,12 @@ jobs:
         env:
           GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
         run: |
-          git push https://$GH_TA4J_REPO_TOKEN@github.com/${{ github.repository }} --follow-tags
+          git remote set-url origin "https://x-access-token:${GH_TA4J_REPO_TOKEN}@github.com/${{ github.repository }}"
+          git push origin HEAD --follow-tags
 
+      # -----------------------
+      # Summary
+      # -----------------------
       - name: Release decision summary
         if: always()
         env:
