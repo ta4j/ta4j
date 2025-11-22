@@ -47,17 +47,27 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void shouldReturnNaNUntilTwoSwingHighsConfirmed() {
+    public void shouldReturnNaNBeforeFirstSwingHighAndAnchorAtPivots() {
         final var series = seriesFromHighs(12, 13, 15, 14, 16, 17, 15, 14);
         final var highIndicator = new HighPriceIndicator(series);
         final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
 
-        for (int i = 0; i <= 5; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
+        assertThat(indicator.getValue(0).isNaN()).isTrue();
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
 
-        assertThat(indicator.getValue(6).isNaN()).isFalse();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+
+        final var numFactory = series.numFactory();
+        final var x1 = numFactory.numOf(2);
+        final var x2 = numFactory.numOf(5);
+        final var y1 = highIndicator.getValue(2);
+        final var y2 = highIndicator.getValue(5);
+        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
+        final var intercept = y2.minus(slope.multipliedBy(x2));
+
+        assertThat(indicator.getValue(4)).isEqualByComparingTo(slope.multipliedBy(numFactory.numOf(4)).plus(intercept));
     }
 
     @Test
@@ -71,16 +81,20 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         }
 
         final var numFactory = series.numFactory();
-        final var x1 = numFactory.numOf(1);
-        final var x2 = numFactory.numOf(3);
-        final var y1 = highIndicator.getValue(1);
-        final var y2 = highIndicator.getValue(3);
+        final var pivotIndexes = indicator.getPivotIndexes();
+        assertThat(pivotIndexes).hasSize(3);
+        final int lowerPivotIndex = pivotIndexes.get(1);
+        final int upperPivotIndex = pivotIndexes.get(2);
+        final var x1 = numFactory.numOf(lowerPivotIndex);
+        final var x2 = numFactory.numOf(upperPivotIndex);
+        final var y1 = highIndicator.getValue(lowerPivotIndex);
+        final var y2 = highIndicator.getValue(upperPivotIndex);
         final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
         final var intercept = y2.minus(slope.multipliedBy(x2));
         final var expected = slope.multipliedBy(numFactory.numOf(4)).plus(intercept);
 
         assertThat(indicator.getValue(4)).isEqualByComparingTo(expected);
-        assertThat(indicator.getPivotIndexes()).containsExactly(1, 3);
+        assertThat(indicator.getPivotIndexes()).containsExactly(1, 3, 5);
     }
 
     @Test
@@ -88,10 +102,6 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var series = seriesFromHighs(10, 12, 14, 13, 15, 15, 15, 13, 11);
         final var highIndicator = new HighPriceIndicator(series);
         final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 2);
-
-        for (int i = 0; i <= 6; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
 
         final var valueAtSeven = indicator.getValue(7);
         final var valueAtEight = indicator.getValue(8);
@@ -245,11 +255,11 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var indicator = new TrendLineResistanceIndicator(swingHighIndicator, 1, 1);
 
         // Should behave the same as the constructor that takes priceIndicator directly
-        for (int i = 0; i <= 5; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
+        assertThat(indicator.getValue(0).isNaN()).isTrue();
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
 
-        assertThat(indicator.getValue(6).isNaN()).isFalse();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
 
         // Verify the price indicator was extracted correctly

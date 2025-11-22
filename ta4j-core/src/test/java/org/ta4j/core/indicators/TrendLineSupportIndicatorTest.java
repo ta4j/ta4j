@@ -47,17 +47,27 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
-    public void shouldReturnNaNUntilTwoSwingLowsConfirmed() {
+    public void shouldReturnNaNBeforeFirstSwingLowAndAnchorAtPivots() {
         final var series = seriesFromLows(12, 11, 9, 10, 13, 8, 9, 11);
         final var lowIndicator = new LowPriceIndicator(series);
         final var indicator = new TrendLineSupportIndicator(lowIndicator, 1, 1, 0);
 
-        for (int i = 0; i <= 5; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
+        assertThat(indicator.getValue(0).isNaN()).isTrue();
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
 
-        assertThat(indicator.getValue(6).isNaN()).isFalse();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(lowIndicator.getValue(2));
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+
+        final var numFactory = series.numFactory();
+        final var x1 = numFactory.numOf(2);
+        final var x2 = numFactory.numOf(5);
+        final var y1 = lowIndicator.getValue(2);
+        final var y2 = lowIndicator.getValue(5);
+        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
+        final var intercept = y2.minus(slope.multipliedBy(x2));
+
+        assertThat(indicator.getValue(4)).isEqualByComparingTo(slope.multipliedBy(numFactory.numOf(4)).plus(intercept));
     }
 
     @Test
@@ -88,10 +98,6 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var series = seriesFromLows(13, 12, 9, 11, 10, 8, 8, 8, 12, 14);
         final var lowIndicator = new LowPriceIndicator(series);
         final var indicator = new TrendLineSupportIndicator(lowIndicator, 1, 1, 2);
-
-        for (int i = 0; i <= 7; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
 
         final var valueAtEight = indicator.getValue(8);
         final var valueAtNine = indicator.getValue(9);
@@ -242,11 +248,11 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var indicator = new TrendLineSupportIndicator(swingLowIndicator, 1, 1);
 
         // Should behave the same as the constructor that takes priceIndicator directly
-        for (int i = 0; i <= 5; i++) {
-            assertThat(indicator.getValue(i).isNaN()).isTrue();
-        }
+        assertThat(indicator.getValue(0).isNaN()).isTrue();
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
 
-        assertThat(indicator.getValue(6).isNaN()).isFalse();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(lowIndicator.getValue(2));
+        assertThat(indicator.getValue(5)).isEqualByComparingTo(lowIndicator.getValue(5));
         assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
 
         // Verify the price indicator was extracted correctly

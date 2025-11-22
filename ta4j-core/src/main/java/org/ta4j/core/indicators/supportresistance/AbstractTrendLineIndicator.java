@@ -37,6 +37,10 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
+ * <p>
+ * Once a new pivot is confirmed, values are backfilled along the line
+ * connecting the two most recent pivots so historical points align with the
+ * straight trend line between swing points.
  *
  * @since 0.20
  */
@@ -80,8 +84,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return NaN;
         }
-        updatePivotCache(index);
-        final PivotPair pair = findLatestConfirmedPivots(index);
+        updatePivotCache(getBarSeries().getEndIndex());
+        final PivotPair pair = findPivotPairForIndex(index);
         if (pair == null) {
             return NaN;
         }
@@ -94,6 +98,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final Num secondValue = priceIndicator.getValue(secondPivotIndex);
         if (firstValue.isNaN() || secondValue.isNaN()) {
             return NaN;
+        }
+        if (index == firstPivotIndex) {
+            return firstValue;
+        }
+        if (index == secondPivotIndex) {
+            return secondValue;
         }
         final NumFactory numFactory = getBarSeries().numFactory();
         final Num x1 = numFactory.numOf(firstPivotIndex);
@@ -147,25 +157,28 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         lastScannedIndex = index;
     }
 
-    private PivotPair findLatestConfirmedPivots(int index) {
-        Pivot recent = null;
-        Pivot previous = null;
-        for (int i = pivots.size() - 1; i >= 0; i--) {
-            final Pivot pivot = pivots.get(i);
-            if (pivot.confirmationIndex > index) {
-                continue;
-            }
-            if (recent == null) {
-                recent = pivot;
-            } else {
-                previous = pivot;
-                break;
-            }
-        }
-        if (recent == null || previous == null) {
+    private PivotPair findPivotPairForIndex(int index) {
+        if (pivots.size() < 2) {
             return null;
         }
-        return new PivotPair(previous, recent);
+        Pivot lower = null;
+        Pivot upper = null;
+        for (Pivot pivot : pivots) {
+            if (pivot.index <= index) {
+                lower = pivot;
+                continue;
+            }
+            upper = pivot;
+            break;
+        }
+        if (lower == null) {
+            return null;
+        }
+        if (upper == null) {
+            lower = pivots.get(pivots.size() - 2);
+            upper = pivots.get(pivots.size() - 1);
+        }
+        return new PivotPair(lower, upper);
     }
 
     protected abstract int getLatestPivotIndex(int index);

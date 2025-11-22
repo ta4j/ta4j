@@ -16,6 +16,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
     - **TrendLineResistanceIndicator**: Projects a resistance trend line by connecting the two most recent confirmed swing highs. Supports configurable swing detection windows and can work with any price indicator.
     - **AbstractTrendLineIndicator**: Abstract base class providing common trendline projection logic for both support and resistance indicators.
 
+### Fixed
+- **Support/resistance trendlines**: Backfilled trend line segments between confirmed swing points so projections stay straight and anchored on the pivot highs/lows instead of stepping around confirmation bars.
+
 ## 0.19 (released November 19, 2025)
 
 ### Breaking

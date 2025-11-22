@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
-
+import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 import ta4jexamples.loaders.CsvBarsLoader;
@@ -62,10 +62,6 @@ public class TrendLineAnalysis {
         // Load bar series from CSV file
         BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
-        // Alternative: Load from JSON file
-//         String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
-//         BarSeries series = loadJsonSeries(jsonOhlcResourceFile);
-
         Objects.requireNonNull(series, "Bar series was null");
         if (series.isEmpty()) {
             LOG.error("Bar series is empty. Cannot create trendlines.");
@@ -74,22 +70,45 @@ public class TrendLineAnalysis {
 
         // Create support trendline indicator
         TrendLineSupportIndicator fractalSupportTrendLine = new TrendLineSupportIndicator(series, 5);
-        TrendLineSupportIndicator zigzagSupportTrendLine = new TrendLineSupportIndicator(new RecentZigZagSwingLowIndicator(series), 5, 5);
 
         // Create resistance trendline indicator
         TrendLineResistanceIndicator fractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5);
-        TrendLineResistanceIndicator zigzagResistanceTrendLine = new TrendLineResistanceIndicator(new RecentZigZagSwingHighIndicator(series), 5, 5);
 
         // Build and display chart using ChartWorkflow
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        chartWorkflow.builder()
-                .withTitle("Support and Resistance Trendlines")
+        ChartWorkflow fractalChartWorkflow = new ChartWorkflow();
+        ChartPlan fractalPlan = fractalChartWorkflow.builder()
+                .withTitle("Fractal Support and Resistance Trendlines")
                 .withSeries(series)
-                .withIndicatorOverlay(fractalSupportTrendLine).withLineColor(Color.GREEN).withLineWidth(2.0f)
-                .withIndicatorOverlay(zigzagSupportTrendLine).withLineColor(Color.BLUE).withLineWidth(2.0f)
-                .withIndicatorOverlay(fractalResistanceTrendLine).withLineColor(Color.RED).withLineWidth(2.0f)
-                .withIndicatorOverlay(zigzagResistanceTrendLine).withLineColor(Color.YELLOW).withLineWidth(2.0f)
-                .display();
+                .withIndicatorOverlay(fractalSupportTrendLine)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(2.0f)
+                .withIndicatorOverlay(fractalResistanceTrendLine)
+                .withLineColor(Color.RED)
+                .withLineWidth(2.0f)
+                .toPlan();
+
+        fractalChartWorkflow.display(fractalPlan);
+        fractalChartWorkflow.save(fractalPlan, "log/charts", "fractal-support-resistance-trendlines");
+
+        TrendLineResistanceIndicator zigzagResistanceTrendLine = new TrendLineResistanceIndicator(
+                new RecentZigZagSwingHighIndicator(series), 5, 5);
+        TrendLineSupportIndicator zigzagSupportTrendLine = new TrendLineSupportIndicator(
+                new RecentZigZagSwingLowIndicator(series), 5, 5);
+
+        ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
+        ChartPlan zigzagPlan = zigzagChartWorkflow.builder()
+                .withTitle("ZigZag Support and Resistance Trendlines")
+                .withSeries(series)
+                .withIndicatorOverlay(zigzagSupportTrendLine)
+                .withLineColor(Color.BLUE)
+                .withLineWidth(2.0f)
+                .withIndicatorOverlay(zigzagResistanceTrendLine)
+                .withLineColor(Color.YELLOW)
+                .withLineWidth(2.0f)
+                .toPlan();
+
+        zigzagChartWorkflow.display(zigzagPlan);
+        zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-support-resistance-trendlines");
     }
 
     /**
