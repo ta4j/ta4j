@@ -51,6 +51,76 @@ jobs:
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
+      - name: Verify required secrets and resources
+        id: verify_secrets
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          MAVEN_CENTRAL_TOKEN_USER: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          MAVEN_CENTRAL_TOKEN_PASS: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Define required secrets/resources
+          required=(
+            "MAVEN_CENTRAL_TOKEN_USER:Required for Maven Central authentication"
+            "MAVEN_CENTRAL_TOKEN_PASS:Required for Maven Central authentication"
+            "GPG_PRIVATE_KEY:Required for signing artifacts with GPG"
+            "GPG_PASSPHRASE:Required for GPG key decryption and signing"
+            "GH_TA4J_REPO_TOKEN:Required for pushing tags and commits to repository"
+          )
+          
+          missing=()
+          missing_descriptions=()
+          
+          # Check each required secret
+          for entry in "${required[@]}"; do
+            name="${entry%%:*}"
+            description="${entry#*:}"
+            
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+              missing_descriptions+=("$description")
+            fi
+          done
+
+          # Handle missing secrets based on dry run mode
+          if [ "${#missing[@]}" -gt 0 ]; then
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              echo "::warning::DRY RUN MODE: Missing required secrets/resources detected"
+              echo "::warning::The following required resources are not configured:"
+              for i in "${!missing[@]}"; do
+                echo "::warning::  - ${missing[$i]}: ${missing_descriptions[$i]}"
+              done
+              echo "::warning::A real (non-dry-run) execution would fail without these resources."
+              echo "::warning::Please configure these secrets in the repository settings before running a real release."
+              echo "audit:missing_secrets_in_dry_run=${missing[*]}"
+            else
+              echo "::error::RELEASE FAILED: Missing required secrets/resources"
+              echo "::error::The following required resources are not configured:"
+              for i in "${!missing[@]}"; do
+                echo "::error::  - ${missing[$i]}: ${missing_descriptions[$i]}"
+              done
+              echo ""
+              echo "::error::REQUIRED SECRETS:"
+              echo "::error::  1. MAVEN_CENTRAL_TOKEN_USER - Maven Central username/token"
+              echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
+              echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
+              echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+              echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub Personal Access Token with repo permissions"
+              echo ""
+              echo "::error::Please configure these secrets in:"
+              echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
+              echo ""
+              exit 1
+            fi
+          else
+            echo "✓ All required secrets and resources are present"
+            echo "audit:all_required_secrets_present=true"
+          fi
+
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -169,7 +239,7 @@ jobs:
       - name: Prepare Release Notes
         run: |
           chmod +x scripts/prepare-release.sh
-          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"    
+          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"
 
       - name: Write Maven settings
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -298,9 +368,9 @@ jobs:
       - name: Push Changes Using PAT
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
-          PAT: ${{ secrets.GH_PAT }}
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
         run: |
-          git push https://$PAT@github.com/${{ github.repository }} --follow-tags
+          git push https://$GH_TA4J_REPO_TOKEN@github.com/${{ github.repository }} --follow-tags
 
       - name: Release decision summary
         if: always()
@@ -312,5 +382,5 @@ jobs:
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: release=${RELEASE:-}"
-          echo "summary: next=${NEXT:-}"
           echo "summary: current=${CURRENT:-}"
+          echo "summary: next=${NEXT:-}"

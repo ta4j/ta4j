@@ -12,7 +12,7 @@ name: AI Semantic Release Scheduler
 
 concurrency:
   group: semantic-release-ai-${{ github.repository }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   schedule:
@@ -460,7 +460,7 @@ jobs:
       }}
     steps:
       - name: Trigger publish workflow
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -495,4 +495,4 @@ jobs:
           echo "  bump:    ${{ needs.analyze.outputs.bump }}"
           echo "  version: ${{ needs.analyze.outputs.version }}"
           echo ""
-          echo "(Dry run enabled - skipping release trigger)"
+          echo "(Dry run enabled - propagating dryRun=true to release.yml)"
