@@ -12,6 +12,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
 - Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
 - Added `StochasticIndicator` as a generic stochastic calculation indicator, extracted from `SchaffTrendCycleIndicator` for reuse
+- **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
 
 ## 0.19 (released November 19, 2025)
 
