@@ -221,11 +221,22 @@ jobs:
           diff_decoded=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
           changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
 
+          # Read SemVer rules from file if it exists and has content, otherwise use defaults
+          semver_rules_file=".github/workflows/release-scheduler-semver-rules.txt"
+          if [ -f "$semver_rules_file" ] && [ -s "$semver_rules_file" ]; then
+            semver_rules=$(cat "$semver_rules_file")
+            echo "audit:semver_rules_source=file"
+          else
+            semver_rules="MAJOR: Only when breaking API changes in core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\n\nIf diff empty or changelog-only should_release=false.\nNEVER major without explicit breaking change evidence.\n"
+            echo "audit:semver_rules_source=default"
+          fi
+
           # Build the JSON request using jq and safe string args.
           echo "build.request_json:build.start"
           jq -n \
             --arg diff "$diff_decoded" \
             --arg changelog "$changelog_decoded" \
+            --arg semver_rules "$semver_rules" \
             --arg model "openai/gpt-4o" \
             --arg temp "0" \
             '{
@@ -238,12 +249,7 @@ jobs:
                     "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
                     "=== DIFF (truncated, sanitized) ===\n" + $diff + "\n\n" +
                     "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
-                    "SemVer Rules:\n" +
-                    "MAJOR: Only when breaking API changes.\n" +
-                    "MINOR: Backward-compatible new features.\n" +
-                    "PATCH: Backward-compatible bug fixes.\n\n" +
-                    "If diff empty or changelog-only should_release=false.\n" +
-                    "NEVER major without explicit breaking change evidence.\n\n" +
+                    "SemVer Rules:\n" + $semver_rules + "\n" +
                     "Return ONLY JSON:\n" +
                     "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\" }"
                   )
