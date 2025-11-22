@@ -495,4 +495,4 @@ jobs:
           echo "  bump:    ${{ needs.analyze.outputs.bump }}"
           echo "  version: ${{ needs.analyze.outputs.version }}"
           echo ""
-          echo "(Dry run enabled - skipping release trigger)"
+          echo "(Dry run enabled - propagating dryRun=true to release.yml)"
