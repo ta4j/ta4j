@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -35,29 +36,29 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ClosePriceDifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private ClosePriceDifferenceIndicator closePriceDifference;
+    private DifferenceIndicator priceChange;
 
     private BarSeries barSeries;
 
-    public ClosePriceDifferenceIndicatorTest(NumFactory numFactory) {
+    public DifferenceIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Before
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        closePriceDifference = new ClosePriceDifferenceIndicator(barSeries);
+        priceChange = new DifferenceIndicator(new ClosePriceIndicator(barSeries));
     }
 
     @Test
     public void indicatorShouldRetrieveBarDifference() {
-        assertNumEquals(0, closePriceDifference.getValue(0));
+        assertThat(priceChange.getValue(0).isNaN()).isTrue();
         for (int i = 1; i < 10; i++) {
             Num previousBarClosePrice = barSeries.getBar(i - 1).getClosePrice();
             Num currentBarClosePrice = barSeries.getBar(i).getClosePrice();
-            assertEquals(closePriceDifference.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
+            assertEquals(priceChange.getValue(i), currentBarClosePrice.minus(previousBarClosePrice));
         }
     }
 }

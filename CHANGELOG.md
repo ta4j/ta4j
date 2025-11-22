@@ -2,7 +2,16 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Unreleased
 
+### Breaking
+- **EMA indicators now return NaN during unstable period**: `EMAIndicator`, `MMAIndicator`, and all indicators extending `AbstractEMAIndicator` now return `NaN` for indices within the unstable period (indices < `beginIndex + getCountOfUnstableBars()`). Previously, these indicators would return calculated values during the unstable period. **Action required**: Update any code that accesses EMA indicator values during the unstable period to handle `NaN` values appropriately, or wait until after the unstable period before reading values.
+- **`DifferencePercentageIndicator` deprecated**: `DifferencePercentageIndicator` has been deprecated in favor of `PercentageChangeIndicator`, which now provides all the same functionality plus additional features. **Action required**: Migrate to `PercentageChangeIndicator` using the migration examples in the deprecation javadoc.
+
 ### Added
+- Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
+- Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window
+- Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
+- Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
+- Added `StochasticIndicator` as a generic stochastic calculation indicator, extracted from `SchaffTrendCycleIndicator` for reuse
 - **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
 
 ## 0.19 (released November 19, 2025)
@@ -37,6 +46,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Testing infrastructure**: Added tests for `DoubleNumFactory` and `DecimalNumFactory`, unit tests around indicator concurrency in preparation for future multithreading features, and `DecimalNumPrecisionPerformanceTest` to demonstrate precision vs performance trade-offs.
 
 ### Changed
+- **Robust NaN handling in EMA indicators**: Enhanced `AbstractEMAIndicator` (and thus `EMAIndicator` and `MMAIndicator`) with comprehensive NaN handling to prevent contamination of future values. When a NaN value is detected in the current input, the indicator returns `NaN` immediately. If a previous EMA value is `NaN`, the indicator gracefully recovers by resetting to the current input value, preventing NaN contamination of all future calculations. This aligns with project guidelines for robust NaN handling and improves data quality in composite indicators.
+- **Consolidated EMA implementations**: Removed duplicate `SmoothingIndicator` class and replaced all usages with `EMAIndicator`, eliminating code duplication and ensuring consistent behavior across all EMA-based calculations.
 - **Enhanced rule serialization with custom name preservation**: Improved `RuleSerialization` to preserve custom rule names set via `setName()` during serialization and deserialization. Custom names are now properly distinguished from default JSON-formatted names, enabling better strategy persistence and debugging workflows.
 - **Improved trace logging with rule names**: Enhanced trace logging in `AbstractRule` and `BaseStrategy` to use rule names (custom or default) in log output, making it easier to identify which rules are being evaluated during strategy execution.
 - **Unified logging backend**: Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so examples and tests share a single logging backend. Added Log4j 2 configurations for modules and tests. This simplifies logging configuration and ensures consistent behavior across all modules. Set unit test logging level to INFO and cleaned build output of all extraneous logging. 
@@ -53,6 +64,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Improved bar series builder**: `BaseBarSeriesBuilder` now automatically uses the `NumFactory` from given bars instead of the default one, ensuring consistent numeric types throughout bar series construction.
 
 ### Fixed
+- **NaN contamination in EMA calculations**: Fixed issue where NaN values in EMA indicator inputs would contaminate all future EMA values. The indicator now gracefully recovers from NaN inputs by resetting to the current value, preventing propagation of invalid data through the calculation chain.
 - **Kalman filter robustness**: Guarded `KalmanFilterIndicator` against NaN/Infinity measurements to keep the Kalman state consistent, preventing calculation errors when input data contains invalid values.
 - **Recursive indicator stack overflow**: Fixed recursion bug in `RecursiveCachedIndicator` that could lead to stack overflow in certain situations, improving reliability for complex indicator calculations.
 - **Cost tracking in enter-and-hold**: Fixed `EnterAndHoldCriterion` to properly keep track of transaction and hold costs, ensuring accurate performance comparisons.

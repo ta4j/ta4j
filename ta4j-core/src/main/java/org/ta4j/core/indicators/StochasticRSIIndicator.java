@@ -40,7 +40,7 @@ import static org.ta4j.core.num.NaN.NaN;
 public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final StochasticOscillatorKIndicator stochasticOscillatorKIndicator;
+    private final StochasticIndicator stochasticIndicator;
 
     /**
      * Constructor.
@@ -75,8 +75,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
         super(rsiIndicator);
         this.barCount = barCount;
-        this.stochasticOscillatorKIndicator = new StochasticOscillatorKIndicator(rsiIndicator, barCount, rsiIndicator,
-                rsiIndicator);
+        this.stochasticIndicator = new StochasticIndicator(rsiIndicator, barCount);
     }
 
     @Override
@@ -84,7 +83,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return this.stochasticOscillatorKIndicator.getValue(index);
+        return this.stochasticIndicator.getValue(index);
     }
 
     @Override

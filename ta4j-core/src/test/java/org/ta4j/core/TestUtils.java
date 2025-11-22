@@ -126,8 +126,24 @@ public class TestUtils {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            assertEquals(String.format("Failed at index %s: %s", i, actual.toString()),
-                    expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), GENERAL_OFFSET);
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            // Handle NaN values - if both are NaN, they match; if only one is NaN, they
+            // don't match
+            if (Num.isNaNOrNull(expectedValue) || Num.isNaNOrNull(actualValue)) {
+                boolean expectedIsNaN = Num.isNaNOrNull(expectedValue);
+                boolean actualIsNaN = Num.isNaNOrNull(actualValue);
+                if (expectedIsNaN != actualIsNaN) {
+                    throw new AssertionError(String.format("Failed at index %s: %s expected %s but actual was %s", i,
+                            actual.toString(), expectedValue, actualValue));
+                }
+                // Both are NaN, continue to next index
+                continue;
+            }
+
+            assertEquals(String.format("Failed at index %s: %s", i, actual.toString()), expectedValue.doubleValue(),
+                    actualValue.doubleValue(), GENERAL_OFFSET);
         }
     }
 

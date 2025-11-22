@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -56,10 +57,12 @@ public class PVOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void createPvoIndicator() {
         var pvo = new PVOIndicator(barSeries);
-        assertNumEquals(0.791855204, pvo.getValue(1));
-        assertNumEquals(2.164434756, pvo.getValue(2));
-        assertNumEquals(3.925400464, pvo.getValue(3));
-        assertNumEquals(55.296120101, pvo.getValue(4));
-        assertNumEquals(66.511722064, pvo.getValue(5));
+        // PVO uses PPO with shortBarCount=12, longBarCount=26, so unstable period is 26
+        // Series only has 7 bars, so all indices (0-6) are in unstable period
+        // All values will return NaN because long EMA returns NaN during its unstable
+        // period
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            assertThat(Double.isNaN(pvo.getValue(i).doubleValue())).isTrue();
+        }
     }
 }

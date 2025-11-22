@@ -36,35 +36,130 @@ import java.util.function.UnaryOperator;
  */
 public class UnaryOperationIndicator implements Indicator<Num> {
 
+    /**
+     * Enumeration of supported unary operations.
+     */
+    public enum Operation {
+        ABS, SQRT, LOG, POW, SUBSTITUTE
+    }
+
+    @SuppressWarnings("unused") // Used by serialization via reflection
+    private final Operation operation;
     private final UnaryOperator<Num> operator;
     private final Indicator<Num> operand;
+    @SuppressWarnings("unused") // Used by serialization via reflection
+    private final Num exponent; // For POW operation
+    @SuppressWarnings("unused") // Used by serialization via reflection
+    private final Num valueToReplace; // For SUBSTITUTE operation
+    @SuppressWarnings("unused") // Used by serialization via reflection
+    private final Num replacementValue; // For SUBSTITUTE operation
 
-    private UnaryOperationIndicator(UnaryOperator<Num> operator, Indicator<Num> operand) {
-        this.operator = operator;
+    /**
+     * Constructor for serialization support.
+     *
+     * @param operation the operation type
+     * @param operand   the operand indicator
+     */
+    public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand) {
+        this(operation, operand, null, null, null);
+    }
+
+    /**
+     * Constructor for POW operation with exponent.
+     *
+     * @param operation the operation type (must be POW)
+     * @param operand   the operand indicator
+     * @param exponent  the exponent for POW operation
+     */
+    public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Number exponent) {
+        if (operation != Operation.POW) {
+            throw new IllegalArgumentException("Exponent parameter is only valid for POW operation");
+        }
+        this.operation = operation;
         this.operand = operand;
+        this.exponent = operand.getBarSeries().numFactory().numOf(exponent);
+        this.valueToReplace = null;
+        this.replacementValue = null;
+        this.operator = getOperator(operation, this.exponent, null, null);
+    }
+
+    /**
+     * Constructor for SUBSTITUTE operation with replacement values.
+     *
+     * @param operation        the operation type (must be SUBSTITUTE)
+     * @param operand          the operand indicator
+     * @param valueToReplace   the value to replace
+     * @param replacementValue the replacement value
+     */
+    public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Num valueToReplace,
+            final Num replacementValue) {
+        if (operation != Operation.SUBSTITUTE) {
+            throw new IllegalArgumentException("Replacement values are only valid for SUBSTITUTE operation");
+        }
+        this.operation = operation;
+        this.operand = operand;
+        this.exponent = null;
+        this.valueToReplace = valueToReplace;
+        this.replacementValue = replacementValue;
+        this.operator = getOperator(operation, null, valueToReplace, replacementValue);
+    }
+
+    private UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Num exponent,
+            final Num valueToReplace, final Num replacementValue) {
+        if (operation == null || operand == null) {
+            throw new IllegalArgumentException("Operation and operand must not be null");
+        }
+        this.operation = operation;
+        this.operand = operand;
+        this.exponent = exponent;
+        this.valueToReplace = valueToReplace;
+        this.replacementValue = replacementValue;
+        this.operator = getOperator(operation, exponent, valueToReplace, replacementValue);
+    }
+
+    private static UnaryOperator<Num> getOperator(Operation operation, Num exponent, Num valueToReplace,
+            Num replacementValue) {
+        return switch (operation) {
+        case ABS -> Num::abs;
+        case SQRT -> Num::sqrt;
+        case LOG -> Num::log;
+        case POW -> {
+            if (exponent == null) {
+                throw new IllegalArgumentException("Exponent is required for POW operation");
+            }
+            yield val -> val.pow(exponent);
+        }
+        case SUBSTITUTE -> {
+            if (valueToReplace == null || replacementValue == null) {
+                throw new IllegalArgumentException(
+                        "ValueToReplace and replacementValue are required for SUBSTITUTE operation");
+            }
+            yield operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue;
+        }
+        };
     }
 
     /**
      * Returns an {@code Indicator} whose value is {@code √(operand)}.
      *
-     * @param operand
+     * @param operand the operand indicator
      * @return {@code √(operand)}
      * @see Num#sqrt
      */
     public static UnaryOperationIndicator sqrt(Indicator<Num> operand) {
-        return new UnaryOperationIndicator(Num::sqrt, operand);
+        return new UnaryOperationIndicator(Operation.SQRT, operand);
     }
 
     /**
      * Returns an {@code Indicator} whose value is the absolute value of
      * {@code operand}.
      *
-     * @param operand
+     * @param operand the operand indicator
      * @return {@code abs(operand)}
      * @see Num#abs
      */
     public static UnaryOperationIndicator abs(Indicator<Num> operand) {
-        return new UnaryOperationIndicator(Num::abs, operand);
+        return new UnaryOperationIndicator(Operation.ABS, operand);
     }
 
     /**
@@ -76,8 +171,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @see Num#pow
      */
     public static UnaryOperationIndicator pow(Indicator<Num> operand, Number exponent) {
-        final var numExponent = operand.getBarSeries().numFactory().numOf(exponent);
-        return new UnaryOperationIndicator(val -> val.pow(numExponent), operand);
+        return new UnaryOperationIndicator(Operation.POW, operand, exponent);
     }
 
     /**
@@ -87,7 +181,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @return {@code log(operand)}
      */
     public static UnaryOperationIndicator log(Indicator<Num> operand) {
-        return new UnaryOperationIndicator(Num::log, operand);
+        return new UnaryOperationIndicator(Operation.LOG, operand);
     }
 
     /**
@@ -105,8 +199,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      */
     public static UnaryOperationIndicator substitute(final Indicator<Num> operand, final Num valueToReplace,
             final Num replacementValue) {
-        return new UnaryOperationIndicator(
-                operandValue -> operandValue.equals(valueToReplace) ? replacementValue : operandValue, operand);
+        return new UnaryOperationIndicator(Operation.SUBSTITUTE, operand, valueToReplace, replacementValue);
     }
 
     @Override

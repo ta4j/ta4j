@@ -50,7 +50,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final RunningTotalIndicator sumPriceIndicator;
+    private final transient RunningTotalIndicator sumPriceIndicator;
 
     /**
      * Constructor.

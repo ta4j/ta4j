@@ -36,7 +36,30 @@ import org.ta4j.core.num.Num;
  * {@link #percentageThreshold threshold} was reached. If the threshold is
  * {@code 0} or not specified, only the percentage difference from the previous
  * value is returned.
+ *
+ * @deprecated Use {@link PercentageChangeIndicator} instead. This class has
+ *             been consolidated into {@code PercentageChangeIndicator} which
+ *             provides the same functionality with additional features.
+ *             <p>
+ *             Migration examples:
+ *             <ul>
+ *             <li>{@code new DifferencePercentageIndicator(indicator)} →
+ *             {@code new PercentageChangeIndicator(indicator)}</li>
+ *             <li>{@code new DifferencePercentageIndicator(indicator, threshold)}
+ *             → {@code new PercentageChangeIndicator(indicator, null,
+ *             threshold)}</li>
+ *             <li>{@code new DifferencePercentageIndicator(indicator,
+ *             previousIndicator)} → {@code new
+ *             PercentageChangeIndicator(indicator, previousIndicator)}</li>
+ *             <li>{@code new DifferencePercentageIndicator(indicator,
+ *             previousIndicator, threshold)} → {@code new
+ *             PercentageChangeIndicator(indicator, previousIndicator,
+ *             threshold)}</li>
+ *             </ul>
+ *
+ * @since 0.18
  */
+@Deprecated
 public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;

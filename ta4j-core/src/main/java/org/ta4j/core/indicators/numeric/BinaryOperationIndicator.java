@@ -40,6 +40,13 @@ import java.util.function.BinaryOperator;
 public class BinaryOperationIndicator implements Indicator<Num> {
 
     /**
+     * Enumeration of supported binary operations.
+     */
+    public enum Operation {
+        PLUS, MINUS, MULTIPLY, DIVIDE, MIN, MAX
+    }
+
+    /**
      * Returns an {@code Indicator} whose value is {@code (left + right)}.
      *
      * @param left  the left operand Indicator
@@ -48,7 +55,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#plus
      */
     public static BinaryOperationIndicator sum(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::plus, left, right);
+        return new BinaryOperationIndicator(Operation.PLUS, left, right);
     }
 
     /**
@@ -60,7 +67,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#minus
      */
     public static BinaryOperationIndicator difference(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::minus, left, right);
+        return new BinaryOperationIndicator(Operation.MINUS, left, right);
     }
 
     /**
@@ -72,7 +79,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#multipliedBy
      */
     public static BinaryOperationIndicator product(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::multipliedBy, left, right);
+        return new BinaryOperationIndicator(Operation.MULTIPLY, left, right);
     }
 
     /**
@@ -84,7 +91,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#dividedBy
      */
     public static BinaryOperationIndicator quotient(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::dividedBy, left, right);
+        return new BinaryOperationIndicator(Operation.DIVIDE, left, right);
     }
 
     /**
@@ -98,7 +105,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#min
      */
     public static BinaryOperationIndicator min(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::min, left, right);
+        return new BinaryOperationIndicator(Operation.MIN, left, right);
     }
 
     /**
@@ -112,7 +119,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @see Num#max
      */
     public static BinaryOperationIndicator max(final Indicator<Num> left, final Indicator<Num> right) {
-        return new BinaryOperationIndicator(Num::max, left, right);
+        return new BinaryOperationIndicator(Operation.MAX, left, right);
     }
 
     // Overloaded methods for operations with constants
@@ -127,7 +134,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator sum(final Indicator<Num> indicator, final Number addend) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(addend));
-        return new BinaryOperationIndicator(Num::plus, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.PLUS, indicator, constantIndicator);
     }
 
     /**
@@ -140,7 +147,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator difference(final Indicator<Num> indicator, final Number subtrahend) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(subtrahend));
-        return new BinaryOperationIndicator(Num::minus, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.MINUS, indicator, constantIndicator);
     }
 
     /**
@@ -154,7 +161,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator product(final Indicator<Num> indicator, final Number coefficient) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(coefficient));
-        return new BinaryOperationIndicator(Num::multipliedBy, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.MULTIPLY, indicator, constantIndicator);
     }
 
     /**
@@ -168,7 +175,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator quotient(final Indicator<Num> indicator, final Number coefficient) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(coefficient));
-        return new BinaryOperationIndicator(Num::dividedBy, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.DIVIDE, indicator, constantIndicator);
     }
 
     /**
@@ -184,7 +191,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator min(final Indicator<Num> indicator, final Number constant) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(constant));
-        return new BinaryOperationIndicator(Num::min, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.MIN, indicator, constantIndicator);
     }
 
     /**
@@ -200,24 +207,43 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     public static BinaryOperationIndicator max(final Indicator<Num> indicator, final Number constant) {
         final var constantIndicator = new ConstantIndicator<>(indicator.getBarSeries(),
                 indicator.getBarSeries().numFactory().numOf(constant));
-        return new BinaryOperationIndicator(Num::max, indicator, constantIndicator);
+        return new BinaryOperationIndicator(Operation.MAX, indicator, constantIndicator);
     }
 
+    private final Operation operation;
     private final BinaryOperator<Num> operator;
     private final Indicator<Num> left;
     private final Indicator<Num> right;
 
-    private BinaryOperationIndicator(final BinaryOperator<Num> operator, final Indicator<Num> left,
-            final Indicator<Num> right) {
-        if (operator == null || left == null || right == null) {
-            throw new IllegalArgumentException("Operator and indicators must not be null");
+    /**
+     * Constructor for serialization support.
+     *
+     * @param operation the operation type
+     * @param left      the left operand indicator
+     * @param right     the right operand indicator
+     */
+    public BinaryOperationIndicator(final Operation operation, final Indicator<Num> left, final Indicator<Num> right) {
+        if (operation == null || left == null || right == null) {
+            throw new IllegalArgumentException("Operation and indicators must not be null");
         }
         if (!left.getBarSeries().equals(right.getBarSeries())) {
             throw new IllegalArgumentException("Left and right indicators must share the same BarSeries");
         }
-        this.operator = operator;
+        this.operation = operation;
+        this.operator = getOperator(operation);
         this.left = left;
         this.right = right;
+    }
+
+    private static BinaryOperator<Num> getOperator(Operation operation) {
+        return switch (operation) {
+        case PLUS -> Num::plus;
+        case MINUS -> Num::minus;
+        case MULTIPLY -> Num::multipliedBy;
+        case DIVIDE -> Num::dividedBy;
+        case MIN -> Num::min;
+        case MAX -> Num::max;
+        };
     }
 
     @Override

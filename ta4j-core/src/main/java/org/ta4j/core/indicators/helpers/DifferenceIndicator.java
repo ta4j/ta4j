@@ -21,58 +21,65 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.averages;
+package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 
-/**
- * Simple moving average (SMA) indicator.
- *
- * @see <a href=
- *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>
- */
-public class SMAIndicator extends CachedIndicator<Num> {
+import static org.ta4j.core.num.NaN.NaN;
 
-    private final int barCount;
+/**
+ * Calculates the difference between the current and the previous value of an
+ * indicator.
+ *
+ * <pre>
+ * Difference = currentValue - previousValue
+ * </pre>
+ *
+ * @since 0.20
+ */
+public class DifferenceIndicator extends CachedIndicator<Num> {
+
     private final Indicator<Num> indicator;
-    private final transient RunningTotalIndicator previousSum;
 
     /**
      * Constructor.
      *
-     * @param indicator the {@link Indicator}
-     * @param barCount  the time frame
+     * @param indicator the indicator to calculate the difference for
+     * @since 0.20
      */
-    public SMAIndicator(Indicator<Num> indicator, int barCount) {
+    public DifferenceIndicator(Indicator<Num> indicator) {
         super(indicator);
-        this.previousSum = new RunningTotalIndicator(indicator, barCount);
         this.indicator = indicator;
-        this.barCount = barCount;
     }
 
+    /**
+     * Calculates the difference between the current value and the previous value of
+     * the indicator.
+     *
+     * @param index the index of the current bar
+     * @return the difference between the current and previous values, or NaN if
+     *         index is within the unstable bar period
+     */
     @Override
     protected Num calculate(int index) {
-        final int realBarCount = Math.min(barCount, index + 1);
-        final var sum = partialSum(index);
-        return sum.dividedBy(getBarSeries().numFactory().numOf(realBarCount));
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+        // Get the value of the previous bar
+        Num previousValue = indicator.getValue(index - 1);
+
+        // Get the value of the current bar
+        Num currentValue = indicator.getValue(index);
+
+        // Calculate the difference between the values
+        return currentValue.minus(previousValue);
     }
 
-    private Num partialSum(int index) {
-        return this.previousSum.getValue(index);
-    }
-
-    /** @return {@link #barCount} */
+    /** @return {@code 1} */
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars() + barCount - 1;
+        return 1;
     }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
-    }
-
 }
