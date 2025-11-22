@@ -228,10 +228,11 @@ jobs:
             echo "response (truncated to 500 chars):"
             head -c 500 response.json || true
             fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$response_status"')"}'
+            delim="AI_RESP_$(date +%s%N)"
             {
-              echo "content<<'EOF'"
+              echo "content<<$delim"
               printf '%s\n' "$fallback"
-              echo "EOF"
+              echo "$delim"
             } >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -241,19 +242,21 @@ jobs:
 
           if ! jq -e '.choices and .choices[0].message and (.choices[0].message.content != null)' response.json > /dev/null; then
             echo "audit:ai_response_missing_content=true" >&2
+            delim="AI_RESP_$(date +%s%N)"
             {
-              echo "content<<'EOF'"
+              echo "content<<$delim"
               echo ""
-              echo "EOF"
+              echo "$delim"
             } >> $GITHUB_OUTPUT
             exit 0
           fi
 
           content=$(jq -r '.choices[0].message.content // ""' response.json)
+          delim="AI_RESP_$(date +%s%N)"
           {
-            echo "content<<'EOF'"
+            echo "content<<$delim"
             printf '%s\n' "$content"
-            echo "EOF"
+            echo "$delim"
           } >> $GITHUB_OUTPUT
 
       - name: Parse AI JSON
