@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
  * Net return criterion.
  *
  * <p>
- * Calculates the net return of positions, where trading costs are deducted
- * from the calculation. The output format is controlled by the
+ * Calculates the net return of positions, where trading costs are deducted from
+ * the calculation. The output format is controlled by the
  * {@link ReturnRepresentation} specified in the constructor or the global
  * default from {@link org.ta4j.core.criteria.ReturnRepresentationPolicy}.
  *
