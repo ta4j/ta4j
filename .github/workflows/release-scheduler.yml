@@ -248,7 +248,7 @@ jobs:
           echo "audit:current_version_source=pom.xml value=$current_version base=$base_version last_tag=$last_tag"
 
           # Read SemVer rules from file if it exists and has content, otherwise use defaults
-          semver_rules_file=".github/workflows/release-scheduler-semver-rules.txt"
+          semver_rules_file=".github/workflows/semver-rules-override.txt"
           if [ -f "$semver_rules_file" ] && [ -s "$semver_rules_file" ]; then
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
