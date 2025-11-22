@@ -379,4 +379,60 @@ public class DecimalNumTest {
         assertTrue(num1.isEqual(num2));
     }
 
+    @Test
+    public void testExpZero() {
+        final Num zero = DecimalNum.valueOf(0);
+        final Num result = zero.exp();
+        assertNumEquals(1, result);
+    }
+
+    @Test
+    public void testExpOne() {
+        final Num one = DecimalNum.valueOf(1);
+        final Num result = one.exp();
+        // e ≈ 2.718281828459046 (with default precision rounding)
+        assertNumEquals("2.718281828459046", result);
+    }
+
+    @Test
+    public void testExpNegativeOne() {
+        final Num negOne = DecimalNum.valueOf(-1);
+        final Num result = negOne.exp();
+        // e^-1 ≈ 0.3678794411714424 (with default precision rounding)
+        assertNumEquals("0.3678794411714424", result);
+    }
+
+    @Test
+    public void testExpTwo() {
+        final Num two = DecimalNum.valueOf(2);
+        final Num result = two.exp();
+        // e^2 ≈ 7.389056098930649 (with default precision rounding)
+        assertNumEquals("7.389056098930649", result);
+    }
+
+    @Test
+    public void testExpHighPrecision() {
+        final NumFactory highPrecisionFactory = DecimalNumFactory.getInstance(40);
+        final Num one = highPrecisionFactory.one();
+        final Num result = one.exp();
+        // e with 40 digits precision
+        assertNumEquals("2.718281828459045235360287471352662497761", result);
+    }
+
+    @Test
+    public void testExpSmallValue() {
+        final Num small = DecimalNum.valueOf("0.1");
+        final Num result = small.exp();
+        // e^0.1 ≈ 1.1051709180756477
+        assertNumEquals("1.1051709180756477", result);
+    }
+
+    @Test
+    public void testExpLargeValue() {
+        final Num large = DecimalNum.valueOf(10);
+        final Num result = large.exp();
+        // e^10 ≈ 22026.46579480673 (with default precision rounding)
+        assertNumEquals("22026.46579480673", result);
+    }
+
 }

@@ -33,6 +33,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
@@ -69,7 +70,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * an {@link #amount} of {@code 1}.
      */
     public static EnterAndHoldCriterion EnterAndHoldReturnCriterion() {
-        return new EnterAndHoldCriterion(TradeType.BUY, new NetReturnCriterion());
+        return new EnterAndHoldCriterion(TradeType.BUY, new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE));
     }
 
     /**
