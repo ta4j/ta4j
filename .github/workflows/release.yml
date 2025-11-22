@@ -13,6 +13,11 @@ on:
       nextVersion:
         description: "OPTIONAL: Next snapshot version (e.g. 0.20-SNAPSHOT). Leave blank to auto-generate."
         required: false
+      dryRun:
+        description: "Run release workflow in dry-run mode (no tag/push/deploy)."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -29,6 +34,92 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+
+      - name: Normalize dry run input
+        id: dry_run
+        run: |
+          raw="${{ github.event.inputs.dryRun }}"
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
+            dry_run=true
+          else
+            dry_run=false
+          fi
+
+          echo "audit:dry_run_input_raw='${raw}'"
+          echo "audit:dry_run_normalized=$dry_run"
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Verify required secrets and resources
+        id: verify_secrets
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          MAVEN_CENTRAL_TOKEN_USER: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          MAVEN_CENTRAL_TOKEN_PASS: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Define required secrets/resources
+          required=(
+            "MAVEN_CENTRAL_TOKEN_USER:Required for Maven Central authentication"
+            "MAVEN_CENTRAL_TOKEN_PASS:Required for Maven Central authentication"
+            "GPG_PRIVATE_KEY:Required for signing artifacts with GPG"
+            "GPG_PASSPHRASE:Required for GPG key decryption and signing"
+            "GH_TA4J_REPO_TOKEN:Required for pushing tags and commits to repository"
+          )
+          
+          missing=()
+          missing_descriptions=()
+          
+          # Check each required secret
+          for entry in "${required[@]}"; do
+            name="${entry%%:*}"
+            description="${entry#*:}"
+            
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+              missing_descriptions+=("$description")
+            fi
+          done
+
+          # Handle missing secrets based on dry run mode
+          if [ "${#missing[@]}" -gt 0 ]; then
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              echo "::warning::DRY RUN MODE: Missing required secrets/resources detected"
+              echo "::warning::The following required resources are not configured:"
+              for i in "${!missing[@]}"; do
+                echo "::warning::  - ${missing[$i]}: ${missing_descriptions[$i]}"
+              done
+              echo "::warning::A real (non-dry-run) execution would fail without these resources."
+              echo "::warning::Please configure these secrets in the repository settings before running a real release."
+              echo "audit:missing_secrets_in_dry_run=${missing[*]}"
+            else
+              echo "::error::RELEASE FAILED: Missing required secrets/resources"
+              echo "::error::The following required resources are not configured:"
+              for i in "${!missing[@]}"; do
+                echo "::error::  - ${missing[$i]}: ${missing_descriptions[$i]}"
+              done
+              echo ""
+              echo "::error::REQUIRED SECRETS:"
+              echo "::error::  1. MAVEN_CENTRAL_TOKEN_USER - Maven Central username/token"
+              echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
+              echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
+              echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+              echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub Personal Access Token with repo permissions"
+              echo ""
+              echo "::error::Please configure these secrets in:"
+              echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
+              echo ""
+              exit 1
+            fi
+          else
+            echo "✓ All required secrets and resources are present"
+            echo "audit:all_required_secrets_present=true"
+          fi
 
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -140,12 +231,18 @@ jobs:
           echo "next=$NEXT" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
+      - name: Dry-run mode notice
+        if: steps.dry_run.outputs.dryRun == 'true'
+        run: |
+          echo "DRY RUN ENABLED: skipping tag/push/deploy; running validation only."
+
       - name: Prepare Release Notes
         run: |
           chmod +x scripts/prepare-release.sh
-          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"    
+          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"
 
       - name: Write Maven settings
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mkdir -p ~/.m2
           printf '%s\n' \
@@ -161,6 +258,7 @@ jobs:
           echo "settings.xml created"
 
       - name: Write Maven security settings
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
@@ -183,11 +281,13 @@ jobs:
       #  APPLY RELEASE VERSION
       # -------------------------------------------------------------------
       - name: Prepare Release Version
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.release }}
           mvn -B versions:commit
 
       - name: Commit Release Version
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -195,6 +295,7 @@ jobs:
           git commit -am "Release ${{ steps.versions.outputs.release }}"
 
       - name: Ensure tag does not already exist
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           tag="${{ steps.versions.outputs.release }}"
           if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
@@ -203,9 +304,11 @@ jobs:
           fi
 
       - name: Tag Release
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: git tag -a ${{ steps.versions.outputs.release }} -m "Release ${{ steps.versions.outputs.release }}"
 
       - name: Ensure branch is still fast-forwardable before deploy
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
           RELEASE_BRANCH: ${{ github.ref_name }}
@@ -226,6 +329,7 @@ jobs:
           fi
 
       - name: Configure GPG for signing
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -241,6 +345,7 @@ jobs:
           echo "gpg.conf and gpg-agent.conf created"
 
       - name: Deploy Release to Maven Central
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -250,16 +355,32 @@ jobs:
       #  APPLY NEXT SNAPSHOT VERSION
       # -------------------------------------------------------------------
       - name: Prepare Next Development Version
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.next }}
           mvn -B versions:commit
 
       - name: Commit Next Snapshot
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
       - name: Push Changes Using PAT
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
-          PAT: ${{ secrets.GH_PAT }}
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
         run: |
-          git push https://$PAT@github.com/${{ github.repository }} --follow-tags
+          git push https://$GH_TA4J_REPO_TOKEN@github.com/${{ github.repository }} --follow-tags
+
+      - name: Release decision summary
+        if: always()
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          RELEASE: ${{ steps.versions.outputs.release }}
+          NEXT: ${{ steps.versions.outputs.next }}
+          CURRENT: ${{ steps.versions.outputs.current }}
+        run: |
+          echo "summary: dryRun=${DRY_RUN:-}"
+          echo "summary: release=${RELEASE:-}"
+          echo "summary: current=${CURRENT:-}"
+          echo "summary: next=${NEXT:-}"

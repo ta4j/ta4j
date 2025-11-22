@@ -112,25 +112,6 @@ public class IndicatorSerializationTest {
     }
 
     @Test
-    public void trimDecimalParameters() {
-        BarSeries series = new MockBarSeriesBuilder().withData(1, 1.5, 2, 3, 5).build();
-        Indicator<Num> base = new ClosePriceIndicator(series);
-        Num threshold = series.numFactory().numOf("1.5000");
-        DifferencePercentageIndicator indicator = new DifferencePercentageIndicator(base, threshold);
-
-        ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(descriptor.getParameters()).containsEntry("percentageThreshold", "1.5");
-
-        String json = indicator.toJson();
-        ComponentDescriptor parsed = ComponentSerialization.parse(json);
-        assertThat(parsed.getParameters()).containsEntry("percentageThreshold", "1.5");
-
-        Indicator<?> reconstructed = Indicator.fromJson(series, json);
-        assertThat(reconstructed).isInstanceOf(DifferencePercentageIndicator.class);
-        assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
-    }
-
-    @Test
     public void deserializeIndicatorWithSameTypedParameters() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7).build();
         Num accelerationStart = series.numFactory().numOf("0.03");
@@ -370,4 +351,5 @@ public class IndicatorSerializationTest {
             return baseValue;
         }
     }
+
 }

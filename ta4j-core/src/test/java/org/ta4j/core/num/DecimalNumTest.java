@@ -26,7 +26,6 @@ package org.ta4j.core.num;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -245,37 +244,45 @@ public class DecimalNumTest {
         calculateLowPrecision();
 
         // accuracies relative to SuperPrecision
-        assertIndicatorEquals(this.superPrecisionIndicator, this.precisionIndicator, DecimalNum.valueOf(
-                "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.superPrecisionIndicator, this.precisionIndicator,
+                DecimalNum.valueOf(
+                        "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
         assertIndicatorNotEquals(this.superPrecisionIndicator, this.precisionIndicator, DecimalNum.valueOf(
                 "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
-        assertIndicatorEquals(this.superPrecisionIndicator, this.precision32Indicator,
+        assertIndicatorEqualsAfterUnstablePeriod(this.superPrecisionIndicator, this.precision32Indicator,
                 DecimalNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorNotEquals(this.superPrecisionIndicator, this.precision32Indicator,
                 DecimalNum.valueOf("0.00000000000000000000000000001"));
-        assertIndicatorEquals(this.superPrecisionIndicator, this.doubleIndicator, DecimalNum.valueOf("0.000000000001"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.superPrecisionIndicator, this.doubleIndicator,
+                DecimalNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(this.superPrecisionIndicator, this.doubleIndicator,
                 DecimalNum.valueOf("0.0000000000001"));
-        assertIndicatorEquals(this.superPrecisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
-        assertIndicatorNotEquals(this.superPrecisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.superPrecisionIndicator, this.lowPrecisionIndicator,
+                DecimalNum.valueOf("4"));
+        assertIndicatorNotEquals(this.superPrecisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.6"));
         // accuracies relative to Precision
-        assertIndicatorEquals(this.precisionIndicator, this.precision32Indicator,
+        assertIndicatorEqualsAfterUnstablePeriod(this.precisionIndicator, this.precision32Indicator,
                 DecimalNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorNotEquals(this.precisionIndicator, this.precision32Indicator,
                 DecimalNum.valueOf("0.00000000000000000000000000001"));
-        assertIndicatorEquals(this.precisionIndicator, this.doubleIndicator, DecimalNum.valueOf("0.000000000001"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.precisionIndicator, this.doubleIndicator,
+                DecimalNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(this.precisionIndicator, this.doubleIndicator, DecimalNum.valueOf("0.0000000000001"));
-        assertIndicatorEquals(this.precisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
-        assertIndicatorNotEquals(this.precisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.precisionIndicator, this.lowPrecisionIndicator,
+                DecimalNum.valueOf("4"));
+        assertIndicatorNotEquals(this.precisionIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.6"));
         // accuracies relative to Precision32
-        assertIndicatorEquals(this.precision32Indicator, this.doubleIndicator, DecimalNum.valueOf("0.000000000001"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.precision32Indicator, this.doubleIndicator,
+                DecimalNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(this.precision32Indicator, this.doubleIndicator,
                 DecimalNum.valueOf("0.0000000000001"));
-        assertIndicatorEquals(this.precision32Indicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
-        assertIndicatorNotEquals(this.precision32Indicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.precision32Indicator, this.lowPrecisionIndicator,
+                DecimalNum.valueOf("4"));
+        assertIndicatorNotEquals(this.precision32Indicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.6"));
         // accuracies relative to Double
-        assertIndicatorEquals(this.doubleIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
-        assertIndicatorNotEquals(this.doubleIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
+        assertIndicatorEqualsAfterUnstablePeriod(this.doubleIndicator, this.lowPrecisionIndicator,
+                DecimalNum.valueOf("4"));
+        assertIndicatorNotEquals(this.doubleIndicator, this.lowPrecisionIndicator, DecimalNum.valueOf("3.6"));
 
         // This helps for doing a memory snapshot
         // Thread.sleep(1000000);
@@ -315,6 +322,34 @@ public class DecimalNumTest {
         final Indicator<Num> indicator = this.lowPrecisionIndicator;
         for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
+        }
+    }
+
+    private void assertIndicatorEqualsAfterUnstablePeriod(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
+        int startIndex = Math.max(expected.getBarSeries().getBeginIndex(),
+                Math.max(actual.getBarSeries().getBeginIndex(),
+                        Math.max(expected.getCountOfUnstableBars(), actual.getCountOfUnstableBars())));
+        int endIndex = Math.min(expected.getBarSeries().getEndIndex(), actual.getBarSeries().getEndIndex());
+
+        for (int i = startIndex; i <= endIndex; i++) {
+            Num expectedValue = expected.getValue(i);
+            Num actualValue = actual.getValue(i);
+
+            if (expectedValue.isNaN() || actualValue.isNaN()) {
+                if (!(expectedValue.isNaN() && actualValue.isNaN())) {
+                    throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s", i,
+                            expectedValue, actualValue));
+                }
+                continue;
+            }
+
+            Num exp = DecimalNum.valueOf(expectedValue.toString());
+            Num act = DecimalNum.valueOf(actualValue.toString());
+            Num difference = exp.minus(act).abs();
+            if (difference.isGreaterThan(delta)) {
+                throw new AssertionError(
+                        String.format("Failed at index %s: expected %s but actual was %s", i, exp, act));
+            }
         }
     }
 

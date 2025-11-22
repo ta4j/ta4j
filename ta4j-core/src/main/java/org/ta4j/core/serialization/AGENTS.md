@@ -129,6 +129,11 @@ Search/replace all occurrences when changing schema.
 Test helper classes produce confusing FQNs.  
 Use simple names within `org.ta4j.core.rules`.
 
+### 8. Derived indicator caches
+- Prefer marking derived/cached indicator fields (e.g., helper EMAs) as `transient` so they are skipped automatically by reflection. Persist the logical source indicators instead so descriptors stay faithful to the constructor shape.
+- **Avoid `IGNORED_CHILD_INDICATORS` / `IGNORED_CHILD_FIELDS` unless absolutely required.** Those sets mask serialization bugs and should only be touched after exhausting structural fixes (transient fields, refactoring constructors, etc.).
+- If you truly need to add an entry to either ignore set, call it out explicitly to the user/reviewer and add a `TODO` explaining why the field is currently ignored and what work is needed to remove the exception in the future.
+
 ## Testing
 
 **During development:** Run (from the project root):
