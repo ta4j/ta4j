@@ -36,10 +36,10 @@ import org.ta4j.core.num.Num;
 public class RunningTotalIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
-    private Num previousSum;
+    private transient Num previousSum;
 
     // serial access detection
-    private int previousIndex = -1;
+    private transient int previousIndex = -1;
 
     public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
