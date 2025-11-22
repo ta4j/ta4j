@@ -19,7 +19,7 @@ on:
     - cron: "0 9 */14 * *"  # every 14 days
   workflow_dispatch:
     inputs:
-      dry_run:
+      dryRun:
         description: "Simulate only; do NOT trigger release.yml"
         required: false
         default: false
@@ -37,7 +37,7 @@ jobs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
-      dry_run: ${{ steps.run_meta.outputs.dry_run }}
+      dryRun: ${{ steps.run_meta.outputs.dryRun }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -59,11 +59,11 @@ jobs:
           done <<< "$(git tag --sort=-v:refname)"
           echo "last=$last" >> $GITHUB_OUTPUT
 
-      - name: Capture event and dry-run flag
+      - name: Capture event and dry run flag
         id: run_meta
         env:
           EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
         run: |
           event="${EVENT_NAME:-}"
           raw="${DRY_RUN_INPUT:-}"
@@ -78,7 +78,7 @@ jobs:
           echo "audit:event_name=$event"
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
-          echo "dry_run=$dry_run" >> $GITHUB_OUTPUT
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
       - name: Collect diff since last release
         id: diff
@@ -170,13 +170,28 @@ jobs:
           echo "present=true" >> $GITHUB_OUTPUT
           echo "audit:models_token_present=true"
 
+      - name: Short-circuit when GH_MODELS_TOKEN missing
+        id: token_gate
+        if: steps.gate.outputs.proceed == 'true'
+        run: |
+          present="${{ steps.model_token.outputs.present }}"
+          present=${present:-false}
+
+          if [ "$present" = "true" ]; then
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            echo "audit:short_circuit_token=false"
+          else
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "audit:short_circuit_token=true reason=\"missing GH_MODELS_TOKEN\""
+          fi
+
       - name: No release - missing GH_MODELS_TOKEN
-        if: steps.gate.outputs.proceed == 'true' && steps.model_token.outputs.present != 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed != 'true'
         run: echo "GH_MODELS_TOKEN not provided; skipping release."
 
       - name: Ask AI for semantic version bump
         id: ai
-        if: steps.gate.outputs.proceed == 'true' && steps.model_token.outputs.present == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
         run: |
           set -euo pipefail
 
@@ -370,10 +385,11 @@ jobs:
         if: always()
         env:
           EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
-          DRY_RUN: ${{ steps.run_meta.outputs.dry_run }}
+          DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
+          DRY_RUN: ${{ steps.run_meta.outputs.dryRun }}
           PROCEED: ${{ steps.gate.outputs.proceed }}
           TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
+          TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -382,6 +398,7 @@ jobs:
           echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
           echo "decision:gate_proceed=${PROCEED:-}"
           echo "decision:token_present=${TOKEN_PRESENT:-}"
+          echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
           echo "decision:computed_version=${VERSION:-}"
@@ -418,7 +435,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ needs.analyze.outputs.version }}";
-            const dryRun = "${{ needs.analyze.outputs.dry_run }}";
+            const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
             console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
@@ -448,7 +465,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ needs.analyze.outputs.version }}";
-            const dryRun = "${{ needs.analyze.outputs.dry_run }}";
+            const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
             console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
@@ -462,12 +479,12 @@ jobs:
               }
             })
 
-  # Dry-run convenience job to show recommendation without dispatching (only when triggered via workflow_dispatch with dry_run=true)
+  # Dry-run convenience job to show recommendation without dispatching (only when triggered via workflow_dispatch with dryRun=true)
   dry_run_output:
     name: Dry-run output
     runs-on: ubuntu-latest
     needs: analyze
-    if: ${{ needs.analyze.outputs.dry_run == 'true' && needs.analyze.outputs.should_release == 'true' }}
+    if: ${{ needs.analyze.outputs.dryRun == 'true' && needs.analyze.outputs.should_release == 'true' }}
     steps:
       - name: Show dry-run results
         run: |

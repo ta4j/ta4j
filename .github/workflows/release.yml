@@ -35,7 +35,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Normalize dry-run input
+      - name: Normalize dry run input
         id: dry_run
         run: |
           raw="${{ github.event.inputs.dryRun }}"
@@ -49,7 +49,7 @@ jobs:
 
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
-          echo "dry_run=$dry_run" >> $GITHUB_OUTPUT
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -162,7 +162,7 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
       - name: Dry-run mode notice
-        if: steps.dry_run.outputs.dry_run == 'true'
+        if: steps.dry_run.outputs.dryRun == 'true'
         run: |
           echo "DRY RUN ENABLED: skipping tag/push/deploy; running validation only."
 
@@ -172,7 +172,7 @@ jobs:
           scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"    
 
       - name: Write Maven settings
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mkdir -p ~/.m2
           printf '%s\n' \
@@ -188,7 +188,7 @@ jobs:
           echo "settings.xml created"
 
       - name: Write Maven security settings
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
@@ -211,13 +211,13 @@ jobs:
       #  APPLY RELEASE VERSION
       # -------------------------------------------------------------------
       - name: Prepare Release Version
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.release }}
           mvn -B versions:commit
 
       - name: Commit Release Version
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -225,7 +225,7 @@ jobs:
           git commit -am "Release ${{ steps.versions.outputs.release }}"
 
       - name: Ensure tag does not already exist
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           tag="${{ steps.versions.outputs.release }}"
           if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
@@ -234,11 +234,11 @@ jobs:
           fi
 
       - name: Tag Release
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: git tag -a ${{ steps.versions.outputs.release }} -m "Release ${{ steps.versions.outputs.release }}"
 
       - name: Ensure branch is still fast-forwardable before deploy
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
           RELEASE_BRANCH: ${{ github.ref_name }}
@@ -259,7 +259,7 @@ jobs:
           fi
 
       - name: Configure GPG for signing
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -275,7 +275,7 @@ jobs:
           echo "gpg.conf and gpg-agent.conf created"
 
       - name: Deploy Release to Maven Central
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -285,18 +285,18 @@ jobs:
       #  APPLY NEXT SNAPSHOT VERSION
       # -------------------------------------------------------------------
       - name: Prepare Next Development Version
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.next }}
           mvn -B versions:commit
 
       - name: Commit Next Snapshot
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
       - name: Push Changes Using PAT
-        if: steps.dry_run.outputs.dry_run != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           PAT: ${{ secrets.GH_PAT }}
         run: |
@@ -305,12 +305,12 @@ jobs:
       - name: Release decision summary
         if: always()
         env:
-          DRY_RUN: ${{ steps.dry_run.outputs.dry_run }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
           RELEASE: ${{ steps.versions.outputs.release }}
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
         run: |
-          echo "summary: dry_run=${DRY_RUN:-}"
+          echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: release=${RELEASE:-}"
           echo "summary: next=${NEXT:-}"
           echo "summary: current=${CURRENT:-}"
