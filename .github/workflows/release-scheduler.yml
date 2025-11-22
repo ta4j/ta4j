@@ -12,7 +12,7 @@ name: AI Semantic Release Scheduler
 
 concurrency:
   group: semantic-release-ai-${{ github.repository }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   schedule:
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       dryRun:
-        description: "Simulate only; do NOT trigger release.yml"
+        description: "Simulate only; trigger release.yml with dryRun=true"
         required: false
         default: false
         type: boolean
