@@ -38,33 +38,33 @@ import org.ta4j.core.num.NumFactory;
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
  * <p>
- * Once a new pivot is confirmed, values are backfilled along the line
- * connecting the two most recent pivots so historical points align with the
- * straight trend line between swing points.
+ * Once a new swing point is confirmed, values are backfilled along the line
+ * connecting the two most recent swing points so historical points align with
+ * the straight trend line between swing points.
  *
  * @since 0.20
  */
 public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
-    private static final class Pivot {
+    private static final class SwingPoint {
         private final int index;
         private final int confirmationIndex;
 
-        private Pivot(int index, int confirmationIndex) {
+        private SwingPoint(int index, int confirmationIndex) {
             this.index = index;
             this.confirmationIndex = confirmationIndex;
         }
     }
 
     private final Indicator<Num> priceIndicator;
-    private final List<Pivot> pivots = new ArrayList<>();
+    private final List<SwingPoint> swingPoints = new ArrayList<>();
     private final int unstableBars;
     private transient int lastScannedIndex = Integer.MIN_VALUE;
 
     /**
      * Constructor.
      *
-     * @param priceIndicator the indicator that supplies the pivot values
+     * @param priceIndicator the indicator that supplies the swing point values
      * @param unstableBars   number of bars regarded as unstable by the indicator
      * @since 0.20
      */
@@ -84,30 +84,34 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return NaN;
         }
-        updatePivotCache(getBarSeries().getEndIndex());
-        final PivotPair pair = findPivotPairForIndex(index);
+        updateSwingPointCache(getBarSeries().getEndIndex());
+        final int beginIndex = getBarSeries().getBeginIndex();
+        final SwingPointPair pair = findSwingPointPairForIndex(index);
         if (pair == null) {
             return NaN;
         }
-        final int firstPivotIndex = pair.previous.index;
-        final int secondPivotIndex = pair.recent.index;
-        if (firstPivotIndex == secondPivotIndex) {
+        final int firstSwingPointIndex = pair.previous.index;
+        final int secondSwingPointIndex = pair.recent.index;
+        if (firstSwingPointIndex < beginIndex || secondSwingPointIndex < beginIndex) {
             return NaN;
         }
-        final Num firstValue = priceIndicator.getValue(firstPivotIndex);
-        final Num secondValue = priceIndicator.getValue(secondPivotIndex);
+        if (firstSwingPointIndex == secondSwingPointIndex) {
+            return NaN;
+        }
+        final Num firstValue = priceIndicator.getValue(firstSwingPointIndex);
+        final Num secondValue = priceIndicator.getValue(secondSwingPointIndex);
         if (firstValue.isNaN() || secondValue.isNaN()) {
             return NaN;
         }
-        if (index == firstPivotIndex) {
+        if (index == firstSwingPointIndex) {
             return firstValue;
         }
-        if (index == secondPivotIndex) {
+        if (index == secondSwingPointIndex) {
             return secondValue;
         }
         final NumFactory numFactory = getBarSeries().numFactory();
-        final Num x1 = numFactory.numOf(firstPivotIndex);
-        final Num x2 = numFactory.numOf(secondPivotIndex);
+        final Num x1 = numFactory.numOf(firstSwingPointIndex);
+        final Num x2 = numFactory.numOf(secondSwingPointIndex);
         final Num denominator = x2.minus(x1);
         if (denominator.isNaN() || denominator.isZero()) {
             return NaN;
@@ -124,15 +128,15 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return projection.isNaN() ? NaN : projection;
     }
 
-    private void updatePivotCache(int index) {
+    private void updateSwingPointCache(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
-        if (!pivots.isEmpty()) {
+        if (!swingPoints.isEmpty()) {
             int firstRetained = 0;
-            while (firstRetained < pivots.size() && pivots.get(firstRetained).index < beginIndex) {
+            while (firstRetained < swingPoints.size() && swingPoints.get(firstRetained).index < beginIndex) {
                 firstRetained++;
             }
             if (firstRetained > 0) {
-                pivots.subList(0, firstRetained).clear();
+                swingPoints.subList(0, firstRetained).clear();
             }
         }
         if (lastScannedIndex < beginIndex - 1) {
@@ -142,14 +146,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return;
         }
         for (int currentIndex = Math.max(beginIndex, lastScannedIndex + 1); currentIndex <= index; currentIndex++) {
-            final int latestPivot = getLatestPivotIndex(currentIndex);
-            if (latestPivot >= 0) {
-                if (pivots.isEmpty()) {
-                    pivots.add(new Pivot(latestPivot, currentIndex));
+            final int latestSwingPoint = getLatestSwingPointIndex(currentIndex);
+            if (latestSwingPoint >= 0) {
+                if (swingPoints.isEmpty()) {
+                    swingPoints.add(new SwingPoint(latestSwingPoint, currentIndex));
                 } else {
-                    final Pivot lastPivot = pivots.get(pivots.size() - 1);
-                    if (latestPivot > lastPivot.index) {
-                        pivots.add(new Pivot(latestPivot, currentIndex));
+                    final SwingPoint lastSwingPoint = swingPoints.get(swingPoints.size() - 1);
+                    if (latestSwingPoint > lastSwingPoint.index) {
+                        swingPoints.add(new SwingPoint(latestSwingPoint, currentIndex));
                     }
                 }
             }
@@ -157,51 +161,83 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         lastScannedIndex = index;
     }
 
-    private PivotPair findPivotPairForIndex(int index) {
-        if (pivots.size() < 2) {
+    private SwingPointPair findSwingPointPairForIndex(int index) {
+        if (swingPoints.size() < 2) {
             return null;
         }
-        Pivot lower = null;
-        Pivot upper = null;
-        for (Pivot pivot : pivots) {
-            if (pivot.index <= index) {
-                lower = pivot;
+        SwingPoint lower = null;
+        SwingPoint upper = null;
+        for (SwingPoint swingPoint : swingPoints) {
+            if (swingPoint.index <= index) {
+                lower = swingPoint;
                 continue;
             }
-            upper = pivot;
+            upper = swingPoint;
             break;
         }
         if (lower == null) {
             return null;
         }
         if (upper == null) {
-            lower = pivots.get(pivots.size() - 2);
-            upper = pivots.get(pivots.size() - 1);
+            lower = swingPoints.get(swingPoints.size() - 2);
+            upper = swingPoints.get(swingPoints.size() - 1);
         }
-        return new PivotPair(lower, upper);
+        return new SwingPointPair(lower, upper);
     }
 
-    protected abstract int getLatestPivotIndex(int index);
+    /**
+     * Returns the index of the most recent confirmed swing point that can be
+     * evaluated with the data available up to the given index.
+     *
+     * @param index the current evaluation index
+     * @return the index of the most recent swing point or {@code -1} if none can be
+     *         confirmed yet
+     * @since 0.20
+     */
+    protected abstract int getLatestSwingPointIndex(int index);
+
+    /**
+     * @deprecated Use {@link #getLatestSwingPointIndex(int)} instead. This method
+     *             will be removed in a future version.
+     */
+    @Deprecated
+    protected int getLatestPivotIndex(int index) {
+        return getLatestSwingPointIndex(index);
+    }
+
+    /**
+     * Returns the indexes of the confirmed swing points tracked by the indicator.
+     *
+     * @return an immutable list containing the swing point indexes in chronological
+     *         order
+     * @since 0.20
+     */
+    public List<Integer> getSwingPointIndexes() {
+        final List<Integer> result = new ArrayList<>(swingPoints.size());
+        for (SwingPoint swingPoint : swingPoints) {
+            result.add(swingPoint.index);
+        }
+        return Collections.unmodifiableList(result);
+    }
 
     /**
      * Returns the indexes of the confirmed pivot points tracked by the indicator.
      *
      * @return an immutable list containing the pivot indexes in chronological order
+     * @deprecated Use {@link #getSwingPointIndexes()} instead. This method will be
+     *             removed in a future version.
      * @since 0.20
      */
+    @Deprecated
     public List<Integer> getPivotIndexes() {
-        final List<Integer> result = new ArrayList<>(pivots.size());
-        for (Pivot pivot : pivots) {
-            result.add(pivot.index);
-        }
-        return Collections.unmodifiableList(result);
+        return getSwingPointIndexes();
     }
 
-    private static final class PivotPair {
-        private final Pivot previous;
-        private final Pivot recent;
+    private static final class SwingPointPair {
+        private final SwingPoint previous;
+        private final SwingPoint recent;
 
-        private PivotPair(Pivot previous, Pivot recent) {
+        private SwingPointPair(SwingPoint previous, SwingPoint recent) {
             this.previous = previous;
             this.recent = recent;
         }

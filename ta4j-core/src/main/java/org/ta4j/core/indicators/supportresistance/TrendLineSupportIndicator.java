@@ -107,7 +107,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
     }
 
     @Override
-    protected int getLatestPivotIndex(int index) {
+    protected int getLatestSwingPointIndex(int index) {
         return swingLowIndicator.getLatestSwingIndex(index);
     }
 }

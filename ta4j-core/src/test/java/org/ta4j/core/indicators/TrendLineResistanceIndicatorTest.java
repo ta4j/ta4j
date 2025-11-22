@@ -355,6 +355,131 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getPivotIndexes()).isNotNull();
     }
 
+    @Test
+    public void shouldReturnNaNWhenAccessingValuesThatWouldUseRemovedPivots() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final var highIndicator = new HighPriceIndicator(series);
+        final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
+
+        // Build up enough data to create pivots and establish a trend line
+        final double[] initialHighs = { 12, 13, 15, 14, 16, 17, 15, 14, 18, 16, 15 };
+        for (double high : initialHighs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+
+        // Access values to populate cache and establish trend line
+        final int endIndexBeforePurge = series.getEndIndex();
+        indicator.getValue(endIndexBeforePurge);
+        final var pivotIndexesBeforePurge = indicator.getPivotIndexes();
+        assertThat(pivotIndexesBeforePurge.size()).isGreaterThanOrEqualTo(2);
+
+        // Store a value that would have used the first pivot
+        final int firstPivotIndex = pivotIndexesBeforePurge.get(0);
+        final int secondPivotIndex = pivotIndexesBeforePurge.get(1);
+        final int middleIndex = (firstPivotIndex + secondPivotIndex) / 2;
+        final var valueBeforePurge = indicator.getValue(middleIndex);
+        assertThat(valueBeforePurge.isNaN()).isFalse();
+
+        // Remove leading bars, which should purge the first pivot
+        series.setMaximumBarCount(5);
+        final int beginIndexAfterPurge = series.getBeginIndex();
+        assertThat(beginIndexAfterPurge).isGreaterThan(firstPivotIndex);
+
+        // Verify pivots were purged - check after accessing to trigger purge
+        indicator.getValue(series.getEndIndex());
+        final var pivotIndexesAfterPurge = indicator.getPivotIndexes();
+        assertThat(pivotIndexesAfterPurge).allMatch(pivotIndex -> pivotIndex >= beginIndexAfterPurge);
+
+        // Accessing the same middle index should now return NaN because the first pivot
+        // was removed
+        // This tests the defensive check that prevents IndexOutOfBoundsException
+        final var valueAfterPurge = indicator.getValue(middleIndex);
+        assertThat(valueAfterPurge.isNaN()).as("Value should be NaN when pivot pair would include a removed pivot")
+                .isTrue();
+
+        // Accessing current valid indices should still work
+        assertThat(indicator.getValue(series.getEndIndex())).isNotNull();
+    }
+
+    @Test
+    public void shouldHandleRapidBarRemovalWithoutThrowingException() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final var highIndicator = new HighPriceIndicator(series);
+        final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
+
+        // Build up data with multiple pivots
+        final double[] highs = { 12, 13, 15, 14, 16, 17, 15, 14, 18, 16, 15, 17, 19, 16, 18, 17, 19 };
+        for (double high : highs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+
+        // Access values to populate cache
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            indicator.getValue(i);
+        }
+
+        // Rapidly remove bars multiple times
+        series.setMaximumBarCount(10);
+        final int beginIndex1 = series.getBeginIndex();
+        indicator.getValue(series.getEndIndex()); // Trigger purge
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex1);
+
+        series.setMaximumBarCount(7);
+        final int beginIndex2 = series.getBeginIndex();
+        assertThat(beginIndex2).isGreaterThan(beginIndex1);
+        indicator.getValue(series.getEndIndex()); // Trigger purge
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex2);
+
+        series.setMaximumBarCount(4);
+        final int beginIndex3 = series.getBeginIndex();
+        assertThat(beginIndex3).isGreaterThan(beginIndex2);
+        indicator.getValue(series.getEndIndex()); // Trigger purge
+        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex3);
+
+        // Access all remaining indices - should not throw IndexOutOfBoundsException
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final var value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+    }
+
+    @Test
+    public void shouldPurgePivotsWhenAllButOnePivotIsRemoved() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final var highIndicator = new HighPriceIndicator(series);
+        final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0);
+
+        // Create two clear pivots
+        final double[] highs = { 12, 13, 15, 14, 16, 17, 15, 14 };
+        for (double high : highs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+
+        // Verify we have at least 2 pivots
+        indicator.getValue(series.getEndIndex());
+        final var initialPivots = indicator.getPivotIndexes();
+        assertThat(initialPivots.size()).isGreaterThanOrEqualTo(2);
+
+        // Remove bars aggressively so only the last pivot remains
+        series.setMaximumBarCount(2);
+        final int beginIndex = series.getBeginIndex();
+
+        // Access end index - should return NaN because we need 2 pivots for projection
+        final var value = indicator.getValue(series.getEndIndex());
+        assertThat(value.isNaN()).as("Should return NaN when only one pivot remains").isTrue();
+
+        // Verify only valid pivots remain
+        final var remainingPivots = indicator.getPivotIndexes();
+        assertThat(remainingPivots).allMatch(pivotIndex -> pivotIndex >= beginIndex);
+        assertThat(remainingPivots.size()).isLessThanOrEqualTo(1);
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
