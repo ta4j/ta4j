@@ -23,22 +23,20 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
-import org.ta4j.core.indicators.RecentSwingHighIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
-import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -58,7 +56,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
         // Swing high at index 5 needs to be confirmed at index 6 (followingLowerBars=1)
         indicator.getValue(6); // Discover swing point at index 5
-        assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(2, 5);
         // Verify swing point value is returned at the swing point index
         assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
 
@@ -91,7 +89,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         indicator.getValue(4);
 
         final var numFactory = series.numFactory();
-        final var pivotIndexes = indicator.getPivotIndexes();
+        final var pivotIndexes = indicator.getSwingPointIndexes();
         assertThat(pivotIndexes).hasSize(3);
         assertThat(pivotIndexes).containsExactly(1, 3, 5);
 
@@ -122,7 +120,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         assertThat(valueAtSeven.isNaN()).isFalse();
         assertThat(valueAtEight.isNaN()).isFalse();
-        assertThat(indicator.getPivotIndexes()).containsExactly(2, 6);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(2, 6);
 
         final var numFactory = series.numFactory();
         final var x1 = numFactory.numOf(2);
@@ -153,7 +151,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         final int beginAfterPurging = series.getBeginIndex();
         assertThat(beginAfterPurging).isGreaterThan(0);
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginAfterPurging);
+        assertThat(indicator.getSwingPointIndexes()).allMatch(pivotIndex -> pivotIndex >= beginAfterPurging);
         assertThat(indicator.getValue(series.getEndIndex()).isNaN())
                 .as("only one pivot remains so projection should be NaN")
                 .isTrue();
@@ -167,8 +165,8 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         final int finalBeginIndex = series.getBeginIndex();
         assertThat(finalBeginIndex).isGreaterThan(beginAfterPurging);
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= finalBeginIndex);
-        assertThat(indicator.getPivotIndexes()).containsExactly(11, 13);
+        assertThat(indicator.getSwingPointIndexes()).allMatch(pivotIndex -> pivotIndex >= finalBeginIndex);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(11, 13);
         assertThat(indicator.getValue(series.getEndIndex()).isNaN()).isFalse();
     }
 
@@ -275,7 +273,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(2)).isEqualByComparingTo(highIndicator.getValue(2));
         // Swing high at index 5 needs to be confirmed at index 6 (followingLowerBars=1)
         indicator.getValue(6); // Discover swing point at index 5
-        assertThat(indicator.getPivotIndexes()).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(2, 5);
         // Verify swing point value is returned at the swing point index
         assertThat(indicator.getValue(5)).isEqualByComparingTo(highIndicator.getValue(5));
 
@@ -296,7 +294,8 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
     public void shouldWorkWithZigZagSwingHighIndicatorConstructor() {
         final var series = seriesFromHighs(12, 13, 15, 14, 16, 17, 15, 14, 18, 16, 15);
         final var highIndicator = new HighPriceIndicator(series);
-        final var stateIndicator = new ZigZagStateIndicator(highIndicator, new ATRIndicator(series, 14));
+        final var reversalThreshold = new ConstantIndicator<>(series, series.numFactory().numOf(2.0));
+        final var stateIndicator = new ZigZagStateIndicator(highIndicator, reversalThreshold);
         final var swingHighIndicator = new RecentZigZagSwingHighIndicator(stateIndicator, highIndicator);
         final var indicator = new TrendLineResistanceIndicator(swingHighIndicator, 0, 0);
 
@@ -306,11 +305,11 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         }
 
         // Verify it works with ZigZag implementation
-        assertThat(indicator.getPivotIndexes()).isNotEmpty();
+        assertThat(indicator.getSwingPointIndexes()).isNotEmpty();
         // The exact pivots depend on ZigZag state, but we should have at least one
         // pivot
         // if there are enough bars
-        if (indicator.getPivotIndexes().size() >= 2) {
+        if (indicator.getSwingPointIndexes().size() >= 2) {
             final int lastIndex = series.getEndIndex();
             final var value = indicator.getValue(lastIndex);
             // If we have 2+ pivots, we should get a projection (not NaN)
@@ -338,7 +337,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         }
 
         // The trend line should use the same price values as the high indicator
-        final var pivotIndexes = indicator.getPivotIndexes();
+        final var pivotIndexes = indicator.getSwingPointIndexes();
         if (pivotIndexes.size() >= 2) {
             final int pivot1 = pivotIndexes.get(0);
             final int pivot2 = pivotIndexes.get(1);
@@ -355,7 +354,8 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
     public void shouldExtractPriceIndicatorCorrectlyFromZigZagSwingHigh() {
         final var series = seriesFromHighs(12, 13, 15, 14, 16, 17, 15, 14, 18, 16, 15);
         final var highIndicator = new HighPriceIndicator(series);
-        final var stateIndicator = new ZigZagStateIndicator(highIndicator, new ATRIndicator(series, 14));
+        final var reversalThreshold = new ConstantIndicator<>(series, series.numFactory().numOf(2.0));
+        final var stateIndicator = new ZigZagStateIndicator(highIndicator, reversalThreshold);
         final var swingHighIndicator = new RecentZigZagSwingHighIndicator(stateIndicator, highIndicator);
 
         // Verify getPriceIndicator returns the correct indicator
@@ -369,7 +369,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         }
 
         // Should not throw and should produce valid results
-        assertThat(indicator.getPivotIndexes()).isNotNull();
+        assertThat(indicator.getSwingPointIndexes()).isNotNull();
     }
 
     @Test
@@ -389,7 +389,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         // Access values to populate cache and establish trend line
         final int endIndexBeforePurge = series.getEndIndex();
         indicator.getValue(endIndexBeforePurge);
-        final var pivotIndexesBeforePurge = indicator.getPivotIndexes();
+        final var pivotIndexesBeforePurge = indicator.getSwingPointIndexes();
         assertThat(pivotIndexesBeforePurge.size()).isGreaterThanOrEqualTo(2);
 
         // Store a value that would have used the first pivot
@@ -406,7 +406,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         // Verify pivots were purged - check after accessing to trigger purge
         indicator.getValue(series.getEndIndex());
-        final var pivotIndexesAfterPurge = indicator.getPivotIndexes();
+        final var pivotIndexesAfterPurge = indicator.getSwingPointIndexes();
         assertThat(pivotIndexesAfterPurge).allMatch(pivotIndex -> pivotIndex >= beginIndexAfterPurge);
 
         // Accessing the same middle index should now return NaN because the first pivot
@@ -443,19 +443,19 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         series.setMaximumBarCount(10);
         final int beginIndex1 = series.getBeginIndex();
         indicator.getValue(series.getEndIndex()); // Trigger purge
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex1);
+        assertThat(indicator.getSwingPointIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex1);
 
         series.setMaximumBarCount(7);
         final int beginIndex2 = series.getBeginIndex();
         assertThat(beginIndex2).isGreaterThan(beginIndex1);
         indicator.getValue(series.getEndIndex()); // Trigger purge
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex2);
+        assertThat(indicator.getSwingPointIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex2);
 
         series.setMaximumBarCount(4);
         final int beginIndex3 = series.getBeginIndex();
         assertThat(beginIndex3).isGreaterThan(beginIndex2);
         indicator.getValue(series.getEndIndex()); // Trigger purge
-        assertThat(indicator.getPivotIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex3);
+        assertThat(indicator.getSwingPointIndexes()).allMatch(pivotIndex -> pivotIndex >= beginIndex3);
 
         // Access all remaining indices - should not throw IndexOutOfBoundsException
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
@@ -480,7 +480,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         // Verify we have at least 2 pivots
         indicator.getValue(series.getEndIndex());
-        final var initialPivots = indicator.getPivotIndexes();
+        final var initialPivots = indicator.getSwingPointIndexes();
         assertThat(initialPivots.size()).isGreaterThanOrEqualTo(2);
 
         // Remove bars aggressively so only the last pivot remains
@@ -492,7 +492,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(value.isNaN()).as("Should return NaN when only one pivot remains").isTrue();
 
         // Verify only valid pivots remain
-        final var remainingPivots = indicator.getPivotIndexes();
+        final var remainingPivots = indicator.getSwingPointIndexes();
         assertThat(remainingPivots).allMatch(pivotIndex -> pivotIndex >= beginIndex);
         assertThat(remainingPivots.size()).isLessThanOrEqualTo(1);
     }
