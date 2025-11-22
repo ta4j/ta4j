@@ -16,6 +16,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
 - **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
 - **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.
+### Added
+- **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
 
 ## 0.19 (released November 19, 2025)
 
