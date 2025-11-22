@@ -192,7 +192,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Set up Java
+      - name: Set up Java (dry-run without publishing secrets)
+        if: steps.dry_run.outputs.dryRun == 'true' && steps.collect_missing.outputs.has_missing == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Set up Java with publishing secrets
+        if: steps.dry_run.outputs.dryRun != 'true' || steps.collect_missing.outputs.has_missing != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
