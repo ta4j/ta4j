@@ -25,13 +25,11 @@ package org.ta4j.core.indicators.zigzag;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.RecentSwingLowIndicator;
+import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Recent ZigZag Swing Low Indicator.
@@ -65,7 +63,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Low</a>
  * @since 0.20
  */
-public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> implements RecentSwingLowIndicator {
+public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
     private final Indicator<Num> price;
@@ -82,7 +80,7 @@ public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> implemen
      *                       {@code ClosePriceIndicator})
      */
     public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
-        super(price);
+        super(price, 0);
         this.stateIndicator = stateIndicator;
         this.price = price;
     }
@@ -90,16 +88,6 @@ public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> implemen
     public RecentZigZagSwingLowIndicator(BarSeries series) {
         this(new ZigZagStateIndicator(new LowPriceIndicator(series), new ATRIndicator(series, 14)),
                 new LowPriceIndicator(series));
-    }
-
-    @Override
-    protected Num calculate(int index) {
-        ZigZagState state = stateIndicator.getValue(index);
-        int lowIndex = state.getLastLowIndex();
-        if (lowIndex < 0) {
-            return NaN;
-        }
-        return price.getValue(lowIndex);
     }
 
     /**
@@ -111,29 +99,17 @@ public class RecentZigZagSwingLowIndicator extends CachedIndicator<Num> implemen
      *         swing low has been confirmed yet
      */
     public int getLatestSwingLowIndex(int index) {
-        return stateIndicator.getValue(index).getLastLowIndex();
-    }
-
-    /**
-     * Returns the index of the most recent confirmed swing low as of the given
-     * index. This method implements the {@link RecentSwingLowIndicator} interface.
-     *
-     * @param index the bar index to evaluate
-     * @return the index of the most recent confirmed swing low, or {@code -1} if no
-     *         swing low has been confirmed yet
-     */
-    @Override
-    public int getLatestSwingIndex(int index) {
-        return getLatestSwingLowIndex(index);
-    }
-
-    @Override
-    public int getCountOfUnstableBars() {
-        return 0;
+        return getLatestSwingIndex(index);
     }
 
     @Override
     public Indicator<Num> getPriceIndicator() {
         return price;
+    }
+
+    @Override
+    protected int detectLatestSwingIndex(int index) {
+        final ZigZagState state = stateIndicator.getValue(index);
+        return state.getLastLowIndex();
     }
 }

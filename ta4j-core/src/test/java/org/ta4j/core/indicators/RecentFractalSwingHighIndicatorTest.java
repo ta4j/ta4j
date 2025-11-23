@@ -132,6 +132,15 @@ public class RecentFractalSwingHighIndicatorTest extends AbstractIndicatorTest<I
         assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(-1);
     }
 
+    @Test
+    public void shouldExposeSwingPointIndexes() {
+        final var indicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 2, 2, 0);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(6)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(7)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(2, 5, 8, 11);
+    }
+
     private BarSeries createSeriesFromHighs(double... highs) {
         final var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double high : highs) {

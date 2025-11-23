@@ -28,8 +28,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 /**
  * Recent Fractal Swing High Indicator.
  * <p>
@@ -46,7 +44,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      High</a>
  * @since 0.20
  */
-public class RecentFractalSwingHighIndicator extends CachedIndicator<Num> implements RecentSwingHighIndicator {
+public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final Indicator<Num> indicator;
     private final int precedingLowerBars;
@@ -71,7 +69,7 @@ public class RecentFractalSwingHighIndicator extends CachedIndicator<Num> implem
      */
     public RecentFractalSwingHighIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
             int allowedEqualBars) {
-        super(indicator);
+        super(indicator, precedingLowerBars + followingLowerBars);
         if (precedingLowerBars < 1) {
             throw new IllegalArgumentException("precedingLowerBars must be greater than 0");
         }
@@ -109,23 +107,6 @@ public class RecentFractalSwingHighIndicator extends CachedIndicator<Num> implem
         this(series, 3);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
-            return NaN;
-        }
-        final int swingIndex = getLatestSwingIndex(index);
-        if (swingIndex < 0) {
-            return NaN;
-        }
-        return indicator.getValue(swingIndex);
-    }
-
-    @Override
-    public int getCountOfUnstableBars() {
-        return precedingLowerBars + followingLowerBars;
-    }
-
     /**
      * Returns the index of the most recent confirmed swing high that can be
      * evaluated with the data available up to {@code index}.
@@ -136,7 +117,7 @@ public class RecentFractalSwingHighIndicator extends CachedIndicator<Num> implem
      * @since 0.19
      */
     @Override
-    public int getLatestSwingIndex(int index) {
+    protected int detectLatestSwingIndex(int index) {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return -1;
         }

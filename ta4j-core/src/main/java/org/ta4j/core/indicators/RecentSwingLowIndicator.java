@@ -23,38 +23,25 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.num.Num;
-
 /**
  * Interface for indicators that identify the most recently confirmed swing low.
  * <p>
  * A swing low is a price point that is lower than the surrounding price points.
  * Different implementations may use different algorithms to identify swing lows
  * (e.g., fractal-based window detection, ZigZag pattern detection).
+ * <p>
+ * This interface extends {@link RecentSwingIndicator} for backward
+ * compatibility and type clarity. New code should use
+ * {@link RecentSwingIndicator} directly.
  *
+ * @see RecentSwingIndicator
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/swinglow.asp">Investopedia: Swing
  *      Low</a>
  * @since 0.20
+ * @deprecated Use {@link RecentSwingIndicator} instead. This interface will be
+ *             removed in a future version.
  */
-public interface RecentSwingLowIndicator extends Indicator<Num> {
-
-    /**
-     * Returns the index of the most recent confirmed swing low that can be
-     * evaluated with the data available up to {@code index}.
-     *
-     * @param index the current evaluation index
-     * @return the index of the most recent swing low or {@code -1} if none can be
-     *         confirmed yet
-     */
-    int getLatestSwingIndex(int index);
-
-    /**
-     * Returns the underlying price indicator used by this swing low indicator to
-     * retrieve price values at pivot indices.
-     *
-     * @return the price indicator that supplies the values at pivot indices
-     */
-    Indicator<Num> getPriceIndicator();
+@Deprecated
+public interface RecentSwingLowIndicator extends RecentSwingIndicator {
 }

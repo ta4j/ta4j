@@ -1,0 +1,87 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.indicators;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.num.NaN.NaN;
+
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.util.Arrays;
+
+public class SwingPointMarkerIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public SwingPointMarkerIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
+    }
+
+    @Test
+    public void shouldReturnPriceOnlyAtSwingIndexes() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };
+        final var swingIndicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+        final var markerIndicator = new SwingPointMarkerIndicator(series, swingIndicator);
+
+        assertThat(markerIndicator.getSwingPointIndexes()).containsExactlyInAnyOrder(2, 5);
+        assertThat(markerIndicator.getValue(2)).isEqualByComparingTo(numOf(3));
+        assertThat(markerIndicator.getValue(3)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(5)).isEqualByComparingTo(numOf(6));
+        assertThat(markerIndicator.getValue(6)).isEqualByComparingTo(NaN);
+    }
+
+    private BarSeries seriesFromCloses(double... closes) {
+        final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (double close : closes) {
+            seriesBuilder.barBuilder().openPrice(close).closePrice(close).highPrice(close).lowPrice(close).add();
+        }
+        return seriesBuilder;
+    }
+
+    private static final class FixedSwingIndicator extends AbstractRecentSwingIndicator {
+
+        private final int[] latestSwingIndexes;
+
+        private FixedSwingIndicator(Indicator<Num> priceIndicator, int[] latestSwingIndexes) {
+            super(priceIndicator, 0);
+            this.latestSwingIndexes = Arrays.copyOf(latestSwingIndexes, latestSwingIndexes.length);
+        }
+
+        @Override
+        protected int detectLatestSwingIndex(int index) {
+            if (index < 0) {
+                return -1;
+            }
+            if (index >= latestSwingIndexes.length) {
+                return latestSwingIndexes[latestSwingIndexes.length - 1];
+            }
+            return latestSwingIndexes[index];
+        }
+    }
+}

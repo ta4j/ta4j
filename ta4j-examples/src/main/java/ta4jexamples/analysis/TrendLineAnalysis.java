@@ -24,8 +24,6 @@
 package ta4jexamples.analysis;
 
 import java.awt.Color;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 
 import org.apache.logging.log4j.LogManager;
@@ -33,11 +31,10 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
-import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 import ta4jexamples.loaders.CsvBarsLoader;
 
 /**
@@ -109,22 +106,5 @@ public class TrendLineAnalysis {
 
         zigzagChartWorkflow.display(zigzagPlan);
         zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-support-resistance-trendlines");
-    }
-
-    /**
-     * Helper method to load a bar series from a JSON resource file.
-     *
-     * @param jsonResourceFile the name of the JSON resource file
-     * @return the loaded bar series, or null if loading fails
-     */
-    private static BarSeries loadJsonSeries(String jsonResourceFile) {
-        BarSeries series = null;
-        try (InputStream resourceStream = TrendLineAnalysis.class.getClassLoader()
-                .getResourceAsStream(jsonResourceFile)) {
-            series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
-        } catch (IOException ex) {
-            LOG.error("IOException while loading resource: {} - {}", jsonResourceFile, ex.getMessage());
-        }
-        return series;
     }
 }

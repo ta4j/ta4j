@@ -25,7 +25,7 @@ package org.ta4j.core.indicators.supportresistance;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecentSwingLowIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
@@ -44,8 +44,6 @@ import org.ta4j.core.num.Num;
  * @since 0.20
  */
 public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
-
-    private final RecentSwingLowIndicator swingLowIndicator;
 
     /**
      * Builds a support trend line from an arbitrary indicator that provides the
@@ -77,10 +75,9 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                                be strictly higher than a swing low
      * @since 0.20
      */
-    public TrendLineSupportIndicator(RecentSwingLowIndicator recentSwingLowIndicator, int precedingHigherBars,
+    public TrendLineSupportIndicator(RecentSwingIndicator recentSwingLowIndicator, int precedingHigherBars,
             int followingHigherBars) {
-        super(recentSwingLowIndicator.getPriceIndicator(), precedingHigherBars + followingHigherBars);
-        this.swingLowIndicator = recentSwingLowIndicator;
+        super(recentSwingLowIndicator, precedingHigherBars + followingHigherBars);
     }
 
     /**
@@ -104,10 +101,5 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineSupportIndicator(BarSeries series) {
         this(series, 3);
-    }
-
-    @Override
-    protected int getLatestSwingPointIndex(int index) {
-        return swingLowIndicator.getLatestSwingIndex(index);
     }
 }

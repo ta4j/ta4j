@@ -28,8 +28,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 /**
  * Recent Fractal Swing Low Indicator.
  * <p>
@@ -45,7 +43,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Low</a>
  * @since 0.20
  */
-public class RecentFractalSwingLowIndicator extends CachedIndicator<Num> implements RecentSwingLowIndicator {
+public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator {
 
     private final Indicator<Num> indicator;
     private final int precedingHigherBars;
@@ -73,7 +71,7 @@ public class RecentFractalSwingLowIndicator extends CachedIndicator<Num> impleme
      */
     public RecentFractalSwingLowIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
-        super(indicator);
+        super(indicator, precedingHigherBars + followingHigherBars);
         if (precedingHigherBars < 1) {
             throw new IllegalArgumentException("precedingHigherBars must be greater than 0");
         }
@@ -111,26 +109,6 @@ public class RecentFractalSwingLowIndicator extends CachedIndicator<Num> impleme
         this(series, 3);
     }
 
-    @Override
-    protected Num calculate(int index) {
-        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
-            return NaN;
-        }
-        final int swingIndex = getLatestSwingIndex(index);
-        if (swingIndex < 0) {
-            return NaN;
-        }
-        return indicator.getValue(swingIndex);
-    }
-
-    /**
-     * Returns the number of unstable bars determined by the surrounding windows.
-     */
-    @Override
-    public int getCountOfUnstableBars() {
-        return precedingHigherBars + followingHigherBars;
-    }
-
     /**
      * Returns the index of the most recent confirmed swing low that can be
      * evaluated with the data available up to {@code index}.
@@ -141,7 +119,7 @@ public class RecentFractalSwingLowIndicator extends CachedIndicator<Num> impleme
      * @since 0.19
      */
     @Override
-    public int getLatestSwingIndex(int index) {
+    protected int detectLatestSwingIndex(int index) {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return -1;
         }

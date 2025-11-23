@@ -23,15 +23,13 @@
  */
 package org.ta4j.core.indicators.zigzag;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.RecentSwingHighIndicator;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Recent ZigZag Swing High Indicator.
@@ -65,7 +63,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      High</a>
  * @since 0.20
  */
-public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> implements RecentSwingHighIndicator {
+public class RecentZigZagSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
     private final Indicator<Num> price; // same price as used in stateIndicator
@@ -82,7 +80,7 @@ public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> impleme
      *                       {@code ClosePriceIndicator})
      */
     public RecentZigZagSwingHighIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
-        super(price);
+        super(price, 0);
         this.stateIndicator = stateIndicator;
         this.price = price;
     }
@@ -90,16 +88,6 @@ public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> impleme
     public RecentZigZagSwingHighIndicator(BarSeries series) {
         this(new ZigZagStateIndicator(new HighPriceIndicator(series), new ATRIndicator(series, 14)),
                 new HighPriceIndicator(series));
-    }
-
-    @Override
-    protected Num calculate(int index) {
-        ZigZagState state = stateIndicator.getValue(index);
-        int highIndex = state.getLastHighIndex();
-        if (highIndex < 0) {
-            return NaN;
-        }
-        return price.getValue(highIndex);
     }
 
     /**
@@ -111,29 +99,17 @@ public class RecentZigZagSwingHighIndicator extends CachedIndicator<Num> impleme
      *         no swing high has been confirmed yet
      */
     public int getLatestSwingHighIndex(int index) {
-        return stateIndicator.getValue(index).getLastHighIndex();
-    }
-
-    /**
-     * Returns the index of the most recent confirmed swing high as of the given
-     * index. This method implements the {@link RecentSwingHighIndicator} interface.
-     *
-     * @param index the bar index to evaluate
-     * @return the index of the most recent confirmed swing high, or {@code -1} if
-     *         no swing high has been confirmed yet
-     */
-    @Override
-    public int getLatestSwingIndex(int index) {
-        return getLatestSwingHighIndex(index);
-    }
-
-    @Override
-    public int getCountOfUnstableBars() {
-        return 0;
+        return getLatestSwingIndex(index);
     }
 
     @Override
     public Indicator<Num> getPriceIndicator() {
         return price;
+    }
+
+    @Override
+    protected int detectLatestSwingIndex(int index) {
+        final ZigZagState state = stateIndicator.getValue(index);
+        return state.getLastHighIndex();
     }
 }

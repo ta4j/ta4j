@@ -25,12 +25,11 @@ package org.ta4j.core.indicators.supportresistance;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -38,39 +37,31 @@ import org.ta4j.core.num.NumFactory;
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
  * <p>
- * Once a new swing point is confirmed, values are backfilled along the line
- * connecting the two most recent swing points so historical points align with
- * the straight trend line between swing points.
+ * Swing point discovery and lifecycle management is delegated to the underlying
+ * {@link RecentSwingIndicator}. The trend line simply connects the two most
+ * recent swing points available at the evaluation index and backfills values
+ * between them.
  *
  * @since 0.20
  */
 public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
-    private static final class SwingPoint {
-        private final int index;
-        private final int confirmationIndex;
-
-        private SwingPoint(int index, int confirmationIndex) {
-            this.index = index;
-            this.confirmationIndex = confirmationIndex;
-        }
-    }
-
+    private final RecentSwingIndicator swingIndicator;
     private final Indicator<Num> priceIndicator;
-    private final List<SwingPoint> swingPoints = new ArrayList<>();
     private final int unstableBars;
-    private transient int lastScannedIndex = Integer.MIN_VALUE;
 
     /**
      * Constructor.
      *
-     * @param priceIndicator the indicator that supplies the swing point values
+     * @param swingIndicator the swing-point indicator providing both prices and
+     *                       indexes
      * @param unstableBars   number of bars regarded as unstable by the indicator
      * @since 0.20
      */
-    protected AbstractTrendLineIndicator(Indicator<Num> priceIndicator, int unstableBars) {
-        super(priceIndicator);
-        this.priceIndicator = priceIndicator;
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int unstableBars) {
+        super(swingIndicator.getPriceIndicator());
+        this.swingIndicator = swingIndicator;
+        this.priceIndicator = swingIndicator.getPriceIndicator();
         this.unstableBars = Math.max(0, unstableBars);
     }
 
@@ -84,18 +75,34 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return NaN;
         }
-        updateSwingPointCache(index);
+        final List<Integer> swingPointIndexes = swingIndicator.getSwingPointIndexesUpTo(index);
         final int beginIndex = getBarSeries().getBeginIndex();
-        final SwingPointPair pair = findSwingPointPairForIndex(index);
-        if (pair == null) {
+        if (swingPointIndexes.size() < 2) {
             return NaN;
         }
-        final int firstSwingPointIndex = pair.previous.index;
-        final int secondSwingPointIndex = pair.recent.index;
-        if (firstSwingPointIndex < beginIndex || secondSwingPointIndex < beginIndex) {
+        Integer firstSwingPointIndex = null;
+        Integer secondSwingPointIndex = null;
+        for (int swingPointIndex : swingPointIndexes) {
+            if (swingPointIndex < beginIndex) {
+                continue;
+            }
+            if (swingPointIndex <= index) {
+                firstSwingPointIndex = swingPointIndex;
+                continue;
+            }
+            secondSwingPointIndex = swingPointIndex;
+            break;
+        }
+        if (firstSwingPointIndex == null || swingPointIndexes.size() < 2) {
             return NaN;
         }
-        if (firstSwingPointIndex == secondSwingPointIndex) {
+        if (secondSwingPointIndex == null) {
+            final int size = swingPointIndexes.size();
+            firstSwingPointIndex = swingPointIndexes.get(size - 2);
+            secondSwingPointIndex = swingPointIndexes.get(size - 1);
+        }
+        if (firstSwingPointIndex < beginIndex || secondSwingPointIndex < beginIndex
+                || firstSwingPointIndex.equals(secondSwingPointIndex)) {
             return NaN;
         }
         final Num firstValue = priceIndicator.getValue(firstSwingPointIndex);
@@ -128,83 +135,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return projection.isNaN() ? NaN : projection;
     }
 
-    private void updateSwingPointCache(int index) {
-        final int beginIndex = getBarSeries().getBeginIndex();
-        if (!swingPoints.isEmpty()) {
-            int firstRetained = 0;
-            while (firstRetained < swingPoints.size() && swingPoints.get(firstRetained).index < beginIndex) {
-                firstRetained++;
-            }
-            if (firstRetained > 0) {
-                swingPoints.subList(0, firstRetained).clear();
-            }
-        }
-        if (lastScannedIndex < beginIndex - 1) {
-            lastScannedIndex = beginIndex - 1;
-        }
-        if (index <= lastScannedIndex) {
-            return;
-        }
-        for (int currentIndex = Math.max(beginIndex, lastScannedIndex + 1); currentIndex <= index; currentIndex++) {
-            final int latestSwingPoint = getLatestSwingPointIndex(currentIndex);
-            if (latestSwingPoint >= 0) {
-                if (swingPoints.isEmpty()) {
-                    swingPoints.add(new SwingPoint(latestSwingPoint, currentIndex));
-                } else {
-                    final SwingPoint lastSwingPoint = swingPoints.get(swingPoints.size() - 1);
-                    if (latestSwingPoint > lastSwingPoint.index) {
-                        swingPoints.add(new SwingPoint(latestSwingPoint, currentIndex));
-                    }
-                }
-            }
-        }
-        lastScannedIndex = index;
-    }
-
-    private SwingPointPair findSwingPointPairForIndex(int index) {
-        if (swingPoints.size() < 2) {
-            return null;
-        }
-        SwingPoint lower = null;
-        SwingPoint upper = null;
-        for (SwingPoint swingPoint : swingPoints) {
-            if (swingPoint.index <= index) {
-                lower = swingPoint;
-                continue;
-            }
-            upper = swingPoint;
-            break;
-        }
-        if (lower == null) {
-            return null;
-        }
-        if (upper == null) {
-            lower = swingPoints.get(swingPoints.size() - 2);
-            upper = swingPoints.get(swingPoints.size() - 1);
-        }
-        return new SwingPointPair(lower, upper);
-    }
-
-    /**
-     * Returns the index of the most recent confirmed swing point that can be
-     * evaluated with the data available up to the given index.
-     *
-     * @param index the current evaluation index
-     * @return the index of the most recent swing point or {@code -1} if none can be
-     *         confirmed yet
-     * @since 0.20
-     */
-    protected abstract int getLatestSwingPointIndex(int index);
-
-    /**
-     * @deprecated Use {@link #getLatestSwingPointIndex(int)} instead. This method
-     *             will be removed in a future version.
-     */
-    @Deprecated
-    protected int getLatestPivotIndex(int index) {
-        return getLatestSwingPointIndex(index);
-    }
-
     /**
      * Returns the indexes of the confirmed swing points tracked by the indicator.
      *
@@ -213,11 +143,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public List<Integer> getSwingPointIndexes() {
-        final List<Integer> result = new ArrayList<>(swingPoints.size());
-        for (SwingPoint swingPoint : swingPoints) {
-            result.add(swingPoint.index);
-        }
-        return Collections.unmodifiableList(result);
+        return swingIndicator.getSwingPointIndexes();
     }
 
     /**
@@ -231,15 +157,5 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     @Deprecated
     public List<Integer> getPivotIndexes() {
         return getSwingPointIndexes();
-    }
-
-    private static final class SwingPointPair {
-        private final SwingPoint previous;
-        private final SwingPoint recent;
-
-        private SwingPointPair(SwingPoint previous, SwingPoint recent) {
-            this.previous = previous;
-            this.recent = recent;
-        }
     }
 }
