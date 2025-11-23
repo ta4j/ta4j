@@ -435,9 +435,7 @@ public final class TradingChartFactory {
                 "Trading record plots require a BarSeries for context");
 
         XYPlot plot = new XYPlot();
-        XYSeriesCollection dataset = new XYSeriesCollection();
-        XYSeries closePriceSeries = createDataSeriesForIndicator(new ClosePriceIndicator(series));
-        dataset.addSeries(closePriceSeries);
+        XYSeriesCollection dataset = createDataSeriesForIndicator(new ClosePriceIndicator(series));
         plot.setDataset(0, dataset);
 
         configureDomainAxis(plot, series.getFirstBar().getTimePeriod());
@@ -484,8 +482,11 @@ public final class TradingChartFactory {
         plot.setDataset(datasetIndex, dataset);
 
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
-        renderer.setSeriesPaint(0, overlay.style().color());
-        renderer.setSeriesStroke(0, new BasicStroke(overlay.style().lineWidth()));
+        // Apply styling to all series segments (for gap handling with NaN values)
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            renderer.setSeriesPaint(i, overlay.style().color());
+            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+        }
         plot.setRenderer(datasetIndex, renderer);
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
@@ -690,17 +691,50 @@ public final class TradingChartFactory {
                 && (tradeTime.equals(endTime) || tradeTime.isBefore(endTime));
     }
 
-    private XYSeries createDataSeriesForIndicator(Indicator<Num> indicator) {
-        XYSeries indicatorSeries = new XYSeries(indicator.toString());
+    /**
+     * Creates an XYSeriesCollection from an indicator, treating NaN values as gaps.
+     * When NaN values are encountered, the series is split into multiple segments
+     * to create visual gaps in the chart.
+     *
+     * @param indicator the indicator to convert
+     * @return XYSeriesCollection containing one or more series segments
+     */
+    private XYSeriesCollection createDataSeriesForIndicator(Indicator<Num> indicator) {
+        XYSeriesCollection collection = new XYSeriesCollection();
+        BarSeries series = indicator.getBarSeries();
+        String baseName = indicator.toString();
 
-        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
+        XYSeries currentSegment = null;
+        int segmentIndex = 0;
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Num value = indicator.getValue(i);
-            if (value != null && !value.isNaN()) {
-                double orderDateTime = indicator.getBarSeries().getBar(i).getEndTime().toEpochMilli();
-                indicatorSeries.add(orderDateTime, value.doubleValue());
+            boolean isValid = value != null && !value.isNaN();
+
+            if (isValid) {
+                // Start a new segment if we don't have one
+                if (currentSegment == null) {
+                    String segmentName = segmentIndex == 0 ? baseName : baseName + " (segment " + segmentIndex + ")";
+                    currentSegment = new XYSeries(segmentName);
+                    segmentIndex++;
+                }
+                double orderDateTime = series.getBar(i).getEndTime().toEpochMilli();
+                currentSegment.add(orderDateTime, value.doubleValue());
+            } else {
+                // NaN encountered - finish current segment if it exists
+                if (currentSegment != null) {
+                    collection.addSeries(currentSegment);
+                    currentSegment = null;
+                }
             }
         }
-        return indicatorSeries;
+
+        // Add the last segment if it exists
+        if (currentSegment != null) {
+            collection.addSeries(currentSegment);
+        }
+
+        return collection;
     }
 
     private XYPlot createOHLCPlot(DefaultOHLCDataset data, Duration duration) {
@@ -736,9 +770,7 @@ public final class TradingChartFactory {
     }
 
     private XYPlot createIndicatorSubplot(BarSeries series, Indicator<Num> indicator) {
-        XYSeriesCollection dataset = new XYSeriesCollection();
-        XYSeries indicatorSeries = createDataSeriesForIndicator(indicator);
-        dataset.addSeries(indicatorSeries);
+        XYSeriesCollection dataset = createDataSeriesForIndicator(indicator);
 
         XYPlot plot = new XYPlot();
         plot.setDataset(0, dataset);
@@ -787,18 +819,52 @@ public final class TradingChartFactory {
         return Math.max(10, 40 / indicatorCount);
     }
 
+    /**
+     * Creates a TimeSeriesCollection from an indicator, treating NaN values as
+     * gaps. When NaN values are encountered, the series is split into multiple
+     * segments to create visual gaps in the chart.
+     *
+     * @param series     the bar series
+     * @param indicator  the indicator to convert
+     * @param seriesName the base name for the series
+     * @return TimeSeriesCollection containing one or more series segments
+     */
     private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
             String seriesName) {
-        TimeSeries timeSeries = new TimeSeries(seriesName);
+        TimeSeriesCollection collection = new TimeSeriesCollection();
+        TimeSeries currentSegment = null;
+        int segmentIndex = 0;
+
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Bar bar = series.getBar(i);
             Date barDate = Date.from(bar.getEndTime());
             Num value = indicator.getValue(i);
-            if (value != null && !value.isNaN()) {
-                timeSeries.add(new Minute(barDate), value.doubleValue());
+            boolean isValid = value != null && !value.isNaN();
+
+            if (isValid) {
+                // Start a new segment if we don't have one
+                if (currentSegment == null) {
+                    String segmentName = segmentIndex == 0 ? seriesName
+                            : seriesName + " (segment " + segmentIndex + ")";
+                    currentSegment = new TimeSeries(segmentName);
+                    segmentIndex++;
+                }
+                currentSegment.add(new Minute(barDate), value.doubleValue());
+            } else {
+                // NaN encountered - finish current segment if it exists
+                if (currentSegment != null) {
+                    collection.addSeries(currentSegment);
+                    currentSegment = null;
+                }
             }
         }
-        return new TimeSeriesCollection(timeSeries);
+
+        // Add the last segment if it exists
+        if (currentSegment != null) {
+            collection.addSeries(currentSegment);
+        }
+
+        return collection;
     }
 
     private void configureDualAxisPlot(XYPlot plot, Duration duration) {
@@ -829,7 +895,10 @@ public final class TradingChartFactory {
         plot.setDataset(datasetIndex, dataset);
         plot.mapDatasetToRangeAxis(datasetIndex, 1);
         StandardXYItemRenderer secondaryRenderer = new StandardXYItemRenderer();
-        secondaryRenderer.setSeriesPaint(0, Color.BLUE);
+        // Apply styling to all series segments (for gap handling with NaN values)
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            secondaryRenderer.setSeriesPaint(i, Color.BLUE);
+        }
         plot.setRenderer(datasetIndex, secondaryRenderer);
     }
 }

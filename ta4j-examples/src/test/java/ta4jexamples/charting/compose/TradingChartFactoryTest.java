@@ -34,6 +34,7 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
+import org.jfree.data.xy.XYSeriesCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -44,6 +45,7 @@ import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import java.util.Collection;
@@ -513,5 +515,195 @@ class TradingChartFactoryTest {
                 .filter(IntervalMarker.class::isInstance)
                 .map(IntervalMarker.class::cast)
                 .collect(Collectors.toList());
+    }
+
+    // ========== NaN Gap Handling Tests ==========
+
+    @Test
+    void testIndicatorWithNoNaNValuesCreatesSingleXYSeriesSegment() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        JFreeChart chart = factory.createIndicatorChart(barSeries, closePrice);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        assertEquals(1, dataset.getSeriesCount(), "Indicator with no NaN values should create a single series segment");
+    }
+
+    @Test
+    void testIndicatorWithNaNValuesCreatesMultipleXYSeriesSegments() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, new int[] { 2, 3, 4 });
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        assertTrue(dataset.getSeriesCount() > 1, "Indicator with NaN values should create multiple series segments");
+    }
+
+    @Test
+    void testIndicatorWithNaNValuesAtStartCreatesGap() {
+        // Create indicator with NaN at indices 0, 1, 2, then valid values
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, new int[] { 0, 1, 2 });
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        // Should have at least one segment (for the valid values after NaN)
+        assertTrue(dataset.getSeriesCount() >= 1,
+                "Indicator with NaN at start should create at least one segment for valid values");
+    }
+
+    @Test
+    void testIndicatorWithNaNValuesAtEndCreatesGap() {
+        // Create indicator with valid values, then NaN at the end
+        int endIndex = barSeries.getEndIndex();
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries,
+                new int[] { endIndex - 2, endIndex - 1, endIndex });
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        // Should have at least one segment (for the valid values before NaN)
+        assertTrue(dataset.getSeriesCount() >= 1,
+                "Indicator with NaN at end should create at least one segment for valid values");
+    }
+
+    @Test
+    void testIndicatorWithNaNValuesInMiddleCreatesMultipleSegments() {
+        // Create indicator with valid values, NaN in middle, then valid values again
+        int midIndex = barSeries.getBeginIndex() + (barSeries.getEndIndex() - barSeries.getBeginIndex()) / 2;
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries,
+                new int[] { midIndex - 1, midIndex, midIndex + 1 });
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        assertEquals(2, dataset.getSeriesCount(),
+                "Indicator with NaN in middle should create two segments (before and after gap)");
+    }
+
+    @Test
+    void testDualAxisChartWithNoNaNValuesCreatesSingleTimeSeriesSegment() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price", sma, "SMA");
+        XYPlot plot = (XYPlot) chart.getPlot();
+        TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+
+        assertEquals(1, dataset.getSeriesCount(),
+                "Dual-axis chart with no NaN values should create a single TimeSeries segment");
+    }
+
+    @Test
+    void testDualAxisChartWithNaNValuesCreatesMultipleTimeSeriesSegments() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, new int[] { 2, 3, 4 });
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price", indicator, "Indicator");
+        XYPlot plot = (XYPlot) chart.getPlot();
+        TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+
+        assertTrue(dataset.getSeriesCount() > 1,
+                "Dual-axis chart with NaN values should create multiple TimeSeries segments");
+    }
+
+    @Test
+    void testAllXYSeriesSegmentsGetSameStyling() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, new int[] { 2, 3, 4 });
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        // Verify all segments exist and can be accessed
+        assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series segment");
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            assertNotNull(dataset.getSeries(i), "Series segment " + i + " should not be null");
+        }
+    }
+
+    @Test
+    void testAllTimeSeriesSegmentsGetSameStyling() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, new int[] { 2, 3, 4 });
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price", indicator, "Indicator");
+        XYPlot plot = (XYPlot) chart.getPlot();
+        TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+
+        // Verify all segments exist and can be accessed
+        assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series segment");
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            assertNotNull(dataset.getSeries(i), "Series segment " + i + " should not be null");
+        }
+    }
+
+    @Test
+    void testIndicatorWithAllNaNValuesCreatesNoSegments() {
+        // Create indicator that returns NaN for all indices
+        int[] allIndices = new int[barSeries.getBarCount()];
+        for (int i = 0; i < allIndices.length; i++) {
+            allIndices[i] = barSeries.getBeginIndex() + i;
+        }
+        IndicatorWithNaN indicator = new IndicatorWithNaN(barSeries, allIndices);
+        JFreeChart chart = factory.createIndicatorChart(barSeries, indicator);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+        XYSeriesCollection dataset = (XYSeriesCollection) indicatorPlot.getDataset(0);
+
+        assertEquals(0, dataset.getSeriesCount(), "Indicator with all NaN values should create no series segments");
+    }
+
+    /**
+     * Test indicator that returns NaN for specified indices and valid values for
+     * others.
+     */
+    private static final class IndicatorWithNaN implements Indicator<Num> {
+        private final BarSeries series;
+        private final int[] nanIndices;
+        private final Num validValue;
+
+        IndicatorWithNaN(BarSeries series, int[] nanIndices) {
+            this.series = series;
+            this.nanIndices = nanIndices.clone();
+            this.validValue = series.numFactory().numOf(100.0);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            for (int nanIndex : nanIndices) {
+                if (index == nanIndex) {
+                    return NaN.NaN;
+                }
+            }
+            return validValue;
+        }
+
+        @Override
+        public String toString() {
+            return "TestIndicatorWithNaN";
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
     }
 }

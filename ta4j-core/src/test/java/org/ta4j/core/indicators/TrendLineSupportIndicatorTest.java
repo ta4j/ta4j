@@ -31,12 +31,14 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
 public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -143,10 +145,11 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
         assertThat(descriptor.getParameters()).containsEntry("unstableBars", 2);
         assertThat(descriptor.getParameters()).containsEntry("barCount", 15);
-        assertThat(descriptor.getComponents()).hasSize(2);
-        assertThat(descriptor.getComponents())
-                .anySatisfy(component -> component.getType().equals("RecentFractalSwingLowIndicator"));
-        assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("LowPriceIndicator"));
+        assertThat(descriptor.getComponents()).hasSize(1);
+        final ComponentDescriptor swingDescriptor = descriptor.getComponents().getFirst();
+        assertThat(swingDescriptor.getType()).isEqualTo("RecentFractalSwingLowIndicator");
+        assertThat(swingDescriptor.getComponents())
+                .anySatisfy(component -> assertThat(component.getType()).isEqualTo("LowPriceIndicator"));
 
         final String json = indicator.toJson();
         assertThat(json).contains("TrendLineSupportIndicator");
@@ -190,6 +193,30 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(indicator.getValue(i)).isNotNull();
         }
+    }
+
+    @Test
+    public void shouldRoundTripCustomScoringWeightsThroughSerialization() {
+        final var series = seriesFromLows(9, 7, 10, 11, 12, 6, 9, 13, 8);
+        final var weights = ScoringWeights.of(0.40d, 0.20d, 0.15d, 0.15d, 0.05d, 0.05d);
+        final var indicator = new TrendLineSupportIndicator(series, 1, 15, weights);
+
+        final ComponentDescriptor descriptor = indicator.toDescriptor();
+        assertThat(Double.parseDouble(descriptor.getParameters().get("touchWeight").toString()))
+                .isEqualTo(weights.touchWeight);
+        assertThat(Double.parseDouble(descriptor.getParameters().get("containBonus").toString()))
+                .isEqualTo(weights.containBonus);
+
+        final String json = indicator.toJson();
+        final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
+        assertThat(restored).isInstanceOf(TrendLineSupportIndicator.class);
+        final ScoringWeights restoredWeights = ((TrendLineSupportIndicator) restored).getScoringWeights();
+        assertThat(restoredWeights.touchWeight).isEqualTo(weights.touchWeight);
+        assertThat(restoredWeights.extremeWeight).isEqualTo(weights.extremeWeight);
+        assertThat(restoredWeights.outsideWeight).isEqualTo(weights.outsideWeight);
+        assertThat(restoredWeights.proximityWeight).isEqualTo(weights.proximityWeight);
+        assertThat(restoredWeights.recencyWeight).isEqualTo(weights.recencyWeight);
+        assertThat(restoredWeights.containBonus).isEqualTo(weights.containBonus);
     }
 
     private BarSeries seriesFromLows(double... lows) {

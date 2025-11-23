@@ -67,8 +67,30 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
             int allowedEqualBars, int barCount) {
+        this(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars, barCount,
+                ScoringWeights.defaultWeights());
+    }
+
+    /**
+     * Builds a resistance trend line from an arbitrary indicator that provides the
+     * values inspected by the underlying swing-high detector.
+     *
+     * @param indicator          the indicator supplying the candidate swing-high
+     *                           values
+     * @param precedingLowerBars number of immediately preceding bars that must be
+     *                           strictly lower than a swing high
+     * @param followingLowerBars number of immediately following bars that must be
+     *                           strictly lower than a swing high
+     * @param allowedEqualBars   number of bars on each side that may equal the
+     *                           swing-high value
+     * @param barCount           number of bars to look back when selecting swing
+     *                           points for the trend line
+     * @since 0.20
+     */
+    public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
+            int allowedEqualBars, int barCount, ScoringWeights scoringWeights) {
         this(new RecentFractalSwingHighIndicator(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars),
-                precedingLowerBars, followingLowerBars, barCount);
+                precedingLowerBars, followingLowerBars, barCount, scoringWeights);
     }
 
     /**
@@ -87,7 +109,13 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
             int allowedEqualBars) {
-        this(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars, Integer.MAX_VALUE);
+        this(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars, Integer.MAX_VALUE,
+                ScoringWeights.defaultWeights());
+    }
+
+    public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
+            int allowedEqualBars, ScoringWeights scoringWeights) {
+        this(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars, Integer.MAX_VALUE, scoringWeights);
     }
 
     /**
@@ -103,8 +131,25 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * @since 0.20
      */
     public TrendLineResistanceIndicator(RecentSwingIndicator recentSwingHighIndicator, int precedingLowerBars,
+            int followingLowerBars, int barCount, ScoringWeights scoringWeights) {
+        super(recentSwingHighIndicator, barCount, precedingLowerBars + followingLowerBars, TrendLineSide.RESISTANCE,
+                scoringWeights);
+    }
+
+    public TrendLineResistanceIndicator(RecentSwingIndicator recentSwingHighIndicator, int precedingLowerBars,
             int followingLowerBars, int barCount) {
-        super(recentSwingHighIndicator, barCount, precedingLowerBars + followingLowerBars);
+        this(recentSwingHighIndicator, precedingLowerBars, followingLowerBars, barCount,
+                ScoringWeights.defaultWeights());
+    }
+
+    /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights.
+     */
+    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
+            TrendLineSide side, double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
+            double recencyWeight, double containBonus) {
+        super(swingHighIndicator, barCount, unstableBars, side, touchWeight, extremeWeight, outsideWeight,
+                proximityWeight, recencyWeight, containBonus);
     }
 
     /**
@@ -133,8 +178,13 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                             points for the trend line
      * @since 0.20
      */
+    public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars, int barCount,
+            ScoringWeights scoringWeights) {
+        this(new HighPriceIndicator(series), surroundingLowerBars, surroundingLowerBars, 0, barCount, scoringWeights);
+    }
+
     public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars, int barCount) {
-        this(new HighPriceIndicator(series), surroundingLowerBars, surroundingLowerBars, 0, barCount);
+        this(series, surroundingLowerBars, barCount, ScoringWeights.defaultWeights());
     }
 
     /**
@@ -147,7 +197,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * @since 0.20
      */
     public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars) {
-        this(series, surroundingLowerBars, Integer.MAX_VALUE);
+        this(series, surroundingLowerBars, Integer.MAX_VALUE, ScoringWeights.defaultWeights());
     }
 
     /**
@@ -158,11 +208,6 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * @since 0.20
      */
     public TrendLineResistanceIndicator(BarSeries series) {
-        this(series, 3);
-    }
-
-    @Override
-    protected boolean isSupportLine() {
-        return false;
+        this(series, 3, Integer.MAX_VALUE, ScoringWeights.defaultWeights());
     }
 }
