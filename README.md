@@ -201,15 +201,19 @@ import org.jfree.chart.JFreeChart;
 ChartWorkflow chartWorkflow = new ChartWorkflow();
 JFreeChart chart = chartWorkflow.builder()
         .withTitle("EMA Crossover Strategy")
-        .withSeries(series)                    // Price bars
-        .withIndicator(fastEma)                // Overlay indicators
-        .withIndicator(slowEma)
-        .withTradingRecordOverlay(record)      // Mark entry/exit points
-        .withSubChart(new MaximumDrawdownCriterion(), record)  // Performance subchart
+        .withSeries(series)                    // Price bars (candlesticks)
+        .withIndicatorOverlay(fastEma)                // Overlay indicators on price chart
+        .withIndicatorOverlay(slowEma)
+        .withTradingRecordOverlay(record)      // Mark back-tested strategy's entry/exit points on chart
+        .withSubChart(new MaximumDrawdownCriterion(), record)  // Add maximum drawdown analysis in a subchart
         .toChart();
-chartWorkflow.displayChart(chart);            // Opens in a window
-chartWorkflow.saveChartImage(chart, series, "my-strategy", "output/");  // Save as PNG
+chartWorkflow.displayChart(chart);            // displays chart in an interactive Swing window
+chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts");  // Save as output/charts/ema-crossover-strategy.jpg
 ```
+
+![EMA Crossover Strategy Chart](ta4j-examples/docs/img/ema-crossover-readme.jpg)
+
+The chart above shows candlestick price data with EMA lines overlaid, buy/sell signals marked with arrows, and a performance subchart showing drawdown over time. This is the actual output from the code example above. See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
 
 **Export to any stack** (Python, TypeScript, etc.):
 ```java
