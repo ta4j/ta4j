@@ -78,8 +78,8 @@ public class SwingPointAnalysis {
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(series, swingLowIndicator);
         SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(series, swingHighIndicator);
 
-        LOG.info("Identified {} fractal swing lows and {} fractal swing highs", swingLowMarkers.getSwingPointIndexes().size(),
-                swingHighMarkers.getSwingPointIndexes().size());
+        LOG.info("Identified {} fractal swing lows and {} fractal swing highs",
+                swingLowMarkers.getSwingPointIndexes().size(), swingHighMarkers.getSwingPointIndexes().size());
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow chartWorkflow = new ChartWorkflow();
@@ -103,8 +103,8 @@ public class SwingPointAnalysis {
         SwingPointMarkerIndicator zigzagLowMarkers = new SwingPointMarkerIndicator(series, zigzagLowIndicator);
         SwingPointMarkerIndicator zigzagHighMarkers = new SwingPointMarkerIndicator(series, zigzagHighIndicator);
 
-        LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs", zigzagLowMarkers.getSwingPointIndexes().size(),
-                zigzagHighMarkers.getSwingPointIndexes().size());
+        LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs",
+                zigzagLowMarkers.getSwingPointIndexes().size(), zigzagHighMarkers.getSwingPointIndexes().size());
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();

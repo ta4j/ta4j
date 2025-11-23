@@ -11,8 +11,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
   - `InPositionPercentageCriterion`: Time in market (e.g., 0.5 = 50% of time)
   - `CommissionsImpactPercentageCriterion`: Trading cost impact (e.g., 0.05 = 5% impact)
   - `AbstractProfitLossRatioCriterion` (and subclasses): Profit-to-loss ratio (e.g., 2.0 = profit is 2x loss)
-  
+
   All ratio criteria default to `ReturnRepresentation.DECIMAL` (the conventional format for ratios), but you can override per-criterion or globally. Perfect for dashboards, reports, or when you need to match external data formats. See each criterion's javadoc for detailed examples.
+- **Improved trendline selection**: Support and resistance trendline indicators now draw a single straight line across a configurable look-back (`barCount`) window, selecting the line that touches the most swing points and preferring ones that contain the latest price. This removes the previous zig-zag artifact when more swing points were confirmed.
 - **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
 - **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
 - **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.

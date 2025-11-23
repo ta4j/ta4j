@@ -31,11 +31,14 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Projects a rising or falling support trend line by connecting the two most
- * recent confirmed swing lows.
+ * Projects a rising or falling support trend line that spans a configurable
+ * look-back window of swing lows.
  * <p>
- * The implementation follows the classical definition of support trend lines
- * where consecutive swing lows define the slope of the line.
+ * The indicator selects the straight line that touches the greatest number of
+ * confirmed swing lows within the window. When multiple candidates touch the
+ * same number of swing points, the line that sits beneath the current low price
+ * is preferred, followed by the line that spans the widest distance between its
+ * anchor swing lows.
  *
  * @see <a href="https://www.investopedia.com/trading/trendlines/">Investopedia:
  *      Trendlines</a>
@@ -57,12 +60,50 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param allowedEqualBars    number of bars on each side that may equal the
      *                            swing-low value
+     * @param barCount            number of bars to look back when selecting swing
+     *                            points for the trend line
+     * @since 0.20
+     */
+    public TrendLineSupportIndicator(Indicator<Num> priceIndicator, int precedingHigherBars, int followingHigherBars,
+            int allowedEqualBars, int barCount) {
+        this(new RecentFractalSwingLowIndicator(priceIndicator, precedingHigherBars, followingHigherBars,
+                allowedEqualBars), precedingHigherBars, followingHigherBars, barCount);
+    }
+
+    /**
+     * Builds a support trend line from an arbitrary indicator that provides the
+     * values inspected by the underlying swing-low detector.
+     *
+     * @param priceIndicator      the indicator supplying the candidate swing-low
+     *                            values
+     * @param precedingHigherBars number of immediately preceding bars that must be
+     *                            strictly higher than a swing low
+     * @param followingHigherBars number of immediately following bars that must be
+     *                            strictly higher than a swing low
+     * @param allowedEqualBars    number of bars on each side that may equal the
+     *                            swing-low value
      * @since 0.20
      */
     public TrendLineSupportIndicator(Indicator<Num> priceIndicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
-        this(new RecentFractalSwingLowIndicator(priceIndicator, precedingHigherBars, followingHigherBars,
-                allowedEqualBars), precedingHigherBars, followingHigherBars);
+        this(priceIndicator, precedingHigherBars, followingHigherBars, allowedEqualBars, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Builds a support trend line from a swing-low indicator implementation.
+     *
+     * @param recentSwingLowIndicator the swing-low indicator to use
+     * @param precedingHigherBars     number of immediately preceding bars that must
+     *                                be strictly higher than a swing low
+     * @param followingHigherBars     number of immediately following bars that must
+     *                                be strictly higher than a swing low
+     * @param barCount                number of bars to look back when selecting
+     *                                swing points for the trend line
+     * @since 0.20
+     */
+    public TrendLineSupportIndicator(RecentSwingIndicator recentSwingLowIndicator, int precedingHigherBars,
+            int followingHigherBars, int barCount) {
+        super(recentSwingLowIndicator, barCount, precedingHigherBars + followingHigherBars);
     }
 
     /**
@@ -77,7 +118,22 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineSupportIndicator(RecentSwingIndicator recentSwingLowIndicator, int precedingHigherBars,
             int followingHigherBars) {
-        super(recentSwingLowIndicator, precedingHigherBars + followingHigherBars);
+        this(recentSwingLowIndicator, precedingHigherBars, followingHigherBars, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Builds a support trend line by analysing the low price of each bar using a
+     * symmetric look-back and look-forward window.
+     *
+     * @param series                the series to analyse
+     * @param surroundingHigherBars number of bars on each side that must be
+     *                              strictly higher than the swing low
+     * @param barCount              number of bars to look back when selecting swing
+     *                              points for the trend line
+     * @since 0.20
+     */
+    public TrendLineSupportIndicator(BarSeries series, int surroundingHigherBars, int barCount) {
+        this(new LowPriceIndicator(series), surroundingHigherBars, surroundingHigherBars, 0, barCount);
     }
 
     /**
@@ -90,7 +146,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * @since 0.20
      */
     public TrendLineSupportIndicator(BarSeries series, int surroundingHigherBars) {
-        this(new LowPriceIndicator(series), surroundingHigherBars, surroundingHigherBars, 0);
+        this(series, surroundingHigherBars, Integer.MAX_VALUE);
     }
 
     /**
@@ -101,5 +157,10 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineSupportIndicator(BarSeries series) {
         this(series, 3);
+    }
+
+    @Override
+    protected boolean isSupportLine() {
+        return true;
     }
 }

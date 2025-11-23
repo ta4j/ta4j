@@ -65,11 +65,14 @@ public class TrendLineAnalysis {
             return;
         }
 
+        int trendLineLookback = Math.min(series.getBarCount(), 200);
+
         // Create support trendline indicator
-        TrendLineSupportIndicator fractalSupportTrendLine = new TrendLineSupportIndicator(series, 5);
+        TrendLineSupportIndicator fractalSupportTrendLine = new TrendLineSupportIndicator(series, 5, trendLineLookback);
 
         // Create resistance trendline indicator
-        TrendLineResistanceIndicator fractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5);
+        TrendLineResistanceIndicator fractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5,
+                trendLineLookback);
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow fractalChartWorkflow = new ChartWorkflow();
@@ -88,9 +91,9 @@ public class TrendLineAnalysis {
         fractalChartWorkflow.save(fractalPlan, "log/charts", "fractal-support-resistance-trendlines");
 
         TrendLineResistanceIndicator zigzagResistanceTrendLine = new TrendLineResistanceIndicator(
-                new RecentZigZagSwingHighIndicator(series), 5, 5);
+                new RecentZigZagSwingHighIndicator(series), 5, 5, trendLineLookback);
         TrendLineSupportIndicator zigzagSupportTrendLine = new TrendLineSupportIndicator(
-                new RecentZigZagSwingLowIndicator(series), 5, 5);
+                new RecentZigZagSwingLowIndicator(series), 5, 5, trendLineLookback);
 
         ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
         ChartPlan zigzagPlan = zigzagChartWorkflow.builder()

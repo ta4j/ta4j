@@ -31,12 +31,14 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Projects a resistance trend line by connecting the two most recent confirmed
- * swing highs.
+ * Projects a resistance trend line that spans a configurable look-back window
+ * of swing highs.
  * <p>
- * The indicator applies the conventional resistance-trend-line definition used
- * in discretionary technical analysis where successive swing highs establish
- * the line.
+ * The indicator selects the straight line that touches the greatest number of
+ * confirmed swing highs within the window. When multiple candidates touch the
+ * same number of swing points, the line that sits above the current high price
+ * is preferred, followed by the line that spans the widest distance between its
+ * anchor swing highs.
  *
  * @see <a href="https://www.investopedia.com/trading/trendlines/">Investopedia:
  *      Trendlines</a>
@@ -59,12 +61,50 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param allowedEqualBars   number of bars on each side that may equal the
      *                           swing-high value
+     * @param barCount           number of bars to look back when selecting swing
+     *                           points for the trend line
+     * @since 0.20
+     */
+    public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
+            int allowedEqualBars, int barCount) {
+        this(new RecentFractalSwingHighIndicator(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars),
+                precedingLowerBars, followingLowerBars, barCount);
+    }
+
+    /**
+     * Builds a resistance trend line from an arbitrary indicator that provides the
+     * values inspected by the underlying swing-high detector.
+     *
+     * @param indicator          the indicator supplying the candidate swing-high
+     *                           values
+     * @param precedingLowerBars number of immediately preceding bars that must be
+     *                           strictly lower than a swing high
+     * @param followingLowerBars number of immediately following bars that must be
+     *                           strictly lower than a swing high
+     * @param allowedEqualBars   number of bars on each side that may equal the
+     *                           swing-high value
      * @since 0.20
      */
     public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
             int allowedEqualBars) {
-        this(new RecentFractalSwingHighIndicator(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars),
-                precedingLowerBars, followingLowerBars);
+        this(indicator, precedingLowerBars, followingLowerBars, allowedEqualBars, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Builds a resistance trend line from a swing-high indicator implementation.
+     *
+     * @param recentSwingHighIndicator the swing-high indicator to use
+     * @param precedingLowerBars       number of immediately preceding bars that
+     *                                 must be strictly lower than a swing high
+     * @param followingLowerBars       number of immediately following bars that
+     *                                 must be strictly lower than a swing high
+     * @param barCount                 number of bars to look back when selecting
+     *                                 swing points for the trend line
+     * @since 0.20
+     */
+    public TrendLineResistanceIndicator(RecentSwingIndicator recentSwingHighIndicator, int precedingLowerBars,
+            int followingLowerBars, int barCount) {
+        super(recentSwingHighIndicator, barCount, precedingLowerBars + followingLowerBars);
     }
 
     /**
@@ -79,7 +119,22 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineResistanceIndicator(RecentSwingIndicator recentSwingHighIndicator, int precedingLowerBars,
             int followingLowerBars) {
-        super(recentSwingHighIndicator, precedingLowerBars + followingLowerBars);
+        this(recentSwingHighIndicator, precedingLowerBars, followingLowerBars, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Builds a resistance trend line by analysing the high price of each bar using
+     * a symmetric look-back and look-forward window.
+     *
+     * @param series               the series to analyse
+     * @param surroundingLowerBars number of bars on each side that must be strictly
+     *                             lower than the swing high
+     * @param barCount             number of bars to look back when selecting swing
+     *                             points for the trend line
+     * @since 0.20
+     */
+    public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars, int barCount) {
+        this(new HighPriceIndicator(series), surroundingLowerBars, surroundingLowerBars, 0, barCount);
     }
 
     /**
@@ -92,7 +147,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * @since 0.20
      */
     public TrendLineResistanceIndicator(BarSeries series, int surroundingLowerBars) {
-        this(new HighPriceIndicator(series), surroundingLowerBars, surroundingLowerBars, 0);
+        this(series, surroundingLowerBars, Integer.MAX_VALUE);
     }
 
     /**
@@ -104,5 +159,10 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      */
     public TrendLineResistanceIndicator(BarSeries series) {
         this(series, 3);
+    }
+
+    @Override
+    protected boolean isSupportLine() {
+        return false;
     }
 }
