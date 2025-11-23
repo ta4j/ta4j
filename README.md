@@ -171,7 +171,7 @@ BacktestExecutionResult result = new BacktestExecutor(series)
     .executeWithRuntimeReport(strategies, 
         series.numFactory().numOf(1),  // position size: 1 unit
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
-        ProgressCompletion.loggingWithMemory(YourClass.class)); // logs progress with memory stats
+        ProgressCompletion.loggingWithMemory(); // logs progress with memory stats
 
 // Get top 10 strategies sorted by net profit, then by expectancy (for ties)
 // You can sort by any AnalysisCriterion - mix and match to find strategies that meet your goals
