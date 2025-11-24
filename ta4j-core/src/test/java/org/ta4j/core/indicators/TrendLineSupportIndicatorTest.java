@@ -24,6 +24,12 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.num.NaN.NaN;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -70,17 +76,10 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getSwingPointIndexes()).containsExactly(1, 4, 7);
 
-        final var numFactory = series.numFactory();
-        final var x1 = numFactory.numOf(1);
-        final var x2 = numFactory.numOf(4);
-        final var y1 = numFactory.numOf(11);
-        final var y2 = numFactory.numOf(9);
-        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
-        final var intercept = y1.minus(slope.multipliedBy(x1));
-        final var expected = slope.multipliedBy(numFactory.numOf(9)).plus(intercept);
+        final var expected = expectedProjection(series, 1, 4, 9);
         final var priceAtIndex = series.getBar(9).getLowPrice();
 
-        assertThat(indicator.getValue(9)).isEqualByComparingTo(expected);
+        assertThat(indicator.getValue(9).minus(expected).abs().doubleValue()).isLessThan(1e-9);
         assertThat(priceAtIndex.isNaN()).isFalse();
         assertThat(expected).isLessThan(priceAtIndex);
     }
@@ -96,16 +95,9 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getSwingPointIndexes()).containsExactly(1, 4, 7);
 
-        final var numFactory = series.numFactory();
-        final var x1 = numFactory.numOf(4);
-        final var x2 = numFactory.numOf(7);
-        final var y1 = numFactory.numOf(9);
-        final var y2 = numFactory.numOf(10);
-        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
-        final var intercept = y1.minus(slope.multipliedBy(x1));
-        final var expected = slope.multipliedBy(numFactory.numOf(9)).plus(intercept);
+        final var expected = expectedProjection(series, 4, 7, 9);
 
-        assertThat(indicator.getValue(9)).isEqualByComparingTo(expected);
+        assertThat(indicator.getValue(9).minus(expected).abs().doubleValue()).isLessThan(1e-9);
     }
 
     @Test
@@ -119,16 +111,9 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getSwingPointIndexes()).containsExactly(1, 4, 7);
 
-        final var numFactory = series.numFactory();
-        final var x1 = numFactory.numOf(1);
-        final var x2 = numFactory.numOf(7);
-        final var y1 = numFactory.numOf(5);
-        final var y2 = numFactory.numOf(6);
-        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
-        final var intercept = y1.minus(slope.multipliedBy(x1));
-        final var expected = slope.multipliedBy(numFactory.numOf(8)).plus(intercept);
+        final var expected = expectedProjection(series, 1, 7, 8);
 
-        assertThat(indicator.getValue(8)).isEqualByComparingTo(expected);
+        assertThat(indicator.getValue(8).minus(expected).abs().doubleValue()).isLessThan(1e-9);
     }
 
     @Test
@@ -172,6 +157,25 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getSwingPointIndexes()).isNotEmpty();
         assertThat(indicator.getValue(series.getEndIndex())).isNotNull();
+    }
+
+    @Test
+    public void shouldProjectUsingBarTimestampsWhenSpacingIsIrregular() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(series, "2024-01-01T00:00:00Z", 100d);
+        addBar(series, "2024-01-02T00:00:00Z", 102d);
+        addBar(series, "2024-01-03T00:00:00Z", 104d);
+        addBar(series, "2024-01-06T00:00:00Z", 110d);
+
+        final var priceIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(0, 3));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE);
+
+        final Num expectedAtIndex1 = expectedProjection(series, 0, 3, 1);
+        final Num expectedAtIndex2 = expectedProjection(series, 0, 3, 2);
+
+        assertThat(indicator.getValue(1)).isEqualByComparingTo(expectedAtIndex1);
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(expectedAtIndex2);
     }
 
     @Test
@@ -227,5 +231,82 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
             series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
         }
         return series;
+    }
+
+    private void addBar(BarSeries series, String isoInstant, double lowPrice) {
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse(isoInstant))
+                .openPrice(lowPrice)
+                .closePrice(lowPrice)
+                .highPrice(lowPrice + 1d)
+                .lowPrice(lowPrice)
+                .volume(1d)
+                .add();
+    }
+
+    private Num expectedProjection(BarSeries series, int startIndex, int endIndex, int targetIndex) {
+        final var factory = series.numFactory();
+        final Num startPrice = series.getBar(startIndex).getLowPrice();
+        final Num endPrice = series.getBar(endIndex).getLowPrice();
+        final long startMillis = series.getBar(startIndex).getEndTime().toEpochMilli();
+        final long endMillis = series.getBar(endIndex).getEndTime().toEpochMilli();
+        final long targetMillis = series.getBar(targetIndex).getEndTime().toEpochMilli();
+
+        final Num numerator = endPrice.minus(startPrice);
+        final Num denominator = factory.numOf(endMillis - startMillis);
+        final Num slope = numerator.dividedBy(denominator);
+        final Num delta = factory.numOf(targetMillis - startMillis);
+        return slope.multipliedBy(delta).plus(startPrice);
+    }
+
+    private static final class StaticSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
+
+        private final Indicator<Num> priceIndicator;
+        private final List<Integer> swingIndexes;
+
+        private StaticSwingIndicator(Indicator<Num> priceIndicator, List<Integer> swingIndexes) {
+            super(priceIndicator);
+            this.priceIndicator = priceIndicator;
+            this.swingIndexes = List.copyOf(swingIndexes);
+        }
+
+        @Override
+        public int getLatestSwingIndex(int index) {
+            for (int i = swingIndexes.size() - 1; i >= 0; i--) {
+                final int swingIndex = swingIndexes.get(i);
+                if (swingIndex <= index) {
+                    return swingIndex;
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public List<Integer> getSwingPointIndexesUpTo(int index) {
+            final List<Integer> result = new ArrayList<>();
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    result.add(swingIndex);
+                }
+            }
+            return List.copyOf(result);
+        }
+
+        @Override
+        public Indicator<Num> getPriceIndicator() {
+            return priceIndicator;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final int swingIndex = getLatestSwingIndex(index);
+            return swingIndex >= 0 ? priceIndicator.getValue(swingIndex) : NaN;
+        }
     }
 }

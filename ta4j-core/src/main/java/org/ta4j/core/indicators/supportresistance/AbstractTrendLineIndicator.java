@@ -64,6 +64,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private transient List<TrendLineCandidate> cachedSegments = List.of();
     private transient int cachedEndIndex = Integer.MIN_VALUE;
+    private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
+    private transient int coordinateBaseIndex = Integer.MIN_VALUE;
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
             TrendLineSide side, ScoringWeights scoringWeights) {
@@ -129,6 +131,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private List<TrendLineCandidate> buildSegments(int endIndex) {
         final List<TrendLineCandidate> segments = new ArrayList<>();
         final int beginIndex = getBarSeries().getBeginIndex();
+        refreshCoordinateBase();
         int windowEnd = endIndex;
         final List<Integer> swingPoints = swingIndicator.getSwingPointIndexesUpTo(endIndex);
         while (windowEnd >= beginIndex) {
@@ -227,8 +230,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (isInvalid(firstValue) || isInvalid(secondValue)) {
             return null;
         }
-        final Num x1 = numFactory.numOf(firstSwingIndex);
-        final Num x2 = numFactory.numOf(secondSwingIndex);
+        final Num x1 = coordinateForIndex(firstSwingIndex, numFactory);
+        final Num x2 = coordinateForIndex(secondSwingIndex, numFactory);
         final Num denominator = x2.minus(x1);
         if (isInvalid(denominator) || denominator.isZero()) {
             return null;
@@ -251,7 +254,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             if (isInvalid(swingPrice)) {
                 return null;
             }
-            final Num projectedAtSwing = slope.multipliedBy(numFactory.numOf(swingIndex)).plus(intercept);
+            final Num projectedAtSwing = slope.multipliedBy(coordinateForIndex(swingIndex, numFactory)).plus(intercept);
             if (isInvalid(projectedAtSwing)) {
                 return null;
             }
@@ -275,8 +278,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             sumDeviation += deviationValue;
         }
 
-        final boolean containsCurrentPrice = side
-                .contains(slope.multipliedBy(numFactory.numOf(evaluationIndex)).plus(intercept), priceAtEvaluation);
+        final boolean containsCurrentPrice = side.contains(
+                slope.multipliedBy(coordinateForIndex(evaluationIndex, numFactory)).plus(intercept), priceAtEvaluation);
         final int mostRecentAnchor = Math.max(firstSwingIndex, secondSwingIndex);
         final double recencyScore = Math.min(1d,
                 Math.max(0d, (double) (mostRecentAnchor - windowStart) / windowLength));
@@ -435,7 +438,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         private Num valueAt(int index, NumFactory numFactory) {
-            return slope.multipliedBy(numFactory.numOf(index)).plus(intercept);
+            final Num coordinate = coordinateForIndex(index, numFactory);
+            return slope.multipliedBy(coordinate).plus(intercept);
         }
     }
 
@@ -504,6 +508,39 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private static ScoringWeights resolve(ScoringWeights scoringWeights) {
         return scoringWeights == null ? ScoringWeights.defaultWeights() : scoringWeights;
+    }
+
+    private void refreshCoordinateBase() {
+        final var series = getBarSeries();
+        if (series == null || series.isEmpty()) {
+            coordinateBaseIndex = Integer.MIN_VALUE;
+            coordinateBaseEpochMillis = Long.MIN_VALUE;
+            return;
+        }
+        final int beginIndex = series.getBeginIndex();
+        if (coordinateBaseIndex != beginIndex) {
+            coordinateBaseIndex = beginIndex;
+            coordinateBaseEpochMillis = resolveEndTimeMillis(beginIndex);
+        }
+    }
+
+    private Num coordinateForIndex(int index, NumFactory numFactory) {
+        final var series = getBarSeries();
+        if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
+            return numFactory.numOf(index);
+        }
+        refreshCoordinateBase();
+        final long epochMillis = resolveEndTimeMillis(index);
+        return numFactory.numOf(epochMillis - coordinateBaseEpochMillis);
+    }
+
+    private long resolveEndTimeMillis(int index) {
+        final var series = getBarSeries();
+        if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
+            return 0L;
+        }
+        final Bar bar = series.getBar(index);
+        return bar.getEndTime().toEpochMilli();
     }
 
     public static final class ScoringWeights {

@@ -44,6 +44,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Fixed
 - **Support/resistance trendlines**: Fixed trendline projection behavior by backfilling trend line segments between confirmed swing points. Previously, trendlines would "step" around confirmation bars, creating visual artifacts that didn't match how traders actually draw trendlines. Now projections stay straight and anchored on the actual pivot highs/lows, giving you clean, professional-looking trendlines that match manual chart analysis. This makes the indicators much more useful for visual analysis and strategy development.
+- **Trendline slope now respects calendar time**: `AbstractTrendLineIndicator` (and thus support/resistance indicators) now measures slopes using each bar’s timestamp instead of just the bar index. This keeps overlay lines perfectly straight even when the series contains irregular gaps (weekends, holidays, missing sessions), eliminating the “wavy” artifacts that previously appeared on saved charts.
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
 - Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window
 - Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
