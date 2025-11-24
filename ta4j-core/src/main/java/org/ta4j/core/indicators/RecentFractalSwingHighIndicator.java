@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  *      High</a>
  * @since 0.20
  */
-public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator {
+public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator implements RecentSwingHighIndicator {
 
     private final Indicator<Num> indicator;
     private final int precedingLowerBars;

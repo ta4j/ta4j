@@ -124,8 +124,7 @@ public class TrendLineAnalysis {
         }
         LOG.info(
                 "{} trendline anchors=({}, {}), slope={}, intercept={}, swingTouches={}, swingsOutside={}, anchoredAtExtreme={}, score={}",
-                label, segment.firstIndex, segment.secondIndex, segment.slope, segment.intercept,
-                segment.countOfSwingPointsAnchoringTrendline, segment.countOfSwingPointsOutsideTrendline,
-                segment.isTrendLineAnchoredByExtremeSwingPoint, segment.score);
+                label, segment.firstIndex, segment.secondIndex, segment.slope, segment.intercept, segment.touchCount,
+                segment.outsideCount, segment.touchesExtreme, segment.score);
     }
 }

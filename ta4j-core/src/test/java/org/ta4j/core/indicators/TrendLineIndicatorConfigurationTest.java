@@ -70,7 +70,7 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
                 AbstractTrendLineIndicator.DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE);
         assertThat(descriptor.getParameters()).containsEntry("maxCandidatePairs",
                 AbstractTrendLineIndicator.DEFAULT_MAX_CANDIDATE_PAIRS);
-        assertThat(Integer.parseInt(descriptor.getParameters().get("toleranceModeOrdinal").toString()))
+        assertThat(Integer.parseInt(descriptor.getParameters().get("toleranceMode").toString()))
                 .isEqualTo(tolerance.mode.ordinal());
         assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceValue").toString()))
                 .isEqualTo(tolerance.value);
@@ -95,9 +95,9 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
         assertThat(segment).isNotNull();
         assertThat(segment.firstIndex).isEqualTo(0);
         assertThat(segment.secondIndex).isEqualTo(2);
-        assertThat(segment.countOfSwingPointsAnchoringTrendline).isEqualTo(2);
-        assertThat(segment.countOfSwingPointsOutsideTrendline).isEqualTo(1);
-        assertThat(segment.isTrendLineAnchoredByExtremeSwingPoint).isTrue();
+        assertThat(segment.touchCount).isEqualTo(2);
+        assertThat(segment.outsideCount).isEqualTo(1);
+        assertThat(segment.touchesExtreme).isTrue();
         assertThat(segment.windowStart).isEqualTo(series.getBeginIndex());
         assertThat(segment.windowEnd).isEqualTo(series.getEndIndex());
     }

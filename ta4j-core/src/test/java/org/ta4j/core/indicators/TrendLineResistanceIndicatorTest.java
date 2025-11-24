@@ -197,22 +197,19 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var indicator = new TrendLineResistanceIndicator(series, 1, 12, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(Double.parseDouble(descriptor.getParameters().get("extremeSwingPointAnchorWeight").toString()))
-                .isEqualTo(weights.extremeSwingPointAnchorWeight);
-        assertThat(Double
-                .parseDouble(descriptor.getParameters().get("countOfSwingPointsAnchoringTrendlineWeight").toString()))
-                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
+        assertThat(Double.parseDouble(descriptor.getParameters().get("touchesExtremeWeight").toString()))
+                .isEqualTo(weights.touchesExtremeWeight);
+        assertThat(Double.parseDouble(descriptor.getParameters().get("touchCountWeight").toString()))
+                .isEqualTo(weights.touchCountWeight);
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
         assertThat(restored).isInstanceOf(TrendLineResistanceIndicator.class);
         final ScoringWeights restoredWeights = ((TrendLineResistanceIndicator) restored).getScoringWeights();
-        assertThat(restoredWeights.countOfSwingPointsAnchoringTrendlineWeight)
-                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
-        assertThat(restoredWeights.extremeSwingPointAnchorWeight).isEqualTo(weights.extremeSwingPointAnchorWeight);
-        assertThat(restoredWeights.countOfSwingPointsOutsideTrendlineWeight)
-                .isEqualTo(weights.countOfSwingPointsOutsideTrendlineWeight);
-        assertThat(restoredWeights.averageSwingDeviationWeight).isEqualTo(weights.averageSwingDeviationWeight);
+        assertThat(restoredWeights.touchCountWeight).isEqualTo(weights.touchCountWeight);
+        assertThat(restoredWeights.touchesExtremeWeight).isEqualTo(weights.touchesExtremeWeight);
+        assertThat(restoredWeights.outsideCountWeight).isEqualTo(weights.outsideCountWeight);
+        assertThat(restoredWeights.averageDeviationWeight).isEqualTo(weights.averageDeviationWeight);
         assertThat(restoredWeights.anchorRecencyWeight).isEqualTo(weights.anchorRecencyWeight);
     }
 

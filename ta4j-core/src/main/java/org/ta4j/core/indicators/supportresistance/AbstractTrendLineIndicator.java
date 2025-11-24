@@ -64,10 +64,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final int unstableBars;
     private final TrendLineSide side;
-    private final double countOfSwingPointsAnchoringTrendlineWeight;
-    private final double extremeSwingPointAnchorWeight;
-    private final double countOfSwingPointsOutsideTrendlineWeight;
-    private final double averageSwingDeviationWeight;
+    private final double touchCountWeight;
+    private final double touchesExtremeWeight;
+    private final double outsideCountWeight;
+    private final double averageDeviationWeight;
     private final double anchorRecencyWeight;
     private final ScoringWeights scoringWeights;
     private final ToleranceSettings toleranceSettings;
@@ -86,29 +86,24 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
             TrendLineSide side, ScoringWeights scoringWeights) {
-        this(swingIndicator, barCount, unstableBars, side,
-                resolve(scoringWeights).countOfSwingPointsAnchoringTrendlineWeight,
-                resolve(scoringWeights).extremeSwingPointAnchorWeight,
-                resolve(scoringWeights).countOfSwingPointsOutsideTrendlineWeight,
-                resolve(scoringWeights).averageSwingDeviationWeight, resolve(scoringWeights).anchorRecencyWeight,
+        this(swingIndicator, barCount, unstableBars, side, resolve(scoringWeights).touchCountWeight,
+                resolve(scoringWeights).touchesExtremeWeight, resolve(scoringWeights).outsideCountWeight,
+                resolve(scoringWeights).averageDeviationWeight, resolve(scoringWeights).anchorRecencyWeight,
                 ToleranceSettings.defaultSettings());
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
-            TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
-            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
-            double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
-        this(swingIndicator, barCount, unstableBars, side, countOfSwingPointsAnchoringTrendlineWeight,
-                extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
-                anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
+            TrendLineSide side, double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
+        this(swingIndicator, barCount, unstableBars, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
                 DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
-            TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
-            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
-            double anchorRecencyWeight, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
-            int maxCandidatePairs) {
+            TrendLineSide side, double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
         super(swingIndicator.getPriceIndicator());
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least 2 to build a trend line");
@@ -124,14 +119,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.unstableBars = Math.max(0, unstableBars);
         this.side = side;
-        this.countOfSwingPointsAnchoringTrendlineWeight = countOfSwingPointsAnchoringTrendlineWeight;
-        this.extremeSwingPointAnchorWeight = extremeSwingPointAnchorWeight;
-        this.countOfSwingPointsOutsideTrendlineWeight = countOfSwingPointsOutsideTrendlineWeight;
-        this.averageSwingDeviationWeight = averageSwingDeviationWeight;
+        this.touchCountWeight = touchCountWeight;
+        this.touchesExtremeWeight = touchesExtremeWeight;
+        this.outsideCountWeight = outsideCountWeight;
+        this.averageDeviationWeight = averageDeviationWeight;
         this.anchorRecencyWeight = anchorRecencyWeight;
-        this.scoringWeights = new ScoringWeights(countOfSwingPointsAnchoringTrendlineWeight,
-                extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
-                anchorRecencyWeight);
+        this.scoringWeights = new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight);
         this.toleranceSettings = toleranceSettings == null ? ToleranceSettings.defaultSettings() : toleranceSettings;
         this.maxSwingPointsForTrendline = maxSwingPointsForTrendline;
         this.maxCandidatePairs = maxCandidatePairs;
@@ -333,9 +327,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return null;
         }
 
-        int touchingSwingCount = 0;
-        int countOfSwingPointsOutsideTrendline = 0;
-        boolean extremeSwingPointAnchor = false;
+        int touchCount = 0;
+        int outsideCount = 0;
+        boolean touchesExtreme = false;
         double totalDeviation = 0d;
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
@@ -352,12 +346,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             final boolean touchesSwing = isAnchor
                     || (!isInvalid(tolerance) && (deviation.isZero() || deviation.isLessThanOrEqual(tolerance)));
             if (touchesSwing) {
-                touchingSwingCount++;
+                touchCount++;
                 if (!isInvalid(extremeSwingPrice) && swingPrice.isEqual(extremeSwingPrice)) {
-                    extremeSwingPointAnchor = true;
+                    touchesExtreme = true;
                 }
             } else {
-                countOfSwingPointsOutsideTrendline++;
+                outsideCount++;
                 if (side.violates(projectedAtSwing, swingPrice)) {
                     return null;
                 }
@@ -369,12 +363,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final int mostRecentAnchor = Math.max(firstSwingIndex, secondSwingIndex);
         final double recencyAnchorScore = Math.min(1d,
                 Math.max(0d, (double) (mostRecentAnchor - windowStart) / windowLength));
-        final double baseScore = calculateBaseScore(touchingSwingCount, swingPointIndexes.size(),
-                extremeSwingPointAnchor, countOfSwingPointsOutsideTrendline, totalDeviation, swingRange.doubleValue(),
-                recencyAnchorScore);
+        final double baseScore = calculateBaseScore(touchCount, swingPointIndexes.size(), touchesExtreme, outsideCount,
+                totalDeviation, swingRange.doubleValue(), recencyAnchorScore);
 
-        return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touchingSwingCount,
-                countOfSwingPointsOutsideTrendline, extremeSwingPointAnchor, baseScore, windowStart, windowEnd);
+        return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touchCount, outsideCount,
+                touchesExtreme, baseScore, windowStart, windowEnd);
     }
 
     private boolean isInvalid(Num value) {
@@ -426,23 +419,21 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return extreme == null ? NaN : extreme;
     }
 
-    private double calculateBaseScore(int countOfSwingPointsAnchoringTrendline, int totalSwingAnchorPoints,
-            boolean extremeSwingPointAnchor, int countOfSwingPointsOutsideTrendline, double totalSwingDeviation,
-            double swingRange, double recencyAnchorScore) {
+    private double calculateBaseScore(int touchCount, int totalSwingAnchorPoints, boolean touchesExtreme,
+            int outsideCount, double totalSwingDeviation, double swingRange, double recencyAnchorScore) {
         if (totalSwingAnchorPoints <= 0) {
             return 0d;
         }
-        final double touchScore = (double) countOfSwingPointsAnchoringTrendline / (double) totalSwingAnchorPoints;
-        final double extremeScore = extremeSwingPointAnchor ? 1d : 0d;
-        final double outsidePenalty = Math.min(countOfSwingPointsOutsideTrendline, totalSwingAnchorPoints);
+        final double touchScore = (double) touchCount / (double) totalSwingAnchorPoints;
+        final double extremeScore = touchesExtreme ? 1d : 0d;
+        final double outsidePenalty = Math.min(outsideCount, totalSwingAnchorPoints);
         final double outsideScore = 1d - (outsidePenalty / (double) totalSwingAnchorPoints);
         final double averageDeviation = totalSwingDeviation / (double) totalSwingAnchorPoints;
         final boolean invalidRange = Double.isNaN(swingRange) || swingRange <= 0d;
         final double normalizedDeviation = invalidRange ? 0d : Math.min(1d, averageDeviation / swingRange);
         final double proximityScore = 1d - normalizedDeviation;
-        return countOfSwingPointsAnchoringTrendlineWeight * touchScore + extremeSwingPointAnchorWeight * extremeScore
-                + countOfSwingPointsOutsideTrendlineWeight * outsideScore + averageSwingDeviationWeight * proximityScore
-                + anchorRecencyWeight * recencyAnchorScore;
+        return touchCountWeight * touchScore + touchesExtremeWeight * extremeScore + outsideCountWeight * outsideScore
+                + averageDeviationWeight * proximityScore + anchorRecencyWeight * recencyAnchorScore;
     }
 
     private final class TrendLineCandidate {
@@ -450,23 +441,22 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private final int secondIndex;
         private final Num slope;
         private final Num intercept;
-        private final int countOfSwingPointsAnchoringTrendline;
-        private final int countOfSwingPointsOutsideTrendline;
-        private final boolean extremeSwingPointAnchor;
+        private final int touchCount;
+        private final int outsideCount;
+        private final boolean touchesExtreme;
         private final double score;
         private final int windowStart;
         private final int windowEnd;
 
-        private TrendLineCandidate(int firstIndex, int secondIndex, Num slope, Num intercept,
-                int countOfSwingPointsAnchoringTrendline, int countOfSwingPointsOutsideTrendline,
-                boolean extremeSwingPointAnchor, double score, int windowStart, int windowEnd) {
+        private TrendLineCandidate(int firstIndex, int secondIndex, Num slope, Num intercept, int touchCount,
+                int outsideCount, boolean touchesExtreme, double score, int windowStart, int windowEnd) {
             this.firstIndex = firstIndex;
             this.secondIndex = secondIndex;
             this.slope = slope;
             this.intercept = intercept;
-            this.countOfSwingPointsAnchoringTrendline = countOfSwingPointsAnchoringTrendline;
-            this.countOfSwingPointsOutsideTrendline = countOfSwingPointsOutsideTrendline;
-            this.extremeSwingPointAnchor = extremeSwingPointAnchor;
+            this.touchCount = touchCount;
+            this.outsideCount = outsideCount;
+            this.touchesExtreme = touchesExtreme;
             this.score = score;
             this.windowStart = windowStart;
             this.windowEnd = windowEnd;
@@ -479,11 +469,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             if (Double.compare(this.score, other.score) != 0) {
                 return this.score > other.score;
             }
-            if (this.countOfSwingPointsAnchoringTrendline != other.countOfSwingPointsAnchoringTrendline) {
-                return this.countOfSwingPointsAnchoringTrendline > other.countOfSwingPointsAnchoringTrendline;
+            if (this.touchCount != other.touchCount) {
+                return this.touchCount > other.touchCount;
             }
-            if (this.countOfSwingPointsOutsideTrendline != other.countOfSwingPointsOutsideTrendline) {
-                return this.countOfSwingPointsOutsideTrendline < other.countOfSwingPointsOutsideTrendline;
+            if (this.outsideCount != other.outsideCount) {
+                return this.outsideCount < other.outsideCount;
             }
             final int span = this.secondIndex - this.firstIndex;
             final int otherSpan = other.secondIndex - other.firstIndex;
@@ -516,23 +506,22 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private final int secondIndex;
         private final Num slope;
         private final Num intercept;
-        private final int countOfSwingPointsAnchoringTrendline;
-        private final int countOfSwingPointsOutsideTrendline;
-        private final boolean extremeSwingPointAnchor;
+        private final int touchCount;
+        private final int outsideCount;
+        private final boolean touchesExtreme;
         private final double baseScore;
         private final int windowStart;
         private final int windowEnd;
 
-        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept,
-                int countOfSwingPointsAnchoringTrendline, int countOfSwingPointsOutsideTrendline,
-                boolean extremeSwingPointAnchor, double baseScore, int windowStart, int windowEnd) {
+        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept, int touchCount,
+                int outsideCount, boolean touchesExtreme, double baseScore, int windowStart, int windowEnd) {
             this.firstIndex = firstIndex;
             this.secondIndex = secondIndex;
             this.slope = slope;
             this.intercept = intercept;
-            this.countOfSwingPointsAnchoringTrendline = countOfSwingPointsAnchoringTrendline;
-            this.countOfSwingPointsOutsideTrendline = countOfSwingPointsOutsideTrendline;
-            this.extremeSwingPointAnchor = extremeSwingPointAnchor;
+            this.touchCount = touchCount;
+            this.outsideCount = outsideCount;
+            this.touchesExtreme = touchesExtreme;
             this.baseScore = baseScore;
             this.windowStart = windowStart;
             this.windowEnd = windowEnd;
@@ -543,9 +532,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             if (isInvalid(projected)) {
                 return null;
             }
-            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept,
-                    countOfSwingPointsAnchoringTrendline, countOfSwingPointsOutsideTrendline, extremeSwingPointAnchor,
-                    baseScore, windowStart, windowEnd);
+            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, touchCount, outsideCount,
+                    touchesExtreme, baseScore, windowStart, windowEnd);
         }
     }
 
@@ -637,9 +625,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return null;
         }
         return new TrendLineSegment(cachedSegment.firstIndex, cachedSegment.secondIndex, cachedSegment.slope,
-                cachedSegment.intercept, cachedSegment.countOfSwingPointsAnchoringTrendline,
-                cachedSegment.countOfSwingPointsOutsideTrendline, cachedSegment.extremeSwingPointAnchor,
-                cachedSegment.score, cachedSegment.windowStart, cachedSegment.windowEnd);
+                cachedSegment.intercept, cachedSegment.touchCount, cachedSegment.outsideCount,
+                cachedSegment.touchesExtreme, cachedSegment.score, cachedSegment.windowStart, cachedSegment.windowEnd);
     }
 
     @Override
@@ -647,14 +634,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final Map<String, Object> parameters = new LinkedHashMap<>();
         parameters.put("barCount", barCount);
         parameters.put("unstableBars", getCountOfUnstableBars());
-        parameters.put("countOfSwingPointsAnchoringTrendlineWeight", countOfSwingPointsAnchoringTrendlineWeight);
-        parameters.put("extremeSwingPointAnchorWeight", extremeSwingPointAnchorWeight);
-        parameters.put("countOfSwingPointsOutsideTrendlineWeight", countOfSwingPointsOutsideTrendlineWeight);
-        parameters.put("averageSwingDeviationWeight", averageSwingDeviationWeight);
+        parameters.put("touchCountWeight", touchCountWeight);
+        parameters.put("touchesExtremeWeight", touchesExtremeWeight);
+        parameters.put("outsideCountWeight", outsideCountWeight);
+        parameters.put("averageDeviationWeight", averageDeviationWeight);
         parameters.put("anchorRecencyWeight", anchorRecencyWeight);
         parameters.put("maxSwingPointsForTrendline", maxSwingPointsForTrendline);
         parameters.put("maxCandidatePairs", maxCandidatePairs);
-        parameters.put("toleranceModeOrdinal", toleranceSettings.mode.ordinal());
+        parameters.put("toleranceMode", toleranceSettings.mode.ordinal());
         parameters.put("toleranceValue", toleranceSettings.value);
         parameters.put("toleranceMinimum", toleranceSettings.minimumAbsolute);
         final ComponentDescriptor swingDescriptor = swingIndicator.toDescriptor();
@@ -680,23 +667,22 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         public final int secondIndex;
         public final Num slope;
         public final Num intercept;
-        public final int countOfSwingPointsAnchoringTrendline;
-        public final int countOfSwingPointsOutsideTrendline;
-        public final boolean isTrendLineAnchoredByExtremeSwingPoint;
+        public final int touchCount;
+        public final int outsideCount;
+        public final boolean touchesExtreme;
         public final double score;
         public final int windowStart;
         public final int windowEnd;
 
-        private TrendLineSegment(int firstIndex, int secondIndex, Num slope, Num intercept,
-                int countOfSwingPointsAnchoringTrendline, int countOfSwingPointsOutsideTrendline,
-                boolean isTrendLineAnchoredByExtremeSwingPoint, double score, int windowStart, int windowEnd) {
+        private TrendLineSegment(int firstIndex, int secondIndex, Num slope, Num intercept, int touchCount,
+                int outsideCount, boolean touchesExtreme, double score, int windowStart, int windowEnd) {
             this.firstIndex = firstIndex;
             this.secondIndex = secondIndex;
             this.slope = slope;
             this.intercept = intercept;
-            this.countOfSwingPointsAnchoringTrendline = countOfSwingPointsAnchoringTrendline;
-            this.countOfSwingPointsOutsideTrendline = countOfSwingPointsOutsideTrendline;
-            this.isTrendLineAnchoredByExtremeSwingPoint = isTrendLineAnchoredByExtremeSwingPoint;
+            this.touchCount = touchCount;
+            this.outsideCount = outsideCount;
+            this.touchesExtreme = touchesExtreme;
             this.score = score;
             this.windowStart = windowStart;
             this.windowEnd = windowEnd;
@@ -808,19 +794,18 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
          * 1.0 (100%). These values are serialized in indicator descriptors/JSON so user
          * preferences round-trip.
          */
-        public final double countOfSwingPointsAnchoringTrendlineWeight;
-        public final double countOfSwingPointsOutsideTrendlineWeight;
-        public final double extremeSwingPointAnchorWeight;
-        public final double averageSwingDeviationWeight;
+        public final double touchCountWeight;
+        public final double outsideCountWeight;
+        public final double touchesExtremeWeight;
+        public final double averageDeviationWeight;
         public final double anchorRecencyWeight;
 
-        private ScoringWeights(double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
-                double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
-                double anchorRecencyWeight) {
-            this.countOfSwingPointsAnchoringTrendlineWeight = countOfSwingPointsAnchoringTrendlineWeight;
-            this.countOfSwingPointsOutsideTrendlineWeight = countOfSwingPointsOutsideTrendlineWeight;
-            this.extremeSwingPointAnchorWeight = extremeSwingPointAnchorWeight;
-            this.averageSwingDeviationWeight = averageSwingDeviationWeight;
+        private ScoringWeights(double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+                double averageDeviationWeight, double anchorRecencyWeight) {
+            this.touchCountWeight = touchCountWeight;
+            this.outsideCountWeight = outsideCountWeight;
+            this.touchesExtremeWeight = touchesExtremeWeight;
+            this.averageDeviationWeight = averageDeviationWeight;
             this.anchorRecencyWeight = anchorRecencyWeight;
             validateWeights();
         }
@@ -832,11 +817,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         /**
          * Creates scoring weights from explicit fractional percentages.
          */
-        public static ScoringWeights of(double countOfSwingPointsAnchoringTrendlineWeight,
-                double extremeSwingPointAnchorWeight, double countOfSwingPointsOutsideTrendlineWeight,
-                double averageSwingDeviationWeight, double anchorRecencyWeight) {
-            return new ScoringWeights(countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
-                    countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight);
+        public static ScoringWeights of(double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+                double averageDeviationWeight, double anchorRecencyWeight) {
+            return new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                    averageDeviationWeight, anchorRecencyWeight);
         }
 
         /**
@@ -868,29 +852,29 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         public static final class Builder {
-            private double countOfSwingPointsAnchoringTrendlineWeight = 0.30d;
-            private double countOfSwingPointsOutsideTrendlineWeight = 0.15d;
-            private double extremeSwingPointAnchorWeight = 0.20d;
-            private double averageSwingDeviationWeight = 0.20d;
+            private double touchCountWeight = 0.30d;
+            private double outsideCountWeight = 0.15d;
+            private double touchesExtremeWeight = 0.20d;
+            private double averageDeviationWeight = 0.20d;
             private double anchorRecencyWeight = 0.15d;
 
             public Builder weightForTouchingSwingPoints(double weightFraction) {
-                this.countOfSwingPointsAnchoringTrendlineWeight = weightFraction;
+                this.touchCountWeight = weightFraction;
                 return this;
             }
 
             public Builder weightForTouchingExtremeSwing(double weightFraction) {
-                this.extremeSwingPointAnchorWeight = weightFraction;
+                this.touchesExtremeWeight = weightFraction;
                 return this;
             }
 
             public Builder weightForKeepingSwingsInsideLine(double weightFraction) {
-                this.countOfSwingPointsOutsideTrendlineWeight = weightFraction;
+                this.outsideCountWeight = weightFraction;
                 return this;
             }
 
             public Builder weightForStayingCloseToSwings(double weightFraction) {
-                this.averageSwingDeviationWeight = weightFraction;
+                this.averageDeviationWeight = weightFraction;
                 return this;
             }
 
@@ -900,19 +884,19 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             }
 
             public ScoringWeights build() {
-                return new ScoringWeights(countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
-                        countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight);
+                return new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                        averageDeviationWeight, anchorRecencyWeight);
             }
         }
 
         private void validateWeights() {
-            validateFraction(countOfSwingPointsAnchoringTrendlineWeight, "countOfSwingPointsAnchoringTrendlineWeight");
-            validateFraction(extremeSwingPointAnchorWeight, "extremeSwingPointAnchorWeight");
-            validateFraction(countOfSwingPointsOutsideTrendlineWeight, "countOfSwingPointsOutsideTrendlineWeight");
-            validateFraction(averageSwingDeviationWeight, "averageSwingDeviationWeight");
+            validateFraction(touchCountWeight, "touchCountWeight");
+            validateFraction(touchesExtremeWeight, "touchesExtremeWeight");
+            validateFraction(outsideCountWeight, "outsideCountWeight");
+            validateFraction(averageDeviationWeight, "averageDeviationWeight");
             validateFraction(anchorRecencyWeight, "anchorRecencyWeight");
-            final double sum = countOfSwingPointsAnchoringTrendlineWeight + extremeSwingPointAnchorWeight
-                    + countOfSwingPointsOutsideTrendlineWeight + averageSwingDeviationWeight + anchorRecencyWeight;
+            final double sum = touchCountWeight + touchesExtremeWeight + outsideCountWeight + averageDeviationWeight
+                    + anchorRecencyWeight;
             final double epsilon = 1e-6;
             if (Math.abs(1.0d - sum) > epsilon) {
                 throw new IllegalArgumentException(

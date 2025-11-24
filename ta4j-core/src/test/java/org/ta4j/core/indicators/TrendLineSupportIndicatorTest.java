@@ -204,20 +204,17 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var indicator = new TrendLineSupportIndicator(series, 1, 15, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(Double
-                .parseDouble(descriptor.getParameters().get("countOfSwingPointsAnchoringTrendlineWeight").toString()))
-                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
+        assertThat(Double.parseDouble(descriptor.getParameters().get("touchCountWeight").toString()))
+                .isEqualTo(weights.touchCountWeight);
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
         assertThat(restored).isInstanceOf(TrendLineSupportIndicator.class);
         final ScoringWeights restoredWeights = ((TrendLineSupportIndicator) restored).getScoringWeights();
-        assertThat(restoredWeights.countOfSwingPointsAnchoringTrendlineWeight)
-                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
-        assertThat(restoredWeights.extremeSwingPointAnchorWeight).isEqualTo(weights.extremeSwingPointAnchorWeight);
-        assertThat(restoredWeights.countOfSwingPointsOutsideTrendlineWeight)
-                .isEqualTo(weights.countOfSwingPointsOutsideTrendlineWeight);
-        assertThat(restoredWeights.averageSwingDeviationWeight).isEqualTo(weights.averageSwingDeviationWeight);
+        assertThat(restoredWeights.touchCountWeight).isEqualTo(weights.touchCountWeight);
+        assertThat(restoredWeights.touchesExtremeWeight).isEqualTo(weights.touchesExtremeWeight);
+        assertThat(restoredWeights.outsideCountWeight).isEqualTo(weights.outsideCountWeight);
+        assertThat(restoredWeights.averageDeviationWeight).isEqualTo(weights.averageDeviationWeight);
         assertThat(restoredWeights.anchorRecencyWeight).isEqualTo(weights.anchorRecencyWeight);
     }
 
