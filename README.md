@@ -340,15 +340,46 @@ This comprehensive chart demonstrates combining multiple indicators (MACD, RSI) 
 See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
 
 **Export to any stack** (Python, TypeScript, etc.):
+
+Serialize indicators, rules, and strategies to JSON for persistence, sharing, or integration with other systems:
+
+<!-- START_SNIPPET: serialize-indicator -->
 ```java
-// Serialize strategies and indicators to JSON
-String indicatorJson = fastEma.toJson();
+// Serialize an indicator (RSI) to JSON
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+String rsiJson = rsi.toJson();
+// Output: {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
+```
+<!-- END_SNIPPET: serialize-indicator -->
+
+<!-- START_SNIPPET: serialize-rule -->
+```java
+// Serialize a rule (AndRule) to JSON
+Rule rule1 = new OverIndicatorRule(rsi, 50);
+Rule rule2 = new UnderIndicatorRule(rsi, 80);
+Rule andRule = new AndRule(rule1, rule2);
+String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
+// Output: {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
+```
+<!-- END_SNIPPET: serialize-rule -->
+
+<!-- START_SNIPPET: serialize-strategy -->
+```java
+// Serialize a strategy (EMA Crossover) to JSON
+EMAIndicator fastEma = new EMAIndicator(close, 12);
+EMAIndicator slowEma = new EMAIndicator(close, 26);
+Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
+Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
+Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
 String strategyJson = strategy.toJson();
+// Output: {"type":"BaseStrategy","label":"EMA Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
+```
+<!-- END_SNIPPET: serialize-strategy -->
 
-// Send to your Python/TypeScript service, database, or API
-sendToDashboard(indicatorJson, strategyJson);
-
-// Later, restore from JSON (useful for loading saved strategies)
+Restore from JSON:
+```java
+// Restore indicators and strategies from JSON
 Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
