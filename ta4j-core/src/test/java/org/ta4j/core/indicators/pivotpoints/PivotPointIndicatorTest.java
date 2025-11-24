@@ -1605,4 +1605,75 @@ public class PivotPointIndicatorTest {
         assertNumEquals(Double.parseDouble("158.19000"), r3.getValue(series1Weeks.getEndIndex() - 40));
         assertNumEquals(Double.parseDouble("180.03999"), r3.getValue(series1Weeks.getEndIndex()));
     }
+
+    @Test
+    public void shouldIncludeBarAtBeginIndexInPreviousPeriod() {
+        // Create a series where the bar at beginIndex (index 0) is in the previous
+        // period
+        // This tests the boundary condition fix where >= is used instead of >
+        var series = new MockBarSeriesBuilder().withName("BoundaryTest").build();
+
+        // Day 1 (previous period) - this bar is at beginIndex
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Day 2 (current period) - pivot point calculation should include Day 1 bar
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        // Day 2 continuation (same period)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atTime(12, 0).atZone(ZoneOffset.UTC).toInstant())
+                .openPrice(106.0)
+                .highPrice(110.0)
+                .lowPrice(104.0)
+                .closePrice(108.0)
+                .volume(800)
+                .add();
+
+        var pp = new PivotPointIndicator(series, DAY);
+        var deMarkpp = new DeMarkPivotPointIndicator(series, DAY);
+
+        // At index 0 (Day 1), no previous period exists
+        assertEquals(NaN, pp.getValue(0));
+        assertEquals(NaN, deMarkpp.getValue(0));
+
+        // At index 1 (first bar of Day 2), should include Day 1 bar in previous period
+        // PivotPoint: (high + low + close) / 3 = (105 + 95 + 102) / 3 = 302 / 3 =
+        // 100.666...
+        assertNumEquals(100.66666666666667, pp.getValue(1));
+
+        // DeMarkPivotPoint: Uses open from first bar of previous period (100.0)
+        // close (102) < open (100) is false, close (102) > open (100) is true
+        // Formula: (2 * high + low + close) / 4 = (2 * 105 + 95 + 102) / 4 = 407 / 4 =
+        // 101.75
+        assertNumEquals(101.75, deMarkpp.getValue(1));
+
+        // Verify that the bar at beginIndex (index 0) is included in the previous
+        // period
+        var barsOfPreviousPeriod = pp.getBarsOfPreviousPeriod(1);
+        assertEquals(1, barsOfPreviousPeriod.size());
+        assertEquals(0, barsOfPreviousPeriod.get(0).intValue()); // Should include index 0
+
+        var deMarkBarsOfPreviousPeriod = deMarkpp.getBarsOfPreviousPeriod(1);
+        assertEquals(1, deMarkBarsOfPreviousPeriod.size());
+        assertEquals(0, deMarkBarsOfPreviousPeriod.get(0).intValue()); // Should include index 0
+
+        // At index 2 (second bar of Day 2), should still include Day 1 bar in previous
+        // period
+        assertNumEquals(100.66666666666667, pp.getValue(2));
+        assertNumEquals(101.75, deMarkpp.getValue(2));
+    }
 }

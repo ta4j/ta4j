@@ -107,6 +107,8 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
 
         // index = last bar in same period, index-1 = first bar in previous period
         long previousPeriod = getPreviousPeriod(currentBar, index - 1);
+        // Include all bars from the previous period, including the bar at beginIndex if
+        // it belongs to that period
         while (index - 1 >= getBarSeries().getBeginIndex()
                 && getPeriod(getBarSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
             index--;
