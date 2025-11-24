@@ -27,7 +27,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -56,17 +55,20 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
 
-    private final Set<Integer> swingPointIndexes;
+    private final RecentSwingIndicator swingIndicator;
     private final Indicator<Num> priceIndicator;
     private final int unstableBars;
 
     /**
      * Constructs a SwingPointMarkerIndicator from a swing indicator.
      * <p>
-     * The indicator will collect all swing point indexes by evaluating the swing
-     * indicator across the entire series, then return price values only at those
-     * indexes. The price indicator is automatically derived from the swing
-     * indicator to ensure consistency.
+     * The indicator dynamically queries the swing indicator to determine if each
+     * index is a swing point, returning price values only at those indexes. The
+     * price indicator is automatically derived from the swing indicator to ensure
+     * consistency.
+     * <p>
+     * This indicator will automatically detect new swing points as they are
+     * confirmed when new bars are added to the series.
      *
      * @param series         the bar series (must match the series used by the swing
      *                       indicator)
@@ -89,14 +91,17 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("The swing indicator's series must match the provided series");
         }
 
+        this.swingIndicator = swingIndicator;
         this.priceIndicator = priceIndicator;
         this.unstableBars = swingIndicator.getCountOfUnstableBars();
-        this.swingPointIndexes = new HashSet<>(swingIndicator.getSwingPointIndexes());
     }
 
     @Override
     protected Num calculate(int index) {
-        if (swingPointIndexes.contains(index)) {
+        // Check if the current index is a swing point by querying the swing indicator
+        // dynamically. If getLatestSwingIndex(index) == index, then index is a swing
+        // point.
+        if (swingIndicator.getLatestSwingIndex(index) == index) {
             return priceIndicator.getValue(index);
         }
         return NaN;
@@ -109,11 +114,14 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
 
     /**
      * Returns the set of swing point indexes identified by this indicator.
+     * <p>
+     * This method dynamically queries the swing indicator to get all currently
+     * confirmed swing points up to the end of the series.
      *
      * @return an unmodifiable set containing the swing point indexes
      * @since 0.20
      */
     public Set<Integer> getSwingPointIndexes() {
-        return Set.copyOf(swingPointIndexes);
+        return Set.copyOf(swingIndicator.getSwingPointIndexes());
     }
 }

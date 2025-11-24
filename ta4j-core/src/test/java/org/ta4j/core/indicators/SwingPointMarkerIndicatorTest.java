@@ -56,6 +56,29 @@ public class SwingPointMarkerIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(markerIndicator.getValue(6)).isEqualByComparingTo(NaN);
     }
 
+    @Test
+    public void shouldDetectNewSwingPointsDynamically() {
+        // Create series with swing points that are discovered progressively
+        // Swing points: index 2 (value 3) and index 5 (value 6)
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };
+        final var swingIndicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+        final var markerIndicator = new SwingPointMarkerIndicator(series, swingIndicator);
+
+        // Verify that getSwingPointIndexes() dynamically queries the swing indicator
+        assertThat(markerIndicator.getSwingPointIndexes()).containsExactlyInAnyOrder(2, 5);
+
+        // Verify that calculate() dynamically checks if an index is a swing point
+        // Index 2: getLatestSwingIndex(2) == 2, so it's a swing point
+        assertThat(markerIndicator.getValue(2)).isEqualByComparingTo(numOf(3));
+        // Index 3: getLatestSwingIndex(3) == 2, so it's not a swing point
+        assertThat(markerIndicator.getValue(3)).isEqualByComparingTo(NaN);
+        // Index 5: getLatestSwingIndex(5) == 5, so it's a swing point
+        assertThat(markerIndicator.getValue(5)).isEqualByComparingTo(numOf(6));
+        // Index 6: getLatestSwingIndex(6) == 5, so it's not a swing point
+        assertThat(markerIndicator.getValue(6)).isEqualByComparingTo(NaN);
+    }
+
     private BarSeries seriesFromCloses(double... closes) {
         final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : closes) {
