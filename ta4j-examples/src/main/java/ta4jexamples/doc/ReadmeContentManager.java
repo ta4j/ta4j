@@ -342,7 +342,12 @@ public class ReadmeContentManager {
             }
 
             // Extract code between markers (excluding the markers themselves)
-            int codeStart = content.indexOf('\n', startIndex) + 1;
+            int newlineIndex = content.indexOf('\n', startIndex);
+            if (newlineIndex == -1) {
+                LOG.warn("No newline found after start marker for snippet: {}", snippetId);
+                return Optional.empty();
+            }
+            int codeStart = newlineIndex + 1;
             String snippet = content.substring(codeStart, endIndex).trim();
 
             // Remove leading indentation (find minimum indentation and remove it)
