@@ -29,7 +29,7 @@ import org.jfree.chart.JFreeChart;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -111,7 +111,7 @@ public class ReadmeChartGenerator {
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
         } else {
-            LOG.warn("Failed to save chart image");
+            LOG.warn("Failed to save ema-crossover-readme.jpg chart image");
         }
 
         return savedPath;
@@ -169,7 +169,7 @@ public class ReadmeChartGenerator {
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
         } else {
-            LOG.warn("Failed to save chart image");
+            LOG.warn("Failed to save rsi-strategy-readme.jpg chart image");
         }
 
         return savedPath;
@@ -230,7 +230,7 @@ public class ReadmeChartGenerator {
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
         } else {
-            LOG.warn("Failed to save chart image");
+            LOG.warn("Failed to save strategy-performance-readme.jpg chart image");
         }
 
         return savedPath;
@@ -277,6 +277,10 @@ public class ReadmeChartGenerator {
 
         LOG.info("Strategy executed: {} positions", record.getPositionCount());
 
+        NetProfitLossCriterion netProfitLossCriterion = new NetProfitLossCriterion();
+        netProfitLossCriterion.calculate(series, record);
+        LOG.info("Net profit/loss: {}", netProfitLossCriterion.calculate(series, record));
+
         // Generate advanced chart with multiple subcharts
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         JFreeChart chart = chartWorkflow.builder()
@@ -287,7 +291,7 @@ public class ReadmeChartGenerator {
                 .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
                 .withSubChart(macd) // MACD indicator in subchart
                 .withSubChart(rsi) // RSI indicator in subchart
-                .withSubChart(new NetProfitCriterion(), record) // Net profit performance metric
+                .withSubChart(new NetProfitLossCriterion(), record) // Net profit/loss performance metric
                 .toChart();
 
         // Save chart image
@@ -296,7 +300,7 @@ public class ReadmeChartGenerator {
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
         } else {
-            LOG.warn("Failed to save chart image");
+            LOG.warn("Failed to save advanced-strategy-readme.jpg chart image");
         }
 
         return savedPath;

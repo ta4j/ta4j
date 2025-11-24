@@ -225,6 +225,8 @@ topStrategies.forEach(statement -> {
 See your strategies in action. Ta4j includes charting helpers, but you're not locked in—serialize to JSON and use any visualization stack you prefer.
 
 **Built-in Java charting** (using JFreeChart):
+
+Basic strategy visualization with indicator overlays:
 ```java
 import org.ta4j.core.chart.ChartWorkflow;
 import org.jfree.chart.JFreeChart;
@@ -233,18 +235,105 @@ ChartWorkflow chartWorkflow = new ChartWorkflow();
 JFreeChart chart = chartWorkflow.builder()
         .withTitle("EMA Crossover Strategy")
         .withSeries(series)                    // Price bars (candlesticks)
-        .withIndicatorOverlay(fastEma)                // Overlay indicators on price chart
+        .withIndicatorOverlay(fastEma)         // Overlay indicators on price chart
         .withIndicatorOverlay(slowEma)
-        .withTradingRecordOverlay(record)      // Mark back-tested strategy's entry/exit points on chart
-        .withSubChart(new MaximumDrawdownCriterion(), record)  // Add maximum drawdown analysis in a subchart
+        .withTradingRecordOverlay(record)      // Mark entry/exit points with arrows
         .toChart();
 chartWorkflow.displayChart(chart);            // displays chart in an interactive Swing window
-chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts");  // Save as output/charts/ema-crossover-strategy.jpg
+chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts");  // Save as image
 ```
 
 ![EMA Crossover Strategy Chart](ta4j-examples/docs/img/ema-crossover-readme.jpg)
 
-The chart above shows candlestick price data with EMA lines overlaid, buy/sell signals marked with arrows, and a performance subchart showing drawdown over time. This is the actual output from the code example above. See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
+The chart above shows candlestick price data with EMA lines overlaid and buy/sell signals marked with arrows. This demonstrates basic strategy visualization with indicator overlays.
+
+**Adding indicator subcharts** for indicators with different scales (like RSI, which ranges from 0-100):
+```java
+import org.ta4j.core.indicators.RSIIndicator;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+
+// RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses above 70 (overbought)
+Rule entry = new CrossedDownIndicatorRule(rsi, 30);
+Rule exit = new CrossedUpIndicatorRule(rsi, 70);
+Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
+
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("RSI Strategy with Subchart")
+        .withSeries(series)                    // Price bars (candlesticks)
+        .withTradingRecordOverlay(record)      // Mark entry/exit points
+        .withSubChart(rsi)                     // RSI indicator in separate subchart panel
+        .toChart();
+```
+
+![RSI Strategy with Subchart](ta4j-examples/docs/img/rsi-strategy-readme.jpg)
+
+**Visualizing performance metrics** alongside your strategy:
+```java
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma20 = new SMAIndicator(close, 20);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
+
+// Strategy: buy when EMA crosses above SMA, sell when EMA crosses below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma20);
+Rule exit = new CrossedDownIndicatorRule(ema12, sma20);
+Strategy strategy = new BaseStrategy("EMA/SMA Crossover", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
+
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Strategy Performance Analysis")
+        .withSeries(series)                    // Price bars (candlesticks)
+        .withIndicatorOverlay(sma20)           // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12)           // Overlay EMA on price chart
+        .withTradingRecordOverlay(record)      // Mark entry/exit points
+        .withSubChart(new MaximumDrawdownCriterion(), record)  // Performance metric in subchart
+        .toChart();
+```
+
+![Strategy Performance Analysis](ta4j-examples/docs/img/strategy-performance-readme.jpg)
+
+This chart shows price action with indicator overlays, trading signals, and a performance subchart displaying maximum drawdown over time—helping you understand risk alongside returns.
+
+**Advanced multi-indicator analysis** with multiple subcharts:
+```java
+import org.ta4j.core.indicators.MACDIndicator;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma50 = new SMAIndicator(close, 50);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
+MACDIndicator macd = new MACDIndicator(close, 12, 26);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+
+// Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma50)
+        .and(new OverIndicatorRule(rsi, 50));
+Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
+Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
+
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Advanced Multi-Indicator Strategy")
+        .withSeries(series)                    // Price bars (candlesticks)
+        .withIndicatorOverlay(sma50)           // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12)           // Overlay EMA on price chart
+        .withTradingRecordOverlay(record)      // Mark entry/exit points
+        .withSubChart(macd)                    // MACD indicator in subchart
+        .withSubChart(rsi)                     // RSI indicator in subchart
+        .withSubChart(new NetProfitLossCriterion(), record)  // Net profit/loss performance metric
+        .toChart();
+```
+
+![Advanced Multi-Indicator Strategy](ta4j-examples/docs/img/advanced-strategy-readme.jpg)
+
+This comprehensive chart demonstrates combining multiple indicators (MACD, RSI) in separate subcharts with performance metrics, giving you a complete view of strategy behavior.
+
+See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
 
 **Export to any stack** (Python, TypeScript, etc.):
 ```java
