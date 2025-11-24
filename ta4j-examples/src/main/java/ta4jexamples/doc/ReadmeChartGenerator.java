@@ -39,47 +39,47 @@ import java.util.Optional;
 
 /**
  * Temporary utility class to generate chart images for README documentation.
- * 
+ *
  * <p>
- * This class generates charts that match the code examples in the README.
- * Run the main method to generate chart images that can be used in documentation.
+ * This class generates charts that match the code examples in the README. Run
+ * the main method to generate chart images that can be used in documentation.
  * </p>
  */
 public class ReadmeChartGenerator {
 
     private static final Logger LOG = LogManager.getLogger(ReadmeChartGenerator.class);
-    
+
     /**
      * Generates the EMA Crossover chart matching the README quick start example.
-     * 
-     * @param outputDir the directory to save the chart image (e.g., "docs/charts" or ".")
+     *
+     * @param outputDir the directory to save the chart image (e.g., "docs/charts"
+     *                  or ".")
      * @return the path to the saved chart image, or empty if saving failed
      */
     public static Optional<Path> generateEmaCrossoverChart(String outputDir) {
         LOG.info("Generating EMA Crossover chart for README...");
-        
+
         // Load historical price data
         BarSeries fullSeries = CsvTradesLoader.loadBitstampSeries();
         LOG.info("Loaded {} bars from Bitstamp series", fullSeries.getBarCount());
-        
+
         // Use a smaller subset for a cleaner chart (last ~150 bars)
         int totalBars = fullSeries.getBarCount();
         int startIndex = Math.max(0, totalBars - 150);
         BarSeries series = fullSeries.getSubSeries(startIndex, totalBars);
-        LOG.info("Using subset: {} bars (indices {} to {})", 
-                series.getBarCount(), startIndex, totalBars - 1);
+        LOG.info("Using subset: {} bars (indices {} to {})", series.getBarCount(), startIndex, totalBars - 1);
 
         // Create indicators: calculate moving averages from close prices
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        EMAIndicator fastEma = new EMAIndicator(close, 12);  // 12-period EMA
-        EMAIndicator slowEma = new EMAIndicator(close, 26);  // 26-period EMA
+        EMAIndicator fastEma = new EMAIndicator(close, 12); // 12-period EMA
+        EMAIndicator slowEma = new EMAIndicator(close, 26); // 26-period EMA
 
         // Define entry rule: buy when fast EMA crosses above slow EMA (golden cross)
         Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
 
         // Define exit rule: sell when price gains 3% OR loses 1.5%
-        Rule exit = new StopGainRule(close, 3.0)      // take profit at +3%
-                .or(new StopLossRule(close, 1.5));    // or cut losses at -1.5%
+        Rule exit = new StopGainRule(close, 3.0) // take profit at +3%
+                .or(new StopLossRule(close, 1.5)); // or cut losses at -1.5%
 
         // Combine rules into a strategy
         Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
@@ -87,47 +87,45 @@ public class ReadmeChartGenerator {
         // Run the strategy on historical data
         BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record = manager.run(strategy);
-        
+
         LOG.info("Strategy executed: {} positions", record.getPositionCount());
 
         // Generate simplified chart - just price, indicators, and signals (no subchart)
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         JFreeChart chart = chartWorkflow.builder()
                 .withTitle("EMA Crossover Strategy")
-                .withSeries(series)                    // Price bars (candlesticks)
-                .withIndicatorOverlay(fastEma)         // Overlay indicators on price chart
+                .withSeries(series) // Price bars (candlesticks)
+                .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
                 .withIndicatorOverlay(slowEma)
-                .withTradingRecordOverlay(record)      // Mark entry/exit points with arrows
+                .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
                 .toChart();
 
         // Save chart image
-        Optional<Path> savedPath = chartWorkflow.saveChartImage(
-                chart, series, "ema-crossover-readme", outputDir);
-        
+        Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "ema-crossover-readme", outputDir);
+
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
         } else {
             LOG.warn("Failed to save chart image");
         }
-        
+
         return savedPath;
     }
 
     /**
      * Main method to generate all README charts.
-     * 
+     *
      * @param args optional output directory (defaults to "ta4j-examples/docs/img")
      */
     public static void main(String[] args) {
         String outputDir = args.length > 0 ? args[0] : "ta4j/ta4j-examples/docs/img";
-        
+
         LOG.info("=== README Chart Generator ===");
         LOG.info("Output directory: {}", outputDir);
-        
+
         // Generate EMA Crossover chart
         generateEmaCrossoverChart(outputDir);
-        
+
         LOG.info("=== Chart generation complete ===");
     }
 }
-
