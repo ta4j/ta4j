@@ -183,10 +183,10 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * weights, using all available bars in the series.
      *
      * @param recentSwingLowIndicator the swing-low indicator to use
-     * @param precedingHigherBars     number of immediately preceding bars that
-     *                                must be strictly higher than a swing low
-     * @param followingHigherBars     number of immediately following bars that
-     *                                must be strictly higher than a swing low
+     * @param precedingHigherBars     number of immediately preceding bars that must
+     *                                be strictly higher than a swing low
+     * @param followingHigherBars     number of immediately following bars that must
+     *                                be strictly higher than a swing low
      * @param scoringWeights          the scoring weights to use for candidate
      *                                evaluation
      * @since 0.20
@@ -200,15 +200,15 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Deserialization-friendly constructor that accepts explicit scoring weight
      * parameters as individual values.
      *
-     * @param swingLowIndicator       the swing-low indicator to use
-     * @param barCount                number of bars to look back when selecting
-     *                                swing points
-     * @param unstableBars            number of unstable bars at the start
-     * @param touchCountWeight        weight for swing point touch count
-     * @param touchesExtremeWeight    weight for extreme point inclusion
-     * @param outsideCountWeight      weight for minimizing outside swings
-     * @param averageDeviationWeight  weight for minimizing average deviation
-     * @param anchorRecencyWeight     weight for anchor point recency
+     * @param swingLowIndicator      the swing-low indicator to use
+     * @param barCount               number of bars to look back when selecting
+     *                               swing points
+     * @param unstableBars           number of unstable bars at the start
+     * @param touchCountWeight       weight for swing point touch count
+     * @param touchesExtremeWeight   weight for extreme point inclusion
+     * @param outsideCountWeight     weight for minimizing outside swings
+     * @param averageDeviationWeight weight for minimizing average deviation
+     * @param anchorRecencyWeight    weight for anchor point recency
      * @since 0.20
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
@@ -223,19 +223,20 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Deserialization-friendly constructor that accepts explicit scoring weights,
      * tolerance settings, and search caps.
      *
-     * @param swingLowIndicator        the swing-low indicator to use
-     * @param barCount                 number of bars to look back when selecting
-     *                                 swing points
-     * @param unstableBars             number of unstable bars at the start
-     * @param side                     the trend line side (should be SUPPORT)
-     * @param touchCountWeight         weight for swing point touch count
-     * @param touchesExtremeWeight     weight for extreme point inclusion
-     * @param outsideCountWeight       weight for minimizing outside swings
-     * @param averageDeviationWeight   weight for minimizing average deviation
-     * @param anchorRecencyWeight      weight for anchor point recency
-     * @param toleranceSettings        tolerance settings for touch detection
+     * @param swingLowIndicator          the swing-low indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param unstableBars               number of unstable bars at the start
+     * @param side                       the trend line side (should be SUPPORT)
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceSettings          tolerance settings for touch detection
      * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs        maximum number of candidate pairs to evaluate
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
      * @since 0.20
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
@@ -251,18 +252,19 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Deserialization-friendly constructor that accepts explicit scoring weights,
      * tolerance settings, and search caps.
      *
-     * @param swingLowIndicator        the swing-low indicator to use
-     * @param barCount                 number of bars to look back when selecting
-     *                                 swing points
-     * @param unstableBars             number of unstable bars at the start
-     * @param touchCountWeight         weight for swing point touch count
-     * @param touchesExtremeWeight     weight for extreme point inclusion
-     * @param outsideCountWeight       weight for minimizing outside swings
-     * @param averageDeviationWeight   weight for minimizing average deviation
-     * @param anchorRecencyWeight      weight for anchor point recency
-     * @param toleranceSettings        tolerance settings for touch detection
+     * @param swingLowIndicator          the swing-low indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param unstableBars               number of unstable bars at the start
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceSettings          tolerance settings for touch detection
      * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs        maximum number of candidate pairs to evaluate
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
      * @since 0.20
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
@@ -278,19 +280,19 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Deserialization-friendly constructor that accepts explicit scoring weights
      * and tolerance parameters as strings/primitives.
      *
-     * @param swingLowIndicator    the swing-low indicator to use
-     * @param barCount             number of bars to look back when selecting swing
-     *                             points
-     * @param unstableBars         number of unstable bars at the start
-     * @param touchCountWeight     weight for swing point touch count
-     * @param touchesExtremeWeight weight for extreme point inclusion
-     * @param outsideCountWeight   weight for minimizing outside swings
+     * @param swingLowIndicator      the swing-low indicator to use
+     * @param barCount               number of bars to look back when selecting
+     *                               swing points
+     * @param unstableBars           number of unstable bars at the start
+     * @param touchCountWeight       weight for swing point touch count
+     * @param touchesExtremeWeight   weight for extreme point inclusion
+     * @param outsideCountWeight     weight for minimizing outside swings
      * @param averageDeviationWeight weight for minimizing average deviation
-     * @param anchorRecencyWeight  weight for anchor point recency
-     * @param toleranceMode        tolerance mode as string (PERCENTAGE, ABSOLUTE,
-     *                             or TICK_SIZE)
-     * @param toleranceValue       tolerance value
-     * @param toleranceMinimum     minimum absolute tolerance
+     * @param anchorRecencyWeight    weight for anchor point recency
+     * @param toleranceMode          tolerance mode as string (PERCENTAGE, ABSOLUTE,
+     *                               or TICK_SIZE)
+     * @param toleranceValue         tolerance value
+     * @param toleranceMinimum       minimum absolute tolerance
      * @since 0.20
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
@@ -307,21 +309,22 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Deserialization-friendly constructor with numeric tolerance parameters to
      * simplify serialization.
      *
-     * @param swingLowIndicator        the swing-low indicator to use
-     * @param barCount                 number of bars to look back when selecting
-     *                                 swing points
-     * @param unstableBars             number of unstable bars at the start
-     * @param touchCountWeight         weight for swing point touch count
-     * @param touchesExtremeWeight     weight for extreme point inclusion
-     * @param outsideCountWeight       weight for minimizing outside swings
-     * @param averageDeviationWeight   weight for minimizing average deviation
-     * @param anchorRecencyWeight      weight for anchor point recency
-     * @param toleranceValue           tolerance value
-     * @param toleranceMinimum         minimum absolute tolerance
-     * @param toleranceMode            tolerance mode as ordinal (0=PERCENTAGE,
-     *                                 1=ABSOLUTE, 2=TICK_SIZE)
+     * @param swingLowIndicator          the swing-low indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param unstableBars               number of unstable bars at the start
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceValue             tolerance value
+     * @param toleranceMinimum           minimum absolute tolerance
+     * @param toleranceMode              tolerance mode as ordinal (0=PERCENTAGE,
+     *                                   1=ABSOLUTE, 2=TICK_SIZE)
      * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs        maximum number of candidate pairs to evaluate
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
      * @since 0.20
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
