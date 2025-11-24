@@ -43,8 +43,10 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * The indicator computes the best trend line for the latest window of
  * {@code barCount} bars anchored at the series end. Bars that fall outside the
- * look-back window return {@code NaN}. When a new bar arrives, the current
- * trend line is recomputed for the new window.
+ * look-back window return {@code NaN}. Bars inside the window (including the
+ * {@code windowStart}) return the active line when at least two swing points
+ * exist; otherwise, they return {@code NaN}. When a new bar arrives, the
+ * current trend line is recomputed for the new window.
  *
  * @since 0.20
  */

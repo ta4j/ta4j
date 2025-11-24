@@ -224,6 +224,44 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void shouldReturnValueAtWindowStartWhenLineExists() {
+        final var series = seriesFromLows(10, 7, 9, 6, 8);
+        final var indicator = new TrendLineSupportIndicator(series, 1, 4);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            indicator.getValue(i);
+        }
+
+        final int endIndex = series.getEndIndex();
+        final int windowStart = endIndex - 4 + 1;
+
+        assertThat(windowStart).isEqualTo(1);
+        assertThat(indicator.getValue(windowStart).isNaN()).isFalse();
+        assertThat(indicator.getValue(windowStart - 1).isNaN()).isTrue();
+    }
+
+    @Test
+    public void shouldReturnValueAtNewWindowStartAfterAdvance() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final double[] lows = { 10, 7, 9, 6, 9, 5, 9 };
+        for (double low : lows) {
+            final double high = low + 2d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+        }
+        final var indicator = new TrendLineSupportIndicator(series, 1, 4);
+
+        indicator.getValue(series.getEndIndex());
+
+        final int endIndex = series.getEndIndex();
+        final int windowStart = endIndex - 4 + 1;
+
+        assertThat(windowStart).isEqualTo(3);
+        assertThat(indicator.getValue(windowStart).isNaN()).isFalse();
+        assertThat(indicator.getValue(windowStart - 1).isNaN()).isTrue();
+    }
+
+    @Test
     public void shouldInvalidateCachedValuesWhenWindowAdvances() {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -238,9 +276,14 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(initialValue.isNaN()).isFalse();
 
         series.barBuilder().openPrice(8).closePrice(8).highPrice(10).lowPrice(8).add();
-        series.barBuilder().openPrice(7).closePrice(7).highPrice(9).lowPrice(7).add();
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(11).lowPrice(9).add();
 
+        final int endIndex = series.getEndIndex();
+        final int windowStart = endIndex - 4 + 1;
+
+        assertThat(windowStart).isEqualTo(3);
         assertThat(indicator.getValue(1).isNaN()).isTrue();
+        assertThat(indicator.getValue(windowStart).isNaN()).isFalse();
     }
 
     private BarSeries seriesFromLows(double... lows) {
