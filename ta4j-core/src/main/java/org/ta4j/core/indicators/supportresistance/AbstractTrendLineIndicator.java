@@ -369,8 +369,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final int mostRecentAnchor = Math.max(firstSwingIndex, secondSwingIndex);
         final double recencyAnchorScore = Math.min(1d,
                 Math.max(0d, (double) (mostRecentAnchor - windowStart) / windowLength));
-        final double baseScore = calculateBaseScore(touchingSwingCount, swingPointIndexes.size(), extremeSwingPointAnchor,
-                countOfSwingPointsOutsideTrendline, totalDeviation, swingRange.doubleValue(), recencyAnchorScore);
+        final double baseScore = calculateBaseScore(touchingSwingCount, swingPointIndexes.size(),
+                extremeSwingPointAnchor, countOfSwingPointsOutsideTrendline, totalDeviation, swingRange.doubleValue(),
+                recencyAnchorScore);
 
         return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touchingSwingCount,
                 countOfSwingPointsOutsideTrendline, extremeSwingPointAnchor, baseScore, windowStart, windowEnd);
@@ -425,8 +426,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return extreme == null ? NaN : extreme;
     }
 
-    private double calculateBaseScore(int countOfSwingPointsAnchoringTrendline, int totalSwingAnchorPoints, boolean extremeSwingPointAnchor,
-            int countOfSwingPointsOutsideTrendline, double totalSwingDeviation, double swingRange, double recencyAnchorScore) {
+    private double calculateBaseScore(int countOfSwingPointsAnchoringTrendline, int totalSwingAnchorPoints,
+            boolean extremeSwingPointAnchor, int countOfSwingPointsOutsideTrendline, double totalSwingDeviation,
+            double swingRange, double recencyAnchorScore) {
         if (totalSwingAnchorPoints <= 0) {
             return 0d;
         }
@@ -455,8 +457,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private final int windowStart;
         private final int windowEnd;
 
-        private TrendLineCandidate(int firstIndex, int secondIndex, Num slope, Num intercept, int countOfSwingPointsAnchoringTrendline,
-                int countOfSwingPointsOutsideTrendline, boolean extremeSwingPointAnchor, double score, int windowStart, int windowEnd) {
+        private TrendLineCandidate(int firstIndex, int secondIndex, Num slope, Num intercept,
+                int countOfSwingPointsAnchoringTrendline, int countOfSwingPointsOutsideTrendline,
+                boolean extremeSwingPointAnchor, double score, int windowStart, int windowEnd) {
             this.firstIndex = firstIndex;
             this.secondIndex = secondIndex;
             this.slope = slope;
@@ -520,8 +523,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private final int windowStart;
         private final int windowEnd;
 
-        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept, int countOfSwingPointsAnchoringTrendline,
-                int countOfSwingPointsOutsideTrendline, boolean extremeSwingPointAnchor, double baseScore, int windowStart, int windowEnd) {
+        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept,
+                int countOfSwingPointsAnchoringTrendline, int countOfSwingPointsOutsideTrendline,
+                boolean extremeSwingPointAnchor, double baseScore, int windowStart, int windowEnd) {
             this.firstIndex = firstIndex;
             this.secondIndex = secondIndex;
             this.slope = slope;
@@ -539,8 +543,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             if (isInvalid(projected)) {
                 return null;
             }
-            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, countOfSwingPointsAnchoringTrendline,
-                    countOfSwingPointsOutsideTrendline, extremeSwingPointAnchor, baseScore, windowStart, windowEnd);
+            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept,
+                    countOfSwingPointsAnchoringTrendline, countOfSwingPointsOutsideTrendline, extremeSwingPointAnchor,
+                    baseScore, windowStart, windowEnd);
         }
     }
 
@@ -632,9 +637,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return null;
         }
         return new TrendLineSegment(cachedSegment.firstIndex, cachedSegment.secondIndex, cachedSegment.slope,
-                cachedSegment.intercept, cachedSegment.countOfSwingPointsAnchoringTrendline, cachedSegment.countOfSwingPointsOutsideTrendline,
-                cachedSegment.extremeSwingPointAnchor, cachedSegment.score, cachedSegment.windowStart,
-                cachedSegment.windowEnd);
+                cachedSegment.intercept, cachedSegment.countOfSwingPointsAnchoringTrendline,
+                cachedSegment.countOfSwingPointsOutsideTrendline, cachedSegment.extremeSwingPointAnchor,
+                cachedSegment.score, cachedSegment.windowStart, cachedSegment.windowEnd);
     }
 
     @Override
@@ -809,7 +814,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         public final double averageSwingDeviationWeight;
         public final double anchorRecencyWeight;
 
-        private ScoringWeights(double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight, double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+        private ScoringWeights(double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+                double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
                 double anchorRecencyWeight) {
             this.countOfSwingPointsAnchoringTrendlineWeight = countOfSwingPointsAnchoringTrendlineWeight;
             this.countOfSwingPointsOutsideTrendlineWeight = countOfSwingPointsOutsideTrendlineWeight;
@@ -826,9 +832,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         /**
          * Creates scoring weights from explicit fractional percentages.
          */
-        public static ScoringWeights of(double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight, double countOfSwingPointsOutsideTrendlineWeight,
+        public static ScoringWeights of(double countOfSwingPointsAnchoringTrendlineWeight,
+                double extremeSwingPointAnchorWeight, double countOfSwingPointsOutsideTrendlineWeight,
                 double averageSwingDeviationWeight, double anchorRecencyWeight) {
-            return new ScoringWeights(countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight);
+            return new ScoringWeights(countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                    countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight);
         }
 
         /**
