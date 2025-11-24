@@ -82,10 +82,10 @@ public class SwingPointAnalysis {
                 swingLowMarkers.getSwingPointIndexes().size(), swingHighMarkers.getSwingPointIndexes().size());
         swingLowMarkers.getSwingPointIndexes()
                 .stream()
-                .forEach(index -> LOG.info("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
+                .forEach(index -> LOG.debug("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
         swingHighMarkers.getSwingPointIndexes()
                 .stream()
-                .forEach(index -> LOG.info("Fractal swing high {} at index {}", highPrice.getValue(index), index));
+                .forEach(index -> LOG.debug("Fractal swing high {} at index {}", highPrice.getValue(index), index));
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow chartWorkflow = new ChartWorkflow();
@@ -115,10 +115,10 @@ public class SwingPointAnalysis {
                 zigzagLowMarkers.getSwingPointIndexes().size(), zigzagHighMarkers.getSwingPointIndexes().size());
         zigzagLowMarkers.getSwingPointIndexes()
                 .stream()
-                .forEach(index -> LOG.info("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
+                .forEach(index -> LOG.debug("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
         zigzagHighMarkers.getSwingPointIndexes()
                 .stream()
-                .forEach(index -> LOG.info("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
+                .forEach(index -> LOG.debug("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();

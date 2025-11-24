@@ -348,7 +348,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         int touchCount = 0;
         int outsideCount = 0;
         boolean touchesExtreme = false;
-        Num totalDeviation = numFactory.numOf(0);
+        Num totalDeviation = numFactory.zero();
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
             if (Num.isNaNOrNull(swingPrice)) {
