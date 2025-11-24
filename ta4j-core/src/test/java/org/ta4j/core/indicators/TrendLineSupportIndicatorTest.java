@@ -204,18 +204,21 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var indicator = new TrendLineSupportIndicator(series, 1, 15, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(Double.parseDouble(descriptor.getParameters().get("touchWeight").toString()))
-                .isEqualTo(weights.touchWeight);
+        assertThat(Double
+                .parseDouble(descriptor.getParameters().get("countOfSwingPointsAnchoringTrendlineWeight").toString()))
+                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
         assertThat(restored).isInstanceOf(TrendLineSupportIndicator.class);
         final ScoringWeights restoredWeights = ((TrendLineSupportIndicator) restored).getScoringWeights();
-        assertThat(restoredWeights.touchWeight).isEqualTo(weights.touchWeight);
-        assertThat(restoredWeights.extremeWeight).isEqualTo(weights.extremeWeight);
-        assertThat(restoredWeights.outsideWeight).isEqualTo(weights.outsideWeight);
-        assertThat(restoredWeights.proximityWeight).isEqualTo(weights.proximityWeight);
-        assertThat(restoredWeights.recencyWeight).isEqualTo(weights.recencyWeight);
+        assertThat(restoredWeights.countOfSwingPointsAnchoringTrendlineWeight)
+                .isEqualTo(weights.countOfSwingPointsAnchoringTrendlineWeight);
+        assertThat(restoredWeights.extremeSwingPointAnchorWeight).isEqualTo(weights.extremeSwingPointAnchorWeight);
+        assertThat(restoredWeights.countOfSwingPointsOutsideTrendlineWeight)
+                .isEqualTo(weights.countOfSwingPointsOutsideTrendlineWeight);
+        assertThat(restoredWeights.averageSwingDeviationWeight).isEqualTo(weights.averageSwingDeviationWeight);
+        assertThat(restoredWeights.anchorRecencyWeight).isEqualTo(weights.anchorRecencyWeight);
     }
 
     @Test

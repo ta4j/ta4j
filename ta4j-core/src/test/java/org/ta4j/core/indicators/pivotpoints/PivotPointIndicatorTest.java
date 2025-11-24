@@ -1676,4 +1676,76 @@ public class PivotPointIndicatorTest {
         assertNumEquals(100.66666666666667, pp.getValue(2));
         assertNumEquals(101.75, deMarkpp.getValue(2));
     }
+
+    @Test
+    public void shouldHandleBeginIndexGreaterThanZero() {
+        // Create a series with multiple days
+        var series = new MockBarSeriesBuilder().withName("BeginIndexTest").build();
+
+        // Day 1
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Day 2
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        // Day 3
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(106.0)
+                .highPrice(110.0)
+                .lowPrice(104.0)
+                .closePrice(108.0)
+                .volume(800)
+                .add();
+
+        // Day 4
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-04").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(108.0)
+                .highPrice(112.0)
+                .lowPrice(106.0)
+                .closePrice(110.0)
+                .volume(900)
+                .add();
+
+        // Set maximum bar count to 2, which will set beginIndex to 2
+        // This means the series will only contain bars at indices 2 and 3
+        series.setMaximumBarCount(2);
+
+        // Verify beginIndex is now 2
+        assertEquals(2, series.getBeginIndex());
+        assertEquals(3, series.getEndIndex());
+
+        var pp = new PivotPointIndicator(series, DAY);
+        var deMarkpp = new DeMarkPivotPointIndicator(series, DAY);
+
+        // At beginIndex (index 2), there's no previous period, so should return NaN
+        // This tests the fix: when index == beginIndex > 0, it should return early
+        // without trying to access index - 1
+        assertEquals(NaN, pp.getValue(series.getBeginIndex()));
+        assertEquals(NaN, deMarkpp.getValue(series.getBeginIndex()));
+
+        // Verify getBarsOfPreviousPeriod returns empty list at beginIndex
+        var barsOfPreviousPeriod = pp.getBarsOfPreviousPeriod(series.getBeginIndex());
+        assertEquals(0, barsOfPreviousPeriod.size());
+
+        // At index 3 (first bar after beginIndex), should include Day 3 bar in previous
+        // period
+        // Day 3: (110 + 104 + 108) / 3 = 322 / 3 = 107.333...
+        assertNumEquals(107.33333333333333, pp.getValue(3));
+    }
 }

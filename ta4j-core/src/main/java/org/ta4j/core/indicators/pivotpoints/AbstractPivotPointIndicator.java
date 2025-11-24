@@ -93,7 +93,7 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
             previousBars.add(Math.max(0, index - 1));
             return previousBars;
         }
-        if (index == 0) {
+        if (index <= getBarSeries().getBeginIndex()) {
             return previousBars;
         }
 

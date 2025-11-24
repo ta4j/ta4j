@@ -181,11 +181,14 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * simplify serialization.
      */
     public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, int unstableBars,
-            double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
-            double recencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal) {
-        this(swingLowIndicator, barCount, unstableBars, TrendLineSide.SUPPORT, touchWeight, extremeWeight,
-                outsideWeight, proximityWeight, recencyWeight, ToleranceSettings
-                        .from(ToleranceSettings.Mode.values()[toleranceModeOrdinal], toleranceValue, toleranceMinimum));
+            double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal) {
+        this(swingLowIndicator, barCount, unstableBars, TrendLineSide.SUPPORT,
+                countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.from(ToleranceSettings.Mode.values()[toleranceModeOrdinal], toleranceValue,
+                        toleranceMinimum));
     }
 
     /**

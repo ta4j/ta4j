@@ -143,20 +143,25 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     }
 
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
-            double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
-            double recencyWeight) {
-        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE, touchWeight, extremeWeight,
-                outsideWeight, proximityWeight, recencyWeight, ToleranceSettings.defaultSettings());
+            double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight) {
+        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
+                countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.defaultSettings());
     }
 
     /**
      * Deserialization-friendly constructor that accepts explicit scoring weights.
      */
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
-            TrendLineSide side, double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
-            double recencyWeight, ToleranceSettings toleranceSettings) {
-        super(swingHighIndicator, barCount, unstableBars, side, touchWeight, extremeWeight, outsideWeight,
-                proximityWeight, recencyWeight, toleranceSettings);
+            TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
+        super(swingHighIndicator, barCount, unstableBars, side, countOfSwingPointsAnchoringTrendlineWeight,
+                extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
+                anchorRecencyWeight, toleranceSettings);
     }
 
     /**
@@ -164,10 +169,12 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * and tolerance parameters.
      */
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
-            double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
-            double recencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum) {
-        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE, touchWeight, extremeWeight,
-                outsideWeight, proximityWeight, recencyWeight,
+            double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum) {
+        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
+                countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum));
     }
 
@@ -176,11 +183,14 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * simplify serialization.
      */
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
-            double touchWeight, double extremeWeight, double outsideWeight, double proximityWeight,
-            double recencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal) {
-        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE, touchWeight, extremeWeight,
-                outsideWeight, proximityWeight, recencyWeight, ToleranceSettings
-                        .from(ToleranceSettings.Mode.values()[toleranceModeOrdinal], toleranceValue, toleranceMinimum));
+            double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal) {
+        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
+                countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.from(ToleranceSettings.Mode.values()[toleranceModeOrdinal], toleranceValue,
+                        toleranceMinimum));
     }
 
     /**
