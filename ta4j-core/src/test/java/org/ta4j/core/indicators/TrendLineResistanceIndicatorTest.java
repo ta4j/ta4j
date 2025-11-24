@@ -64,7 +64,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void shouldPreferLineContainingCurrentPriceWhenTouchesTie() {
+    public void shouldSelectHighestScoringLineWhenTouchesTie() {
         final var series = seriesFromHighs(12, 14, 13, 13, 16, 14, 12, 15, 13, 18);
         final var indicator = new TrendLineResistanceIndicator(series, 1, Integer.MAX_VALUE);
 
@@ -74,17 +74,9 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
         assertThat(indicator.getSwingPointIndexes()).containsExactly(1, 4, 7);
 
-        final var numFactory = series.numFactory();
-        final var x1 = numFactory.numOf(1);
-        final var x2 = numFactory.numOf(4);
-        final var y1 = numFactory.numOf(14);
-        final var y2 = numFactory.numOf(16);
-        final var slope = y2.minus(y1).dividedBy(x2.minus(x1));
-        final var intercept = y1.minus(slope.multipliedBy(x1));
-        final var expected = slope.multipliedBy(numFactory.numOf(9)).plus(intercept);
+        final var expected = expectedProjection(series, 4, 7, 9);
 
-        assertThat(indicator.getValue(9)).isEqualByComparingTo(expected);
-        assertThat(expected).isGreaterThan(series.getBar(9).getHighPrice());
+        assertThat(indicator.getValue(9).minus(expected).abs().doubleValue()).isLessThan(1e-9);
     }
 
     @Test
@@ -218,7 +210,6 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(restoredWeights.outsideWeight).isEqualTo(weights.outsideWeight);
         assertThat(restoredWeights.proximityWeight).isEqualTo(weights.proximityWeight);
         assertThat(restoredWeights.recencyWeight).isEqualTo(weights.recencyWeight);
-        assertThat(restoredWeights.containBonus).isEqualTo(weights.containBonus);
     }
 
     @Test

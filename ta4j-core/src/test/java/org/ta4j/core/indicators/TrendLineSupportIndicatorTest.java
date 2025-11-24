@@ -67,7 +67,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
-    public void shouldPreferLineContainingCurrentPriceWhenTouchesTie() {
+    public void shouldSelectHighestScoringLineWhenTouchesTie() {
         final var series = seriesFromLows(14, 11, 13, 12, 9, 11, 13, 10, 12, 8);
         final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE);
 
@@ -77,12 +77,9 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getSwingPointIndexes()).containsExactly(1, 4, 7);
 
-        final var expected = expectedProjection(series, 1, 4, 9);
-        final var priceAtIndex = series.getBar(9).getLowPrice();
+        final var expected = expectedProjection(series, 4, 7, 9);
 
         assertThat(indicator.getValue(9).minus(expected).abs().doubleValue()).isLessThan(1e-9);
-        assertThat(priceAtIndex.isNaN()).isFalse();
-        assertThat(expected).isLessThan(priceAtIndex);
     }
 
     @Test
@@ -203,14 +200,12 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
     @Test
     public void shouldRoundTripCustomScoringWeightsThroughSerialization() {
         final var series = seriesFromLows(9, 7, 10, 11, 12, 6, 9, 13, 8);
-        final var weights = ScoringWeights.of(0.40d, 0.20d, 0.15d, 0.15d, 0.05d, 0.05d);
+        final var weights = ScoringWeights.of(0.40d, 0.20d, 0.15d, 0.15d, 0.10d);
         final var indicator = new TrendLineSupportIndicator(series, 1, 15, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
         assertThat(Double.parseDouble(descriptor.getParameters().get("touchWeight").toString()))
                 .isEqualTo(weights.touchWeight);
-        assertThat(Double.parseDouble(descriptor.getParameters().get("containBonus").toString()))
-                .isEqualTo(weights.containBonus);
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
@@ -221,7 +216,6 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(restoredWeights.outsideWeight).isEqualTo(weights.outsideWeight);
         assertThat(restoredWeights.proximityWeight).isEqualTo(weights.proximityWeight);
         assertThat(restoredWeights.recencyWeight).isEqualTo(weights.recencyWeight);
-        assertThat(restoredWeights.containBonus).isEqualTo(weights.containBonus);
     }
 
     @Test
