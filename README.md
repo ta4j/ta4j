@@ -4,7 +4,7 @@
 
 ![Ta4j main chart](https://raw.githubusercontent.com/ta4j/ta4j-wiki/master/img/ta4j_main_chart.png)
 
-Ta4j turns Java developers into confident quants. With more than 200 indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
+Build, test, and deploy trading bots in Java. With more than 200 indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
 
 ---
 
@@ -30,7 +30,7 @@ Ta4j turns Java developers into confident quants. With more than 200 indicators,
 
 - **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
 - **Composable strategy API** - Build complex trading rules using fluent Java patterns
-- **Built-in backtesting engine** - Test strategies on historical data with realistic trading costs
+- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
 - **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
 - **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
 - **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
