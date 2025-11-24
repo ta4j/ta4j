@@ -8,6 +8,37 @@ Ta4j turns Java developers into confident quants. With more than 200 indicators,
 
 ---
 
+## Table of Contents
+
+- [Features at a glance](#features-at-a-glance)
+- [What can you build?](#what-can-you-build)
+- [Why Java developers choose Ta4j](#why-java-developers-choose-ta4j)
+- [Install in seconds](#install-in-seconds)
+- [Quick start: Your first strategy](#quick-start-your-first-strategy)
+- [Evaluate performance with metrics](#evaluate-performance-with-metrics)
+- [Visualize and share strategies](#visualize-and-share-strategies)
+- [From backtest to live trading](#from-backtest-to-live-trading)
+- [Real-world examples](#real-world-examples)
+- [Performance](#performance)
+- [Community & Support](#community--support)
+- [What's next?](#whats-next)
+- [Contributing](#contributing)
+
+---
+
+## Features at a glance
+
+- **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
+- **Composable strategy API** - Build complex trading rules using fluent Java patterns
+- **Built-in backtesting engine** - Test strategies on historical data with realistic trading costs
+- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
+- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
+- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
+- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
+- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
+
+---
+
 ## What can you build?
 
 - **Backtest trading strategies**: Test "what if" scenarios on historical data before risking real money
@@ -20,7 +51,7 @@ Ta4j turns Java developers into confident quants. With more than 200 indicators,
 
 ## Why Java developers choose Ta4j
 
-- **Pure Java, zero friction**: Works anywhere Java 11+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
+- **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 130+ more ready to plug together.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns—no DSLs or configuration files required.
@@ -268,6 +299,65 @@ while (true) {
 - **Deterministic**: Same inputs always produce same outputs—critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+## Real-world examples
+
+The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
+
+### Strategy Examples
+- **[RSI2Strategy](ta4j-examples/src/main/java/ta4jexamples/strategies/RSI2Strategy.java)** - Mean reversion strategy using RSI with entry/exit rules
+- **[ADXStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/ADXStrategy.java)** - Trend-following strategy using ADX and DI indicators
+- **[CCICorrectionStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/CCICorrectionStrategy.java)** - Commodity Channel Index-based correction strategy
+- **[MovingMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/MovingMomentumStrategy.java)** - Momentum-based strategy with moving averages
+- **[GlobalExtremaStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/GlobalExtremaStrategy.java)** - Strategy using global price extrema for entries/exits
+- **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
+
+### Data Loading Examples
+- **[CsvTradesLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvTradesLoader.java)** - Load historical data from CSV files
+- **[CsvBarsLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvBarsLoader.java)** - Load OHLCV bar data from CSV
+- **[AdaptiveJsonBarsSerializer](ta4j-examples/src/main/java/ta4jexamples/loaders/AdaptiveJsonBarsSerializer.java)** - Parse JSON data from Coinbase/Binance APIs
+
+### Analysis & Backtesting Examples
+- **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
+- **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[TopStrategiesExampleBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TopStrategiesExampleBacktest.java)** - Find top-performing strategies from parameter sweeps
+
+### Charting Examples
+- **[IndicatorsToChart](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java)** - Visualize indicators overlaid on price charts
+- **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
+- **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
+
+**💡 Tip**: Run any example with `mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
+
+## Performance
+
+<!-- TODO: Add performance benchmarks and metrics -->
+<!-- Consider including:
+- Backtesting performance (strategies/second, bars/second)
+- Memory usage patterns
+- Comparison with other technical analysis libraries
+- Num type performance characteristics (DecimalNum vs DoubleNum)
+- Real-world usage statistics if available
+-->
+
+Ta4j is designed for performance and scalability:
+
+- **Efficient calculations** - Optimized indicator implementations with minimal overhead
+- **Flexible number types** - Choose between `DecimalNum` (precision) and `DoubleNum` (speed) based on your needs
+- **Memory-efficient** - Support for moving windows and sub-series to minimize memory footprint
+- **Parallel-friendly** - Strategies can be backtested independently for easy parallelization
+
+For detailed performance characteristics and benchmarks, see the [wiki's performance guide](https://ta4j.github.io/ta4j-wiki/) (TODO: add link when available).
+
+## Community & Support
+
+Get help, share ideas, and connect with other Ta4j users:
+
+- **💬 [Discord Community](https://discord.gg/HX9MbWZ)** - Active community for quick questions, strategy discussions, and real-time help
+- **📖 [Documentation Wiki](https://ta4j.github.io/ta4j-wiki/)** - Comprehensive guides covering indicators, strategies, backtesting, and more
+- **📚 [Javadoc API Reference](https://ta4j.github.io/ta4j/)** - Complete API documentation with examples
+- **🐛 [GitHub Issues](https://github.com/ta4j/ta4j/issues)** - Report bugs, request features, or ask questions
+- **💡 [Usage Examples](https://github.com/ta4j/ta4j/tree/master/ta4j-examples/src/main/java/ta4jexamples)** - Browse runnable code examples in the repository
+
 ## What's next?
 
 **New to technical analysis?**
@@ -281,9 +371,7 @@ while (true) {
 - Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/) like walk-forward analysis
 
 **Need help?**
-- Ask questions on [Discord](https://discord.gg/HX9MbWZ) (active community, quick responses)
-- Search or open an [issue](https://github.com/ta4j/ta4j/issues) on GitHub
-- Review the [Javadoc](https://ta4j.github.io/ta4j/) for detailed API documentation
+- See the [Community & Support](#community--support) section above for all available resources
 
 ## Contributing
 
