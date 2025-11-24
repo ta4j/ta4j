@@ -232,8 +232,9 @@ public final class TradingChartFactory {
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle) {
         String effectiveTitle = chartTitle != null && !chartTitle.trim().isEmpty() ? chartTitle
                 : (series.getName() != null ? series.getName() : series.toString());
-        TimeSeriesCollection primaryDataset = createTimeSeriesDataset(series, primaryIndicator, primaryLabel);
-        TimeSeriesCollection secondaryDataset = createTimeSeriesDataset(series, secondaryIndicator, secondaryLabel);
+        TimeSeriesCollection primaryDataset = createTimeSeriesDataset(series, primaryIndicator, primaryLabel, false);
+        TimeSeriesCollection secondaryDataset = createTimeSeriesDataset(series, secondaryIndicator, secondaryLabel,
+                false);
 
         JFreeChart chart = ChartFactory.createTimeSeriesChart(effectiveTitle, "Date", primaryLabel, primaryDataset,
                 true, true, false);
@@ -287,7 +288,8 @@ public final class TradingChartFactory {
         }
 
         // Add secondary axis with analysis criterion
-        TimeSeriesCollection criterionDataset = createTimeSeriesDataset(series, criterionIndicator, criterionLabel);
+        TimeSeriesCollection criterionDataset = createTimeSeriesDataset(series, criterionIndicator, criterionLabel,
+                false);
         addSecondaryAxis(mainPlot, criterionDataset, criterionLabel);
 
         return chart;
@@ -477,7 +479,8 @@ public final class TradingChartFactory {
             return;
         }
         BarSeries series = indicator.getBarSeries() != null ? indicator.getBarSeries() : definition.series();
-        TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, indicator.toString());
+        boolean connectGaps = overlay.style().connectGaps();
+        TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, indicator.toString(), connectGaps);
         int datasetIndex = plot.getDatasetCount();
         plot.setDataset(datasetIndex, dataset);
 
@@ -820,17 +823,20 @@ public final class TradingChartFactory {
     }
 
     /**
-     * Creates a TimeSeriesCollection from an indicator, treating NaN values as
-     * gaps. When NaN values are encountered, the series is split into multiple
-     * segments to create visual gaps in the chart.
+     * Creates a TimeSeriesCollection from an indicator. When connectGaps is false,
+     * NaN values are treated as gaps and the series is split into multiple
+     * segments. When connectGaps is true, NaN values are skipped but non-NaN values
+     * are connected in a single series.
      *
-     * @param series     the bar series
-     * @param indicator  the indicator to convert
-     * @param seriesName the base name for the series
+     * @param series      the bar series
+     * @param indicator   the indicator to convert
+     * @param seriesName  the base name for the series
+     * @param connectGaps if true, connect non-NaN values across NaN gaps; if false,
+     *                    split on NaN
      * @return TimeSeriesCollection containing one or more series segments
      */
-    private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
-            String seriesName) {
+    private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator, String seriesName,
+            boolean connectGaps) {
         TimeSeriesCollection collection = new TimeSeriesCollection();
         TimeSeries currentSegment = null;
         int segmentIndex = 0;
@@ -851,10 +857,16 @@ public final class TradingChartFactory {
                 }
                 currentSegment.add(new Minute(barDate), value.doubleValue());
             } else {
-                // NaN encountered - finish current segment if it exists
-                if (currentSegment != null) {
-                    collection.addSeries(currentSegment);
-                    currentSegment = null;
+                // NaN encountered
+                if (connectGaps) {
+                    // When connecting gaps, just skip NaN values and continue with current segment
+                    // No action needed - the segment continues
+                } else {
+                    // When not connecting gaps, finish current segment if it exists
+                    if (currentSegment != null) {
+                        collection.addSeries(currentSegment);
+                        currentSegment = null;
+                    }
                 }
             }
         }

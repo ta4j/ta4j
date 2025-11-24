@@ -51,92 +51,91 @@ import ta4jexamples.loaders.CsvBarsLoader;
  */
 public class SwingPointAnalysis {
 
-        private static final Logger LOG = LogManager.getLogger(SwingPointAnalysis.class);
+    private static final Logger LOG = LogManager.getLogger(SwingPointAnalysis.class);
 
-        /**
-         * Main method to run the swing point analysis example.
-         *
-         * @param args command line arguments (not used)
-         */
-        public static void main(String[] args) {
-                // Load bar series from CSV file
-                BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+    /**
+     * Main method to run the swing point analysis example.
+     *
+     * @param args command line arguments (not used)
+     */
+    public static void main(String[] args) {
+        // Load bar series from CSV file
+        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
-                Objects.requireNonNull(series, "Bar series was null");
-                if (series.isEmpty()) {
-                        LOG.error("Bar series is empty. Cannot identify swing points.");
-                        return;
-                }
-
-                // Create marker indicators for swing points using the official indicator
-                // Use fractal-based swing indicators with 5-bar symmetric window
-                LowPriceIndicator lowPrice = new LowPriceIndicator(series);
-                HighPriceIndicator highPrice = new HighPriceIndicator(series);
-                RecentFractalSwingLowIndicator swingLowIndicator = new RecentFractalSwingLowIndicator(lowPrice, 5, 5,
-                                0);
-                RecentFractalSwingHighIndicator swingHighIndicator = new RecentFractalSwingHighIndicator(highPrice, 5,
-                                5, 0);
-
-                SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(series, swingLowIndicator);
-                SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(series, swingHighIndicator);
-
-                LOG.info("Identified {} fractal swing lows and {} fractal swing highs",
-                                swingLowMarkers.getSwingPointIndexes().size(),
-                                swingHighMarkers.getSwingPointIndexes().size());
-                swingLowMarkers.getSwingPointIndexes()
-                                .stream()
-                                .forEach(index -> LOG.info("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
-                swingHighMarkers.getSwingPointIndexes()
-                                .stream()
-                                .forEach(index -> LOG.info("Fractal swing high {} at index {}", highPrice.getValue(index), index));
-
-                // Build and display chart using ChartWorkflow
-                ChartWorkflow chartWorkflow = new ChartWorkflow();
-                ChartPlan plan = chartWorkflow.builder()
-                                .withTitle("Fractal Swing Point Analysis")
-                                .withSeries(series)
-                                .withIndicatorOverlay(swingLowMarkers)
-                                .withLineColor(Color.GREEN)
-                                .withLineWidth(3.0f)
-                                .withIndicatorOverlay(swingHighMarkers)
-                                .withLineColor(Color.RED)
-                                .withLineWidth(3.0f)
-                                .toPlan();
-
-                chartWorkflow.display(plan);
-                chartWorkflow.save(plan, "log/charts", "fractal-swing-point-analysis");
-
-                RecentZigZagSwingLowIndicator zigzagLowIndicator = new RecentZigZagSwingLowIndicator(series);
-                RecentZigZagSwingHighIndicator zigzagHighIndicator = new RecentZigZagSwingHighIndicator(series);
-
-                SwingPointMarkerIndicator zigzagLowMarkers = new SwingPointMarkerIndicator(series, zigzagLowIndicator);
-                SwingPointMarkerIndicator zigzagHighMarkers = new SwingPointMarkerIndicator(series,
-                                zigzagHighIndicator);
-
-                LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs",
-                                zigzagLowMarkers.getSwingPointIndexes().size(),
-                                zigzagHighMarkers.getSwingPointIndexes().size());
-                zigzagLowMarkers.getSwingPointIndexes()
-                                .stream()
-                                .forEach(index -> LOG.info("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
-                zigzagHighMarkers.getSwingPointIndexes()
-                                .stream()
-                                .forEach(index -> LOG.info("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
-
-                // Build and display chart using ChartWorkflow
-                ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
-                ChartPlan zigzagPlan = zigzagChartWorkflow.builder()
-                                .withTitle("ZigZag Swing Point Analysis")
-                                .withSeries(series)
-                                .withIndicatorOverlay(zigzagLowMarkers)
-                                .withLineColor(Color.GREEN)
-                                .withLineWidth(3.0f)
-                                .withIndicatorOverlay(zigzagHighMarkers)
-                                .withLineColor(Color.RED)
-                                .withLineWidth(3.0f)
-                                .toPlan();
-
-                zigzagChartWorkflow.display(zigzagPlan);
-                zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-swing-point-analysis");
+        Objects.requireNonNull(series, "Bar series was null");
+        if (series.isEmpty()) {
+            LOG.error("Bar series is empty. Cannot identify swing points.");
+            return;
         }
+
+        // Create marker indicators for swing points using the official indicator
+        // Use fractal-based swing indicators with 5-bar symmetric window
+        LowPriceIndicator lowPrice = new LowPriceIndicator(series);
+        HighPriceIndicator highPrice = new HighPriceIndicator(series);
+        RecentFractalSwingLowIndicator swingLowIndicator = new RecentFractalSwingLowIndicator(lowPrice, 5, 5, 0);
+        RecentFractalSwingHighIndicator swingHighIndicator = new RecentFractalSwingHighIndicator(highPrice, 5, 5, 0);
+
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(series, swingLowIndicator);
+        SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(series, swingHighIndicator);
+
+        LOG.info("Identified {} fractal swing lows and {} fractal swing highs",
+                swingLowMarkers.getSwingPointIndexes().size(), swingHighMarkers.getSwingPointIndexes().size());
+        swingLowMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.info("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
+        swingHighMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.info("Fractal swing high {} at index {}", highPrice.getValue(index), index));
+
+        // Build and display chart using ChartWorkflow
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        ChartPlan plan = chartWorkflow.builder()
+                .withTitle("Fractal Swing Point Analysis")
+                .withSeries(series)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .withIndicatorOverlay(swingHighMarkers)
+                .withLineColor(Color.RED)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .toPlan();
+
+        chartWorkflow.display(plan);
+        chartWorkflow.save(plan, "log/charts", "fractal-swing-point-analysis");
+
+        RecentZigZagSwingLowIndicator zigzagLowIndicator = new RecentZigZagSwingLowIndicator(series);
+        RecentZigZagSwingHighIndicator zigzagHighIndicator = new RecentZigZagSwingHighIndicator(series);
+
+        SwingPointMarkerIndicator zigzagLowMarkers = new SwingPointMarkerIndicator(series, zigzagLowIndicator);
+        SwingPointMarkerIndicator zigzagHighMarkers = new SwingPointMarkerIndicator(series, zigzagHighIndicator);
+
+        LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs",
+                zigzagLowMarkers.getSwingPointIndexes().size(), zigzagHighMarkers.getSwingPointIndexes().size());
+        zigzagLowMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.info("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
+        zigzagHighMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.info("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
+
+        // Build and display chart using ChartWorkflow
+        ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
+        ChartPlan zigzagPlan = zigzagChartWorkflow.builder()
+                .withTitle("ZigZag Swing Point Analysis")
+                .withSeries(series)
+                .withIndicatorOverlay(zigzagLowMarkers)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .withIndicatorOverlay(zigzagHighMarkers)
+                .withLineColor(Color.RED)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .toPlan();
+
+        zigzagChartWorkflow.display(zigzagPlan);
+        zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-swing-point-analysis");
+    }
 }

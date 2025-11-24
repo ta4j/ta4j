@@ -37,6 +37,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
@@ -221,6 +222,107 @@ class ChartBuilderTest {
         assertDoesNotThrow(stage::toChart);
     }
 
+    @Test
+    void withConnectAcrossNaNFalseCreatesMultipleSegmentsForNaNValues() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(indicator)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertTrue(dataset.getSeriesCount() > 1,
+                "When connectGaps is false, NaN values should create multiple series segments");
+    }
+
+    @Test
+    void withConnectAcrossNaNTrueCreatesSingleSegmentForNaNValues() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(indicator)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(1, dataset.getSeriesCount(),
+                "When connectGaps is true, NaN values should be skipped and non-NaN values connected in a single segment");
+    }
+
+    @Test
+    void withConnectAcrossNaNDefaultsToFalse() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder().withSeries(series).withIndicatorOverlay(indicator).toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertTrue(dataset.getSeriesCount() > 1,
+                "By default (connectGaps not set), NaN values should create multiple series segments");
+    }
+
+    @Test
+    void withConnectAcrossNaNCanBeChainedWithOtherStyling() {
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(indicator)
+                .withLineColor(Color.MAGENTA)
+                .withLineWidth(2.5f)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(1, dataset.getSeriesCount(),
+                "withConnectAcrossNaN should work when chained with other styling methods");
+
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        assertEquals(Color.MAGENTA, renderer.getSeriesPaint(0), "Color should still be applied");
+        BasicStroke stroke = (BasicStroke) renderer.getSeriesStroke(0);
+        assertEquals(2.5f, stroke.getLineWidth(), "Line width should still be applied");
+    }
+
+    @Test
+    void withConnectAcrossNaNTrueSkipsNaNButConnectsValidValues() {
+        // Create indicator with valid values at indices 0,1, NaN at 2,3,4, then valid
+        // at 5,6
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(indicator)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(1, dataset.getSeriesCount(),
+                "All valid values should be in a single connected segment when connectGaps is true");
+
+        // Verify the segment contains values from before and after the NaN gap
+        org.jfree.data.time.TimeSeries timeSeries = dataset.getSeries(0);
+        assertTrue(timeSeries.getItemCount() > 0, "The connected segment should contain valid values");
+    }
+
+    @Test
+    void withConnectAcrossNaNFalseSplitsOnNaN() {
+        // Create indicator with valid values at indices 0,1, NaN at 2,3,4, then valid
+        // at 5,6
+        IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(indicator)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(2, dataset.getSeriesCount(),
+                "NaN values should split the series into two segments (before and after the gap)");
+    }
+
     private ConstantIndicator constantIndicator(double value, String name) {
         return new ConstantIndicator(series, value, name);
     }
@@ -258,6 +360,47 @@ class ChartBuilderTest {
         @Override
         public String toString() {
             return name;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+    }
+
+    /**
+     * Test indicator that returns NaN for specified indices and valid values for
+     * others.
+     */
+    private static final class IndicatorWithNaN implements Indicator<Num> {
+        private final BarSeries series;
+        private final int[] nanIndices;
+        private final Num validValue;
+
+        IndicatorWithNaN(BarSeries series, int[] nanIndices) {
+            this.series = series;
+            this.nanIndices = nanIndices.clone();
+            this.validValue = series.numFactory().numOf(100.0);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            for (int nanIndex : nanIndices) {
+                if (index == nanIndex) {
+                    return NaN.NaN;
+                }
+            }
+            return validValue;
+        }
+
+        @Override
+        public String toString() {
+            return "TestIndicatorWithNaN";
         }
 
         @Override

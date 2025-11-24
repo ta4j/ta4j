@@ -351,6 +351,8 @@ public final class ChartBuilder {
         StyledOverlayStage withLineColor(Color color);
 
         StyledOverlayStage withLineWidth(float width);
+
+        StyledOverlayStage withConnectAcrossNaN(boolean connectAcrossNaN);
     }
 
     /**
@@ -524,6 +526,13 @@ public final class ChartBuilder {
         public StyledOverlayStage withLineWidth(float width) {
             ensureOverlay();
             overlay.style.setLineWidth(width);
+            return this;
+        }
+
+        @Override
+        public StyledOverlayStage withConnectAcrossNaN(boolean connectAcrossNaN) {
+            ensureOverlay();
+            overlay.style.setConnectGaps(connectAcrossNaN);
             return this;
         }
 
@@ -856,14 +865,16 @@ public final class ChartBuilder {
     public static final class OverlayStyle {
         private Color color;
         private float lineWidth;
+        private boolean connectGaps;
 
-        private OverlayStyle(Color color, float lineWidth) {
+        private OverlayStyle(Color color, float lineWidth, boolean connectGaps) {
             this.color = color;
             this.lineWidth = lineWidth;
+            this.connectGaps = connectGaps;
         }
 
         static OverlayStyle defaultStyle(Color color) {
-            return new OverlayStyle(color, 1.6f);
+            return new OverlayStyle(color, 1.6f, false);
         }
 
         public Color color() {
@@ -872,6 +883,10 @@ public final class ChartBuilder {
 
         public float lineWidth() {
             return lineWidth;
+        }
+
+        public boolean connectGaps() {
+            return connectGaps;
         }
 
         public void setColor(Color color) {
@@ -883,6 +898,10 @@ public final class ChartBuilder {
                 throw new IllegalArgumentException("Line width must be positive");
             }
             this.lineWidth = width;
+        }
+
+        public void setConnectGaps(boolean connectGaps) {
+            this.connectGaps = connectGaps;
         }
     }
 
