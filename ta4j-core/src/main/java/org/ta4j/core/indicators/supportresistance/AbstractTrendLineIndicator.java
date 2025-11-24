@@ -228,7 +228,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         for (int idx : swingPoints) {
             if (idx >= windowStart && idx <= windowEnd) {
                 final Num price = swingPriceAt(idx);
-                if (isInvalid(price)) {
+                if (Num.isNaNOrNull(price)) {
                     continue;
                 }
                 windowedSwings.add(idx);
@@ -246,7 +246,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
         final Num extremeSwingPrice = findExtremeSwingPrice(swingPoints);
         final Num swingRange = findSwingRange(swingPoints);
-        if (isInvalid(extremeSwingPrice) || isInvalid(swingRange)) {
+        if (Num.isNaNOrNull(extremeSwingPrice) || Num.isNaNOrNull(swingRange)) {
             return List.of();
         }
         refreshCoordinateBase();
@@ -284,7 +284,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private Num resolvePriceAtIndex(int index) {
         final Num price = priceIndicator.getValue(index);
-        if (!isInvalid(price)) {
+        if (!Num.isNaNOrNull(price)) {
             return price;
         }
         if (getBarSeries() == null || index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
@@ -295,14 +295,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private Num swingPriceAt(int index) {
         final Num price = priceIndicator.getValue(index);
-        if (!isInvalid(price)) {
+        if (!Num.isNaNOrNull(price)) {
             return price;
         }
         if (getBarSeries() == null || index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
             return price;
         }
         final Num fallback = side.selectBarPrice(getBarSeries().getBar(index));
-        return isInvalid(fallback) ? price : fallback;
+        return Num.isNaNOrNull(fallback) ? price : fallback;
     }
 
     private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation, NumFactory numFactory) {
@@ -327,21 +327,21 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             Num swingRange, NumFactory numFactory) {
         final Num firstValue = swingPriceAt(firstSwingIndex);
         final Num secondValue = swingPriceAt(secondSwingIndex);
-        if (isInvalid(firstValue) || isInvalid(secondValue)) {
+        if (Num.isNaNOrNull(firstValue) || Num.isNaNOrNull(secondValue)) {
             return null;
         }
         final Num x1 = coordinateForIndex(firstSwingIndex, numFactory);
         final Num x2 = coordinateForIndex(secondSwingIndex, numFactory);
         final Num denominator = x2.minus(x1);
-        if (isInvalid(denominator) || denominator.isZero()) {
+        if (Num.isNaNOrNull(denominator) || denominator.isZero()) {
             return null;
         }
         final Num slope = secondValue.minus(firstValue).dividedBy(denominator);
-        if (isInvalid(slope)) {
+        if (Num.isNaNOrNull(slope)) {
             return null;
         }
         final Num intercept = firstValue.minus(slope.multipliedBy(x1));
-        if (isInvalid(intercept)) {
+        if (Num.isNaNOrNull(intercept)) {
             return null;
         }
 
@@ -351,21 +351,21 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         double totalDeviation = 0d;
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
-            if (isInvalid(swingPrice)) {
+            if (Num.isNaNOrNull(swingPrice)) {
                 return null;
             }
             final Num projectedAtSwing = slope.multipliedBy(coordinateForIndex(swingIndex, numFactory)).plus(intercept);
-            if (isInvalid(projectedAtSwing)) {
+            if (Num.isNaNOrNull(projectedAtSwing)) {
                 return null;
             }
             final Num tolerance = toleranceForSwing(swingRange, numFactory);
             final boolean isAnchor = swingIndex == firstSwingIndex || swingIndex == secondSwingIndex;
             final Num deviation = projectedAtSwing.minus(swingPrice).abs();
             final boolean touchesSwing = isAnchor
-                    || (!isInvalid(tolerance) && (deviation.isZero() || deviation.isLessThanOrEqual(tolerance)));
+                    || (!Num.isNaNOrNull(tolerance) && (deviation.isZero() || deviation.isLessThanOrEqual(tolerance)));
             if (touchesSwing) {
                 touchCount++;
-                if (!isInvalid(extremeSwingPrice) && swingPrice.isEqual(extremeSwingPrice)) {
+                if (!Num.isNaNOrNull(extremeSwingPrice) && swingPrice.isEqual(extremeSwingPrice)) {
                     touchesExtreme = true;
                 }
             } else {
@@ -388,16 +388,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 touchesExtreme, baseScore, windowStart, windowEnd);
     }
 
-    private boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
-    }
 
     private Num findSwingRange(List<Integer> swingPointIndexes) {
         Num min = null;
         Num max = null;
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
-            if (isInvalid(swingPrice)) {
+            if (Num.isNaNOrNull(swingPrice)) {
                 continue;
             }
             if (min == null || swingPrice.isLessThan(min)) {
@@ -425,7 +422,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         Num extreme = null;
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
-            if (isInvalid(swingPrice)) {
+            if (Num.isNaNOrNull(swingPrice)) {
                 continue;
             }
             if (extreme == null) {
@@ -547,7 +544,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         private TrendLineCandidate toCandidate(Num priceAtEvaluation, int evaluationIndex, NumFactory numFactory) {
             final Num projected = slope.multipliedBy(coordinateForIndex(evaluationIndex, numFactory)).plus(intercept);
-            if (isInvalid(projected)) {
+            if (Num.isNaNOrNull(projected)) {
                 return null;
             }
             return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, touchCount, outsideCount,
