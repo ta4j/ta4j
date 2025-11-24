@@ -156,7 +156,8 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
         this(swingLowIndicator, barCount, unstableBars, TrendLineSide.SUPPORT,
                 countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
                 countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
-                ToleranceSettings.defaultSettings(), Integer.MAX_VALUE, Integer.MAX_VALUE);
+                ToleranceSettings.defaultSettings(), DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
+                DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     /**
@@ -194,8 +195,8 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
         this(swingLowIndicator, barCount, unstableBars, TrendLineSide.SUPPORT,
                 countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
                 countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
-                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), Integer.MAX_VALUE,
-                Integer.MAX_VALUE);
+                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum),
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     /**

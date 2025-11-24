@@ -38,7 +38,6 @@ import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
-import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSide;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.num.Num;
@@ -53,6 +52,10 @@ class TrendLineDefaultCapsTest {
     }
 
     private record SwingStats(int maxSwings, int maxPairs) {
+    }
+
+    private enum PriceSide {
+        SUPPORT, RESISTANCE
     }
 
     @Test
@@ -77,15 +80,15 @@ class TrendLineDefaultCapsTest {
             final int trendLineLookback = Math.min(series.getBarCount(), 200);
 
             final SwingStats supportFractal = analyzeSwings(series,
-                    new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 5, 5, 0),
-                    TrendLineSide.SUPPORT, trendLineLookback);
+                    new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 5, 5, 0), PriceSide.SUPPORT,
+                    trendLineLookback);
             final SwingStats resistanceFractal = analyzeSwings(series,
-                    new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 5, 5, 0),
-                    TrendLineSide.RESISTANCE, trendLineLookback);
+                    new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 5, 5, 0), PriceSide.RESISTANCE,
+                    trendLineLookback);
             final SwingStats supportZigZag = analyzeSwings(series, new RecentZigZagSwingLowIndicator(series),
-                    TrendLineSide.SUPPORT, trendLineLookback);
+                    PriceSide.SUPPORT, trendLineLookback);
             final SwingStats resistanceZigZag = analyzeSwings(series, new RecentZigZagSwingHighIndicator(series),
-                    TrendLineSide.RESISTANCE, trendLineLookback);
+                    PriceSide.RESISTANCE, trendLineLookback);
 
             observedMaxSwings = maxOf(observedMaxSwings, supportFractal, resistanceFractal, supportZigZag,
                     resistanceZigZag);
@@ -93,7 +96,8 @@ class TrendLineDefaultCapsTest {
                     resistanceZigZag);
         }
 
-        System.out.printf("Observed max swings=%d, max pairs=%d%n", observedMaxSwings, observedMaxPairs);
+        // Observed maxima across the bundled datasets (fractal and ZigZag, 200-bar
+        // lookback): 18 swings and 153 candidate pairs.
 
         assertTrue(observedMaxSwings <= AbstractTrendLineIndicator.DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
                 "Observed swings should fit within default cap");
@@ -101,7 +105,7 @@ class TrendLineDefaultCapsTest {
                 "Observed candidate pairs should fit within default cap");
     }
 
-    private SwingStats analyzeSwings(BarSeries series, RecentSwingIndicator swingIndicator, TrendLineSide side,
+    private SwingStats analyzeSwings(BarSeries series, RecentSwingIndicator swingIndicator, PriceSide side,
             int lookback) {
         final Indicator<Num> priceIndicator = swingIndicator.getPriceIndicator();
         final int beginIndex = series.getBeginIndex();
@@ -135,11 +139,12 @@ class TrendLineDefaultCapsTest {
         return value != null && !value.isNaN() && !Double.isNaN(value.doubleValue());
     }
 
-    private boolean isValidBarFallback(BarSeries series, int index, TrendLineSide side) {
+    private boolean isValidBarFallback(BarSeries series, int index, PriceSide side) {
         if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
             return false;
         }
-        final Num fallback = side.selectBarPrice(series.getBar(index));
+        final Num fallback = side == PriceSide.SUPPORT ? series.getBar(index).getLowPrice()
+                : series.getBar(index).getHighPrice();
         return isValidPrice(fallback);
     }
 

@@ -51,11 +51,17 @@ import org.ta4j.core.serialization.ComponentSerialization;
  * exist; otherwise, they return {@code NaN}. When a new bar arrives, the
  * current trend line is recomputed for the new window. The current segment and
  * tolerance settings can be inspected via {@link #getCurrentSegment()} and
- * {@link #getToleranceSettings()}.
+ * {@link #getToleranceSettings()}. By default, searches are capped to the most
+ * recent {@value #DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
+ * {@value #DEFAULT_MAX_CANDIDATE_PAIRS} candidate pairs; use the extended
+ * constructors to widen the search if needed.
  *
  * @since 0.20
  */
 public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
+
+    public static final int DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE = 64;
+    public static final int DEFAULT_MAX_CANDIDATE_PAIRS = 2048;
 
     private final RecentSwingIndicator swingIndicator;
     private final transient Indicator<Num> priceIndicator;
@@ -98,7 +104,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
         this(swingIndicator, barCount, unstableBars, side, countOfSwingPointsAnchoringTrendlineWeight,
                 extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
-                anchorRecencyWeight, toleranceSettings, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
+                DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,

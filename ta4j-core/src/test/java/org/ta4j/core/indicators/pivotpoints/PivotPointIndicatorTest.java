@@ -42,11 +42,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 public class PivotPointIndicatorTest {
 
@@ -1747,5 +1750,261 @@ public class PivotPointIndicatorTest {
         // period
         // Day 3: (110 + 104 + 108) / 3 = 322 / 3 = 107.333...
         assertNumEquals(107.33333333333333, pp.getValue(3));
+    }
+
+    /**
+     * Testable subclass that exposes the protected getPreviousPeriod method for
+     * testing.
+     */
+    private static class TestablePivotPointIndicator extends AbstractPivotPointIndicator {
+        public TestablePivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
+            super(series, timeLevel);
+        }
+
+        @Override
+        protected Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
+            // Not used in these tests
+            return null;
+        }
+
+        public long getPreviousPeriodForTesting(Bar bar, int indexOfPreviousBar) {
+            return getPreviousPeriod(bar, indexOfPreviousBar);
+        }
+    }
+
+    @Test
+    public void shouldSkipWeekendWhenFindingPreviousDay() {
+        // Create a series: Friday (2024-01-05), then Monday (2024-01-08)
+        // Day of year: Friday = 5, Saturday = 6, Sunday = 7, Monday = 8
+        var series = new MockBarSeriesBuilder().withName("WeekendTest").build();
+
+        // Friday, January 5, 2024 (day of year: 5)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-05").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Monday, January 8, 2024 (day of year: 8)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-08").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var mondayBar = series.getBar(1);
+        var fridayIndex = 0;
+
+        // When asking for previous period of Monday (day 8), should return Friday (day
+        // 5)
+        // The loop should skip Saturday (6) and Sunday (7) and find Friday (5)
+        long previousPeriod = indicator.getPreviousPeriodForTesting(mondayBar, fridayIndex);
+        assertEquals(5L, previousPeriod);
+    }
+
+    @Test
+    public void shouldSkipHolidayWhenFindingPreviousDay() {
+        // Create a series: Monday (2024-01-01), then Wednesday (2024-01-03)
+        // Day of year: Monday = 1, Tuesday = 2 (holiday), Wednesday = 3
+        var series = new MockBarSeriesBuilder().withName("HolidayTest").build();
+
+        // Monday, January 1, 2024 (day of year: 1)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Wednesday, January 3, 2024 (day of year: 3)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var wednesdayBar = series.getBar(1);
+        var mondayIndex = 0;
+
+        // When asking for previous period of Wednesday (day 3), should return Monday
+        // (day 1)
+        // The loop should skip Tuesday (2) and find Monday (1)
+        long previousPeriod = indicator.getPreviousPeriodForTesting(wednesdayBar, mondayIndex);
+        assertEquals(1L, previousPeriod);
+    }
+
+    @Test
+    public void shouldSkipMultipleGapsWhenFindingPreviousDay() {
+        // Create a series: Wednesday (2024-01-03), then Monday (2024-01-08)
+        // Day of year: Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7, Mon = 8
+        var series = new MockBarSeriesBuilder().withName("MultipleGapsTest").build();
+
+        // Wednesday, January 3, 2024 (day of year: 3)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Monday, January 8, 2024 (day of year: 8)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-08").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var mondayBar = series.getBar(1);
+        var wednesdayIndex = 0;
+
+        // When asking for previous period of Monday (day 8), should return Wednesday
+        // (day 3)
+        // The loop should skip Thu (4), Fri (5), Sat (6), Sun (7) and find Wed (3)
+        long previousPeriod = indicator.getPreviousPeriodForTesting(mondayBar, wednesdayIndex);
+        assertEquals(3L, previousPeriod);
+    }
+
+    @Test
+    public void shouldHandleConsecutiveDaysCorrectly() {
+        // Create a series with consecutive trading days: Mon, Tue, Wed
+        var series = new MockBarSeriesBuilder().withName("ConsecutiveDaysTest").build();
+
+        // Monday, January 1, 2024 (day of year: 1)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Tuesday, January 2, 2024 (day of year: 2)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        // Wednesday, January 3, 2024 (day of year: 3)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(106.0)
+                .highPrice(110.0)
+                .lowPrice(104.0)
+                .closePrice(108.0)
+                .volume(800)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var wednesdayBar = series.getBar(2);
+        var tuesdayIndex = 1;
+
+        // When asking for previous period of Wednesday (day 3), should return Tuesday
+        // (day 2)
+        // No gaps, so should match immediately
+        long previousPeriod = indicator.getPreviousPeriodForTesting(wednesdayBar, tuesdayIndex);
+        assertEquals(2L, previousPeriod);
+    }
+
+    @Test
+    public void shouldUpdatePreviousZonedEndTimeOnEachIteration() {
+        // This test specifically verifies the bug fix: previousZonedEndTime must be
+        // updated on each loop iteration, not just once before the loop.
+        // Create a series: Friday, then Monday (weekend gap)
+        var series = new MockBarSeriesBuilder().withName("StaleVariableFixTest").build();
+
+        // Friday, January 5, 2024 (day of year: 5)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-05").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Monday, January 8, 2024 (day of year: 8)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-08").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var mondayBar = series.getBar(1);
+        var fridayIndex = 0;
+
+        // The bug was that previousZonedEndTime was fetched once before the loop
+        // and never updated. With the fix, it should be fetched on each iteration.
+        // When prevCalendarDay starts at 7 (Sunday), it should check the bar at
+        // fridayIndex (which is day 5), see it doesn't match, decrement to 6,
+        // check again (still doesn't match), decrement to 5, and then match.
+        // This verifies that previousZonedEndTime is being re-fetched correctly.
+        long previousPeriod = indicator.getPreviousPeriodForTesting(mondayBar, fridayIndex);
+        assertEquals(5L, previousPeriod);
+    }
+
+    @Test
+    public void shouldHandleYearBoundaryCorrectly() {
+        // Test edge case: previous day crosses year boundary
+        // December 31, 2023 -> January 1, 2024
+        var series = new MockBarSeriesBuilder().withName("YearBoundaryTest").build();
+
+        // December 31, 2023 (day of year: 365)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2023-12-31").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // January 1, 2024 (day of year: 1)
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new TestablePivotPointIndicator(series, DAY);
+        var januaryBar = series.getBar(1);
+        var decemberIndex = 0;
+
+        // When asking for previous period of January 1 (day 1), should return December
+        // 31 (day 365)
+        // Note: The method uses day of year, so it should correctly handle the year
+        // boundary
+        long previousPeriod = indicator.getPreviousPeriodForTesting(januaryBar, decemberIndex);
+        assertEquals(365L, previousPeriod);
     }
 }

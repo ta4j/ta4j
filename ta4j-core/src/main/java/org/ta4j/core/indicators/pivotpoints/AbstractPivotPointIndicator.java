@@ -154,9 +154,11 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
         case DAY: // return previous day
             int prevCalendarDay = zonedEndTime.minusDays(1).getDayOfYear();
             // skip weekend and holidays:
-            var previousZonedEndTime = getBarSeries().getBar(indexOfPreviousBar).getZonedEndTime();
-            while (previousZonedEndTime.getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0
-                    && prevCalendarDay >= 0) {
+            while (indexOfPreviousBar >= getBarSeries().getBeginIndex() && prevCalendarDay >= 0) {
+                var previousZonedEndTime = getBarSeries().getBar(indexOfPreviousBar).getZonedEndTime();
+                if (previousZonedEndTime.getDayOfYear() == prevCalendarDay) {
+                    break;
+                }
                 prevCalendarDay--;
             }
             return prevCalendarDay;
