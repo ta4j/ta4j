@@ -70,6 +70,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private transient int cachedWindowStart = Integer.MIN_VALUE;
     private transient int cachedRemovedBars = Integer.MIN_VALUE;
     private transient Map<Integer, Num> valueCache = new HashMap<>();
+    private transient List<Integer> cachedWindowSwings = List.of();
+    private transient List<CandidateGeometry> cachedGeometries = List.of();
     private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
     private transient int coordinateBaseIndex = Integer.MIN_VALUE;
 
@@ -110,7 +112,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return unstableBars;
+        final Indicator<Num> source = swingIndicator;
+        final int sourceUnstable = source == null ? 0 : source.getCountOfUnstableBars();
+        return Math.max(unstableBars, sourceUnstable);
     }
 
     @Override
@@ -119,7 +123,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         refreshCachedState();
-        return valueCache.computeIfAbsent(index, this::calculate);
+        final Num cached = valueCache.get(index);
+        if (cached != null) {
+            return cached;
+        }
+        final Num value = calculate(index);
+        valueCache.put(index, value);
+        return value;
     }
 
     @Override
@@ -133,11 +143,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
-        if (cachedSegment == null || cachedEndIndex != endIndex || cachedWindowStart != windowStart) {
-            cachedSegment = buildSegment(windowStart, endIndex, swingIndicator.getSwingPointIndexesUpTo(endIndex));
-            cachedEndIndex = endIndex;
-            cachedWindowStart = windowStart;
-        }
+        ensureCandidate(windowStart, endIndex);
         if (cachedSegment == null) {
             return NaN;
         }
@@ -152,29 +158,67 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             cachedSegment = null;
             cachedWindowStart = Integer.MIN_VALUE;
             cachedEndIndex = Integer.MIN_VALUE;
+            cachedWindowSwings = List.of();
+            cachedGeometries = List.of();
             cachedRemovedBars = removedBars;
         }
     }
 
-    private TrendLineCandidate buildSegment(int windowStart, int windowEnd, List<Integer> swingPoints) {
+    private void ensureCandidate(int windowStart, int windowEnd) {
+        final List<Integer> windowSwings = windowedSwings(windowStart, windowEnd,
+                swingIndicator.getSwingPointIndexesUpTo(windowEnd));
+        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != windowEnd
+                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
+        if (geometryStale) {
+            cachedGeometries = buildGeometries(windowStart, windowEnd, windowSwings);
+            cachedWindowSwings = windowSwings;
+            cachedSegment = null;
+            valueCache.clear();
+        }
+        if (cachedGeometries.isEmpty()) {
+            cachedSegment = null;
+            return;
+        }
+        cachedSegment = selectBestCandidate(windowEnd, resolvePriceAtIndex(windowEnd), getBarSeries().numFactory());
+        cachedEndIndex = windowEnd;
+        cachedWindowStart = windowStart;
+    }
+
+    private List<Integer> windowedSwings(int windowStart, int windowEnd, List<Integer> swingPoints) {
         final List<Integer> windowedSwings = new ArrayList<>();
         for (int idx : swingPoints) {
             if (idx >= windowStart && idx <= windowEnd) {
                 windowedSwings.add(idx);
             }
         }
-        if (windowedSwings.size() < 2) {
-            return null;
+        return windowedSwings;
+    }
+
+    private List<CandidateGeometry> buildGeometries(int windowStart, int windowEnd, List<Integer> swingPoints) {
+        if (swingPoints.size() < 2) {
+            return List.of();
         }
-        final Num extremeSwingPrice = findExtremeSwingPrice(windowedSwings);
-        final Num swingRange = findSwingRange(windowedSwings);
+        final Num extremeSwingPrice = findExtremeSwingPrice(swingPoints);
+        final Num swingRange = findSwingRange(swingPoints);
         if (isInvalid(extremeSwingPrice) || isInvalid(swingRange)) {
-            return null;
+            return List.of();
         }
+        refreshCoordinateBase();
+        final int windowLength = windowEnd - windowStart + 1;
         final NumFactory numFactory = getBarSeries().numFactory();
-        final Num priceAtEnd = resolvePriceAtIndex(windowEnd);
-        return selectBestTrendLine(windowedSwings, windowEnd, extremeSwingPrice, swingRange, windowStart,
-                windowEnd - windowStart + 1, numFactory, priceAtEnd);
+        final List<CandidateGeometry> geometries = new ArrayList<>();
+        for (int i = 0; i < swingPoints.size() - 1; i++) {
+            final int firstSwingIndex = swingPoints.get(i);
+            for (int j = i + 1; j < swingPoints.size(); j++) {
+                final int secondSwingIndex = swingPoints.get(j);
+                final CandidateGeometry geometry = buildCandidateGeometry(firstSwingIndex, secondSwingIndex,
+                        swingPoints, windowStart, windowEnd, windowLength, extremeSwingPrice, swingRange, numFactory);
+                if (geometry != null) {
+                    geometries.add(geometry);
+                }
+            }
+        }
+        return geometries;
     }
 
     /**
@@ -195,29 +239,23 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return side.selectBarPrice(getBarSeries().getBar(index));
     }
 
-    private TrendLineCandidate selectBestTrendLine(List<Integer> swingPointIndexes, int evaluationIndex,
-            Num extremeSwingPrice, Num swingRange, int windowStart, int windowLength, NumFactory numFactory,
-            Num priceAtIndex) {
+    private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation, NumFactory numFactory) {
+        if (cachedGeometries.isEmpty()) {
+            return null;
+        }
         TrendLineCandidate bestCandidate = null;
         TrendLineCandidate bestContainingCandidate = null;
-
-        for (int i = 0; i < swingPointIndexes.size() - 1; i++) {
-            final int firstSwingIndex = swingPointIndexes.get(i);
-            for (int j = i + 1; j < swingPointIndexes.size(); j++) {
-                final int secondSwingIndex = swingPointIndexes.get(j);
-                final TrendLineCandidate candidate = buildCandidate(firstSwingIndex, secondSwingIndex,
-                        swingPointIndexes, evaluationIndex, numFactory, priceAtIndex, extremeSwingPrice, swingRange,
-                        windowStart, windowLength);
-                if (candidate == null) {
-                    continue;
-                }
-                if (bestCandidate == null || candidate.isBetterThan(bestCandidate, priceAtIndex)) {
-                    bestCandidate = candidate;
-                }
-                if (candidate.containsCurrentPrice && (bestContainingCandidate == null
-                        || candidate.isBetterThan(bestContainingCandidate, priceAtIndex))) {
-                    bestContainingCandidate = candidate;
-                }
+        for (CandidateGeometry geometry : cachedGeometries) {
+            final TrendLineCandidate candidate = geometry.toCandidate(priceAtEvaluation, evaluationIndex, numFactory);
+            if (candidate == null) {
+                continue;
+            }
+            if (bestCandidate == null || candidate.isBetterThan(bestCandidate, priceAtEvaluation)) {
+                bestCandidate = candidate;
+            }
+            if (candidate.containsCurrentPrice && (bestContainingCandidate == null
+                    || candidate.isBetterThan(bestContainingCandidate, priceAtEvaluation))) {
+                bestContainingCandidate = candidate;
             }
         }
         if (bestCandidate == null) {
@@ -230,11 +268,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return bestCandidate;
     }
 
-    private TrendLineCandidate buildCandidate(int firstSwingIndex, int secondSwingIndex,
-            List<Integer> swingPointIndexes, int evaluationIndex, NumFactory numFactory, Num priceAtEvaluation,
-            Num extremeSwingPrice, Num swingRange, int windowStart, int windowLength) {
-        final Num firstValue = priceIndicator.getValue(firstSwingIndex);
-        final Num secondValue = priceIndicator.getValue(secondSwingIndex);
+    private CandidateGeometry buildCandidateGeometry(int firstSwingIndex, int secondSwingIndex,
+            List<Integer> swingPointIndexes, int windowStart, int windowEnd, int windowLength, Num extremeSwingPrice,
+            Num swingRange, NumFactory numFactory) {
+        final Num firstValue = swingPriceAt(firstSwingIndex);
+        final Num secondValue = swingPriceAt(secondSwingIndex);
         if (isInvalid(firstValue) || isInvalid(secondValue)) {
             return null;
         }
@@ -258,7 +296,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         boolean touchesExtremeSwing = false;
         double sumDeviation = 0d;
         for (int swingIndex : swingPointIndexes) {
-            final Num swingPrice = priceIndicator.getValue(swingIndex);
+            final Num swingPrice = swingPriceAt(swingIndex);
             if (isInvalid(swingPrice)) {
                 return null;
             }
@@ -286,16 +324,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             sumDeviation += deviationValue;
         }
 
-        final boolean containsCurrentPrice = side.contains(
-                slope.multipliedBy(coordinateForIndex(evaluationIndex, numFactory)).plus(intercept), priceAtEvaluation);
         final int mostRecentAnchor = Math.max(firstSwingIndex, secondSwingIndex);
         final double recencyScore = Math.min(1d,
                 Math.max(0d, (double) (mostRecentAnchor - windowStart) / windowLength));
-        final double score = calculateScore(touches, swingPointIndexes.size(), touchesExtremeSwing, outsideCount,
-                sumDeviation, swingRange.doubleValue(), recencyScore, containsCurrentPrice);
+        final double baseScore = calculateBaseScore(touches, swingPointIndexes.size(), touchesExtremeSwing,
+                outsideCount, sumDeviation, swingRange.doubleValue(), recencyScore);
 
-        return new TrendLineCandidate(firstSwingIndex, secondSwingIndex, slope, intercept, touches,
-                containsCurrentPrice, outsideCount, touchesExtremeSwing, score, windowStart, evaluationIndex);
+        return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touches, outsideCount,
+                touchesExtremeSwing, baseScore, windowStart, windowEnd);
     }
 
     private boolean isInvalid(Num value) {
@@ -356,8 +392,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return extreme == null ? NaN : extreme;
     }
 
-    private double calculateScore(int touches, int totalSwings, boolean touchesExtreme, int outsideCount,
-            double sumDeviation, double swingRange, double recencyScore, boolean containsCurrentPrice) {
+    private double calculateBaseScore(int touches, int totalSwings, boolean touchesExtreme, int outsideCount,
+            double sumDeviation, double swingRange, double recencyScore) {
         if (totalSwings <= 0) {
             return 0d;
         }
@@ -369,10 +405,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final boolean invalidRange = Double.isNaN(swingRange) || swingRange <= 0d;
         final double normalizedDeviation = invalidRange ? 0d : Math.min(1d, averageDeviation / swingRange);
         final double proximityScore = 1d - normalizedDeviation;
-        final double baseScore = touchWeight * touchScore + extremeWeight * extremeScore + outsideWeight * outsideScore
+        return touchWeight * touchScore + extremeWeight * extremeScore + outsideWeight * outsideScore
                 + proximityWeight * proximityScore + recencyWeight * recencyScore;
-        final double containBonusScore = containsCurrentPrice ? containBonus : 0d;
-        return baseScore + containBonusScore;
     }
 
     private final class TrendLineCandidate {
@@ -443,6 +477,44 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private Num valueAt(int index, NumFactory numFactory) {
             final Num coordinate = coordinateForIndex(index, numFactory);
             return slope.multipliedBy(coordinate).plus(intercept);
+        }
+    }
+
+    private final class CandidateGeometry {
+        private final int firstIndex;
+        private final int secondIndex;
+        private final Num slope;
+        private final Num intercept;
+        private final int touches;
+        private final int outsideCount;
+        private final boolean touchesExtreme;
+        private final double baseScore;
+        private final int windowStart;
+        private final int windowEnd;
+
+        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept, int touches,
+                int outsideCount, boolean touchesExtreme, double baseScore, int windowStart, int windowEnd) {
+            this.firstIndex = firstIndex;
+            this.secondIndex = secondIndex;
+            this.slope = slope;
+            this.intercept = intercept;
+            this.touches = touches;
+            this.outsideCount = outsideCount;
+            this.touchesExtreme = touchesExtreme;
+            this.baseScore = baseScore;
+            this.windowStart = windowStart;
+            this.windowEnd = windowEnd;
+        }
+
+        private TrendLineCandidate toCandidate(Num priceAtEvaluation, int evaluationIndex, NumFactory numFactory) {
+            final Num projected = slope.multipliedBy(coordinateForIndex(evaluationIndex, numFactory)).plus(intercept);
+            if (isInvalid(projected)) {
+                return null;
+            }
+            final boolean containsCurrentPrice = side.contains(projected, priceAtEvaluation);
+            final double score = baseScore + (containsCurrentPrice ? containBonus : 0d);
+            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, touches, containsCurrentPrice,
+                    outsideCount, touchesExtreme, score, windowStart, windowEnd);
         }
     }
 

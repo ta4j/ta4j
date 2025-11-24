@@ -28,6 +28,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -284,6 +285,36 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(windowStart).isEqualTo(3);
         assertThat(indicator.getValue(1).isNaN()).isTrue();
         assertThat(indicator.getValue(windowStart).isNaN()).isFalse();
+    }
+
+    @Test
+    public void shouldRescoreUsingCachedGeometryWhenSwingsUnchanged() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2025-01-01T00:00:00Z", 10);
+        addBar(series, "2025-01-02T00:00:00Z", 8);
+        addBar(series, "2025-01-03T00:00:00Z", 12);
+        addBar(series, "2025-01-04T00:00:00Z", 7);
+        addBar(series, "2025-01-05T00:00:00Z", 11);
+
+        final var priceIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(1, 3));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE,
+                ScoringWeights.defaultWeights());
+
+        final int initialEnd = series.getEndIndex();
+        final Num initialValue = indicator.getValue(initialEnd);
+        final Num expectedInitial = expectedProjection(series, 1, 3, initialEnd);
+        assertThat(initialValue).isEqualByComparingTo(expectedInitial);
+
+        addBar(series, "2025-01-06T00:00:00Z", 15);
+
+        final int newEnd = series.getEndIndex();
+        final Num updatedValue = indicator.getValue(newEnd);
+        final Num expectedUpdated = expectedProjection(series, 1, 3, newEnd);
+
+        assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
     }
 
     private BarSeries seriesFromLows(double... lows) {

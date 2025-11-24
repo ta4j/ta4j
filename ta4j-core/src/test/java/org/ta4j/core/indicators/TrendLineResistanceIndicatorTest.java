@@ -25,6 +25,9 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -280,6 +283,36 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(windowStart).isNaN()).isFalse();
     }
 
+    @Test
+    public void shouldRescoreUsingCachedGeometryWhenSwingsUnchanged() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2025-01-01T00:00:00Z", 12);
+        addBar(series, "2025-01-02T00:00:00Z", 15);
+        addBar(series, "2025-01-03T00:00:00Z", 13);
+        addBar(series, "2025-01-04T00:00:00Z", 17);
+        addBar(series, "2025-01-05T00:00:00Z", 14);
+
+        final var priceIndicator = new HighPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(1, 3));
+        final var indicator = new TrendLineResistanceIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE,
+                ScoringWeights.defaultWeights());
+
+        final int initialEnd = series.getEndIndex();
+        final Num initialValue = indicator.getValue(initialEnd);
+        final Num expectedInitial = expectedProjection(series, 1, 3, initialEnd);
+        assertThat(initialValue).isEqualByComparingTo(expectedInitial);
+
+        addBar(series, "2025-01-06T00:00:00Z", 16);
+
+        final int newEnd = series.getEndIndex();
+        final Num updatedValue = indicator.getValue(newEnd);
+        final Num expectedUpdated = expectedProjection(series, 1, 3, newEnd);
+
+        assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -288,5 +321,81 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
             series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
         }
         return series;
+    }
+
+    private void addBar(BarSeries series, String isoInstant, double highPrice) {
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse(isoInstant))
+                .openPrice(highPrice)
+                .closePrice(highPrice)
+                .highPrice(highPrice)
+                .lowPrice(Math.max(0d, highPrice - 1d))
+                .volume(1d)
+                .add();
+    }
+
+    private Num expectedProjection(BarSeries series, int startIndex, int endIndex, int targetIndex) {
+        final var factory = series.numFactory();
+        final Num startPrice = series.getBar(startIndex).getHighPrice();
+        final Num endPrice = series.getBar(endIndex).getHighPrice();
+        final long startMillis = series.getBar(startIndex).getEndTime().toEpochMilli();
+        final long endMillis = series.getBar(endIndex).getEndTime().toEpochMilli();
+        final long targetMillis = series.getBar(targetIndex).getEndTime().toEpochMilli();
+
+        final Num numerator = endPrice.minus(startPrice);
+        final Num denominator = factory.numOf(endMillis - startMillis);
+        final Num slope = numerator.dividedBy(denominator);
+        final Num delta = factory.numOf(targetMillis - startMillis);
+        return slope.multipliedBy(delta).plus(startPrice);
+    }
+
+    private static final class StaticSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
+
+        private final Indicator<Num> priceIndicator;
+        private final List<Integer> swingIndexes;
+
+        private StaticSwingIndicator(Indicator<Num> priceIndicator, List<Integer> swingIndexes) {
+            super(priceIndicator);
+            this.priceIndicator = priceIndicator;
+            this.swingIndexes = swingIndexes;
+        }
+
+        @Override
+        public int getLatestSwingIndex(int index) {
+            int latest = -1;
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    latest = swingIndex;
+                }
+            }
+            return latest;
+        }
+
+        @Override
+        public List<Integer> getSwingPointIndexesUpTo(int index) {
+            final List<Integer> filtered = new java.util.ArrayList<>();
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    filtered.add(swingIndex);
+                }
+            }
+            return filtered;
+        }
+
+        @Override
+        public Indicator<Num> getPriceIndicator() {
+            return priceIndicator;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return priceIndicator.getValue(getLatestSwingIndex(index));
+        }
     }
 }
