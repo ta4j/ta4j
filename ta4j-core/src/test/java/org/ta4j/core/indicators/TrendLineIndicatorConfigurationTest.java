@@ -31,6 +31,9 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
@@ -84,8 +87,7 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
             series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
         }
         final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(0, 1, 2));
-        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d,
-                0.15d);
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d);
 
         indicator.getValue(series.getEndIndex());
         final AbstractTrendLineIndicator.TrendLineSegment segment = indicator.getCurrentSegment();
@@ -121,7 +123,7 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
         protected Num calculate(int index) {
             final int latest = getLatestSwingIndex(index);
             if (latest < 0) {
-                return numFactory().numOf(0);
+                return getBarSeries().numFactory().numOf(0);
             }
             return priceIndicator.getValue(latest);
         }
@@ -154,5 +156,20 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
         public Indicator<Num> getPriceIndicator() {
             return priceIndicator;
         }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private BarSeries seriesFromLows(double... lows) {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        for (double low : lows) {
+            final double high = low + 1d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+        }
+        return series;
     }
 }
