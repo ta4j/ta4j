@@ -238,7 +238,6 @@ Basic strategy visualization with indicator overlays:
                 .withIndicatorOverlay(slowEma)
                 .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
                 .toChart();
-        chartWorkflow.displayChart(chart); // displays chart in an interactive Swing window
         chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
 ```
 <!-- END_SNIPPET: ema-crossover -->
@@ -254,7 +253,8 @@ The chart above shows candlestick price data with EMA lines overlaid and buy/sel
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses above 70 (overbought)
+        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
+        // above 70 (overbought)
         Rule entry = new CrossedDownIndicatorRule(rsi, 30);
         Rule exit = new CrossedUpIndicatorRule(rsi, 70);
         Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
@@ -312,9 +312,9 @@ This chart shows price action with indicator overlays, trading signals, and a pe
         MACDIndicator macd = new MACDIndicator(close, 12, 26);
         RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma50)
-                .and(new OverIndicatorRule(rsi, 50));
+        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
+        // below SMA
+        Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
         Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
         Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
         TradingRecord record = new BarSeriesManager(series).run(strategy);
@@ -346,34 +346,40 @@ Serialize indicators, rules, and strategies to JSON for persistence, sharing, or
 <!-- START_SNIPPET: serialize-indicator -->
 ```java
 // Serialize an indicator (RSI) to JSON
-ClosePriceIndicator close = new ClosePriceIndicator(series);
-RSIIndicator rsi = new RSIIndicator(close, 14);
-String rsiJson = rsi.toJson();
-// Output: {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        RSIIndicator rsi = new RSIIndicator(close, 14);
+        String rsiJson = rsi.toJson();
+        LOG.info("Output: {}", rsiJson);
+        // Output:
+        // {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
 ```
 <!-- END_SNIPPET: serialize-indicator -->
 
 <!-- START_SNIPPET: serialize-rule -->
 ```java
 // Serialize a rule (AndRule) to JSON
-Rule rule1 = new OverIndicatorRule(rsi, 50);
-Rule rule2 = new UnderIndicatorRule(rsi, 80);
-Rule andRule = new AndRule(rule1, rule2);
-String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
-// Output: {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
+        Rule rule1 = new OverIndicatorRule(rsi, 50);
+        Rule rule2 = new UnderIndicatorRule(rsi, 80);
+        Rule andRule = new AndRule(rule1, rule2);
+        String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
+        LOG.info("Output: {}", ruleJson);
+        // Output:
+        // {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
 ```
 <!-- END_SNIPPET: serialize-rule -->
 
 <!-- START_SNIPPET: serialize-strategy -->
 ```java
 // Serialize a strategy (EMA Crossover) to JSON
-EMAIndicator fastEma = new EMAIndicator(close, 12);
-EMAIndicator slowEma = new EMAIndicator(close, 26);
-Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
-Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
-Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
-String strategyJson = strategy.toJson();
-// Output: {"type":"BaseStrategy","label":"EMA Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
+        EMAIndicator fastEma = new EMAIndicator(close, 12);
+        EMAIndicator slowEma = new EMAIndicator(close, 26);
+        Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
+        Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
+        Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
+        String strategyJson = strategy.toJson();
+        LOG.info("Output: {}", strategyJson);
+        // Output: {"type":"BaseStrategy","label":"EMA
+        // Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
 ```
 <!-- END_SNIPPET: serialize-strategy -->
 

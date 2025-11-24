@@ -155,7 +155,8 @@ public class ReadmeContentManager {
         Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "ema-crossover-readme", outputDir);
 
         if (savedPath.isPresent()) {
-            LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
+            Path relativePath = getRelativePath(savedPath.get());
+            LOG.info("Chart saved to: {}", relativePath);
         } else {
             LOG.warn("Failed to save ema-crossover-readme.jpg chart image");
         }
@@ -208,7 +209,8 @@ public class ReadmeContentManager {
         Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "rsi-strategy-readme", outputDir);
 
         if (savedPath.isPresent()) {
-            LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
+            Path relativePath = getRelativePath(savedPath.get());
+            LOG.info("Chart saved to: {}", relativePath);
         } else {
             LOG.warn("Failed to save rsi-strategy-readme.jpg chart image");
         }
@@ -264,7 +266,8 @@ public class ReadmeContentManager {
                 outputDir);
 
         if (savedPath.isPresent()) {
-            LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
+            Path relativePath = getRelativePath(savedPath.get());
+            LOG.info("Chart saved to: {}", relativePath);
         } else {
             LOG.warn("Failed to save strategy-performance-readme.jpg chart image");
         }
@@ -324,12 +327,56 @@ public class ReadmeContentManager {
         Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "advanced-strategy-readme", outputDir);
 
         if (savedPath.isPresent()) {
-            LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
+            Path relativePath = getRelativePath(savedPath.get());
+            LOG.info("Chart saved to: {}", relativePath);
         } else {
             LOG.warn("Failed to save advanced-strategy-readme.jpg chart image");
         }
 
         return savedPath;
+    }
+
+    /**
+     * Finds the project root directory by searching for README.md file.
+     * Starts from the current working directory and walks up the directory tree.
+     *
+     * @return the project root path, or current directory if not found
+     */
+    private static Path findProjectRoot() {
+        Path current = Paths.get("").toAbsolutePath().normalize();
+        Path root = current.getRoot();
+
+        // Walk up the directory tree looking for README.md
+        while (current != null && !current.equals(root)) {
+            Path readmePath = current.resolve("README.md");
+            if (Files.exists(readmePath)) {
+                return current;
+            }
+            current = current.getParent();
+        }
+
+        // If not found, return current working directory as fallback
+        return Paths.get("").toAbsolutePath().normalize();
+    }
+
+    /**
+     * Converts an absolute path to a relative path from the project root.
+     *
+     * @param absolutePath the absolute path to convert
+     * @return the relative path, or the original path if conversion fails
+     */
+    private static Path getRelativePath(Path absolutePath) {
+        try {
+            Path projectRoot = findProjectRoot();
+            Path normalized = absolutePath.normalize();
+            if (normalized.startsWith(projectRoot)) {
+                return projectRoot.relativize(normalized);
+            }
+            return normalized;
+        } catch (Exception e) {
+            LOG.warn("Failed to convert path to relative: {}", e.getMessage());
+            return absolutePath;
+        }
     }
 
     /**
@@ -346,6 +393,7 @@ public class ReadmeContentManager {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         RSIIndicator rsi = new RSIIndicator(close, 14);
         String rsiJson = rsi.toJson();
+        LOG.info("Output: {}", rsiJson);
         // Output:
         // {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
         // END_SNIPPET: serialize-indicator
@@ -356,6 +404,7 @@ public class ReadmeContentManager {
         Rule rule2 = new UnderIndicatorRule(rsi, 80);
         Rule andRule = new AndRule(rule1, rule2);
         String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
+        LOG.info("Output: {}", ruleJson);
         // Output:
         // {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
         // END_SNIPPET: serialize-rule
@@ -368,6 +417,7 @@ public class ReadmeContentManager {
         Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
         Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
         String strategyJson = strategy.toJson();
+        LOG.info("Output: {}", strategyJson);
         // Output: {"type":"BaseStrategy","label":"EMA
         // Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
         // END_SNIPPET: serialize-strategy
@@ -516,8 +566,9 @@ public class ReadmeContentManager {
     public static void main(String[] args) {
         if (args.length > 0 && "update-readme".equals(args[0])) {
             LOG.info("=== Updating README with code snippets ===");
-            Path sourceFile = Paths.get("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java");
-            Path readmePath = Paths.get("README.md");
+            Path projectRoot = findProjectRoot();
+            Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
+            Path readmePath = projectRoot.resolve("README.md").normalize();
 
             if (!Files.exists(sourceFile)) {
                 LOG.error("Source file not found: {}", sourceFile.toAbsolutePath());
@@ -539,7 +590,8 @@ public class ReadmeContentManager {
 
         if (args.length > 0 && "snippets".equals(args[0])) {
             LOG.info("=== Extracting code snippets ===");
-            Path sourceFile = Paths.get("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java");
+            Path projectRoot = findProjectRoot();
+            Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
             String[] snippetIds = { "ema-crossover", "rsi-strategy", "strategy-performance", "advanced-strategy",
                     "serialize-indicator", "serialize-rule", "serialize-strategy" };
 
@@ -577,8 +629,9 @@ public class ReadmeContentManager {
 
         // Automatically update README with code snippets to keep them in sync
         LOG.info("=== Updating README with code snippets ===");
-        Path sourceFile = Paths.get("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java");
-        Path readmePath = Paths.get("README.md");
+        Path projectRoot = findProjectRoot();
+        Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
+        Path readmePath = projectRoot.resolve("README.md").normalize();
 
         if (Files.exists(sourceFile) && Files.exists(readmePath)) {
             boolean success = updateReadmeSnippets(readmePath, sourceFile);
