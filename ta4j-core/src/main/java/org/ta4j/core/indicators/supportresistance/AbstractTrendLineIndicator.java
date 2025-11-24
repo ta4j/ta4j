@@ -188,6 +188,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final List<Integer> windowedSwings = new ArrayList<>();
         for (int idx : swingPoints) {
             if (idx >= windowStart && idx <= windowEnd) {
+                final Num price = swingPriceAt(idx);
+                if (isInvalid(price)) {
+                    continue;
+                }
                 windowedSwings.add(idx);
             }
         }
@@ -237,6 +241,18 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return price;
         }
         return side.selectBarPrice(getBarSeries().getBar(index));
+    }
+
+    private Num swingPriceAt(int index) {
+        final Num price = priceIndicator.getValue(index);
+        if (!isInvalid(price)) {
+            return price;
+        }
+        if (getBarSeries() == null || index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
+            return price;
+        }
+        final Num fallback = side.selectBarPrice(getBarSeries().getBar(index));
+        return isInvalid(fallback) ? price : fallback;
     }
 
     private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation, NumFactory numFactory) {
@@ -342,7 +358,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         Num min = null;
         Num max = null;
         for (int swingIndex : swingPointIndexes) {
-            final Num swingPrice = priceIndicator.getValue(swingIndex);
+            final Num swingPrice = swingPriceAt(swingIndex);
             if (isInvalid(swingPrice)) {
                 continue;
             }
@@ -379,7 +395,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private Num findExtremeSwingPrice(List<Integer> swingPointIndexes) {
         Num extreme = null;
         for (int swingIndex : swingPointIndexes) {
-            final Num swingPrice = priceIndicator.getValue(swingIndex);
+            final Num swingPrice = swingPriceAt(swingIndex);
             if (isInvalid(swingPrice)) {
                 continue;
             }

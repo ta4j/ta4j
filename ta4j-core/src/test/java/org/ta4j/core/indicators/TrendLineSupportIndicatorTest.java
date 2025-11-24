@@ -317,6 +317,25 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
     }
 
+    @Test
+    public void shouldFallbackWhenPriceIndicatorHasWarmupNaNs() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final double[] lows = { 12, 11, 10, 8, 11, 9, 12 };
+        for (double low : lows) {
+            final double high = low + 2d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+        }
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var warmupIndicator = new WarmupIndicator(lowIndicator, 2);
+        final var swingIndicator = new RecentFractalSwingLowIndicator(warmupIndicator, 1, 1, 0);
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 1, 1, 10);
+
+        final int endIndex = series.getEndIndex();
+        final Num expected = expectedProjection(series, 3, 5, endIndex);
+        assertThat(indicator.getValue(endIndex)).isEqualByComparingTo(expected);
+    }
+
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -352,6 +371,31 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final Num slope = numerator.dividedBy(denominator);
         final Num delta = factory.numOf(targetMillis - startMillis);
         return slope.multipliedBy(delta).plus(startPrice);
+    }
+
+    private static final class WarmupIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> delegate;
+        private final int warmupBars;
+
+        private WarmupIndicator(Indicator<Num> delegate, int warmupBars) {
+            super(delegate);
+            this.delegate = delegate;
+            this.warmupBars = warmupBars;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return warmupBars;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index < getBarSeries().getBeginIndex() + warmupBars) {
+                return NaN;
+            }
+            return delegate.getValue(index);
+        }
     }
 
     private static final class StaticSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
