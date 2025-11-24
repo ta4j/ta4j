@@ -618,7 +618,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         abstract Num pickExtreme(Num currentExtreme, Num candidate);
 
-        abstract Num selectBarPrice(org.ta4j.core.Bar bar);
+        abstract Num selectBarPrice(Bar bar);
     }
 
     /**
@@ -935,10 +935,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private Num coordinateForIndex(int index, NumFactory numFactory) {
         final var series = getBarSeries();
         if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
-            return numFactory.numOf(index);
+            return NaN;
         }
         refreshCoordinateBase();
         final long epochMillis = resolveEndTimeMillis(index);
+        if (epochMillis == 0L || coordinateBaseEpochMillis == Long.MIN_VALUE) {
+            return NaN;
+        }
         return numFactory.numOf(epochMillis - coordinateBaseEpochMillis);
     }
 
