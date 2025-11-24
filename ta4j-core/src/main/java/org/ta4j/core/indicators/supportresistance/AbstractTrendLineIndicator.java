@@ -388,7 +388,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 touchesExtreme, baseScore, windowStart, windowEnd);
     }
 
-
     private Num findSwingRange(List<Integer> swingPointIndexes) {
         Num min = null;
         Num max = null;
