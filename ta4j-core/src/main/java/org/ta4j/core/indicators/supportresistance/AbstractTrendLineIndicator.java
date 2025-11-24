@@ -56,7 +56,20 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Default maximum number of swing points to consider when building trend line
+     * candidates. This cap prevents excessive computation when many swing points
+     * exist in the look-back window. Only the most recent swing points up to this
+     * limit are used.
+     */
     public static final int DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE = 64;
+
+    /**
+     * Default maximum number of candidate trend line pairs to evaluate. This cap
+     * prevents excessive computation when many swing point pairs exist. The search
+     * stops once this limit is reached, prioritizing earlier pairs in the
+     * evaluation order.
+     */
     public static final int DEFAULT_MAX_CANDIDATE_PAIRS = 2048;
 
     private final RecentSwingIndicator swingIndicator;
@@ -258,7 +271,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns the indexes of the confirmed swing points tracked by the indicator.
+     * Returns the indexes of all confirmed swing points tracked by the underlying
+     * swing indicator. These are the swing points that have been confirmed (not
+     * just candidate swings) and are available for trend line construction.
+     *
+     * @return a list of bar indexes where confirmed swing points occur, in
+     *         chronological order
      */
     public List<Integer> getSwingPointIndexes() {
         return swingIndicator.getSwingPointIndexes();
@@ -537,7 +555,15 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
     }
 
+    /**
+     * Enumeration of trend line sides, determining whether the indicator
+     * projects support (below price) or resistance (above price) trend lines.
+     */
     protected enum TrendLineSide {
+        /**
+         * Support trend lines that run below price action, connecting swing lows.
+         * The trend line must not violate (go above) any swing low prices.
+         */
         SUPPORT {
             @Override
             boolean violates(Num projected, Num swingPrice) {
@@ -562,6 +588,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 return bar.getLowPrice();
             }
         },
+        /**
+         * Resistance trend lines that run above price action, connecting swing
+         * highs. The trend line must not violate (go below) any swing high
+         * prices.
+         */
         RESISTANCE {
             @Override
             boolean violates(Num projected, Num swingPrice) {
@@ -596,22 +627,64 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         abstract Num selectBarPrice(org.ta4j.core.Bar bar);
     }
 
+    /**
+     * Returns the scoring weights used to evaluate trend line candidates. These
+     * weights determine how different factors (touch count, extreme point
+     * inclusion, outside swings, deviation, recency) contribute to the overall
+     * score.
+     *
+     * @return the scoring weights configuration, never null
+     */
     public ScoringWeights getScoringWeights() {
         return scoringWeights;
     }
 
+    /**
+     * Returns the tolerance settings that determine how close a swing point must
+     * be to a trend line to be considered "touching" it. Tolerance can be
+     * specified as a percentage of swing range, an absolute value, or in tick
+     * sizes.
+     *
+     * @return the tolerance settings, never null
+     */
     public ToleranceSettings getToleranceSettings() {
         return toleranceSettings;
     }
 
+    /**
+     * Returns the maximum number of swing points considered when building trend
+     * line candidates. Only the most recent swing points up to this limit are
+     * used.
+     *
+     * @return the maximum number of swing points to consider
+     */
     public int getMaxSwingPointsForTrendline() {
         return maxSwingPointsForTrendline;
     }
 
+    /**
+     * Returns the maximum number of candidate trend line pairs to evaluate. The
+     * search stops once this limit is reached.
+     *
+     * @return the maximum number of candidate pairs to evaluate
+     */
     public int getMaxCandidatePairs() {
         return maxCandidatePairs;
     }
 
+    /**
+     * Returns metadata about the currently selected trend line segment for the
+     * latest window. This includes the anchor points, line equation (slope and
+     * intercept), scoring metrics, and the window boundaries. Useful for
+     * charting, diagnostics, and understanding why a particular trend line was
+     * selected.
+     * <p>
+     * The segment is computed lazily and cached. It is recalculated when new bars
+     * arrive or when the series is modified.
+     *
+     * @return the current trend line segment, or {@code null} if no valid trend
+     *         line could be computed (e.g., fewer than two swing points exist)
+     */
     public synchronized TrendLineSegment getCurrentSegment() {
         if (getBarSeries() == null) {
             return null;
@@ -662,16 +735,53 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return scoringWeights == null ? ScoringWeights.defaultWeights() : scoringWeights;
     }
 
+    /**
+     * Metadata about a selected trend line segment, including its geometry,
+     * scoring metrics, and window boundaries. This class provides read-only
+     * access to the trend line's properties for charting and analysis purposes.
+     */
     public static final class TrendLineSegment {
+        /** The bar index of the first anchor point (earlier in time). */
         public final int firstIndex;
+
+        /** The bar index of the second anchor point (later in time). */
         public final int secondIndex;
+
+        /** The slope of the trend line (price change per unit time). */
         public final Num slope;
+
+        /** The y-intercept of the trend line at the coordinate base. */
         public final Num intercept;
+
+        /**
+         * The number of swing points that touch or are within tolerance of the
+         * trend line. Higher values indicate better fit.
+         */
         public final int touchCount;
+
+        /**
+         * The number of swing points that fall outside the trend line (but do not
+         * violate it). Lower values indicate better fit.
+         */
         public final int outsideCount;
+
+        /**
+         * Whether the trend line touches the extreme swing point (lowest for
+         * support, highest for resistance). This is a positive scoring factor.
+         */
         public final boolean touchesExtreme;
+
+        /**
+         * The composite score for this trend line candidate, computed from the
+         * weighted combination of all scoring factors. Higher scores indicate
+         * better candidates.
+         */
         public final double score;
+
+        /** The first bar index in the evaluation window. */
         public final int windowStart;
+
+        /** The last bar index in the evaluation window (typically the series end). */
         public final int windowEnd;
 
         private TrendLineSegment(int firstIndex, int secondIndex, Num slope, Num intercept, int touchCount,
@@ -689,13 +799,49 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
     }
 
+    /**
+     * Configuration for determining how close a swing point must be to a trend
+     * line to be considered "touching" it. Tolerance can be specified in three
+     * modes: as a percentage of the swing price range, as an absolute price
+     * value, or in tick sizes.
+     */
     public static final class ToleranceSettings {
+        /**
+         * Tolerance calculation modes.
+         */
         public enum Mode {
-            PERCENTAGE, ABSOLUTE, TICK_SIZE
+            /**
+             * Tolerance is calculated as a percentage of the swing price range
+             * (max - min) within the evaluation window.
+             */
+            PERCENTAGE,
+
+            /**
+             * Tolerance is a fixed absolute price value, independent of price
+             * range.
+             */
+            ABSOLUTE,
+
+            /**
+             * Tolerance is specified in tick sizes, useful for instruments with
+             * fixed tick increments.
+             */
+            TICK_SIZE
         }
 
+        /** The tolerance calculation mode. */
         public final Mode mode;
+
+        /**
+         * The tolerance value. Interpretation depends on mode: percentage
+         * (0.0-1.0), absolute price, or tick size.
+         */
         public final double value;
+
+        /**
+         * The minimum absolute tolerance value to apply, regardless of mode. This
+         * prevents tolerance from becoming too small for very tight price ranges.
+         */
         public final double minimumAbsolute;
 
         private ToleranceSettings(Mode mode, double value, double minimumAbsolute) {
@@ -704,18 +850,46 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             this.minimumAbsolute = Math.max(0d, minimumAbsolute);
         }
 
+        /**
+         * Returns default tolerance settings: 2% of swing range with a minimum
+         * absolute tolerance of 1e-9. This provides a good balance between
+         * allowing reasonable price variation and maintaining trend line quality.
+         *
+         * @return default tolerance settings
+         */
         public static ToleranceSettings defaultSettings() {
             return percentage(0.02d, 1e-9d);
         }
 
+        /**
+         * Creates tolerance settings where tolerance is calculated as a percentage
+         * of the swing price range.
+         *
+         * @param fraction        the tolerance as a fraction of swing range (e.g.,
+         *                        0.02 for 2%)
+         * @param minimumAbsolute the minimum absolute tolerance to apply
+         * @return tolerance settings with percentage mode
+         */
         public static ToleranceSettings percentage(double fraction, double minimumAbsolute) {
             return new ToleranceSettings(Mode.PERCENTAGE, fraction, minimumAbsolute);
         }
 
+        /**
+         * Creates tolerance settings with a fixed absolute price tolerance.
+         *
+         * @param absoluteTolerance the absolute price tolerance
+         * @return tolerance settings with absolute mode
+         */
         public static ToleranceSettings absolute(double absoluteTolerance) {
             return new ToleranceSettings(Mode.ABSOLUTE, absoluteTolerance, 0d);
         }
 
+        /**
+         * Creates tolerance settings where tolerance is specified in tick sizes.
+         *
+         * @param tickSize the tolerance in tick sizes
+         * @return tolerance settings with tick size mode
+         */
         public static ToleranceSettings tickSize(double tickSize) {
             return new ToleranceSettings(Mode.TICK_SIZE, tickSize, 0d);
         }
@@ -788,16 +962,46 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return bar.getEndTime().toEpochMilli();
     }
 
+    /**
+     * Configuration for scoring weights that determine how different factors
+     * contribute to trend line candidate evaluation. All weights are fractional
+     * percentages between 0.0 and 1.0 and must sum to 1.0 (100%). These values
+     * are serialized in indicator descriptors/JSON so user preferences
+     * round-trip.
+     */
     public static final class ScoringWeights {
         /**
-         * All weights are fractional percentages between 0.0 and 1.0 and must sum to
-         * 1.0 (100%). These values are serialized in indicator descriptors/JSON so user
-         * preferences round-trip.
+         * Weight for the fraction of swing points that touch the trend line.
+         * Higher values favor trend lines that pass through more swing points.
+         * Default: 0.30 (30%).
          */
         public final double touchCountWeight;
+
+        /**
+         * Weight for minimizing swing points that fall outside the trend line.
+         * Higher values penalize trend lines with many outside swings. Default:
+         * 0.15 (15%).
+         */
         public final double outsideCountWeight;
+
+        /**
+         * Weight for whether the trend line touches the extreme swing point
+         * (lowest for support, highest for resistance). Higher values favor trend
+         * lines that include the extreme point. Default: 0.20 (20%).
+         */
         public final double touchesExtremeWeight;
+
+        /**
+         * Weight for minimizing average deviation of swing points from the trend
+         * line. Higher values favor trend lines that stay close to all swing
+         * prices. Default: 0.20 (20%).
+         */
         public final double averageDeviationWeight;
+
+        /**
+         * Weight for favoring more recent anchor points. Higher values favor trend
+         * lines anchored at more recent swing points. Default: 0.15 (15%).
+         */
         public final double anchorRecencyWeight;
 
         private ScoringWeights(double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
@@ -810,12 +1014,29 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             validateWeights();
         }
 
+        /**
+         * Returns default scoring weights that provide balanced evaluation across
+         * all factors: 30% touch count, 20% extreme point, 15% outside count, 20%
+         * deviation, 15% recency.
+         *
+         * @return default scoring weights
+         */
         public static ScoringWeights defaultWeights() {
             return new ScoringWeights(0.30d, 0.20d, 0.15d, 0.20d, 0.15d);
         }
 
         /**
-         * Creates scoring weights from explicit fractional percentages.
+         * Creates scoring weights from explicit fractional percentages. All
+         * weights must be between 0.0 and 1.0 and must sum to 1.0.
+         *
+         * @param touchCountWeight        weight for swing point touch count
+         * @param touchesExtremeWeight    weight for extreme point inclusion
+         * @param outsideCountWeight      weight for minimizing outside swings
+         * @param averageDeviationWeight  weight for minimizing average deviation
+         * @param anchorRecencyWeight     weight for anchor point recency
+         * @return scoring weights with the specified values
+         * @throws IllegalArgumentException if weights are invalid or don't sum to
+         *                                  1.0
          */
         public static ScoringWeights of(double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
                 double averageDeviationWeight, double anchorRecencyWeight) {
@@ -824,16 +1045,23 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         /**
-         * Heavier emphasis on touching swing points with moderate proximity/outside
-         * penalties.
+         * Returns preset weights with heavier emphasis on touching swing points
+         * (50%) with moderate penalties for outside swings and deviation. Useful
+         * when you want trend lines that connect as many swing points as possible.
+         *
+         * @return scoring weights favoring touch count
          */
         public static ScoringWeights preferAnchorPointCountPreset() {
             return new ScoringWeights(0.50d, 0.15d, 0.10d, 0.10d, 0.15d);
         }
 
         /**
-         * Heavier emphasis on touching the extreme swing while keeping lines reasonably
-         * close to price action.
+         * Returns preset weights with heavier emphasis on touching the extreme
+         * swing point (35%) while keeping lines reasonably close to price action.
+         * Useful when you want trend lines that definitely include the most
+         * significant swing point.
+         *
+         * @return scoring weights favoring extreme point inclusion
          */
         public static ScoringWeights preferAnchoringToExtremePreset() {
             return new ScoringWeights(0.35d, 0.35d, 0.10d, 0.10d, 0.10d);
