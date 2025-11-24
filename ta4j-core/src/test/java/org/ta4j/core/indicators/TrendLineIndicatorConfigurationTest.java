@@ -23,26 +23,24 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings.Mode;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -70,12 +68,17 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
                 AbstractTrendLineIndicator.DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE);
         assertThat(descriptor.getParameters()).containsEntry("maxCandidatePairs",
                 AbstractTrendLineIndicator.DEFAULT_MAX_CANDIDATE_PAIRS);
-        assertThat(Integer.parseInt(descriptor.getParameters().get("toleranceMode").toString()))
-                .isEqualTo(tolerance.mode.ordinal());
-        assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceValue").toString()))
-                .isEqualTo(tolerance.value);
-        assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceMinimum").toString()))
-                .isEqualTo(tolerance.minimumAbsolute);
+
+        try {
+            assertThat(Integer.parseInt(descriptor.getParameters().get("toleranceMode").toString()))
+                    .isEqualTo(tolerance.mode.ordinal());
+            assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceValue").toString()))
+                    .isEqualTo(tolerance.value);
+            assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceMinimum").toString()))
+                    .isEqualTo(tolerance.minimumAbsolute);
+        } catch (NumberFormatException e) {
+            fail("Could not parse tolerance value", e);
+        }
     }
 
     @Test

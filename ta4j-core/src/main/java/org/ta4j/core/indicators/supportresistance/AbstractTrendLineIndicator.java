@@ -938,10 +938,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         refreshCoordinateBase();
-        final long epochMillis = resolveEndTimeMillis(index);
-        if (epochMillis == 0L || coordinateBaseEpochMillis == Long.MIN_VALUE) {
+        if (coordinateBaseEpochMillis == Long.MIN_VALUE) {
             return NaN;
         }
+        final long epochMillis = resolveEndTimeMillis(index);
         return numFactory.numOf(epochMillis - coordinateBaseEpochMillis);
     }
 

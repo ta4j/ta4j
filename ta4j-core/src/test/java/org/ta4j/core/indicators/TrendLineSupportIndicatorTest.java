@@ -353,6 +353,138 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(endIndex)).isEqualByComparingTo(expected);
     }
 
+    @Test
+    public void shouldReturnNaNForOutOfBoundsIndices() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9);
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            indicator.getValue(i);
+        }
+
+        final int beginIndex = series.getBeginIndex();
+        final int endIndex = series.getEndIndex();
+
+        assertThat(indicator.getValue(beginIndex - 1).isNaN()).isTrue();
+        assertThat(indicator.getValue(endIndex + 1).isNaN()).isTrue();
+    }
+
+    @Test
+    public void shouldUseEpochMillisecondOffsetsNotBarIndices() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2024-01-01T00:00:00Z", 100d);
+        addBar(series, "2024-01-02T00:00:00Z", 98d);
+        addBar(series, "2024-01-05T00:00:00Z", 96d);
+        addBar(series, "2024-01-10T00:00:00Z", 94d);
+
+        final var priceIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(0, 2));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE);
+
+        final Num valueAtIndex1 = indicator.getValue(1);
+        final Num valueAtIndex3 = indicator.getValue(3);
+
+        final Num expectedAtIndex1 = expectedProjection(series, 0, 2, 1);
+        final Num expectedAtIndex3 = expectedProjection(series, 0, 2, 3);
+
+        assertThat(valueAtIndex1).isEqualByComparingTo(expectedAtIndex1);
+        assertThat(valueAtIndex3).isEqualByComparingTo(expectedAtIndex3);
+
+        final long millisBetween0And2 = series.getBar(2).getEndTime().toEpochMilli()
+                - series.getBar(0).getEndTime().toEpochMilli();
+        final long millisBetween0And1 = series.getBar(1).getEndTime().toEpochMilli()
+                - series.getBar(0).getEndTime().toEpochMilli();
+
+        assertThat(millisBetween0And2).isEqualTo(4 * 24 * 60 * 60 * 1000L);
+        assertThat(millisBetween0And1).isEqualTo(1 * 24 * 60 * 60 * 1000L);
+
+        final Num priceDiff = series.getBar(2).getLowPrice().minus(series.getBar(0).getLowPrice());
+        final Num timeDiff = series.numFactory().numOf(millisBetween0And2);
+        final Num slope = priceDiff.dividedBy(timeDiff);
+
+        final Num expectedValue1 = series.getBar(0)
+                .getLowPrice()
+                .plus(slope.multipliedBy(series.numFactory().numOf(millisBetween0And1)));
+
+        assertThat(valueAtIndex1).isEqualByComparingTo(expectedValue1);
+    }
+
+    @Test
+    public void shouldHandleEpochTimeZeroAsValidBase() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        final Instant epochZero = Instant.ofEpochMilli(0L);
+        addBarAtInstant(series, epochZero, 100d);
+        addBarAtInstant(series, epochZero.plus(Duration.ofDays(1)), 98d);
+        addBarAtInstant(series, epochZero.plus(Duration.ofDays(2)), 96d);
+        addBarAtInstant(series, epochZero.plus(Duration.ofDays(3)), 94d);
+
+        final var priceIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(0, 2));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE);
+
+        final Num valueAtIndex1 = indicator.getValue(1);
+        final Num valueAtIndex3 = indicator.getValue(3);
+
+        final Num expectedAtIndex1 = expectedProjection(series, 0, 2, 1);
+        final Num expectedAtIndex3 = expectedProjection(series, 0, 2, 3);
+
+        assertThat(valueAtIndex1).isEqualByComparingTo(expectedAtIndex1);
+        assertThat(valueAtIndex3).isEqualByComparingTo(expectedAtIndex3);
+        assertThat(valueAtIndex1.isNaN()).isFalse();
+        assertThat(valueAtIndex3.isNaN()).isFalse();
+    }
+
+    @Test
+    public void shouldUseConsistentCoordinateScaleForSlopeCalculation() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2024-01-01T00:00:00Z", 100d);
+        addBar(series, "2024-01-02T00:00:00Z", 102d);
+        addBar(series, "2024-01-10T00:00:00Z", 118d);
+        addBar(series, "2024-01-20T00:00:00Z", 138d);
+
+        final var priceIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new StaticSwingIndicator(priceIndicator, List.of(0, 2));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, Integer.MAX_VALUE);
+
+        final Num valueAtIndex1 = indicator.getValue(1);
+        final Num valueAtIndex3 = indicator.getValue(3);
+
+        final Num expectedAtIndex1 = expectedProjection(series, 0, 2, 1);
+        final Num expectedAtIndex3 = expectedProjection(series, 0, 2, 3);
+
+        assertThat(valueAtIndex1).isEqualByComparingTo(expectedAtIndex1);
+        assertThat(valueAtIndex3).isEqualByComparingTo(expectedAtIndex3);
+
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+
+        final long startMillis = series.getBar(segment.firstIndex).getEndTime().toEpochMilli();
+        final long endMillis = series.getBar(segment.secondIndex).getEndTime().toEpochMilli();
+        final long target1Millis = series.getBar(1).getEndTime().toEpochMilli();
+        final long target3Millis = series.getBar(3).getEndTime().toEpochMilli();
+
+        final Num startPrice = series.getBar(segment.firstIndex).getLowPrice();
+        final Num endPrice = series.getBar(segment.secondIndex).getLowPrice();
+
+        final Num priceDiff = endPrice.minus(startPrice);
+        final Num timeDiff = series.numFactory().numOf(endMillis - startMillis);
+        final Num slope = priceDiff.dividedBy(timeDiff);
+
+        final Num expected1 = startPrice
+                .plus(slope.multipliedBy(series.numFactory().numOf(target1Millis - startMillis)));
+        final Num expected3 = startPrice
+                .plus(slope.multipliedBy(series.numFactory().numOf(target3Millis - startMillis)));
+
+        assertThat(valueAtIndex1).isEqualByComparingTo(expected1);
+        assertThat(valueAtIndex3).isEqualByComparingTo(expected3);
+    }
+
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -367,6 +499,18 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(Instant.parse(isoInstant))
+                .openPrice(lowPrice)
+                .closePrice(lowPrice)
+                .highPrice(lowPrice + 1d)
+                .lowPrice(lowPrice)
+                .volume(1d)
+                .add();
+    }
+
+    private void addBarAtInstant(BarSeries series, Instant instant, double lowPrice) {
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(instant)
                 .openPrice(lowPrice)
                 .closePrice(lowPrice)
                 .highPrice(lowPrice + 1d)
