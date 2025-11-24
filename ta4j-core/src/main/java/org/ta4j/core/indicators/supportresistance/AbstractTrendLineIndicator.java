@@ -26,7 +26,9 @@ package org.ta4j.core.indicators.supportresistance;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
@@ -39,11 +41,10 @@ import org.ta4j.core.num.NumFactory;
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
  * <p>
- * The indicator computes the best trend line for each non-overlapping window of
- * {@code barCount} bars walking backward from the latest bar. Only the line for
- * the latest window is valid for the most recent portion of the chart; earlier
- * windows are drawn as separate segments. When a new bar arrives, all previous
- * segments are discarded and recomputed.
+ * The indicator computes the best trend line for the latest window of
+ * {@code barCount} bars anchored at the series end. Bars that fall outside the
+ * look-back window return {@code NaN}. When a new bar arrives, the current
+ * trend line is recomputed for the new window.
  *
  * @since 0.20
  */
@@ -62,8 +63,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final double containBonus;
     private final ScoringWeights scoringWeights;
 
-    private transient List<TrendLineCandidate> cachedSegments = List.of();
+    private transient TrendLineCandidate cachedSegment;
     private transient int cachedEndIndex = Integer.MIN_VALUE;
+    private transient int cachedWindowStart = Integer.MIN_VALUE;
+    private transient int cachedRemovedBars = Integer.MIN_VALUE;
+    private transient Map<Integer, Num> valueCache = new HashMap<>();
     private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
     private transient int coordinateBaseIndex = Integer.MIN_VALUE;
 
@@ -108,44 +112,46 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
-        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
+    public synchronized Num getValue(int index) {
+        if (getBarSeries() == null) {
             return NaN;
         }
-        final int endIndex = getBarSeries().getEndIndex();
-        if (cachedEndIndex != endIndex) {
-            cachedSegments = buildSegments(endIndex);
-            cachedEndIndex = endIndex;
-        }
-        for (TrendLineCandidate candidate : cachedSegments) {
-            if (candidate.windowStart <= index && index <= candidate.windowEnd) {
-                if (index == candidate.windowStart && index != getBarSeries().getBeginIndex()) {
-                    return NaN;
-                }
-                return candidate.valueAt(index, getBarSeries().numFactory());
-            }
-        }
-        return NaN;
+        refreshCachedState();
+        return valueCache.computeIfAbsent(index, this::calculate);
     }
 
-    private List<TrendLineCandidate> buildSegments(int endIndex) {
-        final List<TrendLineCandidate> segments = new ArrayList<>();
+    @Override
+    protected Num calculate(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
-        refreshCoordinateBase();
-        int windowEnd = endIndex;
-        final List<Integer> swingPoints = swingIndicator.getSwingPointIndexesUpTo(endIndex);
-        while (windowEnd >= beginIndex) {
-            final int windowStart = Math.max(beginIndex, windowEnd - barCount + 1);
-            final TrendLineCandidate candidate = buildSegment(windowStart, windowEnd, swingPoints);
-            if (candidate != null) {
-                segments.add(candidate);
-            }
-            if (windowStart == beginIndex) {
-                break;
-            }
-            windowEnd = windowStart - 1;
+        final int endIndex = getBarSeries().getEndIndex();
+        if (index < beginIndex || index > endIndex) {
+            return NaN;
         }
-        return segments;
+        final int windowStart = Math.max(beginIndex, endIndex - barCount + 1);
+        if (index < windowStart) {
+            return NaN;
+        }
+        if (cachedSegment == null || cachedEndIndex != endIndex || cachedWindowStart != windowStart) {
+            cachedSegment = buildSegment(windowStart, endIndex, swingIndicator.getSwingPointIndexesUpTo(endIndex));
+            cachedEndIndex = endIndex;
+            cachedWindowStart = windowStart;
+        }
+        if (cachedSegment == null) {
+            return NaN;
+        }
+        return cachedSegment.valueAt(index, getBarSeries().numFactory());
+    }
+
+    private void refreshCachedState() {
+        final int endIndex = getBarSeries().getEndIndex();
+        final int removedBars = getBarSeries().getRemovedBarsCount();
+        if (endIndex != cachedEndIndex || removedBars != cachedRemovedBars) {
+            valueCache = new HashMap<>();
+            cachedSegment = null;
+            cachedWindowStart = Integer.MIN_VALUE;
+            cachedEndIndex = Integer.MIN_VALUE;
+            cachedRemovedBars = removedBars;
+        }
     }
 
     private TrendLineCandidate buildSegment(int windowStart, int windowEnd, List<Integer> swingPoints) {
@@ -430,11 +436,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 }
             }
             return this.secondIndex > other.secondIndex;
-        }
-
-        private TrendLineCandidate withWindow(int scoringWindowStart, int windowEnd) {
-            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, touches, containsCurrentPrice,
-                    outsideCount, touchesExtreme, score, scoringWindowStart, windowEnd);
         }
 
         private Num valueAt(int index, NumFactory numFactory) {

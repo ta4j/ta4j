@@ -217,6 +217,26 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(restoredWeights.containBonus).isEqualTo(weights.containBonus);
     }
 
+    @Test
+    public void shouldInvalidateCachedValuesWhenWindowAdvances() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final double[] highs = { 9, 12, 10, 13, 9 };
+        for (double high : highs) {
+            final double low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+        final var indicator = new TrendLineResistanceIndicator(series, 1, 4);
+
+        final Num initialValue = indicator.getValue(1);
+        assertThat(initialValue.isNaN()).isFalse();
+
+        series.barBuilder().openPrice(11).closePrice(11).highPrice(12).lowPrice(9).add();
+        series.barBuilder().openPrice(12).closePrice(12).highPrice(13).lowPrice(10).add();
+
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
