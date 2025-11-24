@@ -348,7 +348,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         int touchCount = 0;
         int outsideCount = 0;
         boolean touchesExtreme = false;
-        double totalDeviation = 0d;
+        Num totalDeviation = numFactory.numOf(0);
         for (int swingIndex : swingPointIndexes) {
             final Num swingPrice = swingPriceAt(swingIndex);
             if (Num.isNaNOrNull(swingPrice)) {
@@ -374,15 +374,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                     return null;
                 }
             }
-            final double deviationValue = Math.abs(projectedAtSwing.minus(swingPrice).doubleValue());
-            totalDeviation += deviationValue;
+            totalDeviation = totalDeviation.plus(deviation);
         }
 
         final int mostRecentAnchor = Math.max(firstSwingIndex, secondSwingIndex);
         final double recencyAnchorScore = Math.min(1d,
                 Math.max(0d, (double) (mostRecentAnchor - windowStart) / windowLength));
         final double baseScore = calculateBaseScore(touchCount, swingPointIndexes.size(), touchesExtreme, outsideCount,
-                totalDeviation, swingRange.doubleValue(), recencyAnchorScore);
+                totalDeviation.doubleValue(), swingRange.doubleValue(), recencyAnchorScore);
 
         return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touchCount, outsideCount,
                 touchesExtreme, baseScore, windowStart, windowEnd);
