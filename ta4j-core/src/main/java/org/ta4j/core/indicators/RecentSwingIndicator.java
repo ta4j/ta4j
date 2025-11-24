@@ -64,11 +64,12 @@ public interface RecentSwingIndicator extends Indicator<Num> {
 
     /**
      * Returns the confirmed swing point indexes discoverable with the data
-     * available up to {@code index}. Once a swing point is confirmed it remains in
-     * the returned list even if the list is requested for an earlier index.
+     * available up to {@code index}. Only swing points at or before the given index
+     * are included in the returned list.
      *
-     * @param index the maximum index to evaluate
-     * @return immutable list of swing point indexes in chronological order
+     * @param index the maximum index to evaluate (inclusive)
+     * @return immutable list of swing point indexes in chronological order, all of
+     *         which are less than or equal to {@code index}
      * @since 0.20
      */
     List<Integer> getSwingPointIndexesUpTo(int index);

@@ -147,7 +147,13 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
 
         private List<Integer> getSwingPointIndexes(int index) {
             ensureScanned(index);
-            return Collections.unmodifiableList(new ArrayList<>(swingPointIndexes));
+            final List<Integer> filtered = new ArrayList<>();
+            for (int swingIndex : swingPointIndexes) {
+                if (swingIndex <= index) {
+                    filtered.add(swingIndex);
+                }
+            }
+            return Collections.unmodifiableList(filtered);
         }
 
         private void ensureScanned(int index) {

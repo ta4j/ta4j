@@ -51,9 +51,8 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
 
         assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(2);
         assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(2, 5);
-        // Once discovered, swing points remain visible even when requesting an earlier
-        // index
-        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2, 5);
+        // Only swing points at or before the requested index are returned
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
 
         assertThat(indicator.getLatestSwingIndex(4)).isEqualTo(2);
         assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(5);
@@ -73,6 +72,108 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getSwingPointIndexesUpTo(endIndexAfterPurge)).containsExactly(5);
         assertThat(indicator.getLatestSwingIndex(endIndexAfterPurge)).isEqualTo(5);
         assertThat(indicator.getValue(endIndexAfterPurge)).isNotEqualTo(NaN);
+    }
+
+    @Test
+    public void shouldFilterSwingPointsByIndexParameter() {
+        // Test the specific regression: getSwingPointIndexesUpTo should filter by index
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        // Swing points at indices: 2, 5, 8
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5, 5, 8, 8 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        // First call with larger index - discovers all swings
+        assertThat(indicator.getSwingPointIndexesUpTo(9)).containsExactly(2, 5, 8);
+
+        // Call with smaller index - should only return swings up to that index
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(6)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexesUpTo(7)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexesUpTo(8)).containsExactly(2, 5, 8);
+
+        // Verify filtering works regardless of call order
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(1)).isEmpty();
+    }
+
+    @Test
+    public void shouldFilterSwingPointsAtBoundaries() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        // Test at exact swing point boundaries
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexesUpTo(6)).containsExactly(2, 5);
+    }
+
+    @Test
+    public void shouldReturnEmptyListWhenNoSwingPointsUpToIndex() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
+        // First swing point is at index 2
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        // Before any swing points are discovered
+        assertThat(indicator.getSwingPointIndexesUpTo(0)).isEmpty();
+        assertThat(indicator.getSwingPointIndexesUpTo(1)).isEmpty();
+
+        // After discovering swings, requesting before first swing should still return
+        // empty
+        indicator.getSwingPointIndexesUpTo(6); // Discover swings
+        assertThat(indicator.getSwingPointIndexesUpTo(1)).isEmpty();
+    }
+
+    @Test
+    public void shouldFilterCorrectlyWithMultipleSwingPoints() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+        // Swing points at indices: 1, 4, 7, 10
+        final int[] latestSwingIndexes = { -1, 1, 1, 1, 4, 4, 4, 7, 7, 7, 10, 10 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        // Discover all swings first
+        assertThat(indicator.getSwingPointIndexesUpTo(11)).containsExactly(1, 4, 7, 10);
+
+        // Test various filtering scenarios
+        assertThat(indicator.getSwingPointIndexesUpTo(0)).isEmpty();
+        assertThat(indicator.getSwingPointIndexesUpTo(1)).containsExactly(1);
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(1);
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(1);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(1, 4);
+        assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(1, 4);
+        assertThat(indicator.getSwingPointIndexesUpTo(6)).containsExactly(1, 4);
+        assertThat(indicator.getSwingPointIndexesUpTo(7)).containsExactly(1, 4, 7);
+        assertThat(indicator.getSwingPointIndexesUpTo(8)).containsExactly(1, 4, 7);
+        assertThat(indicator.getSwingPointIndexesUpTo(9)).containsExactly(1, 4, 7);
+        assertThat(indicator.getSwingPointIndexesUpTo(10)).containsExactly(1, 4, 7, 10);
+    }
+
+    @Test
+    public void shouldMaintainFilteringConsistencyRegardlessOfCallOrder() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7, 8, 9);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5, 5, 8 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        // Call in ascending order
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexesUpTo(8)).containsExactly(2, 5, 8);
+
+        // Create a new indicator and call in descending order
+        final var indicator2 = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+        assertThat(indicator2.getSwingPointIndexesUpTo(8)).containsExactly(2, 5, 8);
+        assertThat(indicator2.getSwingPointIndexesUpTo(5)).containsExactly(2, 5);
+        assertThat(indicator2.getSwingPointIndexesUpTo(2)).containsExactly(2);
+
+        // Create a new indicator and call in mixed order
+        final var indicator3 = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+        assertThat(indicator3.getSwingPointIndexesUpTo(5)).containsExactly(2, 5);
+        assertThat(indicator3.getSwingPointIndexesUpTo(2)).containsExactly(2);
+        assertThat(indicator3.getSwingPointIndexesUpTo(8)).containsExactly(2, 5, 8);
+        assertThat(indicator3.getSwingPointIndexesUpTo(4)).containsExactly(2);
     }
 
     private BarSeries seriesFromCloses(double... closes) {
