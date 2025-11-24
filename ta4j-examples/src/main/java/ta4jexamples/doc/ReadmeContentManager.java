@@ -337,8 +337,8 @@ public class ReadmeContentManager {
     }
 
     /**
-     * Finds the project root directory by searching for README.md file.
-     * Starts from the current working directory and walks up the directory tree.
+     * Finds the project root directory by searching for README.md file. Starts from
+     * the current working directory and walks up the directory tree.
      *
      * @return the project root path, or current directory if not found
      */
@@ -567,7 +567,9 @@ public class ReadmeContentManager {
         if (args.length > 0 && "update-readme".equals(args[0])) {
             LOG.info("=== Updating README with code snippets ===");
             Path projectRoot = findProjectRoot();
-            Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
+            Path sourceFile = projectRoot
+                    .resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java")
+                    .normalize();
             Path readmePath = projectRoot.resolve("README.md").normalize();
 
             if (!Files.exists(sourceFile)) {
@@ -591,7 +593,9 @@ public class ReadmeContentManager {
         if (args.length > 0 && "snippets".equals(args[0])) {
             LOG.info("=== Extracting code snippets ===");
             Path projectRoot = findProjectRoot();
-            Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
+            Path sourceFile = projectRoot
+                    .resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java")
+                    .normalize();
             String[] snippetIds = { "ema-crossover", "rsi-strategy", "strategy-performance", "advanced-strategy",
                     "serialize-indicator", "serialize-rule", "serialize-strategy" };
 
@@ -630,7 +634,8 @@ public class ReadmeContentManager {
         // Automatically update README with code snippets to keep them in sync
         LOG.info("=== Updating README with code snippets ===");
         Path projectRoot = findProjectRoot();
-        Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java").normalize();
+        Path sourceFile = projectRoot.resolve("ta4j-examples/src/main/java/ta4jexamples/doc/ReadmeContentManager.java")
+                .normalize();
         Path readmePath = projectRoot.resolve("README.md").normalize();
 
         if (Files.exists(sourceFile) && Files.exists(readmePath)) {
