@@ -28,7 +28,6 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +37,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
@@ -219,6 +219,29 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
                 .isEqualTo(weights.countOfSwingPointsOutsideTrendlineWeight);
         assertThat(restoredWeights.averageSwingDeviationWeight).isEqualTo(weights.averageSwingDeviationWeight);
         assertThat(restoredWeights.anchorRecencyWeight).isEqualTo(weights.anchorRecencyWeight);
+    }
+
+    @Test
+    public void shouldRespectSwingAndPairCaps() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        // Simple ascending lows so the last two swings define the line
+        for (int i = 0; i < 6; i++) {
+            final double low = 10 + i;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
+        }
+        final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(0, 1, 2, 3, 4));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+                ToleranceSettings.defaultSettings(), 2, 3);
+
+        indicator.getValue(series.getEndIndex());
+
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+        assertThat(segment.firstIndex).isEqualTo(3);
+        assertThat(segment.secondIndex).isEqualTo(4);
+        assertThat(indicator.getMaxSwingPointsForTrendline()).isEqualTo(2);
+        assertThat(indicator.getMaxCandidatePairs()).isEqualTo(3);
     }
 
     @Test

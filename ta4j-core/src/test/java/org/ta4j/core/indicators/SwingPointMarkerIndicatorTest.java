@@ -79,6 +79,41 @@ public class SwingPointMarkerIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(markerIndicator.getValue(6)).isEqualByComparingTo(NaN);
     }
 
+    @Test
+    public void shouldReturnPriceValuesForAllSwingPointsIncludingEarlierOnes() {
+        // This test verifies the fix for the bug where earlier swing points would
+        // return NaN instead of their price values. The fix uses
+        // getSwingPointIndexesUpTo(index).contains(index) instead of
+        // getLatestSwingIndex(index) == index to correctly identify all swing points.
+        //
+        // Create series with multiple swing points: indexes 2, 5, and 8
+        // Values: 1, 2, 3, 4, 5, 6, 7, 8, 9
+        // Swing points at: index 2 (value 3), index 5 (value 6), index 8 (value 9)
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7, 8, 9);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5, 5, 8 };
+        final var swingIndicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+        final var markerIndicator = new SwingPointMarkerIndicator(series, swingIndicator);
+
+        // Verify all swing points are identified
+        assertThat(markerIndicator.getSwingPointIndexes()).containsExactlyInAnyOrder(2, 5, 8);
+
+        // After index 8 is confirmed, verify that earlier swing points still return
+        // their correct price values. This is the key test - the old implementation
+        // using getLatestSwingIndex(index) == index would work for index 8, but we
+        // need to ensure it works for all swing points, including earlier ones.
+        assertThat(markerIndicator.getValue(2)).isEqualByComparingTo(numOf(3));
+        assertThat(markerIndicator.getValue(5)).isEqualByComparingTo(numOf(6));
+        assertThat(markerIndicator.getValue(8)).isEqualByComparingTo(numOf(9));
+
+        // Verify non-swing points return NaN
+        assertThat(markerIndicator.getValue(0)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(1)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(3)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(4)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(6)).isEqualByComparingTo(NaN);
+        assertThat(markerIndicator.getValue(7)).isEqualByComparingTo(NaN);
+    }
+
     private BarSeries seriesFromCloses(double... closes) {
         final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : closes) {

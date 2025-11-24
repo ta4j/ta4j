@@ -62,7 +62,8 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         super(priceIndicator);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.unstableBars = Math.max(0, unstableBars);
-        this.swingPoints = new SwingPointTracker(this::detectLatestSwingIndex, priceIndicator.getBarSeries());
+        this.swingPoints = new SwingPointTracker(this::detectLatestSwingIndex,
+                Objects.requireNonNull(priceIndicator.getBarSeries(), "priceIndicator.getBarSeries() cannot be null"));
     }
 
     @Override

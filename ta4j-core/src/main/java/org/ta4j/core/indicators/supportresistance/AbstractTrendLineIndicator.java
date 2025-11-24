@@ -49,7 +49,9 @@ import org.ta4j.core.serialization.ComponentSerialization;
  * look-back window return {@code NaN}. Bars inside the window (including the
  * {@code windowStart}) return the active line when at least two swing points
  * exist; otherwise, they return {@code NaN}. When a new bar arrives, the
- * current trend line is recomputed for the new window.
+ * current trend line is recomputed for the new window. The current segment and
+ * tolerance settings can be inspected via {@link #getCurrentSegment()} and
+ * {@link #getToleranceSettings()}.
  *
  * @since 0.20
  */
@@ -67,6 +69,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final double anchorRecencyWeight;
     private final ScoringWeights scoringWeights;
     private final ToleranceSettings toleranceSettings;
+    private final int maxSwingPointsForTrendline;
+    private final int maxCandidatePairs;
 
     private transient TrendLineCandidate cachedSegment;
     private transient int cachedEndIndex = Integer.MIN_VALUE;
@@ -92,9 +96,25 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
             double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
             double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
+        this(swingIndicator, barCount, unstableBars, side, countOfSwingPointsAnchoringTrendlineWeight,
+                extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
+                anchorRecencyWeight, toleranceSettings, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    }
+
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
+            TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
+            int maxCandidatePairs) {
         super(swingIndicator.getPriceIndicator());
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least 2 to build a trend line");
+        }
+        if (maxSwingPointsForTrendline < 2) {
+            throw new IllegalArgumentException("maxSwingPointsForTrendline must be at least 2");
+        }
+        if (maxCandidatePairs < 1) {
+            throw new IllegalArgumentException("maxCandidatePairs must be at least 1");
         }
         this.swingIndicator = swingIndicator;
         this.priceIndicator = swingIndicator.getPriceIndicator();
@@ -110,6 +130,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
                 anchorRecencyWeight);
         this.toleranceSettings = toleranceSettings == null ? ToleranceSettings.defaultSettings() : toleranceSettings;
+        this.maxSwingPointsForTrendline = maxSwingPointsForTrendline;
+        this.maxCandidatePairs = maxCandidatePairs;
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int unstableBars, TrendLineSide side,
@@ -202,7 +224,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 windowedSwings.add(idx);
             }
         }
-        return windowedSwings;
+        if (windowedSwings.size() <= maxSwingPointsForTrendline) {
+            return windowedSwings;
+        }
+        return windowedSwings.subList(windowedSwings.size() - maxSwingPointsForTrendline, windowedSwings.size());
     }
 
     private List<CandidateGeometry> buildGeometries(int windowStart, int windowEnd, List<Integer> swingPoints) {
@@ -226,6 +251,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                         swingPoints, windowStart, windowEnd, windowLength, extremeSwingPrice, swingRange, numFactory);
                 if (geometry != null) {
                     geometries.add(geometry);
+                    if (geometries.size() >= maxCandidatePairs) {
+                        return geometries;
+                    }
                 }
             }
         }
@@ -576,6 +604,18 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return scoringWeights;
     }
 
+    public ToleranceSettings getToleranceSettings() {
+        return toleranceSettings;
+    }
+
+    public int getMaxSwingPointsForTrendline() {
+        return maxSwingPointsForTrendline;
+    }
+
+    public int getMaxCandidatePairs() {
+        return maxCandidatePairs;
+    }
+
     public synchronized TrendLineSegment getCurrentSegment() {
         if (getBarSeries() == null) {
             return null;
@@ -604,6 +644,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         parameters.put("countOfSwingPointsOutsideTrendlineWeight", countOfSwingPointsOutsideTrendlineWeight);
         parameters.put("averageSwingDeviationWeight", averageSwingDeviationWeight);
         parameters.put("anchorRecencyWeight", anchorRecencyWeight);
+        parameters.put("maxSwingPointsForTrendline", maxSwingPointsForTrendline);
+        parameters.put("maxCandidatePairs", maxCandidatePairs);
         parameters.put("toleranceModeOrdinal", toleranceSettings.mode.ordinal());
         parameters.put("toleranceValue", toleranceSettings.value);
         parameters.put("toleranceMinimum", toleranceSettings.minimumAbsolute);

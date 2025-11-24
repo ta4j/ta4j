@@ -34,11 +34,13 @@ import org.ta4j.core.num.Num;
  * Projects a resistance trend line that spans a configurable look-back window
  * of swing highs.
  * <p>
- * The indicator selects the straight line that touches the greatest number of
- * confirmed swing highs within the window. When multiple candidates touch the
- * same number of swing points, the line that sits above the current high price
- * is preferred, followed by the line that spans the widest distance between its
- * anchor swing highs.
+ * The indicator selects the straight line that maximizes a scoring function
+ * across confirmed swing highs within the window. Scoring favors (in order of
+ * weight) swing-touch count, extreme-anchor inclusion, minimizing outside
+ * swings, proximity to swing prices, and recency of anchors. Tolerance for
+ * touch proximity is configurable (percentage, absolute, or tick-size). The
+ * currently selected segment can be retrieved via {@link #getCurrentSegment()}
+ * for charting/diagnostics.
  *
  * @see <a href="https://www.investopedia.com/trading/trendlines/">Investopedia:
  *      Trendlines</a>
@@ -149,7 +151,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
         this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
                 countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
                 countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
-                ToleranceSettings.defaultSettings());
+                ToleranceSettings.defaultSettings(), Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     /**
@@ -165,6 +167,31 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     }
 
     /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights,
+     * tolerance settings, and swing/pair caps.
+     */
+    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
+            TrendLineSide side, double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
+            int maxCandidatePairs) {
+        super(swingHighIndicator, barCount, unstableBars, side, countOfSwingPointsAnchoringTrendlineWeight,
+                extremeSwingPointAnchorWeight, countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight,
+                anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline, maxCandidatePairs);
+    }
+
+    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
+            double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
+            double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
+            double anchorRecencyWeight, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
+            int maxCandidatePairs) {
+        this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
+                countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
+                countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
+                toleranceSettings, maxSwingPointsForTrendline, maxCandidatePairs);
+    }
+
+    /**
      * Deserialization-friendly constructor that accepts explicit scoring weights
      * and tolerance parameters.
      */
@@ -175,7 +202,8 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
         this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
                 countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
                 countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
-                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum));
+                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), Integer.MAX_VALUE,
+                Integer.MAX_VALUE);
     }
 
     /**
@@ -185,12 +213,14 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, int unstableBars,
             double countOfSwingPointsAnchoringTrendlineWeight, double extremeSwingPointAnchorWeight,
             double countOfSwingPointsOutsideTrendlineWeight, double averageSwingDeviationWeight,
-            double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal) {
+            double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceModeOrdinal,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
         this(swingHighIndicator, barCount, unstableBars, TrendLineSide.RESISTANCE,
                 countOfSwingPointsAnchoringTrendlineWeight, extremeSwingPointAnchorWeight,
                 countOfSwingPointsOutsideTrendlineWeight, averageSwingDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(ToleranceSettings.Mode.values()[toleranceModeOrdinal], toleranceValue,
-                        toleranceMinimum));
+                        toleranceMinimum),
+                maxSwingPointsForTrendline, maxCandidatePairs);
     }
 
     /**

@@ -35,6 +35,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
@@ -213,6 +214,28 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
                 .isEqualTo(weights.countOfSwingPointsOutsideTrendlineWeight);
         assertThat(restoredWeights.averageSwingDeviationWeight).isEqualTo(weights.averageSwingDeviationWeight);
         assertThat(restoredWeights.anchorRecencyWeight).isEqualTo(weights.anchorRecencyWeight);
+    }
+
+    @Test
+    public void shouldRespectSwingAndPairCaps() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        for (int i = 0; i < 6; i++) {
+            final double high = 20 + i;
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(high - 1d).add();
+        }
+        final var swingIndicator = new StaticSwingIndicator(new HighPriceIndicator(series), List.of(0, 1, 2, 3, 4));
+        final var indicator = new TrendLineResistanceIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+                ToleranceSettings.defaultSettings(), 2, 3);
+
+        indicator.getValue(series.getEndIndex());
+
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+        assertThat(segment.firstIndex).isEqualTo(3);
+        assertThat(segment.secondIndex).isEqualTo(4);
+        assertThat(indicator.getMaxSwingPointsForTrendline()).isEqualTo(2);
+        assertThat(indicator.getMaxCandidatePairs()).isEqualTo(3);
     }
 
     @Test

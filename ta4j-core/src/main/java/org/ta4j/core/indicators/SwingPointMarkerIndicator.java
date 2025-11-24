@@ -98,10 +98,12 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        // Check if the current index is a swing point by querying the swing indicator
-        // dynamically. If getLatestSwingIndex(index) == index, then index is a swing
-        // point.
-        if (swingIndicator.getLatestSwingIndex(index) == index) {
+        // Check if the current index is a swing point by checking if it's in the list
+        // of all swing point indexes. We need to check the full list because
+        // getLatestSwingIndex(index) returns the most recent swing point at or before
+        // the index, not whether the index itself is a swing point.
+        final var swingPointIndexes = swingIndicator.getSwingPointIndexesUpTo(index);
+        if (swingPointIndexes.contains(index)) {
             return priceIndicator.getValue(index);
         }
         return NaN;

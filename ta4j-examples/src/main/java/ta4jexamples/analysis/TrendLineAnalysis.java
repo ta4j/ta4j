@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import ta4jexamples.charting.builder.ChartPlan;
@@ -109,5 +110,22 @@ public class TrendLineAnalysis {
 
         zigzagChartWorkflow.display(zigzagPlan);
         zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-support-resistance-trendlines");
+
+        logSegment("Fractal support", fractalSupportTrendLine.getCurrentSegment());
+        logSegment("Fractal resistance", fractalResistanceTrendLine.getCurrentSegment());
+        logSegment("ZigZag support", zigzagSupportTrendLine.getCurrentSegment());
+        logSegment("ZigZag resistance", zigzagResistanceTrendLine.getCurrentSegment());
+    }
+
+    private static void logSegment(String label, TrendLineSegment segment) {
+        if (segment == null) {
+            LOG.info("{} trendline: no active segment", label);
+            return;
+        }
+        LOG.info(
+                "{} trendline anchors=({}, {}), slope={}, intercept={}, swingTouches={}, swingsOutside={}, anchoredAtExtreme={}, score={}",
+                label, segment.firstIndex, segment.secondIndex, segment.slope, segment.intercept,
+                segment.countOfSwingPointsAnchoringTrendline, segment.countOfSwingPointsOutsideTrendline,
+                segment.isTrendLineAnchoredByExtremeSwingPoint, segment.score);
     }
 }
