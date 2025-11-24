@@ -39,6 +39,7 @@ import org.ta4j.core.rules.*;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -49,32 +50,39 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility class to manage README content including chart images, code snippets, and documentation.
+ * Utility class to manage README content including chart images, code snippets,
+ * and documentation.
  *
  * <p>
- * This class serves as the single source of truth for README content. It generates chart images,
- * extracts code snippets from source code using special comment markers, and synchronizes the
- * README with the latest code examples.
+ * This class serves as the single source of truth for README content. It
+ * generates chart images, extracts code snippets from source code using special
+ * comment markers, and synchronizes the README with the latest code examples.
  * </p>
  *
  * <p>
  * <strong>How it works:</strong>
  * <ul>
- *   <li>Code snippets are marked with {@code // START_SNIPPET: snippet-id} and
- *       {@code // END_SNIPPET: snippet-id} comments in the chart generation methods</li>
- *   <li>The README.md file contains corresponding HTML comment markers:
- *       {@code <!-- START_SNIPPET: snippet-id -->} and {@code <!-- END_SNIPPET: snippet-id -->}</li>
- *   <li>Run with argument "update-readme" to automatically extract snippets and update the README:
- *       {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=update-readme}</li>
+ * <li>Code snippets are marked with {@code // START_SNIPPET: snippet-id} and
+ * {@code // END_SNIPPET: snippet-id} comments in the chart generation
+ * methods</li>
+ * <li>The README.md file contains corresponding HTML comment markers:
+ * {@code <!-- START_SNIPPET: snippet-id -->} and
+ * {@code <!-- END_SNIPPET: snippet-id -->}</li>
+ * <li>Run with argument "update-readme" to automatically extract snippets and
+ * update the README:
+ * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=update-readme}</li>
  * </ul>
  * </p>
  *
  * <p>
  * <strong>Usage:</strong>
  * <ul>
- *   <li>Generate charts and update README (default): {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager}</li>
- *   <li>Update README snippets only: {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=update-readme}</li>
- *   <li>View snippets only: {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=snippets}</li>
+ * <li>Generate charts and update README (default):
+ * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager}</li>
+ * <li>Update README snippets only:
+ * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=update-readme}</li>
+ * <li>View snippets only:
+ * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=snippets}</li>
  * </ul>
  * </p>
  */
@@ -133,9 +141,13 @@ public class ReadmeContentManager {
                 .withIndicatorOverlay(slowEma)
                 .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
                 .toChart();
-        chartWorkflow.displayChart(chart); // displays chart in an interactive Swing window
         chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
         // END_SNIPPET: ema-crossover
+
+        // Display chart in interactive window (only in non-headless environments)
+        if (!GraphicsEnvironment.isHeadless()) {
+            chartWorkflow.displayChart(chart);
+        }
 
         // Save chart image
         Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "ema-crossover-readme", outputDir);
@@ -174,7 +186,8 @@ public class ReadmeContentManager {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses above 70 (overbought)
+        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
+        // above 70 (overbought)
         Rule entry = new CrossedDownIndicatorRule(rsi, 30);
         Rule exit = new CrossedUpIndicatorRule(rsi, 70);
         Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
@@ -202,8 +215,8 @@ public class ReadmeContentManager {
     }
 
     /**
-     * Generates a strategy chart with performance metrics subchart.
-     * Demonstrates visualizing performance analysis criteria over time.
+     * Generates a strategy chart with performance metrics subchart. Demonstrates
+     * visualizing performance analysis criteria over time.
      *
      * @param outputDir the directory to save the chart image
      * @return the path to the saved chart image, or empty if saving failed
@@ -245,7 +258,8 @@ public class ReadmeContentManager {
         // END_SNIPPET: strategy-performance
 
         // Save chart image
-        Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "strategy-performance-readme", outputDir);
+        Optional<Path> savedPath = chartWorkflow.saveChartImage(chart, series, "strategy-performance-readme",
+                outputDir);
 
         if (savedPath.isPresent()) {
             LOG.info("Chart saved to: {}", savedPath.get().toAbsolutePath());
@@ -284,9 +298,9 @@ public class ReadmeContentManager {
         MACDIndicator macd = new MACDIndicator(close, 12, 26);
         RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma50)
-                .and(new OverIndicatorRule(rsi, 50));
+        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
+        // below SMA
+        Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
         Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
         Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
         TradingRecord record = new BarSeriesManager(series).run(strategy);
@@ -317,10 +331,11 @@ public class ReadmeContentManager {
     }
 
     /**
-     * Extracts code between START_SNIPPET and END_SNIPPET markers from the source file.
+     * Extracts code between START_SNIPPET and END_SNIPPET markers from the source
+     * file.
      *
      * @param sourceFile the Java source file to read
-     * @param snippetId the snippet identifier (e.g., "ema-crossover")
+     * @param snippetId  the snippet identifier (e.g., "ema-crossover")
      * @return the extracted code snippet, or empty if not found
      */
     public static Optional<String> extractCodeSnippet(Path sourceFile, String snippetId) {
@@ -385,7 +400,8 @@ public class ReadmeContentManager {
     }
 
     /**
-     * Updates the README file by replacing code snippets between HTML comment markers.
+     * Updates the README file by replacing code snippets between HTML comment
+     * markers.
      *
      * @param readmePath path to the README.md file
      * @param sourceFile path to the ReadmeContentManager.java file
@@ -408,10 +424,8 @@ public class ReadmeContentManager {
                 String endMarker = "<!-- END_SNIPPET: " + snippetId + " -->";
 
                 // Find the code block between markers
-                Pattern pattern = Pattern.compile(
-                        Pattern.quote(startMarker) + ".*?" + Pattern.quote(endMarker),
-                        Pattern.DOTALL
-                );
+                Pattern pattern = Pattern.compile(Pattern.quote(startMarker) + ".*?" + Pattern.quote(endMarker),
+                        Pattern.DOTALL);
 
                 String replacement = startMarker + "\n```java\n" + snippet.get() + "\n```\n" + endMarker;
                 String before = readmeContent;
@@ -440,17 +454,20 @@ public class ReadmeContentManager {
     }
 
     /**
-     * Main method to generate all README charts and automatically update README code snippets.
+     * Main method to generate all README charts and automatically update README
+     * code snippets.
      *
      * <p>
-     * By default, this method generates all chart images and automatically updates the README
-     * with code snippets extracted from the chart generation methods to keep them in sync.
+     * By default, this method generates all chart images and automatically updates
+     * the README with code snippets extracted from the chart generation methods to
+     * keep them in sync.
      * </p>
      *
-     * @param args optional arguments:
-     *             - "update-readme": Only updates README.md with code snippets (no chart generation)
-     *             - "snippets": Only prints all code snippets to log (no chart generation)
-     *             - Otherwise: output directory for charts (defaults to "ta4j-examples/docs/img")
+     * @param args optional arguments: - "update-readme": Only updates README.md
+     *             with code snippets (no chart generation) - "snippets": Only
+     *             prints all code snippets to log (no chart generation) -
+     *             Otherwise: output directory for charts (defaults to
+     *             "ta4j-examples/docs/img")
      */
     public static void main(String[] args) {
         if (args.length > 0 && "update-readme".equals(args[0])) {
@@ -491,6 +508,13 @@ public class ReadmeContentManager {
                 }
             }
             return;
+        }
+
+        // Chart generation requires a display (non-headless environment)
+        if (GraphicsEnvironment.isHeadless()) {
+            LOG.error("Cannot generate charts in headless environment. Chart generation requires a display.");
+            LOG.error("Use 'update-readme' or 'snippets' arguments for headless operations.");
+            System.exit(1);
         }
 
         String outputDir = args.length > 0 ? args[0] : "ta4j-examples/docs/img";
