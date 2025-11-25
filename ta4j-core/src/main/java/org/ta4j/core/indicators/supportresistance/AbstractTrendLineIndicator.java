@@ -87,7 +87,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private transient int cachedWindowStart = Integer.MIN_VALUE;
     private transient int cachedRemovedBars = Integer.MIN_VALUE;
     private transient List<Integer> cachedWindowSwings = List.of();
-    private transient List<CandidateGeometry> cachedGeometries = List.of();
+    private transient List<TrendLineCandidate> cachedGeometries = List.of();
     private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
     private transient int coordinateBaseIndex = Integer.MIN_VALUE;
 
@@ -242,7 +242,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return windowedSwings.subList(windowedSwings.size() - maxSwingPointsForTrendline, windowedSwings.size());
     }
 
-    private List<CandidateGeometry> buildGeometries(int windowStart, int windowEnd, List<Integer> swingPoints) {
+    private List<TrendLineCandidate> buildGeometries(int windowStart, int windowEnd, List<Integer> swingPoints) {
         if (swingPoints.size() < 2) {
             return List.of();
         }
@@ -253,12 +253,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
         refreshCoordinateBase();
         final int windowLength = windowEnd - windowStart + 1;
-        final List<CandidateGeometry> geometries = new ArrayList<>();
+        final List<TrendLineCandidate> geometries = new ArrayList<>();
         for (int i = 0; i < swingPoints.size() - 1; i++) {
             final int firstSwingIndex = swingPoints.get(i);
             for (int j = i + 1; j < swingPoints.size(); j++) {
                 final int secondSwingIndex = swingPoints.get(j);
-                final CandidateGeometry geometry = buildCandidateGeometry(firstSwingIndex, secondSwingIndex,
+                final TrendLineCandidate geometry = buildCandidateGeometry(firstSwingIndex, secondSwingIndex,
                         swingPoints, windowStart, windowEnd, windowLength, extremeSwingPrice, swingRange);
                 if (geometry != null) {
                     geometries.add(geometry);
@@ -311,9 +311,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return null;
         }
         TrendLineCandidate bestCandidate = null;
-        for (CandidateGeometry geometry : cachedGeometries) {
-            final TrendLineCandidate candidate = geometry.toCandidate(evaluationIndex);
-            if (candidate == null) {
+        for (TrendLineCandidate candidate : cachedGeometries) {
+            final Num projected = candidate.valueAt(evaluationIndex);
+            if (Num.isNaNOrNull(projected)) {
                 continue;
             }
             if (bestCandidate == null || candidate.isBetterThan(bestCandidate, priceAtEvaluation)) {
@@ -323,7 +323,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return bestCandidate;
     }
 
-    private CandidateGeometry buildCandidateGeometry(int firstSwingIndex, int secondSwingIndex,
+    private TrendLineCandidate buildCandidateGeometry(int firstSwingIndex, int secondSwingIndex,
             List<Integer> swingPointIndexes, int windowStart, int windowEnd, int windowLength, Num extremeSwingPrice,
             Num swingRange) {
         final Num firstValue = swingPriceAt(firstSwingIndex);
@@ -385,7 +385,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final double baseScore = calculateBaseScore(touchCount, swingPointIndexes.size(), touchesExtreme, outsideCount,
                 totalDeviation.doubleValue(), swingRange.doubleValue(), recencyAnchorScore);
 
-        return new CandidateGeometry(firstSwingIndex, secondSwingIndex, slope, intercept, touchCount, outsideCount,
+        return new TrendLineCandidate(firstSwingIndex, secondSwingIndex, slope, intercept, touchCount, outsideCount,
                 touchesExtreme, baseScore, windowStart, windowEnd);
     }
 
@@ -515,42 +515,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         private Num valueAt(int index) {
             final Num coordinate = coordinateForIndex(index);
             return slope.multipliedBy(coordinate).plus(intercept);
-        }
-    }
-
-    private final class CandidateGeometry {
-        private final int firstIndex;
-        private final int secondIndex;
-        private final Num slope;
-        private final Num intercept;
-        private final int touchCount;
-        private final int outsideCount;
-        private final boolean touchesExtreme;
-        private final double baseScore;
-        private final int windowStart;
-        private final int windowEnd;
-
-        private CandidateGeometry(int firstIndex, int secondIndex, Num slope, Num intercept, int touchCount,
-                int outsideCount, boolean touchesExtreme, double baseScore, int windowStart, int windowEnd) {
-            this.firstIndex = firstIndex;
-            this.secondIndex = secondIndex;
-            this.slope = slope;
-            this.intercept = intercept;
-            this.touchCount = touchCount;
-            this.outsideCount = outsideCount;
-            this.touchesExtreme = touchesExtreme;
-            this.baseScore = baseScore;
-            this.windowStart = windowStart;
-            this.windowEnd = windowEnd;
-        }
-
-        private TrendLineCandidate toCandidate(int evaluationIndex) {
-            final Num projected = slope.multipliedBy(coordinateForIndex(evaluationIndex)).plus(intercept);
-            if (Num.isNaNOrNull(projected)) {
-                return null;
-            }
-            return new TrendLineCandidate(firstIndex, secondIndex, slope, intercept, touchCount, outsideCount,
-                    touchesExtreme, baseScore, windowStart, windowEnd);
         }
     }
 
@@ -711,7 +675,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         parameters.put("toleranceMode", toleranceSettings.mode.ordinal());
         parameters.put("toleranceValue", toleranceSettings.value);
         parameters.put("toleranceMinimum", toleranceSettings.minimumAbsolute);
-        parameters.put("dynamicRecalculation", dynamicRecalculation);
         final ComponentDescriptor swingDescriptor = swingIndicator.toDescriptor();
 
         return ComponentDescriptor.builder()

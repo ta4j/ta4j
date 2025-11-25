@@ -175,91 +175,9 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, double touchCountWeight,
             double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
             double anchorRecencyWeight) {
-        this(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
+        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, ToleranceSettings.defaultSettings(),
-                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
-    }
-
-    /**
-     * Deserialization-friendly constructor that accepts explicit scoring weights
-     * and tolerance settings.
-     *
-     * @param swingHighIndicator     the swing-high indicator to use
-     * @param barCount               number of bars to look back when selecting
-     *                               swing points
-     * @param side                   the trend line side (should be RESISTANCE)
-     * @param touchCountWeight       weight for swing point touch count
-     * @param touchesExtremeWeight   weight for extreme point inclusion
-     * @param outsideCountWeight     weight for minimizing outside swings
-     * @param averageDeviationWeight weight for minimizing average deviation
-     * @param anchorRecencyWeight    weight for anchor point recency
-     * @param toleranceSettings      tolerance settings for touch detection
-     * @since 0.20
-     */
-    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, TrendLineSide side,
-            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
-            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
-        super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, true);
-    }
-
-    /**
-     * Deserialization-friendly constructor that accepts explicit scoring weights,
-     * tolerance settings, and search caps.
-     *
-     * @param swingHighIndicator         the swing-high indicator to use
-     * @param barCount                   number of bars to look back when selecting
-     *                                   swing points
-     * @param side                       the trend line side (should be RESISTANCE)
-     * @param touchCountWeight           weight for swing point touch count
-     * @param touchesExtremeWeight       weight for extreme point inclusion
-     * @param outsideCountWeight         weight for minimizing outside swings
-     * @param averageDeviationWeight     weight for minimizing average deviation
-     * @param anchorRecencyWeight        weight for anchor point recency
-     * @param toleranceSettings          tolerance settings for touch detection
-     * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs          maximum number of candidate pairs to
-     *                                   evaluate
-     * @since 0.20
-     */
-    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, TrendLineSide side,
-            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
-            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
-            int maxSwingPointsForTrendline, int maxCandidatePairs) {
-        super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
-                maxCandidatePairs, true);
-    }
-
-    /**
-     * Deserialization-friendly constructor that accepts explicit scoring weights,
-     * tolerance settings, search caps, and dynamic recomputation control.
-     *
-     * @param swingHighIndicator         the swing-high indicator to use
-     * @param barCount                   number of bars to look back when selecting
-     *                                   swing points
-     * @param side                       the trend line side (should be RESISTANCE)
-     * @param touchCountWeight           weight for swing point touch count
-     * @param touchesExtremeWeight       weight for extreme point inclusion
-     * @param outsideCountWeight         weight for minimizing outside swings
-     * @param averageDeviationWeight     weight for minimizing average deviation
-     * @param anchorRecencyWeight        weight for anchor point recency
-     * @param toleranceSettings          tolerance settings for touch detection
-     * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs          maximum number of candidate pairs to
-     *                                   evaluate
-     * @param dynamicRecalculation       whether the trend line should be recomputed
-     *                                   when new bars arrive (true), or remain
-     *                                   static after first establishment (false)
-     * @since 0.20
-     */
-    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, TrendLineSide side,
-            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
-            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
-            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean dynamicRecalculation) {
-        super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
-                maxCandidatePairs, dynamicRecalculation);
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS, true);
     }
 
     /**
@@ -284,9 +202,9 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
             double anchorRecencyWeight, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
             int maxCandidatePairs) {
-        this(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
+        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, toleranceSettings,
-                maxSwingPointsForTrendline, maxCandidatePairs);
+                maxSwingPointsForTrendline, maxCandidatePairs, true);
     }
 
     /**
@@ -310,10 +228,10 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, double touchCountWeight,
             double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
             double anchorRecencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum) {
-        this(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
+        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum),
-                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS, true);
     }
 
     /**
@@ -341,10 +259,10 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
             double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceMode,
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
-        this(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
+        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, ToleranceSettings
                         .from(ToleranceSettings.Mode.values()[toleranceMode], toleranceValue, toleranceMinimum),
-                maxSwingPointsForTrendline, maxCandidatePairs);
+                maxSwingPointsForTrendline, maxCandidatePairs, true);
     }
 
     /**
