@@ -230,15 +230,15 @@ Basic strategy visualization with indicator overlays:
 <!-- START_SNIPPET: ema-crossover -->
 ```java
 // Generate simplified chart - just price, indicators, and signals (no subchart)
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("EMA Crossover Strategy")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
-                .withIndicatorOverlay(slowEma)
-                .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
-                .toChart();
-        chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("EMA Crossover Strategy")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
+        .withIndicatorOverlay(slowEma)
+        .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
+        .toChart();
+chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
 ```
 <!-- END_SNIPPET: ema-crossover -->
 
@@ -250,23 +250,23 @@ The chart above shows candlestick price data with EMA lines overlaid and buy/sel
 <!-- START_SNIPPET: rsi-strategy -->
 ```java
 // Create indicators
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
-        // above 70 (overbought)
-        Rule entry = new CrossedDownIndicatorRule(rsi, 30);
-        Rule exit = new CrossedUpIndicatorRule(rsi, 70);
-        Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
+// above 70 (overbought)
+Rule entry = new CrossedDownIndicatorRule(rsi, 30);
+Rule exit = new CrossedUpIndicatorRule(rsi, 70);
+Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("RSI Strategy with Subchart")
-                .withSeries(series) // Price bars (candlesticks)
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(rsi) // RSI indicator in separate subchart panel
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("RSI Strategy with Subchart")
+        .withSeries(series) // Price bars (candlesticks)
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(rsi) // RSI indicator in separate subchart panel
+        .toChart();
 ```
 <!-- END_SNIPPET: rsi-strategy -->
 
@@ -276,25 +276,25 @@ The chart above shows candlestick price data with EMA lines overlaid and buy/sel
 <!-- START_SNIPPET: strategy-performance -->
 ```java
 // Create indicators: multiple moving averages
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator sma20 = new SMAIndicator(close, 20);
-        EMAIndicator ema12 = new EMAIndicator(close, 12);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma20 = new SMAIndicator(close, 20);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
 
-        // Strategy: buy when EMA crosses above SMA, sell when EMA crosses below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma20);
-        Rule exit = new CrossedDownIndicatorRule(ema12, sma20);
-        Strategy strategy = new BaseStrategy("EMA/SMA Crossover", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// Strategy: buy when EMA crosses above SMA, sell when EMA crosses below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma20);
+Rule exit = new CrossedDownIndicatorRule(ema12, sma20);
+Strategy strategy = new BaseStrategy("EMA/SMA Crossover", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("Strategy Performance Analysis")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(sma20) // Overlay SMA on price chart
-                .withIndicatorOverlay(ema12) // Overlay EMA on price chart
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(new MaximumDrawdownCriterion(), record) // Performance metric in subchart
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Strategy Performance Analysis")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(sma20) // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12) // Overlay EMA on price chart
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(new MaximumDrawdownCriterion(), record) // Performance metric in subchart
+        .toChart();
 ```
 <!-- END_SNIPPET: strategy-performance -->
 
@@ -306,30 +306,30 @@ This chart shows price action with indicator overlays, trading signals, and a pe
 <!-- START_SNIPPET: advanced-strategy -->
 ```java
 // Create indicators
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator sma50 = new SMAIndicator(close, 50);
-        EMAIndicator ema12 = new EMAIndicator(close, 12);
-        MACDIndicator macd = new MACDIndicator(close, 12, 26);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma50 = new SMAIndicator(close, 50);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
+MACDIndicator macd = new MACDIndicator(close, 12, 26);
+RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
-        // below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
-        Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
-        Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
+// below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
+Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
+Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("Advanced Multi-Indicator Strategy")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(sma50) // Overlay SMA on price chart
-                .withIndicatorOverlay(ema12) // Overlay EMA on price chart
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(macd) // MACD indicator in subchart
-                .withSubChart(rsi) // RSI indicator in subchart
-                .withSubChart(new NetProfitLossCriterion(), record) // Net profit/loss performance metric
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Advanced Multi-Indicator Strategy")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(sma50) // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12) // Overlay EMA on price chart
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(macd) // MACD indicator in subchart
+        .withSubChart(rsi) // RSI indicator in subchart
+        .withSubChart(new NetProfitLossCriterion(), record) // Net profit/loss performance metric
+        .toChart();
 ```
 <!-- END_SNIPPET: advanced-strategy -->
 
@@ -346,40 +346,40 @@ Serialize indicators, rules, and strategies to JSON for persistence, sharing, or
 <!-- START_SNIPPET: serialize-indicator -->
 ```java
 // Serialize an indicator (RSI) to JSON
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
-        String rsiJson = rsi.toJson();
-        LOG.info("Output: {}", rsiJson);
-        // Output:
-        // {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+String rsiJson = rsi.toJson();
+LOG.info("Output: {}", rsiJson);
+// Output:
+// {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
 ```
 <!-- END_SNIPPET: serialize-indicator -->
 
 <!-- START_SNIPPET: serialize-rule -->
 ```java
 // Serialize a rule (AndRule) to JSON
-        Rule rule1 = new OverIndicatorRule(rsi, 50);
-        Rule rule2 = new UnderIndicatorRule(rsi, 80);
-        Rule andRule = new AndRule(rule1, rule2);
-        String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
-        LOG.info("Output: {}", ruleJson);
-        // Output:
-        // {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
+Rule rule1 = new OverIndicatorRule(rsi, 50);
+Rule rule2 = new UnderIndicatorRule(rsi, 80);
+Rule andRule = new AndRule(rule1, rule2);
+String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
+LOG.info("Output: {}", ruleJson);
+// Output:
+// {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
 ```
 <!-- END_SNIPPET: serialize-rule -->
 
 <!-- START_SNIPPET: serialize-strategy -->
 ```java
 // Serialize a strategy (EMA Crossover) to JSON
-        EMAIndicator fastEma = new EMAIndicator(close, 12);
-        EMAIndicator slowEma = new EMAIndicator(close, 26);
-        Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
-        Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
-        Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
-        String strategyJson = strategy.toJson();
-        LOG.info("Output: {}", strategyJson);
-        // Output: {"type":"BaseStrategy","label":"EMA
-        // Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
+EMAIndicator fastEma = new EMAIndicator(close, 12);
+EMAIndicator slowEma = new EMAIndicator(close, 26);
+Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
+Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
+Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
+String strategyJson = strategy.toJson();
+LOG.info("Output: {}", strategyJson);
+// Output: {"type":"BaseStrategy","label":"EMA
+// Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
 ```
 <!-- END_SNIPPET: serialize-strategy -->
 

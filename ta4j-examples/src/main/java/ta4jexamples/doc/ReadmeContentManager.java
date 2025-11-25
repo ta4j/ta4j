@@ -456,11 +456,20 @@ public class ReadmeContentManager {
                 return Optional.empty();
             }
             int codeStart = newlineIndex + 1;
-            String snippet = content.substring(codeStart, endIndex).trim();
+            // Don't trim here - we need to preserve the exact indentation structure
+            // We'll trim only trailing whitespace from the entire snippet after processing
+            String snippet = content.substring(codeStart, endIndex);
 
             // Remove leading indentation (find minimum indentation and remove it)
+            // Strategy: Find the minimum indentation among lines that have indentation > 0,
+            // but if all lines have 0 indentation, use 0. This handles cases where the
+            // first
+            // line (e.g., a comment) has no indentation but subsequent lines do.
             String[] lines = snippet.split("\n");
             int minIndent = Integer.MAX_VALUE;
+            int minIndentIncludingZero = Integer.MAX_VALUE;
+            boolean hasIndentedLines = false;
+
             for (String line : lines) {
                 if (!line.trim().isEmpty()) {
                     int indent = 0;
@@ -471,9 +480,17 @@ public class ReadmeContentManager {
                             break;
                         }
                     }
-                    minIndent = Math.min(minIndent, indent);
+                    minIndentIncludingZero = Math.min(minIndentIncludingZero, indent);
+                    if (indent > 0) {
+                        minIndent = Math.min(minIndent, indent);
+                        hasIndentedLines = true;
+                    }
                 }
             }
+
+            // Use the minimum indentation of indented lines if any exist, otherwise use 0
+            int indentToRemove = hasIndentedLines ? minIndent
+                    : (minIndentIncludingZero == Integer.MAX_VALUE ? 0 : minIndentIncludingZero);
 
             // Remove minimum indentation from all lines
             StringBuilder result = new StringBuilder();
@@ -481,11 +498,19 @@ public class ReadmeContentManager {
                 if (line.trim().isEmpty()) {
                     result.append("\n");
                 } else {
-                    result.append(line.substring(Math.min(minIndent, line.length()))).append("\n");
+                    // Ensure we don't go beyond the line length
+                    int indentToRemoveForLine = Math.min(indentToRemove, line.length());
+                    result.append(line.substring(indentToRemoveForLine)).append("\n");
                 }
             }
 
-            return Optional.of(result.toString().trim());
+            // Trim only trailing whitespace/newlines, preserve leading structure
+            String resultStr = result.toString();
+            // Remove trailing newlines and whitespace
+            while (resultStr.endsWith("\n") || resultStr.endsWith(" ") || resultStr.endsWith("\r")) {
+                resultStr = resultStr.substring(0, resultStr.length() - 1);
+            }
+            return Optional.of(resultStr);
         } catch (IOException e) {
             LOG.error("Error reading source file: {}", e.getMessage());
             return Optional.empty();
