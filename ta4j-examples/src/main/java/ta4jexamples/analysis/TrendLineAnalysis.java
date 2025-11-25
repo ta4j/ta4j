@@ -68,12 +68,12 @@ public class TrendLineAnalysis {
         int surroundingBars = 5;
 
         // Create support trendline indicator
-        TrendLineSupportIndicator defaultFractalSupportTrendLine = new TrendLineSupportIndicator(series, surroundingBars,
-                trendLineLookback);
-        TrendLineSupportIndicator preferTouchPointFractalSupportTrendLine = new TrendLineSupportIndicator(series, surroundingBars,
-                trendLineLookback, TrendLineSupportIndicator.ScoringWeights.touchCountBiasPreset());
-        TrendLineSupportIndicator preferExtremePointFractalSupportTrendLine = new TrendLineSupportIndicator(series, surroundingBars,
-                trendLineLookback, TrendLineSupportIndicator.ScoringWeights.extremeSwingBiasPreset());
+        TrendLineSupportIndicator defaultFractalSupportTrendLine = new TrendLineSupportIndicator(series,
+                surroundingBars, trendLineLookback);
+        TrendLineSupportIndicator preferTouchPointFractalSupportTrendLine = new TrendLineSupportIndicator(series,
+                surroundingBars, trendLineLookback, TrendLineSupportIndicator.ScoringWeights.touchCountBiasPreset());
+        TrendLineSupportIndicator preferExtremePointFractalSupportTrendLine = new TrendLineSupportIndicator(series,
+                surroundingBars, trendLineLookback, TrendLineSupportIndicator.ScoringWeights.extremeSwingBiasPreset());
 
         logSegment("Fractal support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
         logSegment("Fractal support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());
@@ -81,12 +81,14 @@ public class TrendLineAnalysis {
                 preferExtremePointFractalSupportTrendLine.getCurrentSegment());
 
         // Create resistance trendline indicator
-        TrendLineResistanceIndicator defaultFractalResistanceTrendLine = new TrendLineResistanceIndicator(series, surroundingBars,
-                trendLineLookback);
+        TrendLineResistanceIndicator defaultFractalResistanceTrendLine = new TrendLineResistanceIndicator(series,
+                surroundingBars, trendLineLookback);
         TrendLineResistanceIndicator preferTouchPointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
-                series, surroundingBars, trendLineLookback, TrendLineResistanceIndicator.ScoringWeights.touchCountBiasPreset());
+                series, surroundingBars, trendLineLookback,
+                TrendLineResistanceIndicator.ScoringWeights.touchCountBiasPreset());
         TrendLineResistanceIndicator preferExtremePointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
-                series, surroundingBars, trendLineLookback, TrendLineResistanceIndicator.ScoringWeights.extremeSwingBiasPreset());
+                series, surroundingBars, trendLineLookback,
+                TrendLineResistanceIndicator.ScoringWeights.extremeSwingBiasPreset());
 
         logSegment("Fractal resistance (default)", defaultFractalResistanceTrendLine.getCurrentSegment());
         logSegment("Fractal resistance (preferTouchPoint)",
