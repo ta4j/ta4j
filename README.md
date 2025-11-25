@@ -4,7 +4,7 @@
 
 ![Ta4j main chart](https://raw.githubusercontent.com/ta4j/ta4j-wiki/master/img/ta4j_main_chart.png)
 
-Build, test, and deploy trading bots in Java. With more than 200 indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
+Build, test, and deploy trading bots in Java. With more than 190 (and counting) indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
 
 ---
 
@@ -41,7 +41,7 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 
 - **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
-- **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 130+ more ready to plug together.
+- **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns—no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **Production-ready**: Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
@@ -170,7 +170,9 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
-Want to backtest hundreds or even thousands of strategies to find the top performers?
+### Backtest hundreds or even thousands of strategies
+
+Want to find the top performers? Generate strategies with varying parameters and compare them:
 
 ```java
 // Generate strategies with varying parameters
@@ -192,18 +194,21 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory(); // logs progress with memory stats
 
-// Get top 10 strategies sorted by net profit, then by expectancy (for ties)
-// You can sort by any AnalysisCriterion - mix and match to find strategies that meet your goals
+// Get top 10 strategies sorted by net profit, then by RoMaD (for ties)
+// You can sort by any combination of AnalysisCriterion - mix and match to find strategies that meet your goals
+AnalysisCriterion returnOverMaxDradownCriterion = new ReturnOverMaxDrawdownCriterion();
+AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+
 List<TradingStatement> topStrategies = result.getTopStrategies(10,
-    new NetProfitCriterion(),    // primary sort: highest net profit first
-    new ExpectancyCriterion());  // secondary sort: highest expectancy for ties
+    netProfitCriterion,    // primary sort: highest net profit first
+    returnOverMaxDradownCriterion);  // secondary sort: highest RoMaD for ties
 
 // Review the winners
 topStrategies.forEach(statement -> {
-    System.out.printf("Strategy: %s, Net Profit: %.2f, Expectancy: %.2f%n",
+    System.out.printf("Strategy: %s, Net Profit: %.2f, Return over Max Drawdown: %.2f%n",
         statement.getStrategy().getName(),
-        statement.getCriterionScore(new NetProfitCriterion()).orElse(series.numOf(0)),
-        statement.getCriterionScore(new ExpectancyCriterion()).orElse(series.numOf(0)));
+        statement.getCriterionScore(netProfitCriterion).orElse(series.numOf(0)),
+        statement.getCriterionScore(returnOverMaxDradownCriterion).orElse(series.numOf(0)));
 });
 ```
 
@@ -380,7 +385,7 @@ Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 
 ## Features at a glance
 
-- **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
+- **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
 - **Composable strategy API** - Build complex trading rules using fluent Java patterns
 - **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
 - **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
