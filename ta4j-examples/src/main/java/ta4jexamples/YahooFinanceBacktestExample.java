@@ -178,8 +178,7 @@ public class YahooFinanceBacktestExample {
         Rule rsiOversold = new UnderIndicatorRule(rsi, series.numFactory().numOf(45));
         // Optional: OBV rising provides additional confirmation (but not required)
         // This makes the strategy more tradeable while still using volume analysis
-        Rule obvRising = new OverIndicatorRule(obv,
-                new PreviousValueIndicator(obv, 1));
+        Rule obvRising = new OverIndicatorRule(obv, new PreviousValueIndicator(obv, 1));
 
         // Entry: Price at lower BB + RSI oversold + (OBV rising OR price below middle
         // band)
