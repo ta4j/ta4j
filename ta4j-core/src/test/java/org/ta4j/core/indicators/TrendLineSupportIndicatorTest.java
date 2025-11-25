@@ -38,7 +38,6 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
-import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
@@ -205,8 +204,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final var indicator = new TrendLineSupportIndicator(series, 1, 15, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(Double.parseDouble(descriptor.getParameters().get("touchCountWeight").toString()))
-                .isEqualTo(weights.touchCountWeight);
+        assertThat(parseDoubleParameter(descriptor, "touchCountWeight")).isEqualTo(weights.touchCountWeight);
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
@@ -574,6 +572,70 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final Num slope = numerator.dividedBy(denominator);
         final Num delta = factory.numOf(targetMillis - startMillis);
         return slope.multipliedBy(delta).plus(startPrice);
+    }
+
+    /**
+     * Safely extracts a double value from a ComponentDescriptor parameter map.
+     * Handles NumberFormatException gracefully with a meaningful error message.
+     *
+     * @param descriptor    the component descriptor
+     * @param parameterName the parameter name
+     * @return the double value
+     * @throws AssertionError if the parameter is missing, null, or cannot be parsed
+     *                        as a double
+     */
+    private double parseDoubleParameter(ComponentDescriptor descriptor, String parameterName) {
+        final Object value = descriptor.getParameters().get(parameterName);
+        if (value == null) {
+            throw new AssertionError(String.format("Parameter '%s' is missing or null in descriptor", parameterName));
+        }
+
+        // If already a Number, extract double value directly
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+
+        // Try parsing from string representation
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            throw new AssertionError(
+                    String.format("Failed to parse parameter '%s' as double. Value: '%s' (type: %s). Error: %s",
+                            parameterName, value, value.getClass().getName(), e.getMessage()),
+                    e);
+        }
+    }
+
+    /**
+     * Safely extracts an int value from a ComponentDescriptor parameter map.
+     * Handles NumberFormatException gracefully with a meaningful error message.
+     *
+     * @param descriptor    the component descriptor
+     * @param parameterName the parameter name
+     * @return the int value
+     * @throws AssertionError if the parameter is missing, null, or cannot be parsed
+     *                        as an int
+     */
+    private int parseIntParameter(ComponentDescriptor descriptor, String parameterName) {
+        final Object value = descriptor.getParameters().get(parameterName);
+        if (value == null) {
+            throw new AssertionError(String.format("Parameter '%s' is missing or null in descriptor", parameterName));
+        }
+
+        // If already a Number, extract int value directly
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+
+        // Try parsing from string representation
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            throw new AssertionError(
+                    String.format("Failed to parse parameter '%s' as int. Value: '%s' (type: %s). Error: %s",
+                            parameterName, value, value.getClass().getName(), e.getMessage()),
+                    e);
+        }
     }
 
     private static final class WarmupIndicator extends CachedIndicator<Num> {
