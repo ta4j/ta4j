@@ -27,9 +27,11 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.TextAnchor;
@@ -48,6 +50,10 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -704,6 +710,140 @@ class TradingChartFactoryTest {
         @Override
         public BarSeries getBarSeries() {
             return series;
+        }
+    }
+
+    // ========== Tooltip Generator Serialization Tests ==========
+
+    @Test
+    void testChartWithTimeSeriesTooltipGeneratorIsSerializable() throws Exception {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        JFreeChart chart = factory.createDualAxisChart(barSeries, closePrice, "Price", sma, "SMA");
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        // Verify tooltip generator is set
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) plot.getRenderer(1);
+        XYToolTipGenerator tooltipGenerator = renderer.getDefaultToolTipGenerator();
+        assertNotNull(tooltipGenerator, "Tooltip generator should be set for TimeSeriesCollection");
+
+        // Test serialization/deserialization
+        JFreeChart deserializedChart = serializeAndDeserialize(chart);
+        assertNotNull(deserializedChart, "Chart should be successfully deserialized");
+
+        // Verify tooltip generator still works after deserialization
+        XYPlot deserializedPlot = (XYPlot) deserializedChart.getPlot();
+        StandardXYItemRenderer deserializedRenderer = (StandardXYItemRenderer) deserializedPlot.getRenderer(1);
+        XYToolTipGenerator deserializedTooltipGenerator = deserializedRenderer.getDefaultToolTipGenerator();
+        assertNotNull(deserializedTooltipGenerator, "Tooltip generator should be preserved after deserialization");
+
+        // Verify tooltip generator can generate tooltips
+        TimeSeriesCollection dataset = (TimeSeriesCollection) deserializedPlot.getDataset(1);
+        if (dataset.getSeriesCount() > 0 && dataset.getItemCount(0) > 0) {
+            String tooltip = deserializedTooltipGenerator.generateToolTip(dataset, 0, 0);
+            assertNotNull(tooltip, "Tooltip generator should produce tooltip text");
+            assertFalse(tooltip.isEmpty(), "Tooltip should not be empty");
+        }
+    }
+
+    @Test
+    void testChartWithXYSeriesTooltipGeneratorIsSerializable() throws Exception {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        JFreeChart chart = factory.createIndicatorChart(barSeries, closePrice);
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = (XYPlot) combinedPlot.getSubplots().get(1);
+
+        // Verify tooltip generator is set
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) indicatorPlot.getRenderer(0);
+        XYToolTipGenerator tooltipGenerator = renderer.getDefaultToolTipGenerator();
+        assertNotNull(tooltipGenerator, "Tooltip generator should be set for XYSeriesCollection");
+
+        // Test serialization/deserialization
+        JFreeChart deserializedChart = serializeAndDeserialize(chart);
+        assertNotNull(deserializedChart, "Chart should be successfully deserialized");
+
+        // Verify tooltip generator still works after deserialization
+        CombinedDomainXYPlot deserializedCombinedPlot = (CombinedDomainXYPlot) deserializedChart.getPlot();
+        XYPlot deserializedIndicatorPlot = (XYPlot) deserializedCombinedPlot.getSubplots().get(1);
+        StandardXYItemRenderer deserializedRenderer = (StandardXYItemRenderer) deserializedIndicatorPlot.getRenderer(0);
+        XYToolTipGenerator deserializedTooltipGenerator = deserializedRenderer.getDefaultToolTipGenerator();
+        assertNotNull(deserializedTooltipGenerator, "Tooltip generator should be preserved after deserialization");
+
+        // Verify tooltip generator can generate tooltips
+        XYSeriesCollection dataset = (XYSeriesCollection) deserializedIndicatorPlot.getDataset(0);
+        if (dataset.getSeriesCount() > 0 && dataset.getItemCount(0) > 0) {
+            String tooltip = deserializedTooltipGenerator.generateToolTip(dataset, 0, 0);
+            assertNotNull(tooltip, "Tooltip generator should produce tooltip text");
+            assertFalse(tooltip.isEmpty(), "Tooltip should not be empty");
+        }
+    }
+
+    @Test
+    void testChartWithIndicatorOverlayTooltipGeneratorIsSerializable() throws Exception {
+        // Create chart using addAnalysisCriterionToChart which uses
+        // attachIndicatorOverlay internally
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+        factory.addAnalysisCriterionToChart(chart, barSeries, indicator, indicator.toString());
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        // Find the overlay dataset (should be after the OHLC and trading datasets)
+        int overlayDatasetIndex = -1;
+        for (int i = 0; i < plot.getDatasetCount(); i++) {
+            if (plot.getDataset(i) instanceof TimeSeriesCollection) {
+                overlayDatasetIndex = i;
+                break;
+            }
+        }
+        assertTrue(overlayDatasetIndex >= 0, "Should have TimeSeriesCollection overlay dataset");
+
+        // Verify tooltip generator is set
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) plot.getRenderer(overlayDatasetIndex);
+        XYToolTipGenerator tooltipGenerator = renderer.getDefaultToolTipGenerator();
+        assertNotNull(tooltipGenerator, "Tooltip generator should be set for indicator overlay");
+
+        // Test serialization/deserialization
+        JFreeChart deserializedChart = serializeAndDeserialize(chart);
+        assertNotNull(deserializedChart, "Chart should be successfully deserialized");
+
+        // Verify tooltip generator still works after deserialization
+        XYPlot deserializedPlot = (XYPlot) deserializedChart.getPlot();
+        int deserializedOverlayDatasetIndex = -1;
+        for (int i = 0; i < deserializedPlot.getDatasetCount(); i++) {
+            if (deserializedPlot.getDataset(i) instanceof TimeSeriesCollection) {
+                deserializedOverlayDatasetIndex = i;
+                break;
+            }
+        }
+        assertTrue(deserializedOverlayDatasetIndex >= 0,
+                "Should have TimeSeriesCollection overlay dataset after deserialization");
+
+        StandardXYItemRenderer deserializedRenderer = (StandardXYItemRenderer) deserializedPlot
+                .getRenderer(deserializedOverlayDatasetIndex);
+        XYToolTipGenerator deserializedTooltipGenerator = deserializedRenderer.getDefaultToolTipGenerator();
+        assertNotNull(deserializedTooltipGenerator, "Tooltip generator should be preserved after deserialization");
+
+        // Verify tooltip generator can generate tooltips
+        TimeSeriesCollection dataset = (TimeSeriesCollection) deserializedPlot
+                .getDataset(deserializedOverlayDatasetIndex);
+        if (dataset.getSeriesCount() > 0 && dataset.getItemCount(0) > 0) {
+            String tooltip = deserializedTooltipGenerator.generateToolTip(dataset, 0, 0);
+            assertNotNull(tooltip, "Tooltip generator should produce tooltip text");
+            assertFalse(tooltip.isEmpty(), "Tooltip should not be empty");
+        }
+    }
+
+    private JFreeChart serializeAndDeserialize(JFreeChart chart) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(chart);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            return (JFreeChart) ois.readObject();
         }
     }
 }

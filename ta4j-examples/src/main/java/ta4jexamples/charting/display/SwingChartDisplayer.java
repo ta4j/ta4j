@@ -30,10 +30,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.entity.ChartEntity;
 import org.jfree.chart.entity.XYItemEntity;
 import org.jfree.chart.ui.ApplicationFrame;
-import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.XYDataset;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,9 +47,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -100,10 +94,14 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
     /**
      * Default mouseover hover delay in milliseconds.
+     * <p>
+     * Set to 500ms to align with UX best practices. Nielsen Norman Group recommends
+     * 300-500ms, and Microsoft uses 500ms for tooltips. This prevents accidental
+     * tooltip activations when users move their cursor across the chart.
      *
      * @since 0.19
      */
-    static final int DEFAULT_HOVER_DELAY_MS = 100;
+    static final int DEFAULT_HOVER_DELAY_MS = 500;
 
     private static final Logger LOG = LogManager.getLogger(SwingChartDisplayer.class);
 
@@ -259,13 +257,19 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
         private final JLabel infoLabel;
         private final int hoverDelay;
+        private final ChartDataExtractor dataExtractor;
         private Timer hoverTimer;
         private String lastDisplayedText;
         private ChartMouseEvent lastEvent;
 
         ChartMouseoverListener(JLabel infoLabel, int hoverDelay) {
+            this(infoLabel, hoverDelay, new ChartDataExtractor());
+        }
+
+        ChartMouseoverListener(JLabel infoLabel, int hoverDelay, ChartDataExtractor dataExtractor) {
             this.infoLabel = infoLabel;
             this.hoverDelay = hoverDelay;
+            this.dataExtractor = dataExtractor;
         }
 
         @Override
@@ -326,7 +330,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
                     int seriesIndex = xyItemEntity.getSeriesIndex();
                     int itemIndex = xyItemEntity.getItem();
 
-                    String displayText = extractDataText(dataset, seriesIndex, itemIndex);
+                    String displayText = dataExtractor.extractDataText(dataset, seriesIndex, itemIndex);
                     if (displayText != null && !displayText.isEmpty()) {
                         infoLabel.setText(displayText);
                         lastDisplayedText = displayText;
@@ -335,44 +339,6 @@ public final class SwingChartDisplayer implements ChartDisplayer {
             } catch (Exception ex) {
                 LOG.debug("Error displaying mouseover data", ex);
             }
-        }
-
-        private String extractDataText(XYDataset dataset, int seriesIndex, int itemIndex) {
-            if (dataset instanceof DefaultOHLCDataset ohlcDataset) {
-                try {
-                    // DefaultOHLCDataset stores OHLC data - access OHLC values directly
-                    double xValue = dataset.getXValue(seriesIndex, itemIndex);
-                    double open = ohlcDataset.getOpenValue(seriesIndex, itemIndex);
-                    double high = ohlcDataset.getHighValue(seriesIndex, itemIndex);
-                    double low = ohlcDataset.getLowValue(seriesIndex, itemIndex);
-                    double close = ohlcDataset.getCloseValue(seriesIndex, itemIndex);
-                    double volume = ohlcDataset.getVolumeValue(seriesIndex, itemIndex);
-
-                    DecimalFormat priceFormat = new DecimalFormat("#,##0.00###");
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    return String.format("Date: %s | O: %s | H: %s | L: %s | C: %s | V: %s",
-                            dateFormat.format(new Date((long) xValue)), priceFormat.format(open),
-                            priceFormat.format(high), priceFormat.format(low), priceFormat.format(close),
-                            priceFormat.format(volume));
-                } catch (Exception ex) {
-                    LOG.debug("Error extracting OHLC data", ex);
-                }
-            } else if (dataset instanceof XYSeriesCollection xyCollection) {
-                try {
-                    XYSeries series = xyCollection.getSeries(seriesIndex);
-                    if (series != null && itemIndex < series.getItemCount()) {
-                        double x = series.getX(itemIndex).doubleValue();
-                        double y = series.getY(itemIndex).doubleValue();
-                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                        DecimalFormat valueFormat = new DecimalFormat("#,##0.00###");
-                        return String.format("Date: %s | Value: %s", dateFormat.format(new Date((long) x)),
-                                valueFormat.format(y));
-                    }
-                } catch (Exception ex) {
-                    LOG.debug("Error extracting indicator data", ex);
-                }
-            }
-            return null;
         }
     }
 }

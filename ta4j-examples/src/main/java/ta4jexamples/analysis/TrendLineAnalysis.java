@@ -75,10 +75,6 @@ public class TrendLineAnalysis {
         TrendLineSupportIndicator preferExtremePointFractalSupportTrendLine = new TrendLineSupportIndicator(series,
                 surroundingBars, trendLineLookback, TrendLineSupportIndicator.ScoringWeights.extremeSwingBiasPreset());
 
-        logSegment("Support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
-        logSegment("Support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());
-        logSegment("Support (preferExtremePoint)", preferExtremePointFractalSupportTrendLine.getCurrentSegment());
-
         // Create resistance trendline indicator
         TrendLineResistanceIndicator defaultFractalResistanceTrendLine = new TrendLineResistanceIndicator(series,
                 surroundingBars, trendLineLookback);
@@ -88,10 +84,6 @@ public class TrendLineAnalysis {
         TrendLineResistanceIndicator preferExtremePointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
                 series, surroundingBars, trendLineLookback,
                 TrendLineResistanceIndicator.ScoringWeights.extremeSwingBiasPreset());
-
-        logSegment("Resistance (default)", defaultFractalResistanceTrendLine.getCurrentSegment());
-        logSegment("Resistance (preferTouchPoint)", preferTouchPointFractalResistanceTrendLine.getCurrentSegment());
-        logSegment("Resistance (preferExtremePoint)", preferExtremePointFractalResistanceTrendLine.getCurrentSegment());
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow fractalChartWorkflow = new ChartWorkflow();
@@ -132,6 +124,14 @@ public class TrendLineAnalysis {
 
         fractalChartWorkflow.display(fractalPlan);
         fractalChartWorkflow.save(fractalPlan, "log/charts", "fractal-support-resistance-trendlines");
+
+        logSegment("Support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
+        logSegment("Support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());
+        logSegment("Support (preferExtremePoint)", preferExtremePointFractalSupportTrendLine.getCurrentSegment());
+
+        logSegment("Resistance (default)", defaultFractalResistanceTrendLine.getCurrentSegment());
+        logSegment("Resistance (preferTouchPoint)", preferTouchPointFractalResistanceTrendLine.getCurrentSegment());
+        logSegment("Resistance (preferExtremePoint)", preferExtremePointFractalResistanceTrendLine.getCurrentSegment());
 
     }
 

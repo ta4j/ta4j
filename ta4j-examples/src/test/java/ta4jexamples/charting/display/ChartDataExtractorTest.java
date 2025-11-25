@@ -168,4 +168,3 @@ class ChartDataExtractorTest {
         assertNull(result, "Should return null for invalid series index");
     }
 }
-

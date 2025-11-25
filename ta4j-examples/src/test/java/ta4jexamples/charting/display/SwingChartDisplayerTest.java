@@ -280,4 +280,5 @@ class SwingChartDisplayerTest {
         // mocking,
         // but the method exists and is part of the ChartMouseListener interface
     }
+
 }

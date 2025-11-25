@@ -34,6 +34,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
@@ -44,6 +45,7 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.OHLCDataItem;
+import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.ta4j.core.*;
@@ -53,6 +55,7 @@ import ta4jexamples.charting.builder.ChartBuilder;
 import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -495,6 +498,8 @@ public final class TradingChartFactory {
             renderer.setSeriesPaint(i, colorWithOpacity);
             renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
         }
+        // Set tooltip generator to show series name, date, and value
+        renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         plot.setRenderer(datasetIndex, renderer);
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
@@ -809,6 +814,11 @@ public final class TradingChartFactory {
 
         // Configure renderer
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
+        // Set tooltip generator to show series name, date, and value
+        // For XYSeriesCollection with epoch milliseconds, use a custom format
+        SimpleDateFormat dateFormat = duration.toDays() >= 1 ? new SimpleDateFormat(DATE_FORMAT_DAILY)
+                : new SimpleDateFormat(DATE_FORMAT_INTRADAY);
+        renderer.setDefaultToolTipGenerator(new XYSeriesToolTipGenerator(dateFormat));
         plot.setRenderer(0, renderer);
         configurePlotAppearance(plot);
 
@@ -916,6 +926,50 @@ public final class TradingChartFactory {
         for (int i = 0; i < dataset.getSeriesCount(); i++) {
             secondaryRenderer.setSeriesPaint(i, Color.BLUE);
         }
+        // Set tooltip generator to show series name, date, and value
+        secondaryRenderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         plot.setRenderer(datasetIndex, secondaryRenderer);
+    }
+
+    /**
+     * Serializable tooltip generator for TimeSeriesCollection datasets.
+     */
+    private static final class TimeSeriesToolTipGenerator implements XYToolTipGenerator, Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String generateToolTip(XYDataset dataset, int seriesIdx, int item) {
+            String seriesName = dataset.getSeriesKey(seriesIdx).toString();
+            TimeSeriesCollection timeSeriesCollection = (TimeSeriesCollection) dataset;
+            TimeSeries timeSeries = timeSeriesCollection.getSeries(seriesIdx);
+            org.jfree.data.time.TimeSeriesDataItem dataItem = timeSeries.getDataItem(item);
+            String dateStr = dataItem.getPeriod().toString();
+            double value = dataItem.getValue().doubleValue();
+            return String.format("%s: %s, Value: %s", seriesName, dateStr, PRICE_FORMAT.get().format(value));
+        }
+    }
+
+    /**
+     * Serializable tooltip generator for XYSeriesCollection datasets with epoch
+     * milliseconds.
+     */
+    private static final class XYSeriesToolTipGenerator implements XYToolTipGenerator, Serializable {
+
+        private static final long serialVersionUID = 1L;
+        private final SimpleDateFormat dateFormat;
+
+        XYSeriesToolTipGenerator(SimpleDateFormat dateFormat) {
+            this.dateFormat = dateFormat;
+        }
+
+        @Override
+        public String generateToolTip(XYDataset dataset, int seriesIdx, int item) {
+            String seriesName = dataset.getSeriesKey(seriesIdx).toString();
+            double xValue = dataset.getXValue(seriesIdx, item);
+            double yValue = dataset.getYValue(seriesIdx, item);
+            return String.format("%s: %s, Value: %s", seriesName, dateFormat.format(new Date((long) xValue)),
+                    PRICE_FORMAT.get().format(yValue));
+        }
     }
 }

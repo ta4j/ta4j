@@ -37,11 +37,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * Extracts formatted text data from chart datasets for display in mouseover tooltips.
+ * Extracts formatted text data from chart datasets for display in mouseover
+ * tooltips.
  * <p>
- * This class handles different dataset types (OHLC, TimeSeries, XYSeries) and formats
- * them appropriately for display. It is designed to be testable independently of the
- * chart display infrastructure.
+ * This class handles different dataset types (OHLC, TimeSeries, XYSeries) and
+ * formats them appropriately for display. It is designed to be testable
+ * independently of the chart display infrastructure.
  *
  * @since 0.19
  */
@@ -84,9 +85,8 @@ public final class ChartDataExtractor {
             DecimalFormat priceFormat = new DecimalFormat("#,##0.00###");
             SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
             return String.format("Date: %s | O: %s | H: %s | L: %s | C: %s | V: %s",
-                    dateFormat.format(new Date((long) xValue)), priceFormat.format(open),
-                    priceFormat.format(high), priceFormat.format(low), priceFormat.format(close),
-                    priceFormat.format(volume));
+                    dateFormat.format(new Date((long) xValue)), priceFormat.format(open), priceFormat.format(high),
+                    priceFormat.format(low), priceFormat.format(close), priceFormat.format(volume));
         } catch (Exception ex) {
             LOG.debug("Error extracting OHLC data", ex);
             return null;
@@ -127,4 +127,3 @@ public final class ChartDataExtractor {
         return null;
     }
 }
-
