@@ -36,6 +36,7 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.MONTH;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.WEEK;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
+import static org.junit.Assert.assertFalse;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -1681,6 +1682,34 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
+    public void shouldTreatBeginIndexBarAsCurrentPeriodBoundary() {
+        var series = new MockBarSeriesBuilder().withName("BeginBoundaryGuard").build();
+
+        // Both bars are in the same day; beginIndex bar must be considered when
+        // stepping back through the current period
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-02-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-02-01").atTime(12, 0).atZone(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        var indicator = new GuardedPivotPointIndicator(series, DAY);
+        var barsOfPreviousPeriod = indicator.getBarsOfPreviousPeriod(1);
+        assertEquals(0, barsOfPreviousPeriod.size());
+    }
+
+    @Test
     public void shouldHandleBeginIndexGreaterThanZero() {
         // Create a series with multiple days
         var series = new MockBarSeriesBuilder().withName("BeginIndexTest").build();
@@ -1769,6 +1798,22 @@ public class PivotPointIndicatorTest {
 
         public long getPreviousPeriodForTesting(Bar bar, int indexOfPreviousBar) {
             return getPreviousPeriod(bar, indexOfPreviousBar);
+        }
+    }
+
+    private static final class GuardedPivotPointIndicator extends TestablePivotPointIndicator {
+        public GuardedPivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
+            super(series, timeLevel);
+        }
+
+        @Override
+        protected long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
+            if (indexOfPreviousBar >= getBarSeries().getBeginIndex()) {
+                var previousBar = getBarSeries().getBar(indexOfPreviousBar);
+                assertFalse("Expected beginIndex bar to be treated as part of the current period boundary",
+                        getPeriod(previousBar) == getPeriod(bar));
+            }
+            return super.getPreviousPeriod(bar, indexOfPreviousBar);
         }
     }
 

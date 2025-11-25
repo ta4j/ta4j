@@ -99,8 +99,9 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
 
         final Bar currentBar = getBarSeries().getBar(index);
 
-        // step back while bar-1 in same period (day, week, etc):
-        while (index - 1 > getBarSeries().getBeginIndex()
+        // step back while bar-1 in same period (day, week, etc.), including beginIndex
+        // so the first bar of the series can anchor the current period boundary
+        while (index - 1 >= getBarSeries().getBeginIndex()
                 && getPeriod(getBarSeries().getBar(index - 1)) == getPeriod(currentBar)) {
             index--;
         }
