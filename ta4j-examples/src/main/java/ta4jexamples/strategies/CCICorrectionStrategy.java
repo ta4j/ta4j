@@ -112,6 +112,6 @@ public class CCICorrectionStrategy {
                 .withSubChart(new GrossReturnCriterion(), tradingRecord)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "cci-correction-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "cci-correction-strategy", "temp/charts");
     }
 }

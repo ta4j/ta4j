@@ -122,6 +122,6 @@ public class GlobalExtremaStrategy {
                 .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "temp/charts");
     }
 }

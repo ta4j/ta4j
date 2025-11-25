@@ -121,7 +121,7 @@ public class RSI2Strategy {
                 .withSubChart(rsiOverlay)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "rsi2-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "rsi2-strategy", "temp/charts");
     }
 
 }
