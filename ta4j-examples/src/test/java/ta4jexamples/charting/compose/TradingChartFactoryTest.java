@@ -62,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.AnalysisCriterionIndicator;
 import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
  * Unit tests for {@link TradingChartFactory}.
@@ -845,5 +846,57 @@ class TradingChartFactoryTest {
         try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
             return (JFreeChart) ois.readObject();
         }
+    }
+
+    // ========== Trading Record Subchart Tests ==========
+
+    @Test
+    void testBuildTradingRecordPlotCreatesDomainAxis() {
+        // Test that buildTradingRecordPlot creates a domain axis (fixes
+        // NullPointerException bug)
+        // Use ChartWorkflow to create a chart with trading record subchart
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder().withSeries(barSeries).withSubChart(tradingRecord).toChart();
+
+        assertNotNull(chart, "Chart should be created successfully");
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Should have combined plot");
+        assertTrue(combinedPlot.getSubplots().size() >= 2, "Should have base plot and trading record subplot");
+
+        // Find the trading record subplot
+        XYPlot tradingRecordPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null && subplot.getRangeAxis().getLabel().contains("Trade price")) {
+                tradingRecordPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(tradingRecordPlot, "Should have trading record subplot");
+        assertNotNull(tradingRecordPlot.getDomainAxis(), "Trading record subplot should have domain axis");
+        assertInstanceOf(DateAxis.class, tradingRecordPlot.getDomainAxis(), "Domain axis should be a DateAxis");
+    }
+
+    @Test
+    void testTradingRecordSubchartHasConfiguredDomainAxis() {
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder().withSeries(barSeries).withSubChart(tradingRecord).toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+
+        // Find the trading record subplot
+        XYPlot tradingRecordPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null && subplot.getRangeAxis().getLabel().contains("Trade price")) {
+                tradingRecordPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(tradingRecordPlot, "Should have trading record subplot");
+        DateAxis domainAxis = (DateAxis) tradingRecordPlot.getDomainAxis();
+        assertNotNull(domainAxis.getDateFormatOverride(), "Domain axis should have date format configured");
+        assertTrue(domainAxis.isAutoRange(), "Domain axis should be auto-ranging");
     }
 }

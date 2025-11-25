@@ -443,7 +443,21 @@ public final class TradingChartFactory {
         XYSeriesCollection dataset = createDataSeriesForIndicator(new ClosePriceIndicator(series));
         plot.setDataset(0, dataset);
 
-        configureDomainAxis(plot, series.getFirstBar().getTimePeriod());
+        // Create and configure domain axis
+        Duration duration = series.getFirstBar().getTimePeriod();
+        DateAxis domainAxis = new DateAxis("Date");
+        if (duration.toDays() >= 1) {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+        } else {
+            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+        }
+        domainAxis.setAutoRange(true);
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
+        domainAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        domainAxis.setLabelPaint(Color.LIGHT_GRAY);
+        plot.setDomainAxis(domainAxis);
+
         NumberAxis rangeAxis = new NumberAxis("Trade price");
         rangeAxis.setAutoRangeIncludesZero(false);
         rangeAxis.setTickLabelPaint(Color.LIGHT_GRAY);
