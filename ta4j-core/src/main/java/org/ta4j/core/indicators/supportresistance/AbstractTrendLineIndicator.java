@@ -75,13 +75,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final RecentSwingIndicator swingIndicator;
     private final transient Indicator<Num> priceIndicator;
     private final int barCount;
-    private final int unstableBars;
     private final TrendLineSide side;
-    private final double touchCountWeight;
-    private final double touchesExtremeWeight;
-    private final double outsideCountWeight;
-    private final double averageDeviationWeight;
-    private final double anchorRecencyWeight;
     private final ScoringWeights scoringWeights;
     private final ToleranceSettings toleranceSettings;
     private final int maxSwingPointsForTrendline;
@@ -97,24 +91,24 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
     private transient int coordinateBaseIndex = Integer.MIN_VALUE;
 
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
-            TrendLineSide side, ScoringWeights scoringWeights) {
-        this(swingIndicator, barCount, unstableBars, side, resolve(scoringWeights).touchCountWeight,
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            ScoringWeights scoringWeights) {
+        this(swingIndicator, barCount, side, resolve(scoringWeights).touchCountWeight,
                 resolve(scoringWeights).touchesExtremeWeight, resolve(scoringWeights).outsideCountWeight,
                 resolve(scoringWeights).averageDeviationWeight, resolve(scoringWeights).anchorRecencyWeight,
                 ToleranceSettings.defaultSettings());
     }
 
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
-            TrendLineSide side, double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
-        this(swingIndicator, barCount, unstableBars, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+        this(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
                 DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, int unstableBars,
-            TrendLineSide side, double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
         super(swingIndicator.getPriceIndicator());
@@ -130,13 +124,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         this.swingIndicator = swingIndicator;
         this.priceIndicator = swingIndicator.getPriceIndicator();
         this.barCount = barCount;
-        this.unstableBars = Math.max(0, unstableBars);
         this.side = side;
-        this.touchCountWeight = touchCountWeight;
-        this.touchesExtremeWeight = touchesExtremeWeight;
-        this.outsideCountWeight = outsideCountWeight;
-        this.averageDeviationWeight = averageDeviationWeight;
-        this.anchorRecencyWeight = anchorRecencyWeight;
         this.scoringWeights = new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight);
         this.toleranceSettings = toleranceSettings == null ? ToleranceSettings.defaultSettings() : toleranceSettings;
@@ -144,16 +132,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         this.maxCandidatePairs = maxCandidatePairs;
     }
 
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int unstableBars, TrendLineSide side,
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, TrendLineSide side,
             ScoringWeights scoringWeights) {
-        this(swingIndicator, Integer.MAX_VALUE, unstableBars, side, scoringWeights);
+        this(swingIndicator, Integer.MAX_VALUE, side, scoringWeights);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        final Indicator<Num> source = swingIndicator;
-        final int sourceUnstable = source == null ? 0 : source.getCountOfUnstableBars();
-        return Math.max(unstableBars, sourceUnstable);
+        return swingIndicator.getCountOfUnstableBars();
     }
 
     @Override
@@ -445,8 +431,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final boolean invalidRange = Double.isNaN(swingRange) || swingRange <= 0d;
         final double normalizedDeviation = invalidRange ? 0d : Math.min(1d, averageDeviation / swingRange);
         final double proximityScore = 1d - normalizedDeviation;
-        return touchCountWeight * touchScore + touchesExtremeWeight * extremeScore + outsideCountWeight * outsideScore
-                + averageDeviationWeight * proximityScore + anchorRecencyWeight * recencyAnchorScore;
+        return scoringWeights.touchCountWeight * touchScore + scoringWeights.touchesExtremeWeight * extremeScore
+                + scoringWeights.outsideCountWeight * outsideScore
+                + scoringWeights.averageDeviationWeight * proximityScore
+                + scoringWeights.anchorRecencyWeight * recencyAnchorScore;
     }
 
     private final class TrendLineCandidate {
@@ -697,12 +685,11 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     public ComponentDescriptor toDescriptor() {
         final Map<String, Object> parameters = new LinkedHashMap<>();
         parameters.put("barCount", barCount);
-        parameters.put("unstableBars", getCountOfUnstableBars());
-        parameters.put("touchCountWeight", touchCountWeight);
-        parameters.put("touchesExtremeWeight", touchesExtremeWeight);
-        parameters.put("outsideCountWeight", outsideCountWeight);
-        parameters.put("averageDeviationWeight", averageDeviationWeight);
-        parameters.put("anchorRecencyWeight", anchorRecencyWeight);
+        parameters.put("touchCountWeight", scoringWeights.touchCountWeight);
+        parameters.put("touchesExtremeWeight", scoringWeights.touchesExtremeWeight);
+        parameters.put("outsideCountWeight", scoringWeights.outsideCountWeight);
+        parameters.put("averageDeviationWeight", scoringWeights.averageDeviationWeight);
+        parameters.put("anchorRecencyWeight", scoringWeights.anchorRecencyWeight);
         parameters.put("maxSwingPointsForTrendline", maxSwingPointsForTrendline);
         parameters.put("maxCandidatePairs", maxCandidatePairs);
         parameters.put("toleranceMode", toleranceSettings.mode.ordinal());

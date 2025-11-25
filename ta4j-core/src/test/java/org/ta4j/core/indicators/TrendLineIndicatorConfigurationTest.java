@@ -90,7 +90,7 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
             series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
         }
         final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(0, 1, 2));
-        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d);
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d);
 
         indicator.getValue(series.getEndIndex());
         final AbstractTrendLineIndicator.TrendLineSegment segment = indicator.getCurrentSegment();

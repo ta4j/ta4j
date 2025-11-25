@@ -126,17 +126,17 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
         assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
-        assertThat(descriptor.getParameters()).containsEntry("unstableBars", 2);
+        assertThat(descriptor.getParameters()).doesNotContainKey("unstableBars");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 15);
         assertThat(descriptor.getComponents()).hasSize(1);
         final ComponentDescriptor swingDescriptor = descriptor.getComponents().getFirst();
         assertThat(swingDescriptor.getType()).isEqualTo("RecentFractalSwingLowIndicator");
+        assertThat(swingDescriptor.getParameters()).containsKey("unstableBars");
         assertThat(swingDescriptor.getComponents())
                 .anySatisfy(component -> assertThat(component.getType()).isEqualTo("LowPriceIndicator"));
 
         final String json = indicator.toJson();
         assertThat(json).contains("TrendLineSupportIndicator");
-        assertThat(json).contains("\"unstableBars\":2");
         assertThat(json).contains("\"barCount\":15");
     }
 
@@ -228,7 +228,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
             series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
         }
         final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(0, 1, 2, 3, 4));
-        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
                 ToleranceSettings.defaultSettings(), 2, 3);
 
         indicator.getValue(series.getEndIndex());
