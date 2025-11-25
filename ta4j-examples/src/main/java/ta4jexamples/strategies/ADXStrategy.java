@@ -119,6 +119,6 @@ public class ADXStrategy {
                 .withSubChart(new GrossReturnCriterion(), tradingRecord)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "adx-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "adx-strategy", "temp/charts");
     }
 }

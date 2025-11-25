@@ -95,7 +95,7 @@ public class NetMomentumStrategy {
                 .withSubChart(rsiM)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "net-momentum-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "net-momentum-strategy", "temp/charts");
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {

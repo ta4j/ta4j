@@ -129,6 +129,6 @@ public class MovingMomentumStrategy {
                 .withSubChart(stochasticOscillK)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "temp/charts");
     }
 }
