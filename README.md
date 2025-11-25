@@ -10,13 +10,12 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 
 ## Table of Contents
 
-- [Features at a glance](#features-at-a-glance)
-- [What can you build?](#what-can-you-build)
-- [Why Java developers choose Ta4j](#why-java-developers-choose-ta4j)
+- [Why Ta4j?](#why-ta4j)
 - [Install in seconds](#install-in-seconds)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
-- [Evaluate performance with metrics](#evaluate-performance-with-metrics)
 - [Visualize and share strategies](#visualize-and-share-strategies)
+- [Features at a glance](#features-at-a-glance)
+- [Evaluate performance with metrics](#evaluate-performance-with-metrics)
 - [From backtest to live trading](#from-backtest-to-live-trading)
 - [Real-world examples](#real-world-examples)
 - [Performance](#performance)
@@ -26,20 +25,11 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 
 ---
 
-## Features at a glance
+## Why Ta4j?
 
-- **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
-- **Composable strategy API** - Build complex trading rules using fluent Java patterns
-- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
-- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
-- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
-- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
-- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
-- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
+**Build, test, and deploy trading bots in Java**—without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
 
----
-
-## What can you build?
+### What can you build?
 
 - **Backtest trading strategies**: Test "what if" scenarios on historical data before risking real money
 - **Paper trading bots**: Run strategies live against market data without placing real orders
@@ -47,9 +37,7 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 - **Automated trading systems**: Deploy production bots that execute trades based on your strategies
 - **Market analysis dashboards**: Build visualizations and reports for your trading research
 
----
-
-## Why Java developers choose Ta4j
+### Why Java developers choose Ta4j
 
 - **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
@@ -389,6 +377,17 @@ Restore from JSON:
 Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
+
+## Features at a glance
+
+- **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
+- **Composable strategy API** - Build complex trading rules using fluent Java patterns
+- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
+- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
+- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
+- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
+- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
+- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
 
 ## From backtest to live trading
 
