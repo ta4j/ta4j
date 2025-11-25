@@ -128,6 +128,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(descriptor.getType()).isEqualTo("TrendLineSupportIndicator");
         assertThat(descriptor.getParameters()).doesNotContainKey("unstableBars");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 15);
+        assertThat(descriptor.getParameters()).containsEntry("dynamicRecalculation", true);
         assertThat(descriptor.getComponents()).hasSize(1);
         final ComponentDescriptor swingDescriptor = descriptor.getComponents().getFirst();
         assertThat(swingDescriptor.getType()).isEqualTo("RecentFractalSwingLowIndicator");
@@ -138,6 +139,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         final String json = indicator.toJson();
         assertThat(json).contains("TrendLineSupportIndicator");
         assertThat(json).contains("\"barCount\":15");
+        assertThat(json).contains("\"dynamicRecalculation\":true");
     }
 
     @Test
@@ -485,6 +487,47 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(valueAtIndex3).isEqualByComparingTo(expected3);
     }
 
+    @Test
+    public void shouldInvalidateCacheWhenSwingsChange() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final double[] lows = { 10d, 9d, 0d };
+        for (double low : lows) {
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
+        }
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new MutableSwingIndicator(lowIndicator, List.of(0, 1));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, 3, ScoringWeights.defaultWeights());
+
+        final Num initial = indicator.getValue(series.getEndIndex());
+        assertThat(initial.isNaN()).isFalse();
+
+        swingIndicator.addSwing(2);
+
+        final Num updated = indicator.getValue(series.getEndIndex());
+        assertThat(updated.isNaN()).isFalse();
+        assertThat(updated).isNotEqualByComparingTo(initial);
+    }
+
+    @Test
+    public void shouldInvalidateCacheWhenWindowMovesForward() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final double[] lows = { 10d, 8d, 6d };
+        for (double low : lows) {
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(low + 1d).lowPrice(low).add();
+        }
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new MutableSwingIndicator(lowIndicator, List.of(1, 2));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 0, 0, 2, ScoringWeights.defaultWeights());
+
+        final Num initial = indicator.getValue(2);
+        assertThat(initial.isNaN()).isFalse();
+
+        series.barBuilder().openPrice(1d).closePrice(1d).highPrice(2d).lowPrice(1d).add();
+        swingIndicator.addSwing(3);
+
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
+    }
+
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -556,6 +599,62 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
                 return NaN;
             }
             return delegate.getValue(index);
+        }
+    }
+
+    private static final class MutableSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
+
+        private final Indicator<Num> priceIndicator;
+        private final List<Integer> swingIndexes;
+
+        private MutableSwingIndicator(Indicator<Num> priceIndicator, List<Integer> swingIndexes) {
+            super(priceIndicator);
+            this.priceIndicator = priceIndicator;
+            this.swingIndexes = new ArrayList<>(swingIndexes);
+        }
+
+        void addSwing(int index) {
+            swingIndexes.add(index);
+            swingIndexes.sort(Integer::compare);
+            invalidateCache();
+        }
+
+        @Override
+        public int getLatestSwingIndex(int index) {
+            for (int i = swingIndexes.size() - 1; i >= 0; i--) {
+                final int swingIndex = swingIndexes.get(i);
+                if (swingIndex <= index) {
+                    return swingIndex;
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public List<Integer> getSwingPointIndexesUpTo(int index) {
+            final List<Integer> result = new ArrayList<>();
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    result.add(swingIndex);
+                }
+            }
+            return List.copyOf(result);
+        }
+
+        @Override
+        public Indicator<Num> getPriceIndicator() {
+            return priceIndicator;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final int swingIndex = getLatestSwingIndex(index);
+            return swingIndex >= 0 ? priceIndicator.getValue(swingIndex) : NaN;
         }
     }
 

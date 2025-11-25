@@ -140,6 +140,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(descriptor.getType()).isEqualTo("TrendLineResistanceIndicator");
         assertThat(descriptor.getParameters()).doesNotContainKey("unstableBars");
         assertThat(descriptor.getParameters()).containsEntry("barCount", 20);
+        assertThat(descriptor.getParameters()).containsEntry("dynamicRecalculation", true);
         assertThat(descriptor.getComponents()).hasSize(1);
         final ComponentDescriptor swingDescriptor = descriptor.getComponents().getFirst();
         assertThat(swingDescriptor.getType()).isEqualTo("RecentFractalSwingHighIndicator");
@@ -150,6 +151,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final String json = indicator.toJson();
         assertThat(json).contains("TrendLineResistanceIndicator");
         assertThat(json).contains("\"barCount\":20");
+        assertThat(json).contains("\"dynamicRecalculation\":true");
     }
 
     @Test

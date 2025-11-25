@@ -200,7 +200,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
         super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings);
+                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, true);
     }
 
     /**
@@ -228,7 +228,38 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
         super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
-                maxCandidatePairs);
+                maxCandidatePairs, true);
+    }
+
+    /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights,
+     * tolerance settings, search caps, and dynamic recomputation control.
+     *
+     * @param swingHighIndicator         the swing-high indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param side                       the trend line side (should be RESISTANCE)
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceSettings          tolerance settings for touch detection
+     * @param maxSwingPointsForTrendline maximum number of swing points to consider
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
+     * @param dynamicRecalculation       whether the trend line should be recomputed
+     *                                   when new bars arrive (true), or remain
+     *                                   static after first establishment (false)
+     * @since 0.20
+     */
+    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, TrendLineSide side,
+            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
+            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean dynamicRecalculation) {
+        super(swingHighIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
+                maxCandidatePairs, dynamicRecalculation);
     }
 
     /**
