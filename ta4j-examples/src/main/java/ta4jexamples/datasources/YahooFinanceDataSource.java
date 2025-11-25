@@ -38,10 +38,17 @@ import ta4jexamples.datasources.http.HttpResponseWrapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -66,6 +73,20 @@ import java.util.TreeMap;
  * Instant end = Instant.parse("2023-12-31T23:59:59Z");
  * BarSeries msftSeries = YahooFinanceDataSource.loadSeries("MSFT", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
+ * <p>
+ * <strong>Response Caching:</strong> To enable response caching for faster
+ * subsequent requests, use the constructor with {@code enableResponseCaching}:
+ *
+ * <pre>
+ * YahooFinanceDataSource loader = new YahooFinanceDataSource(true);
+ * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
+ * </pre>
+ * <p>
+ * When caching is enabled, responses are saved to {@code temp/responses}
+ * directory and reused for requests within the cache validity period (based on
+ * the interval). For example, daily data is cached for the day, 15-minute data
+ * is cached for 15 minutes, etc. Historical data (end date in the past) is
+ * cached indefinitely.
  * <p>
  * <strong>Unit Testing:</strong> For unit testing with a mock HttpClient, use
  * the constructor:
@@ -139,8 +160,10 @@ public class YahooFinanceDataSource {
     private static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
     private static final HttpClientWrapper DEFAULT_HTTP_CLIENT = new DefaultHttpClientWrapper();
     private static final YahooFinanceDataSource DEFAULT_INSTANCE = new YahooFinanceDataSource(DEFAULT_HTTP_CLIENT);
+    private static final String CACHE_DIR = "temp/responses";
 
     private final HttpClientWrapper httpClient;
+    private final boolean enableResponseCaching;
 
     /**
      * Creates a new YahooFinanceDataSource with a default HttpClient. For unit
@@ -148,7 +171,18 @@ public class YahooFinanceDataSource {
      * mock HttpClientWrapper.
      */
     public YahooFinanceDataSource() {
-        this(DEFAULT_HTTP_CLIENT);
+        this(DEFAULT_HTTP_CLIENT, false);
+    }
+
+    /**
+     * Creates a new YahooFinanceDataSource with a default HttpClient and caching
+     * option.
+     *
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     */
+    public YahooFinanceDataSource(boolean enableResponseCaching) {
+        this(DEFAULT_HTTP_CLIENT, enableResponseCaching);
     }
 
     /**
@@ -160,10 +194,28 @@ public class YahooFinanceDataSource {
      *                   mock for testing)
      */
     public YahooFinanceDataSource(HttpClientWrapper httpClient) {
+        this(httpClient, false);
+    }
+
+    /**
+     * Creates a new YahooFinanceDataSource with the specified HttpClientWrapper and
+     * caching option. This constructor allows dependency injection of a mock
+     * HttpClientWrapper for unit testing and enables response caching.
+     *
+     * @param httpClient            the HttpClientWrapper to use for API requests
+     *                              (can be a mock for testing)
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     */
+    public YahooFinanceDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
         if (httpClient == null) {
             throw new IllegalArgumentException("HttpClientWrapper cannot be null");
         }
         this.httpClient = httpClient;
+        this.enableResponseCaching = enableResponseCaching;
+        if (enableResponseCaching) {
+            ensureCacheDirectoryExists();
+        }
     }
 
     /**
@@ -173,8 +225,20 @@ public class YahooFinanceDataSource {
      *
      * @param httpClient the HttpClient to use for API requests
      */
-    public YahooFinanceDataSource(java.net.http.HttpClient httpClient) {
-        this(new DefaultHttpClientWrapper(httpClient));
+    public YahooFinanceDataSource(HttpClient httpClient) {
+        this(new DefaultHttpClientWrapper(httpClient), false);
+    }
+
+    /**
+     * Creates a new YahooFinanceDataSource with the specified HttpClient and
+     * caching option.
+     *
+     * @param httpClient            the HttpClient to use for API requests
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     */
+    public YahooFinanceDataSource(HttpClient httpClient, boolean enableResponseCaching) {
+        this(new DefaultHttpClientWrapper(httpClient), enableResponseCaching);
     }
 
     /**
@@ -225,6 +289,33 @@ public class YahooFinanceDataSource {
     }
 
     /**
+     * Instance method that loads historical OHLCV data for a given ticker symbol
+     * with a specified number of bars. The end date/time is set to the current
+     * time, and the start date/time is calculated based on the bar count and
+     * interval.
+     *
+     * @param ticker   the ticker symbol (e.g., "AAPL", "MSFT", "BTC-USD",
+     *                 "ETH-USD")
+     * @param interval the bar interval (must be one of the supported Yahoo Finance
+     *                 intervals)
+     * @param barCount the number of bars to fetch
+     * @return a BarSeries containing the historical data, or null if the request
+     *         fails
+     */
+    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, int barCount) {
+        if (barCount <= 0) {
+            LOG.error("Bar count must be greater than 0");
+            return null;
+        }
+
+        Instant endDateTime = Instant.now();
+        Duration totalDuration = interval.getDuration().multipliedBy(barCount);
+        Instant startDateTime = endDateTime.minus(totalDuration);
+
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
+    }
+
+    /**
      * Instance method that performs the actual loading logic. This method uses the
      * instance's HttpClient (which can be injected for testing).
      */
@@ -250,7 +341,7 @@ public class YahooFinanceDataSource {
 
         // If the requested range exceeds conservative limits, paginate the request
         if (requestedRange.compareTo(conservativeLimit) > 0) {
-            LOG.info(
+            LOG.debug(
                     "Requested date range ({}) exceeds conservative limit ({}) for interval {}. "
                             + "Splitting into multiple requests and combining results.",
                     requestedRange, conservativeLimit, interval);
@@ -405,7 +496,7 @@ public class YahooFinanceDataSource {
                         .add();
             }
 
-            LOG.info("Successfully loaded {} bars for ticker {}", series.getBarCount(), ticker);
+            LOG.debug("Successfully loaded {} bars for ticker {}", series.getBarCount(), ticker);
             return series;
 
         } catch (Exception e) {
@@ -415,11 +506,200 @@ public class YahooFinanceDataSource {
     }
 
     /**
+     * Ensures the cache directory exists, creating it if necessary.
+     */
+    private void ensureCacheDirectoryExists() {
+        try {
+            Path cacheDir = Paths.get(CACHE_DIR);
+            if (!Files.exists(cacheDir)) {
+                Files.createDirectories(cacheDir);
+                LOG.debug("Created cache directory: {}", cacheDir.toAbsolutePath());
+            }
+        } catch (IOException e) {
+            LOG.warn("Failed to create cache directory: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Truncates a timestamp based on the interval to enable cache hits for requests
+     * within the same time period. For example, for 1-day intervals, timestamps are
+     * truncated to the start of the day. For 15-minute intervals, timestamps are
+     * truncated to the start of the 15-minute period.
+     *
+     * @param instant  the timestamp to truncate
+     * @param interval the interval to use for truncation
+     * @return the truncated timestamp
+     */
+    private Instant truncateTimestampForCache(Instant instant, YahooFinanceInterval interval) {
+        ZonedDateTime zdt = instant.atZone(ZoneOffset.UTC);
+        ZonedDateTime truncated;
+
+        switch (interval) {
+        case MINUTE_1:
+            // Truncate to start of minute
+            truncated = zdt.withSecond(0).withNano(0);
+            break;
+        case MINUTE_5:
+            // Truncate to start of 5-minute period (0, 5, 10, 15, etc.)
+            int minute5 = (zdt.getMinute() / 5) * 5;
+            truncated = zdt.withMinute(minute5).withSecond(0).withNano(0);
+            break;
+        case MINUTE_15:
+            // Truncate to start of 15-minute period (0, 15, 30, 45)
+            int minute15 = (zdt.getMinute() / 15) * 15;
+            truncated = zdt.withMinute(minute15).withSecond(0).withNano(0);
+            break;
+        case MINUTE_30:
+            // Truncate to start of 30-minute period (0, 30)
+            int minute30 = (zdt.getMinute() / 30) * 30;
+            truncated = zdt.withMinute(minute30).withSecond(0).withNano(0);
+            break;
+        case HOUR_1:
+            // Truncate to start of hour
+            truncated = zdt.withMinute(0).withSecond(0).withNano(0);
+            break;
+        case HOUR_4:
+            // Truncate to start of 4-hour period (0, 4, 8, 12, 16, 20)
+            int hour4 = (zdt.getHour() / 4) * 4;
+            truncated = zdt.withHour(hour4).withMinute(0).withSecond(0).withNano(0);
+            break;
+        case DAY_1:
+            // Truncate to start of day
+            truncated = zdt.withHour(0).withMinute(0).withSecond(0).withNano(0);
+            break;
+        case WEEK_1:
+            // Truncate to start of week (Monday)
+            int daysFromMonday = zdt.getDayOfWeek().getValue() - java.time.DayOfWeek.MONDAY.getValue();
+            if (daysFromMonday < 0) {
+                daysFromMonday += 7; // Handle Sunday (value 7)
+            }
+            truncated = zdt.minusDays(daysFromMonday).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            break;
+        case MONTH_1:
+            // Truncate to start of month
+            truncated = zdt.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            break;
+        default:
+            truncated = zdt;
+            break;
+        }
+
+        return truncated.toInstant();
+    }
+
+    /**
+     * Generates the cache file path for a given request.
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the interval
+     * @param startDateTime the start date/time (will be truncated)
+     * @param endDateTime   the end date/time (will be truncated)
+     * @return the cache file path
+     */
+    private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime) {
+        Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
+        Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
+
+        String filename = String.format("yahoofinance-%s-%s-%d-%d.json",
+                ticker.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), interval.getApiValue(),
+                truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond());
+
+        return Paths.get(CACHE_DIR, filename);
+    }
+
+    /**
+     * Checks if a cache file exists and is still valid based on the interval. For
+     * historical data (end date in the past), cache is valid indefinitely. For
+     * current data (end date is recent), cache expires after the interval duration.
+     *
+     * @param cacheFile   the cache file path
+     * @param interval    the interval
+     * @param endDateTime the end date/time of the request
+     * @return true if cache is valid, false otherwise
+     */
+    private boolean isCacheValid(Path cacheFile, YahooFinanceInterval interval, Instant endDateTime) {
+        if (!Files.exists(cacheFile)) {
+            return false;
+        }
+
+        try {
+            // Check file modification time
+            Instant fileModified = Files.getLastModifiedTime(cacheFile).toInstant();
+            Instant now = Instant.now();
+
+            // If the request is for historical data (end date is in the past), cache is
+            // valid
+            // indefinitely
+            if (endDateTime.isBefore(now.minus(interval.getDuration()))) {
+                return true;
+            }
+
+            // For current/recent data, cache expires after the interval duration
+            Duration age = Duration.between(fileModified, now);
+            return age.compareTo(interval.getDuration()) < 0;
+        } catch (IOException e) {
+            LOG.warn("Failed to check cache file validity: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Reads a cached response from disk.
+     *
+     * @param cacheFile the cache file path
+     * @return the cached JSON response, or null if read fails
+     */
+    private String readFromCache(Path cacheFile) {
+        try {
+            String content = Files.readString(cacheFile, StandardCharsets.UTF_8);
+            LOG.debug("Cache hit: {}", cacheFile.getFileName());
+            return content;
+        } catch (IOException e) {
+            LOG.warn("Failed to read from cache: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Writes a response to the cache.
+     *
+     * @param cacheFile the cache file path
+     * @param response  the JSON response to cache
+     */
+    private void writeToCache(Path cacheFile, String response) {
+        try {
+            // Ensure parent directory exists
+            Path parentDir = cacheFile.getParent();
+            if (parentDir != null && !Files.exists(parentDir)) {
+                Files.createDirectories(parentDir);
+            }
+            Files.writeString(cacheFile, response, StandardCharsets.UTF_8);
+            LOG.debug("Cached response: {}", cacheFile.getFileName());
+        } catch (IOException e) {
+            LOG.warn("Failed to write to cache: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Makes a single API request for the specified date range. This is used for
-     * requests that don't exceed conservative limits.
+     * requests that don't exceed conservative limits. If caching is enabled, checks
+     * cache first before making the API request.
      */
     private BarSeries loadSeriesSingleRequest(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
+        // Check cache first if caching is enabled
+        if (enableResponseCaching) {
+            Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
+            if (isCacheValid(cacheFile, interval, endDateTime)) {
+                String cachedResponse = readFromCache(cacheFile);
+                if (cachedResponse != null) {
+                    LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
+                    return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                }
+            }
+        }
+
         try {
             String encodedTicker = URLEncoder.encode(ticker.trim(), StandardCharsets.UTF_8);
             long period1 = startDateTime.getEpochSecond();
@@ -428,7 +708,7 @@ public class YahooFinanceDataSource {
             String url = String.format("%s%s?interval=%s&period1=%d&period2=%d", YAHOO_FINANCE_API_URL, encodedTicker,
                     interval.getApiValue(), period1, period2);
 
-            LOG.debug("Fetching data from Yahoo Finance: {}", url);
+            LOG.trace("Fetching data from Yahoo Finance: {}", url);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -437,16 +717,23 @@ public class YahooFinanceDataSource {
                     .GET()
                     .build();
 
-            HttpResponseWrapper<String> response = httpClient.send(request,
-                    java.net.http.HttpResponse.BodyHandlers.ofString());
+            HttpResponseWrapper<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 LOG.error("Yahoo Finance API returned status code: {}", response.statusCode());
                 return null;
             }
 
-            LOG.debug("Response body: {}", response.body());
-            return parseYahooFinanceResponse(response.body(), ticker, interval.getDuration());
+            String responseBody = response.body();
+            LOG.trace("Response body: {}", responseBody);
+
+            // Cache the response if caching is enabled
+            if (enableResponseCaching) {
+                Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
+                writeToCache(cacheFile, responseBody);
+            }
+
+            return parseYahooFinanceResponse(responseBody, ticker, interval.getDuration());
 
         } catch (IOException | InterruptedException e) {
             LOG.error("Error fetching data from Yahoo Finance for ticker {}: {}", ticker, e.getMessage(), e);
@@ -475,7 +762,7 @@ public class YahooFinanceDataSource {
         // Calculate number of chunks needed
         Duration totalRange = Duration.between(startDateTime, endDateTime);
         int estimatedChunks = (int) Math.ceil((double) totalRange.toSeconds() / chunkSize.toSeconds());
-        LOG.debug("Splitting request into approximately {} chunks", estimatedChunks);
+        LOG.trace("Splitting request into approximately {} chunks", estimatedChunks);
 
         while (currentStart.isBefore(endDateTime)) {
             // Calculate chunk end time (don't exceed the requested end time)
@@ -485,12 +772,12 @@ public class YahooFinanceDataSource {
             }
 
             requestCount++;
-            LOG.debug("Fetching chunk {}/? ({} to {})", requestCount, currentStart, chunkEnd);
+            LOG.trace("Fetching chunk {}/? ({} to {})", requestCount, currentStart, chunkEnd);
 
             BarSeries chunk = loadSeriesSingleRequest(ticker, interval, currentStart, chunkEnd);
             if (chunk != null && chunk.getBarCount() > 0) {
                 chunks.add(chunk);
-                LOG.debug("Successfully loaded chunk {} with {} bars", requestCount, chunk.getBarCount());
+                LOG.trace("Successfully loaded chunk {} with {} bars", requestCount, chunk.getBarCount());
             } else {
                 LOG.warn("Chunk {} returned no data or failed", requestCount);
             }
@@ -518,7 +805,7 @@ public class YahooFinanceDataSource {
             return null;
         }
 
-        LOG.info("Successfully fetched {} chunks, merging {} total bars", chunks.size(),
+        LOG.debug("Successfully fetched {} chunks, merging {} total bars", chunks.size(),
                 chunks.stream().mapToInt(BarSeries::getBarCount).sum());
 
         return mergeBarSeries(chunks, ticker, interval.getDuration());
@@ -566,7 +853,7 @@ public class YahooFinanceDataSource {
                     .add();
         }
 
-        LOG.info("Merged {} chunks into {} unique bars for ticker {}", chunks.size(), merged.getBarCount(), ticker);
+        LOG.debug("Merged {} chunks into {} unique bars for ticker {}", chunks.size(), merged.getBarCount(), ticker);
         return merged;
     }
 

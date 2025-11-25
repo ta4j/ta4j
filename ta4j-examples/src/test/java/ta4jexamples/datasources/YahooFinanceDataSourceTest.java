@@ -31,6 +31,9 @@ import ta4jexamples.datasources.http.HttpResponseWrapper;
 import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -67,6 +70,29 @@ public class YahooFinanceDataSourceTest {
                 }
             }
             """;
+
+    /**
+     * Helper method to clean up cache files matching a pattern. This ensures tests
+     * start with a clean cache state.
+     *
+     * @param pattern the filename pattern to match (e.g., "yahoofinance-AAPL-1d-")
+     */
+    private void cleanupCacheFiles(String pattern) {
+        Path cacheDir = Paths.get("temp/responses");
+        if (Files.exists(cacheDir)) {
+            try {
+                Files.list(cacheDir).filter(path -> path.getFileName().toString().startsWith(pattern)).forEach(path -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+        }
+    }
 
     @Test
     public void testConstructorWithNullHttpClientWrapper() {
@@ -632,5 +658,351 @@ public class YahooFinanceDataSourceTest {
         assertNotNull(series, "BarSeries should not be null");
         // Should only make one request (no pagination)
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    public void testConstructorWithCachingEnabled() {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
+    }
+
+    @Test
+    public void testConstructorWithCachingDisabled() {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, false);
+        assertNotNull(dataSource, "DataSource should be created successfully with caching disabled");
+    }
+
+    @Test
+    public void testConstructorWithBooleanCachingParameter() {
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(true);
+        assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
+    }
+
+    @Test
+    public void testCacheHitForSameRequest() throws IOException, InterruptedException {
+        // Clean up any existing cache files for this test
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request - should make API call
+        BarSeries series1 = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+
+        assertNotNull(series1, "First request should return data");
+        assertEquals(3, series1.getBarCount(), "Should have 3 bars");
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request with same parameters - should use cache
+        BarSeries series2 = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+
+        assertNotNull(series2, "Second request should return cached data");
+        assertEquals(3, series2.getBarCount(), "Should have 3 bars from cache");
+        // Should not make another API call
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up cache files created by this test
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+    }
+
+    @Test
+    public void testCacheMissForDifferentTicker() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles("yahoofinance-MSFT-1d-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request for AAPL
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request for MSFT - should be a cache miss
+        dataSource.loadSeriesInstance("MSFT", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles("yahoofinance-MSFT-1d-");
+    }
+
+    @Test
+    public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles("yahoofinance-AAPL-1h-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request with DAY_1 interval
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request with HOUR_1 interval - should be a cache miss
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.HOUR_1, start, end);
+        verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles("yahoofinance-AAPL-1h-");
+    }
+
+    @Test
+    public void testCacheHitWithTruncatedTimestamps() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+
+        // Test that cache hits work when timestamps are truncated to the same cache key
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant baseStart = Instant.parse("2021-01-01T00:00:00Z");
+        Instant baseEnd = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, baseStart, baseEnd);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request with slightly different timestamps that should truncate to the
+        // same cache key
+        // For DAY_1, timestamps should truncate to start of day
+        Instant start2 = Instant.parse("2021-01-01T12:30:45Z"); // Same day, different time
+        Instant end2 = Instant.parse("2021-01-03T18:20:10Z"); // Same day, different time
+
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start2, end2);
+        // Should use cache because timestamps truncate to the same values
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+    }
+
+    @Test
+    public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        BarSeries series = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+
+        assertNotNull(series, "Should return data");
+        // Verify that a cache file was created (indirectly by checking that second
+        // request uses cache)
+        BarSeries series2 = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+        assertNotNull(series2, "Second request should return cached data");
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+    }
+
+    @Test
+    public void testNoCacheWriteWhenCachingDisabled() throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, false);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request - should make another API call since caching is disabled
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    public void testCacheHitForHistoricalData() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+
+        // Historical data (end date in the past) should be cached indefinitely
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        // Use historical dates (more than 1 day in the past)
+        Instant start = Instant.parse("2020-01-01T00:00:00Z");
+        Instant end = Instant.parse("2020-01-03T00:00:00Z");
+
+        // First request
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request - should use cache even though time has passed
+        // (We can't actually wait, but we can verify the cache file would be used)
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+    }
+
+    @Test
+    public void testCacheWithBarCountMethod() throws IOException, InterruptedException {
+        // Use a unique ticker to avoid cache collisions with other tests
+        String uniqueTicker = "TEST-BARCOUNT-" + System.currentTimeMillis();
+        cleanupCacheFiles("yahoofinance-" + uniqueTicker + "-1d-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+
+        // First request using barCount method
+        BarSeries series1 = dataSource.loadSeriesInstance(uniqueTicker,
+                YahooFinanceDataSource.YahooFinanceInterval.DAY_1, 3);
+        assertNotNull(series1, "Should return data");
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request with same barCount - should use cache
+        // For DAY_1 interval, cache is valid for 1 day, so this should definitely hit
+        // cache
+        BarSeries series2 = dataSource.loadSeriesInstance(uniqueTicker,
+                YahooFinanceDataSource.YahooFinanceInterval.DAY_1, 3);
+        assertNotNull(series2, "Should return data");
+        // Should use cache - only 1 API call total
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-" + uniqueTicker + "-1d-");
+    }
+
+    @Test
+    public void testCacheDirectoryCreation() {
+        // Test that cache directory is created when caching is enabled
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+
+        // The constructor should attempt to create the cache directory
+        // We can't easily test this without file system access, but we can verify
+        // the constructor doesn't throw an exception
+        assertNotNull(dataSource, "DataSource should be created successfully");
+    }
+
+    @Test
+    public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
+        // Clean up any existing cache files
+        cleanupCacheFiles("yahoofinance-AAPL-5m-");
+
+        // Test that different intervals truncate timestamps correctly
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T12:30:45Z");
+        Instant end = Instant.parse("2021-01-01T18:20:10Z");
+
+        // Test MINUTE_5 - should truncate to 5-minute boundaries
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.MINUTE_5, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Same request should hit cache
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.MINUTE_5, start, end);
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Different 5-minute period should be a cache miss
+        Instant start2 = Instant.parse("2021-01-01T12:35:00Z"); // Different 5-minute period
+        dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.MINUTE_5, start2, end);
+        verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Clean up
+        cleanupCacheFiles("yahoofinance-AAPL-5m-");
+    }
+
+    @Test
+    public void testCacheWithFailedRequest() throws IOException, InterruptedException {
+        // Clean up any existing cache files - important to ensure no cached success
+        // response
+        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+
+        // Test that failed requests don't write to cache
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(404); // Failed request
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request fails
+        BarSeries series1 = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+        assertNull(series1, "Should return null for failed request");
+        verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+
+        // Second request should still make API call (no cache for failed requests)
+        BarSeries series2 = dataSource.loadSeriesInstance("AAPL", YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+                start, end);
+        assertNull(series2, "Should return null for failed request");
+        verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 }
