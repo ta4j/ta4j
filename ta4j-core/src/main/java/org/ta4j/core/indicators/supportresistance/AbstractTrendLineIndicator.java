@@ -186,7 +186,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (cachedSegment == null) {
             return NaN;
         }
-        return cachedSegment.valueAt(index, getBarSeries().numFactory());
+        return cachedSegment.valueAt(index);
     }
 
     private void refreshCachedState() {
@@ -218,7 +218,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             cachedSegment = null;
             return;
         }
-        cachedSegment = selectBestCandidate(windowEnd, resolvePriceAtIndex(windowEnd), getBarSeries().numFactory());
+        cachedSegment = selectBestCandidate(windowEnd, resolvePriceAtIndex(windowEnd));
         cachedEndIndex = windowEnd;
         cachedWindowStart = windowStart;
     }
@@ -251,14 +251,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
         refreshCoordinateBase();
         final int windowLength = windowEnd - windowStart + 1;
-        final NumFactory numFactory = getBarSeries().numFactory();
         final List<CandidateGeometry> geometries = new ArrayList<>();
         for (int i = 0; i < swingPoints.size() - 1; i++) {
             final int firstSwingIndex = swingPoints.get(i);
             for (int j = i + 1; j < swingPoints.size(); j++) {
                 final int secondSwingIndex = swingPoints.get(j);
                 final CandidateGeometry geometry = buildCandidateGeometry(firstSwingIndex, secondSwingIndex,
-                        swingPoints, windowStart, windowEnd, windowLength, extremeSwingPrice, swingRange, numFactory);
+                        swingPoints, windowStart, windowEnd, windowLength, extremeSwingPrice, swingRange);
                 if (geometry != null) {
                     geometries.add(geometry);
                     if (geometries.size() >= maxCandidatePairs) {
@@ -305,13 +304,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return Num.isNaNOrNull(fallback) ? price : fallback;
     }
 
-    private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation, NumFactory numFactory) {
+    private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation) {
         if (cachedGeometries.isEmpty()) {
             return null;
         }
         TrendLineCandidate bestCandidate = null;
         for (CandidateGeometry geometry : cachedGeometries) {
-            final TrendLineCandidate candidate = geometry.toCandidate(priceAtEvaluation, evaluationIndex, numFactory);
+            final TrendLineCandidate candidate = geometry.toCandidate(evaluationIndex);
             if (candidate == null) {
                 continue;
             }
@@ -324,14 +323,15 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private CandidateGeometry buildCandidateGeometry(int firstSwingIndex, int secondSwingIndex,
             List<Integer> swingPointIndexes, int windowStart, int windowEnd, int windowLength, Num extremeSwingPrice,
-            Num swingRange, NumFactory numFactory) {
+            Num swingRange) {
         final Num firstValue = swingPriceAt(firstSwingIndex);
         final Num secondValue = swingPriceAt(secondSwingIndex);
         if (Num.isNaNOrNull(firstValue) || Num.isNaNOrNull(secondValue)) {
             return null;
         }
-        final Num x1 = coordinateForIndex(firstSwingIndex, numFactory);
-        final Num x2 = coordinateForIndex(secondSwingIndex, numFactory);
+        final NumFactory numFactory = getBarSeries().numFactory();
+        final Num x1 = coordinateForIndex(firstSwingIndex);
+        final Num x2 = coordinateForIndex(secondSwingIndex);
         final Num denominator = x2.minus(x1);
         if (Num.isNaNOrNull(denominator) || denominator.isZero()) {
             return null;
@@ -354,7 +354,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             if (Num.isNaNOrNull(swingPrice)) {
                 return null;
             }
-            final Num projectedAtSwing = slope.multipliedBy(coordinateForIndex(swingIndex, numFactory)).plus(intercept);
+            final Num projectedAtSwing = slope.multipliedBy(coordinateForIndex(swingIndex)).plus(intercept);
             if (Num.isNaNOrNull(projectedAtSwing)) {
                 return null;
             }
@@ -494,8 +494,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
                 return span > otherSpan;
             }
             if (priceAtEvaluation != null && !priceAtEvaluation.isNaN()) {
-                final Num thisValue = valueAt(windowEnd, priceAtEvaluation.getNumFactory());
-                final Num otherValue = other.valueAt(other.windowEnd, priceAtEvaluation.getNumFactory());
+                final Num thisValue = valueAt(windowEnd);
+                final Num otherValue = other.valueAt(other.windowEnd);
                 final Num distance = thisValue.minus(priceAtEvaluation).abs();
                 final Num otherDistance = otherValue.minus(priceAtEvaluation).abs();
                 if (distance.isLessThan(otherDistance)) {
@@ -508,8 +508,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return this.secondIndex > other.secondIndex;
         }
 
-        private Num valueAt(int index, NumFactory numFactory) {
-            final Num coordinate = coordinateForIndex(index, numFactory);
+        private Num valueAt(int index) {
+            final Num coordinate = coordinateForIndex(index);
             return slope.multipliedBy(coordinate).plus(intercept);
         }
     }
@@ -540,8 +540,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             this.windowEnd = windowEnd;
         }
 
-        private TrendLineCandidate toCandidate(Num priceAtEvaluation, int evaluationIndex, NumFactory numFactory) {
-            final Num projected = slope.multipliedBy(coordinateForIndex(evaluationIndex, numFactory)).plus(intercept);
+        private TrendLineCandidate toCandidate(int evaluationIndex) {
+            final Num projected = slope.multipliedBy(coordinateForIndex(evaluationIndex)).plus(intercept);
             if (Num.isNaNOrNull(projected)) {
                 return null;
             }
@@ -932,7 +932,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private Num coordinateForIndex(int index, NumFactory numFactory) {
+    private Num coordinateForIndex(int index) {
         final var series = getBarSeries();
         if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
             return NaN;
@@ -942,7 +942,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         final long epochMillis = resolveEndTimeMillis(index);
-        return numFactory.numOf(epochMillis - coordinateBaseEpochMillis);
+        return series.numFactory().numOf(epochMillis - coordinateBaseEpochMillis);
     }
 
     private long resolveEndTimeMillis(int index) {
