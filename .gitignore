@@ -22,6 +22,9 @@ out/
 
 # Images
 *.jpg
+# Exception: allow documentation images in ta4j-examples
+!ta4j-examples/docs/img/*.jpg
+!ta4j-examples/docs/img/*.png
 
 # BlueJ files
 *.ctxt
