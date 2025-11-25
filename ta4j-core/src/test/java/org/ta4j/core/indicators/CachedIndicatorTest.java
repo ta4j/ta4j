@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -223,6 +224,104 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 indicator.getCalculationCount());
     }
 
+    @Test
+    public void invalidateCacheClearsAllValues() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(indicator.getCalculationCount()).isEqualTo(1);
+
+        // Cached result should be reused for the same index.
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(indicator.getCalculationCount()).isEqualTo(1);
+
+        indicator.invalidateCache();
+
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(2));
+        assertThat(indicator.getCalculationCount()).isEqualTo(2);
+    }
+
+    @Test
+    public void invalidateFromClearsTailOnly() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        indicator.getValue(0);
+        indicator.getValue(1);
+        indicator.getValue(2);
+        assertThat(indicator.getCalculationCount()).isEqualTo(3);
+
+        indicator.invalidateFrom(1);
+
+        // Index 0 stays cached.
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(indicator.getCalculationCount()).isEqualTo(3);
+
+        // Indices 1 and 2 are recomputed.
+        assertThat(indicator.getValue(1)).isEqualByComparingTo(numFactory.numOf(4));
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(numFactory.numOf(5));
+        assertThat(indicator.getCalculationCount()).isEqualTo(5);
+    }
+
+    @Test
+    public void invalidateFromNegativeClearsAll() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        indicator.getValue(0);
+        assertThat(indicator.getCalculationCount()).isEqualTo(1);
+
+        indicator.invalidateFrom(-1);
+
+        // Cache should be fully cleared.
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(2));
+        assertThat(indicator.getCalculationCount()).isEqualTo(2);
+    }
+
+    @Test
+    public void invalidateFromBeyondHighestIsNoOp() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        indicator.getValue(0);
+        indicator.getValue(1);
+        assertThat(indicator.getCalculationCount()).isEqualTo(2);
+
+        indicator.invalidateFrom(5);
+
+        // Cached values remain intact.
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(indicator.getCalculationCount()).isEqualTo(2);
+    }
+
+    @Test
+    public void invalidateFromAtFirstCachedClearsAll() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        indicator.getValue(0);
+        indicator.getValue(1);
+        assertThat(indicator.getCalculationCount()).isEqualTo(2);
+
+        indicator.invalidateFrom(0);
+
+        // All cached values should be dropped.
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(3));
+        assertThat(indicator.getCalculationCount()).isEqualTo(3);
+    }
+
+    @Test
+    public void invalidateFromOnEmptyCacheIsSafe() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        final var indicator = new CountingInvalidatableIndicator(series);
+
+        indicator.invalidateFrom(1);
+
+        assertThat(indicator.getValue(0)).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(indicator.getCalculationCount()).isEqualTo(1);
+    }
+
     private final class CountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
@@ -244,6 +343,30 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private int getCalculationCount() {
             return calculations.get();
+        }
+    }
+
+    private final class CountingInvalidatableIndicator extends CachedIndicator<Num> {
+
+        private int calculationCount = 0;
+
+        private CountingInvalidatableIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount++;
+            return numFactory.numOf(calculationCount);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getCalculationCount() {
+            return calculationCount;
         }
     }
 

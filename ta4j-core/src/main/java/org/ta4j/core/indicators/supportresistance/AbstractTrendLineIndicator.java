@@ -85,7 +85,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private transient int cachedEndIndex = Integer.MIN_VALUE;
     private transient int cachedWindowStart = Integer.MIN_VALUE;
     private transient int cachedRemovedBars = Integer.MIN_VALUE;
-    private transient Map<Integer, Num> valueCache = new HashMap<>();
     private transient List<Integer> cachedWindowSwings = List.of();
     private transient List<CandidateGeometry> cachedGeometries = List.of();
     private transient long coordinateBaseEpochMillis = Long.MIN_VALUE;
@@ -148,17 +147,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         refreshCachedState();
-        final Num cached = valueCache.get(index);
-        if (cached != null) {
-            return cached;
-        }
-        final Num value = calculate(index);
-        valueCache.put(index, value);
-        return value;
-    }
-
-    @Override
-    protected Num calculate(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
         final int endIndex = getBarSeries().getEndIndex();
         if (index < beginIndex || index > endIndex) {
@@ -168,7 +156,22 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
+        final List<Integer> windowSwings = windowedSwings(windowStart, endIndex,
+                swingIndicator.getSwingPointIndexesUpTo(endIndex));
+        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != endIndex
+                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
+        if (geometryStale) {
+            invalidateFrom(windowStart);
+            cachedGeometries = buildGeometries(windowStart, endIndex, windowSwings);
+            cachedWindowSwings = windowSwings;
+            cachedSegment = null;
+        }
         ensureCandidate(windowStart, endIndex);
+        return super.getValue(index);
+    }
+
+    @Override
+    protected Num calculate(int index) {
         if (cachedSegment == null) {
             return NaN;
         }
@@ -179,7 +182,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final int endIndex = getBarSeries().getEndIndex();
         final int removedBars = getBarSeries().getRemovedBarsCount();
         if (endIndex != cachedEndIndex || removedBars != cachedRemovedBars) {
-            valueCache = new HashMap<>();
+            invalidateCache();
             cachedSegment = null;
             cachedWindowStart = Integer.MIN_VALUE;
             cachedEndIndex = Integer.MIN_VALUE;
@@ -190,16 +193,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     }
 
     private void ensureCandidate(int windowStart, int windowEnd) {
-        final List<Integer> windowSwings = windowedSwings(windowStart, windowEnd,
-                swingIndicator.getSwingPointIndexesUpTo(windowEnd));
-        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != windowEnd
-                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
-        if (geometryStale) {
-            cachedGeometries = buildGeometries(windowStart, windowEnd, windowSwings);
-            cachedWindowSwings = windowSwings;
-            cachedSegment = null;
-            valueCache.clear();
-        }
         if (cachedGeometries.isEmpty()) {
             cachedSegment = null;
             return;
