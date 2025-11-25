@@ -30,6 +30,7 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
+import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
@@ -45,11 +46,14 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -898,5 +902,238 @@ class TradingChartFactoryTest {
         DateAxis domainAxis = (DateAxis) tradingRecordPlot.getDomainAxis();
         assertNotNull(domainAxis.getDateFormatOverride(), "Domain axis should have date format configured");
         assertTrue(domainAxis.isAutoRange(), "Domain axis should be auto-ranging");
+    }
+
+    // ========== Horizontal Marker Tests ==========
+
+    @Test
+    void testHorizontalMarkerRenderedOnIndicatorSubplot() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertNotNull(rangeMarkers, "Should have range markers");
+        assertFalse(rangeMarkers.isEmpty(), "Should have horizontal marker");
+        assertTrue(rangeMarkers.stream().anyMatch(m -> m instanceof ValueMarker),
+                "Should contain ValueMarker instance");
+    }
+
+    @Test
+    void testHorizontalMarkerValueIsCorrect() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        double markerValue = 50.0;
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(markerValue)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        ValueMarker marker = (ValueMarker) rangeMarkers.stream()
+                .filter(m -> m instanceof ValueMarker)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(marker, "Should have ValueMarker");
+        assertEquals(markerValue, marker.getValue(), 0.001, "Marker should be at correct Y value");
+    }
+
+    @Test
+    void testHorizontalMarkerStylingApplied() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        Color customColor = Color.RED;
+        float customWidth = 2.5f;
+        float customOpacity = 0.7f;
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .withLineColor(customColor)
+                .withLineWidth(customWidth)
+                .withOpacity(customOpacity)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        ValueMarker marker = (ValueMarker) rangeMarkers.stream()
+                .filter(m -> m instanceof ValueMarker)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(marker, "Should have ValueMarker");
+
+        // Verify color with opacity
+        assertNotNull(marker.getPaint(), "Marker should have color");
+        assertInstanceOf(Color.class, marker.getPaint(), "Marker paint should be a Color");
+        Color markerColor = (Color) marker.getPaint();
+        assertEquals(customColor.getRed(), markerColor.getRed(), "Red component should match");
+        assertEquals(customColor.getGreen(), markerColor.getGreen(), "Green component should match");
+        assertEquals(customColor.getBlue(), markerColor.getBlue(), "Blue component should match");
+        assertEquals(Math.round(customOpacity * 255), markerColor.getAlpha(), "Alpha component should reflect opacity");
+
+        // Verify stroke width
+        BasicStroke stroke = (BasicStroke) marker.getStroke();
+        assertNotNull(stroke, "Marker should have stroke");
+        assertEquals(customWidth, stroke.getLineWidth(), 0.01f, "Line width should match");
+    }
+
+    @Test
+    void testMultipleHorizontalMarkersOnSameSubplot() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(30.0)
+                .withHorizontalMarker(50.0)
+                .withHorizontalMarker(70.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        long markerCount = rangeMarkers.stream().filter(m -> m instanceof ValueMarker).count();
+        assertEquals(3, markerCount, "Should have exactly 3 horizontal markers");
+    }
+
+    @Test
+    void testHorizontalMarkerOnTradingRecordSubplot() {
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(tradingRecord)
+                .withHorizontalMarker(100.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot tradingRecordPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = tradingRecordPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertFalse(rangeMarkers.isEmpty(), "Should have horizontal marker on trading record subplot");
+    }
+
+    @Test
+    void testHorizontalMarkerOnBaseIndicatorChart() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder().withIndicator(closePrice).withHorizontalMarker(50.0).toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        Collection<?> rangeMarkers = basePlot.getRangeMarkers(Layer.FOREGROUND);
+        assertFalse(rangeMarkers.isEmpty(), "Should have horizontal marker on base indicator plot");
+    }
+
+    @Test
+    void testHorizontalMarkerWithZeroValue() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(0.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        ValueMarker marker = (ValueMarker) rangeMarkers.stream()
+                .filter(m -> m instanceof ValueMarker)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(marker, "Should have ValueMarker at zero");
+        assertEquals(0.0, marker.getValue(), 0.001, "Marker should be at zero");
+    }
+
+    @Test
+    void testHorizontalMarkerWithNegativeValue() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(closePrice)
+                .withHorizontalMarker(-10.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        ValueMarker marker = (ValueMarker) rangeMarkers.stream()
+                .filter(m -> m instanceof ValueMarker)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(marker, "Should have ValueMarker at negative value");
+        assertEquals(-10.0, marker.getValue(), 0.001, "Marker should be at negative value");
+    }
+
+    @Test
+    void testHorizontalMarkerDefaultStyling() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        ValueMarker marker = (ValueMarker) rangeMarkers.stream()
+                .filter(m -> m instanceof ValueMarker)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(marker, "Should have ValueMarker");
+        assertNotNull(marker.getPaint(), "Marker should have default color");
+        assertNotNull(marker.getStroke(), "Marker should have default stroke");
+        // Default opacity should be 1.0 (fully opaque)
+        assertInstanceOf(Color.class, marker.getPaint(), "Marker paint should be a Color");
+        Color markerColor = (Color) marker.getPaint();
+        assertEquals(255, markerColor.getAlpha(), "Default opacity should be fully opaque");
+    }
+
+    @Test
+    void testHorizontalMarkerOnMultipleSubplots() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(barSeries)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .withSubChart(closePrice)
+                .withHorizontalMarker(100.0)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertEquals(3, combinedPlot.getSubplots().size(), "Should have base plot plus 2 subplots");
+
+        // Check first subplot (RSI)
+        XYPlot rsiPlot = combinedPlot.getSubplots().get(1);
+        Collection<?> rsiMarkers = rsiPlot.getRangeMarkers(Layer.FOREGROUND);
+        long rsiMarkerCount = rsiMarkers.stream().filter(m -> m instanceof ValueMarker).count();
+        assertEquals(1, rsiMarkerCount, "RSI subplot should have 1 marker");
+
+        // Check second subplot (Close Price)
+        XYPlot closePlot = combinedPlot.getSubplots().get(2);
+        Collection<?> closeMarkers = closePlot.getRangeMarkers(Layer.FOREGROUND);
+        long closeMarkerCount = closeMarkers.stream().filter(m -> m instanceof ValueMarker).count();
+        assertEquals(1, closeMarkerCount, "Close price subplot should have 1 marker");
     }
 }

@@ -202,6 +202,12 @@ public final class ChartBuilder {
         return addIndicatorOverlay(context, indicator, OverlayType.ANALYSIS_CRITERION, true);
     }
 
+    private StyledMarkerStage addHorizontalMarker(PlotContext context, double yValue) {
+        HorizontalMarkerContext marker = HorizontalMarkerContext.create(yValue, colorPalette.nextColor());
+        context.horizontalMarkers.add(marker);
+        return new StyledMarkerStageImpl(context, marker);
+    }
+
     private ChartStage addIndicatorSubChart(Indicator<Num> indicator) {
         BarSeries series = requireIndicatorSeries(indicator);
         PlotContext context = PlotContext.indicator(series, indicator);
@@ -389,6 +395,16 @@ public final class ChartBuilder {
          * @return this chart stage for further configuration
          */
         ChartStage withTitle(String title);
+
+        /**
+         * Adds a horizontal marker (reference line) at the specified Y-axis value.
+         * Useful for marking key levels on oscillators (e.g., RSI 50, 30, 70) or zero
+         * lines (e.g., MACD 0).
+         *
+         * @param yValue the Y-axis value where the marker should be drawn
+         * @return a styled marker stage for configuring the marker appearance
+         */
+        StyledMarkerStage withHorizontalMarker(double yValue);
     }
 
     /**
@@ -441,6 +457,40 @@ public final class ChartBuilder {
          * @throws IllegalArgumentException if opacity is outside the range [0.0, 1.0]
          */
         StyledOverlayStage withOpacity(float opacity);
+    }
+
+    /**
+     * Stage returned immediately after adding a horizontal marker that supports
+     * styling tweaks such as color, line width, and opacity.
+     */
+    public interface StyledMarkerStage extends ChartStage {
+
+        /**
+         * Sets the line color for the marker.
+         *
+         * @param color the color to use for the marker line
+         * @return this styled marker stage for method chaining
+         */
+        StyledMarkerStage withLineColor(Color color);
+
+        /**
+         * Sets the line width for the marker.
+         *
+         * @param width the line width in pixels (must be greater than 0.05)
+         * @return this styled marker stage for method chaining
+         * @throws IllegalArgumentException if width is less than or equal to 0.05
+         */
+        StyledMarkerStage withLineWidth(float width);
+
+        /**
+         * Sets the opacity for the marker.
+         *
+         * @param opacity the opacity value between 0.0 (fully transparent) and 1.0
+         *                (fully opaque)
+         * @return this styled marker stage for method chaining
+         * @throws IllegalArgumentException if opacity is outside the range [0.0, 1.0]
+         */
+        StyledMarkerStage withOpacity(float opacity);
     }
 
     /**
@@ -533,7 +583,7 @@ public final class ChartBuilder {
             this.context = context;
         }
 
-        private void ensureActive() {
+        protected void ensureActive() {
             if (!acceptingCommands) {
                 throw new IllegalStateException(
                         "This chart stage is no longer active. Continue from the stage returned by withSubChart().");
@@ -585,6 +635,12 @@ public final class ChartBuilder {
             ensureActive();
             customTitle = title;
             return this;
+        }
+
+        @Override
+        public StyledMarkerStage withHorizontalMarker(double yValue) {
+            ensureActive();
+            return addHorizontalMarker(context, yValue);
         }
 
         @Override
@@ -703,6 +759,37 @@ public final class ChartBuilder {
         }
     }
 
+    private final class StyledMarkerStageImpl extends PlotStageImpl implements StyledMarkerStage {
+
+        private final HorizontalMarkerContext marker;
+
+        private StyledMarkerStageImpl(PlotContext context, HorizontalMarkerContext marker) {
+            super(context);
+            this.marker = marker;
+        }
+
+        @Override
+        public StyledMarkerStage withLineColor(Color color) {
+            ensureActive();
+            marker.style.setColor(color);
+            return this;
+        }
+
+        @Override
+        public StyledMarkerStage withLineWidth(float width) {
+            ensureActive();
+            marker.style.setLineWidth(width);
+            return this;
+        }
+
+        @Override
+        public StyledMarkerStage withOpacity(float opacity) {
+            ensureActive();
+            marker.style.setOpacity(opacity);
+            return this;
+        }
+    }
+
     private static final class PlotContext {
         private final PlotType type;
         private final BarSeries series;
@@ -710,6 +797,7 @@ public final class ChartBuilder {
         private final TradingRecord tradingRecord;
         private final AxisModel axisModel;
         private final List<OverlayContext> overlays = new ArrayList<>();
+        private final List<HorizontalMarkerContext> horizontalMarkers = new ArrayList<>();
 
         private PlotContext(PlotType type, BarSeries series, Indicator<Num> baseIndicator, TradingRecord tradingRecord,
                 AxisModel axisModel) {
@@ -796,14 +884,17 @@ public final class ChartBuilder {
         private final Indicator<Num> baseIndicator;
         private final TradingRecord tradingRecord;
         private final List<OverlayDefinition> overlays;
+        private final List<HorizontalMarkerDefinition> horizontalMarkers;
 
         private PlotDefinition(PlotType type, BarSeries series, Indicator<Num> baseIndicator,
-                TradingRecord tradingRecord, List<OverlayDefinition> overlays) {
+                TradingRecord tradingRecord, List<OverlayDefinition> overlays,
+                List<HorizontalMarkerDefinition> horizontalMarkers) {
             this.type = type;
             this.series = series;
             this.baseIndicator = baseIndicator;
             this.tradingRecord = tradingRecord;
             this.overlays = overlays;
+            this.horizontalMarkers = horizontalMarkers;
         }
 
         static PlotDefinition fromContext(PlotContext context) {
@@ -811,8 +902,12 @@ public final class ChartBuilder {
             for (OverlayContext overlayContext : context.overlays) {
                 overlayDefinitions.add(OverlayDefinition.fromContext(overlayContext));
             }
+            List<HorizontalMarkerDefinition> markerDefinitions = new ArrayList<>();
+            for (HorizontalMarkerContext markerContext : context.horizontalMarkers) {
+                markerDefinitions.add(HorizontalMarkerDefinition.fromContext(markerContext));
+            }
             return new PlotDefinition(context.type, context.series, context.baseIndicator, context.tradingRecord,
-                    Collections.unmodifiableList(overlayDefinitions));
+                    Collections.unmodifiableList(overlayDefinitions), Collections.unmodifiableList(markerDefinitions));
         }
 
         /**
@@ -860,6 +955,15 @@ public final class ChartBuilder {
          */
         public List<OverlayDefinition> overlays() {
             return overlays;
+        }
+
+        /**
+         * Returns an immutable list of horizontal marker definitions for this plot.
+         *
+         * @return the list of horizontal marker definitions
+         */
+        public List<HorizontalMarkerDefinition> horizontalMarkers() {
+            return horizontalMarkers;
         }
     }
 
@@ -977,6 +1081,56 @@ public final class ChartBuilder {
 
         void setLabel(String label) {
             this.label = label;
+        }
+    }
+
+    /**
+     * Immutable definition of a horizontal marker (reference line) on a plot,
+     * including its Y-axis value and styling.
+     */
+    public static final class HorizontalMarkerDefinition {
+        private final double yValue;
+        private final OverlayStyle style;
+
+        private HorizontalMarkerDefinition(double yValue, OverlayStyle style) {
+            this.yValue = yValue;
+            this.style = style;
+        }
+
+        static HorizontalMarkerDefinition fromContext(HorizontalMarkerContext context) {
+            return new HorizontalMarkerDefinition(context.yValue, context.style);
+        }
+
+        /**
+         * Returns the Y-axis value where the marker should be drawn.
+         *
+         * @return the Y-axis value
+         */
+        public double yValue() {
+            return yValue;
+        }
+
+        /**
+         * Returns the style configuration for this marker.
+         *
+         * @return the marker style
+         */
+        public OverlayStyle style() {
+            return style;
+        }
+    }
+
+    private static final class HorizontalMarkerContext {
+        private final double yValue;
+        private final OverlayStyle style;
+
+        private HorizontalMarkerContext(double yValue, OverlayStyle style) {
+            this.yValue = yValue;
+            this.style = style;
+        }
+
+        static HorizontalMarkerContext create(double yValue, Color defaultColor) {
+            return new HorizontalMarkerContext(yValue, OverlayStyle.defaultStyle(defaultColor));
         }
     }
 

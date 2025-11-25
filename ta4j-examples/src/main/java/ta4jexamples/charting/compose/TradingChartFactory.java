@@ -33,6 +33,7 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
@@ -419,6 +420,7 @@ public final class TradingChartFactory {
         case TRADING_RECORD -> buildTradingRecordPlot(definition);
         };
         attachOverlays(plot, definition);
+        attachHorizontalMarkers(plot, definition);
         return plot;
     }
 
@@ -943,6 +945,20 @@ public final class TradingChartFactory {
         // Set tooltip generator to show series name, date, and value
         secondaryRenderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         plot.setRenderer(datasetIndex, secondaryRenderer);
+    }
+
+    private void attachHorizontalMarkers(XYPlot plot, ChartBuilder.PlotDefinition definition) {
+        for (ChartBuilder.HorizontalMarkerDefinition marker : definition.horizontalMarkers()) {
+            ValueMarker valueMarker = new ValueMarker(marker.yValue());
+            ChartBuilder.OverlayStyle style = marker.style();
+            Color baseColor = style.color();
+            float opacity = style.opacity();
+            Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                    Math.round(opacity * 255));
+            valueMarker.setPaint(colorWithOpacity);
+            valueMarker.setStroke(new BasicStroke(style.lineWidth()));
+            plot.addRangeMarker(valueMarker, Layer.FOREGROUND);
+        }
     }
 
     /**

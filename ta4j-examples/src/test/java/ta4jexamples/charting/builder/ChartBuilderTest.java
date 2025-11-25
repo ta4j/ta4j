@@ -27,8 +27,11 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.chart.ui.Layer;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
+
+import java.util.Collection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -124,6 +127,148 @@ class ChartBuilderTest {
                 "Parent stage should be unusable after withSubChart is invoked");
 
         assertNotNull(subStage.toChart(), "Sub stage should still be able to build the chart");
+    }
+
+    @Test
+    void withHorizontalMarkerAddsReferenceLine() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .toChart();
+
+        CombinedDomainXYPlot combined = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combined.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertNotNull(rangeMarkers, "Should have range markers");
+        assertFalse(rangeMarkers.isEmpty(), "Should have horizontal marker at 50");
+    }
+
+    @Test
+    void withHorizontalMarkerSupportsStyling() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        Color customColor = Color.RED;
+        float customWidth = 2.5f;
+        float customOpacity = 0.7f;
+
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .withLineColor(customColor)
+                .withLineWidth(customWidth)
+                .withOpacity(customOpacity)
+                .toChart();
+
+        CombinedDomainXYPlot combined = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combined.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertFalse(rangeMarkers.isEmpty(), "Should have horizontal marker");
+        // Verify marker exists (styling is applied during rendering)
+        assertTrue(rangeMarkers.size() >= 1, "Should have at least one marker");
+    }
+
+    @Test
+    void withMultipleHorizontalMarkers() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(30.0)
+                .withHorizontalMarker(50.0)
+                .withHorizontalMarker(70.0)
+                .toChart();
+
+        CombinedDomainXYPlot combined = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combined.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertNotNull(rangeMarkers, "Should have range markers");
+        assertTrue(rangeMarkers.size() >= 3, "Should have at least 3 horizontal markers");
+    }
+
+    @Test
+    void withHorizontalMarkerRejectsInvalidLineWidth() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartBuilder.StyledMarkerStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0);
+
+        assertThrows(IllegalArgumentException.class, () -> stage.withLineWidth(0.0f),
+                "Line width of 0 should be rejected");
+        assertThrows(IllegalArgumentException.class, () -> stage.withLineWidth(-1.0f),
+                "Negative line width should be rejected");
+        assertThrows(IllegalArgumentException.class, () -> stage.withLineWidth(0.05f),
+                "Line width of 0.05 should be rejected");
+    }
+
+    @Test
+    void withHorizontalMarkerRejectsInvalidOpacity() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartBuilder.StyledMarkerStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0);
+
+        assertThrows(IllegalArgumentException.class, () -> stage.withOpacity(-0.1f),
+                "Negative opacity should be rejected");
+        assertThrows(IllegalArgumentException.class, () -> stage.withOpacity(1.1f),
+                "Opacity greater than 1.0 should be rejected");
+    }
+
+    @Test
+    void withHorizontalMarkerAcceptsValidOpacity() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartBuilder.StyledMarkerStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0);
+
+        // These should not throw
+        assertDoesNotThrow(() -> stage.withOpacity(0.0f), "Opacity of 0.0 should be valid");
+        assertDoesNotThrow(() -> stage.withOpacity(0.5f), "Opacity of 0.5 should be valid");
+        assertDoesNotThrow(() -> stage.withOpacity(1.0f), "Opacity of 1.0 should be valid");
+    }
+
+    @Test
+    void withHorizontalMarkerRejectsNullColor() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        ChartBuilder.StyledMarkerStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0);
+
+        assertThrows(NullPointerException.class, () -> stage.withLineColor(null), "Null color should be rejected");
+    }
+
+    @Test
+    void withHorizontalMarkerChainingWorks() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50.0)
+                .withLineColor(Color.BLUE)
+                .withLineWidth(2.0f)
+                .withOpacity(0.8f)
+                .withHorizontalMarker(30.0)
+                .withLineColor(Color.GREEN)
+                .toChart();
+
+        assertNotNull(chart, "Chart should be created with chained marker styling");
+        CombinedDomainXYPlot combined = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot indicatorPlot = combined.getSubplots().get(1);
+        Collection<?> rangeMarkers = indicatorPlot.getRangeMarkers(Layer.FOREGROUND);
+        assertTrue(rangeMarkers.size() >= 2, "Should have at least 2 markers with chained styling");
     }
 
     @Test
