@@ -25,6 +25,8 @@ package ta4jexamples.datasources;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import ta4jexamples.datasources.http.HttpClientWrapper;
+import ta4jexamples.datasources.http.HttpResponseWrapper;
 
 import java.io.IOException;
 import java.net.http.HttpRequest;
@@ -94,8 +96,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -184,8 +185,7 @@ public class YahooFinanceDataSourceTest {
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
 
         when(mockResponse.statusCode()).thenReturn(404);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -236,8 +236,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn("invalid json");
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -264,8 +263,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(emptyResultsJson);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -303,8 +301,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(jsonWithNulls);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -371,8 +368,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(jsonWithNullVolume);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -459,8 +455,7 @@ public class YahooFinanceDataSourceTest {
         when(mockResponse2.body()).thenReturn(chunk2Json);
 
         // Return different responses for different requests
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse1)
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2)
                 .thenReturn(mockResponse2); // In case there are more calls
 
@@ -532,8 +527,7 @@ public class YahooFinanceDataSourceTest {
         when(mockResponse2.statusCode()).thenReturn(200);
         when(mockResponse2.body()).thenReturn(chunk2Json);
 
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse1)
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
         TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
@@ -580,8 +574,7 @@ public class YahooFinanceDataSourceTest {
         when(mockResponse1.body()).thenReturn(chunk1Json);
         when(mockResponse2.statusCode()).thenReturn(404); // Second chunk fails
 
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse1)
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
         TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
@@ -605,8 +598,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(500); // All chunks fail
 
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
@@ -628,8 +620,7 @@ public class YahooFinanceDataSourceTest {
 
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
-        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockResponse);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
         TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");

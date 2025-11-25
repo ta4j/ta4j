@@ -25,6 +25,7 @@ package ta4jexamples.datasources;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import ta4jexamples.datasources.json.AdaptiveJsonBarsSerializer;
 
 import java.io.InputStream;
 import java.nio.file.Files;

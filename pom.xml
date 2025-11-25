@@ -306,6 +306,11 @@
                 <version>${maven.surefire.version}</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <argLine>
+                        -XX:+EnableDynamicAgentLoading
+                        -Xshare:off
+                        -Djdk.instrument.traceUsage=false
+                    </argLine>
                 </configuration>
             </plugin>
             <!-- Package sources -->

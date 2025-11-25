@@ -31,6 +31,9 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import ta4jexamples.datasources.http.DefaultHttpClientWrapper;
+import ta4jexamples.datasources.http.HttpClientWrapper;
+import ta4jexamples.datasources.http.HttpResponseWrapper;
 
 import java.io.IOException;
 import java.net.URI;
