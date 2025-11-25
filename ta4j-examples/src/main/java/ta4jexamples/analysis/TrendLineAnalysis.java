@@ -123,7 +123,7 @@ public class TrendLineAnalysis {
                 .toPlan();
 
         fractalChartWorkflow.display(fractalPlan);
-        fractalChartWorkflow.save(fractalPlan, "log/charts", "fractal-support-resistance-trendlines");
+        fractalChartWorkflow.save(fractalPlan, "temp/charts", "fractal-support-resistance-trendlines");
 
         logSegment("Support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
         logSegment("Support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());

@@ -103,7 +103,7 @@ public class SwingPointAnalysis {
                 .toPlan();
 
         chartWorkflow.display(plan);
-        chartWorkflow.save(plan, "log/charts", "fractal-swing-point-analysis");
+        chartWorkflow.save(plan, "temp/charts", "fractal-swing-point-analysis");
 
         RecentZigZagSwingLowIndicator zigzagLowIndicator = new RecentZigZagSwingLowIndicator(series);
         RecentZigZagSwingHighIndicator zigzagHighIndicator = new RecentZigZagSwingHighIndicator(series);
@@ -136,6 +136,6 @@ public class SwingPointAnalysis {
                 .toPlan();
 
         zigzagChartWorkflow.display(zigzagPlan);
-        zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-swing-point-analysis");
+        zigzagChartWorkflow.save(zigzagPlan, "temp/charts", "zigzag-swing-point-analysis");
     }
 }
