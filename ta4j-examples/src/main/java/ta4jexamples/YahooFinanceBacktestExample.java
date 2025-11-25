@@ -50,6 +50,7 @@ import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -169,30 +170,37 @@ public class YahooFinanceBacktestExample {
         System.out.println("[3/7] Building advanced trading strategy rules...");
         System.out.println("   Strategy: Mean reversion with multiple confirmations");
 
-        // Entry rule: Buy when price touches lower Bollinger Band (oversold)
-        // AND RSI is below 40 (oversold confirmation)
-        // AND OBV is rising (volume confirmation - price drop not supported by volume)
-        Rule entryCondition1 = new CrossedDownIndicatorRule(closePrice, bbLower);
-        Rule entryCondition2 = new UnderIndicatorRule(rsi, series.numFactory().numOf(40));
-        // OBV rising: current OBV > previous OBV
-        Rule entryCondition3 = new OverIndicatorRule(obv,
-                new org.ta4j.core.indicators.helpers.PreviousValueIndicator(obv, 1));
+        // Entry rule: Buy when price is at or below lower Bollinger Band (oversold)
+        // AND RSI is below 45 (oversold confirmation - less strict than 40)
+        // Price touching lower BB OR crossing below it
+        Rule priceAtLowerBB = new UnderIndicatorRule(closePrice, bbLower)
+                .or(new CrossedDownIndicatorRule(closePrice, bbLower));
+        Rule rsiOversold = new UnderIndicatorRule(rsi, series.numFactory().numOf(45));
+        // Optional: OBV rising provides additional confirmation (but not required)
+        // This makes the strategy more tradeable while still using volume analysis
+        Rule obvRising = new OverIndicatorRule(obv,
+                new PreviousValueIndicator(obv, 1));
 
-        Rule buyingRule = entryCondition1.and(entryCondition2).and(entryCondition3);
+        // Entry: Price at lower BB + RSI oversold + (OBV rising OR price below middle
+        // band)
+        // This allows entries when either volume confirms OR price is clearly oversold
+        Rule priceBelowMiddle = new UnderIndicatorRule(closePrice, bbMiddle);
+        Rule buyingRule = priceAtLowerBB.and(rsiOversold).and(obvRising.or(priceBelowMiddle));
 
         // Exit rule: Sell when price reaches upper Bollinger Band (overbought)
-        // OR RSI crosses above 70 (overbought)
+        // OR RSI crosses above 65 (overbought - less strict than 70 for more exits)
         // OR ATR-based stop loss triggers (dynamic, adapts to volatility)
-        Rule exitCondition1 = new CrossedUpIndicatorRule(closePrice, bbUpper);
-        Rule exitCondition2 = new OverIndicatorRule(rsi, series.numFactory().numOf(70));
-        // ATR-based stop: 2x ATR below entry price (more sophisticated than fixed %)
-        Rule exitCondition3 = new AverageTrueRangeStopLossRule(series, 14, 2.0);
+        Rule exitCondition1 = new CrossedUpIndicatorRule(closePrice, bbUpper)
+                .or(new OverIndicatorRule(closePrice, bbUpper));
+        Rule exitCondition2 = new OverIndicatorRule(rsi, series.numFactory().numOf(65));
+        // ATR-based stop: 2.5x ATR below entry price (allows for some volatility)
+        Rule exitCondition3 = new AverageTrueRangeStopLossRule(series, 14, 2.5);
 
         Rule sellingRule = exitCondition1.or(exitCondition2).or(exitCondition3);
 
         Strategy strategy = new BaseStrategy("Bollinger Bands Mean Reversion (Multi-Confirm)", buyingRule, sellingRule);
-        System.out.println("   [OK] Entry: Price touches lower BB + RSI < 40 + OBV rising");
-        System.out.println("   [OK] Exit: Price touches upper BB OR RSI > 70 OR ATR stop (2x ATR)");
+        System.out.println("   [OK] Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle)");
+        System.out.println("   [OK] Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR)");
         System.out.println();
 
         // Step 4: Run backtest
@@ -313,8 +321,8 @@ public class YahooFinanceBacktestExample {
         System.out.println("      - OBV (volume trend confirmation)");
         System.out.println("      - Custom price-to-middle-band ratio (indicator composition)");
         System.out.println("   3. Built a sophisticated mean reversion strategy:");
-        System.out.println("      - Entry: Price touches lower BB + RSI < 40 + OBV rising");
-        System.out.println("      - Exit: Price touches upper BB OR RSI > 70 OR ATR stop");
+        System.out.println("      - Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle)");
+        System.out.println("      - Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR)");
         System.out.println("   4. Backtested with ATR-based dynamic stop-loss (adapts to volatility)");
         System.out.println("   5. Analyzed with advanced metrics (Expectancy, SQN, Max Drawdown)");
         if (!isHeadless) {
