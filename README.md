@@ -96,9 +96,45 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
+## Try it now
+
+**Option 1: Run the Quickstart example** (2-3 minutes)
+
+```bash
+# Clone the repository
+git clone https://github.com/ta4j/ta4j.git
+cd ta4j
+
+# Build the project first
+mvn clean install -DskipTests
+
+# Run the Quickstart example (Quickstart is configured as the default)
+mvn -pl ta4j-examples exec:java
+```
+
+**Alternative:** To run a different example class:
+```bash
+# On Linux/Mac/Git Bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+
+# On Windows CMD (use quotes)
+mvn -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
+```
+
+This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart—all in one go!
+
+**Option 2: Copy the code into your project** (requires `ta4j-core` and `ta4j-examples` dependencies)
+
+See the [Quick start: Your first strategy](#quick-start-your-first-strategy) section below for a complete, runnable example you can paste into your IDE.
+
 ## Quick start: Your first strategy
 
 Load price data, plug in indicators, and describe when to enter/exit. The API reads like the trading notes you already keep.
+
+**💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
+```bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+```
 
 **Key concepts:**
 - **Indicators**: Calculate values from price data (e.g., moving averages, RSI, MACD)
@@ -106,13 +142,15 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 - **Strategies**: Combine entry and exit rules into a complete trading system
 - **BarSeries**: Your price data (OHLCV bars) that everything operates on
 
+**Note:** The example below uses `CsvTradesLoader` from `ta4j-examples` for convenience. You can also load data from your own sources (CSV files, APIs, databases, etc.).
+
 ```java
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.*;
 import org.ta4j.core.backtest.BarSeriesManager;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.loaders.CsvTradesLoader;  // Requires ta4j-examples dependency
 
 // Load historical price data (or use your own data source)
 BarSeries series = CsvTradesLoader.loadBitstampSeries();
