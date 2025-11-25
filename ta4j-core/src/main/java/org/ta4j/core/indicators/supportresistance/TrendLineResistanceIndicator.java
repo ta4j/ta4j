@@ -177,7 +177,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             double anchorRecencyWeight) {
         super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, ToleranceSettings.defaultSettings(),
-                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS, true);
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     /**
@@ -204,7 +204,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
             int maxCandidatePairs) {
         super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, toleranceSettings,
-                maxSwingPointsForTrendline, maxCandidatePairs, true);
+                maxSwingPointsForTrendline, maxCandidatePairs);
     }
 
     /**
@@ -231,7 +231,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
         super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum),
-                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS, true);
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     /**
@@ -262,7 +262,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
         super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, ToleranceSettings
                         .from(ToleranceSettings.Mode.values()[toleranceMode], toleranceValue, toleranceMinimum),
-                maxSwingPointsForTrendline, maxCandidatePairs, true);
+                maxSwingPointsForTrendline, maxCandidatePairs);
     }
 
     /**

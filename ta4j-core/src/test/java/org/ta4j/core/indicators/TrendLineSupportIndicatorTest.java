@@ -527,35 +527,6 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(1).isNaN()).isTrue();
     }
 
-    @Test
-    public void shouldHoldSegmentWhenDynamicRecalculationDisabled() {
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        addBar(series, "2024-01-01T00:00:00Z", 10d);
-        addBar(series, "2024-01-02T00:00:00Z", 12d);
-        addBar(series, "2024-01-03T00:00:00Z", 14d);
-
-        final var priceIndicator = new LowPriceIndicator(series);
-        final var swingIndicator = new MutableSwingIndicator(priceIndicator, List.of(0, 2));
-        final var indicator = new TrendLineSupportIndicator(swingIndicator, 3, 0.4d, 0.15d, 0.15d, 0.15d, 0.15d,
-                ToleranceSettings.defaultSettings(), TrendLineSupportIndicator.DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
-                TrendLineSupportIndicator.DEFAULT_MAX_CANDIDATE_PAIRS, false);
-
-        indicator.getValue(series.getEndIndex());
-        final var initialSegment = indicator.getCurrentSegment();
-        assertThat(initialSegment).isNotNull();
-
-        addBar(series, "2024-01-04T00:00:00Z", 8d);
-        swingIndicator.addSwing(3);
-
-        final int newIndex = series.getEndIndex();
-        final Num valueAtNewIndex = indicator.getValue(newIndex);
-        final Num expected = valueFromSegment(series, initialSegment, newIndex);
-
-        assertThat(indicator.getCurrentSegment().firstIndex).isEqualTo(initialSegment.firstIndex);
-        assertThat(indicator.getCurrentSegment().secondIndex).isEqualTo(initialSegment.secondIndex);
-        assertThat(valueAtNewIndex).isEqualByComparingTo(expected);
-    }
-
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -588,13 +559,6 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
                 .lowPrice(lowPrice)
                 .volume(1d)
                 .add();
-    }
-
-    private Num valueFromSegment(BarSeries series, TrendLineSegment segment, int index) {
-        final long baseMillis = series.getBar(series.getBeginIndex()).getEndTime().toEpochMilli();
-        final long coordinateMillis = series.getBar(index).getEndTime().toEpochMilli() - baseMillis;
-        final Num coordinate = series.numFactory().numOf(coordinateMillis);
-        return segment.slope.multipliedBy(coordinate).plus(segment.intercept);
     }
 
     private Num expectedProjection(BarSeries series, int startIndex, int endIndex, int targetIndex) {

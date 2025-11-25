@@ -80,7 +80,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final ToleranceSettings toleranceSettings;
     private final int maxSwingPointsForTrendline;
     private final int maxCandidatePairs;
-    private final boolean dynamicRecalculation;
 
     private transient TrendLineCandidate cachedSegment;
     private transient int cachedEndIndex = Integer.MIN_VALUE;
@@ -104,31 +103,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
         this(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
-                DEFAULT_MAX_CANDIDATE_PAIRS, true);
-    }
-
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
-            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
-            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
-            boolean dynamicRecalculation) {
-        this(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
-                DEFAULT_MAX_CANDIDATE_PAIRS, dynamicRecalculation);
+                DEFAULT_MAX_CANDIDATE_PAIRS);
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
             double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
-        this(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
-                maxCandidatePairs, true);
-    }
-
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
-            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
-            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
-            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean dynamicRecalculation) {
         super(swingIndicator.getPriceIndicator());
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least 2 to build a trend line");
@@ -148,7 +129,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         this.toleranceSettings = toleranceSettings == null ? ToleranceSettings.defaultSettings() : toleranceSettings;
         this.maxSwingPointsForTrendline = maxSwingPointsForTrendline;
         this.maxCandidatePairs = maxCandidatePairs;
-        this.dynamicRecalculation = dynamicRecalculation;
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, TrendLineSide side,
@@ -173,20 +153,17 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
-        final boolean shouldRecompute = dynamicRecalculation || cachedSegment == null;
-        if (shouldRecompute) {
-            final List<Integer> windowSwings = windowedSwings(windowStart, endIndex,
-                    swingIndicator.getSwingPointIndexesUpTo(endIndex));
-            final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != endIndex
-                    || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
-            if (geometryStale) {
-                invalidateFrom(windowStart);
-                cachedGeometries = buildGeometries(windowStart, endIndex, windowSwings);
-                cachedWindowSwings = windowSwings;
-                cachedSegment = null;
-            }
-            ensureCandidate(windowStart, endIndex);
+        final List<Integer> windowSwings = windowedSwings(windowStart, endIndex,
+                swingIndicator.getSwingPointIndexesUpTo(endIndex));
+        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != endIndex
+                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
+        if (geometryStale) {
+            invalidateFrom(windowStart);
+            cachedGeometries = buildGeometries(windowStart, endIndex, windowSwings);
+            cachedWindowSwings = windowSwings;
+            cachedSegment = null;
         }
+        ensureCandidate(windowStart, endIndex);
         return super.getValue(index);
     }
 
@@ -202,14 +179,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final int endIndex = getBarSeries().getEndIndex();
         final int removedBars = getBarSeries().getRemovedBarsCount();
         if (endIndex != cachedEndIndex || removedBars != cachedRemovedBars) {
-            if (dynamicRecalculation || removedBars != cachedRemovedBars) {
-                invalidateCache();
-                cachedSegment = null;
-                cachedWindowStart = Integer.MIN_VALUE;
-                cachedEndIndex = Integer.MIN_VALUE;
-                cachedWindowSwings = List.of();
-                cachedGeometries = List.of();
-            }
+            invalidateCache();
+            cachedSegment = null;
+            cachedWindowStart = Integer.MIN_VALUE;
+            cachedEndIndex = Integer.MIN_VALUE;
+            cachedWindowSwings = List.of();
+            cachedGeometries = List.of();
             cachedRemovedBars = removedBars;
             cachedEndIndex = endIndex;
         }
