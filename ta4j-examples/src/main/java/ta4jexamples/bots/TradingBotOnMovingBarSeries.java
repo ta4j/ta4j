@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
@@ -66,7 +66,7 @@ public class TradingBotOnMovingBarSeries {
      * @return a moving bar series
      */
     private static BarSeries initMovingBarSeries(int maxBarCount) {
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
         // Limitating the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
         LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();

@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.datasources;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -29,7 +29,7 @@ import com.google.gson.stream.JsonReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
-import ta4jexamples.loaders.jsonhelper.AdaptiveBarSeriesTypeAdapter;
+import ta4jexamples.datasources.jsonhelper.AdaptiveBarSeriesTypeAdapter;
 
 import java.io.FileInputStream;
 import java.io.InputStream;

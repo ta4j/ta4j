@@ -36,7 +36,7 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvBarsLoader;
+import ta4jexamples.datasources.CsvBarsDataSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +46,7 @@ public class SimpleMovingAverageRangeBacktest {
     private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageRangeBacktest.class);
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+        BarSeries series = CsvBarsDataSource.loadSeriesFromFile();
 
         int start = 3;
         int stop = 50;

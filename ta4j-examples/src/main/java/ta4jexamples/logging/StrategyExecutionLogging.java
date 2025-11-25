@@ -33,7 +33,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 
 /**
@@ -90,7 +90,7 @@ public class StrategyExecutionLogging {
         loadLoggerConfiguration();
 
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);

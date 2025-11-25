@@ -142,7 +142,7 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 - **Strategies**: Combine entry and exit rules into a complete trading system
 - **BarSeries**: Your price data (OHLCV bars) that everything operates on
 
-**Note:** The example below uses `CsvTradesLoader` from `ta4j-examples` for convenience. You can also load data from your own sources (CSV files, APIs, databases, etc.).
+**Note:** The example below uses `BitstampCsvTradesDataSource` from `ta4j-examples` for convenience. You can also load data from your own sources (CSV files, APIs, databases, etc.).
 
 ```java
 import org.ta4j.core.*;
@@ -150,10 +150,10 @@ import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.*;
 import org.ta4j.core.backtest.BarSeriesManager;
-import ta4jexamples.loaders.CsvTradesLoader;  // Requires ta4j-examples dependency
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;  // Requires ta4j-examples dependency
 
 // Load historical price data (or use your own data source)
-BarSeries series = CsvTradesLoader.loadBitstampSeries();
+BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
 
 // Create indicators: calculate moving averages from close prices
 ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -484,9 +484,9 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
 
 ### Data Loading Examples
-- **[CsvTradesLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvTradesLoader.java)** - Load historical data from CSV files
-- **[CsvBarsLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvBarsLoader.java)** - Load OHLCV bar data from CSV
-- **[AdaptiveJsonBarsSerializer](ta4j-examples/src/main/java/ta4jexamples/loaders/AdaptiveJsonBarsSerializer.java)** - Parse JSON data from Coinbase/Binance APIs
+- **[BitstampCsvTradesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitstampCsvTradesDataSource.java)** - Load historical trade data from Bitstamp CSV files and aggregate into OHLCV bars
+- **[CsvBarsDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvBarsDataSource.java)** - Load OHLCV bar data from CSV
+- **[AdaptiveJsonBarsSerializer](ta4j-examples/src/main/java/ta4jexamples/datasources/AdaptiveJsonBarsSerializer.java)** - Parse JSON data from Coinbase/Binance APIs
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis

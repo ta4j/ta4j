@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.datasources;
 
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
@@ -44,9 +44,9 @@ import java.time.format.DateTimeFormatter;
 /**
  * This class build a Ta4j bar series from a CSV file containing bars.
  */
-public class CsvBarsLoader {
+public class CsvBarsDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(CsvBarsLoader.class);
+    private static final Logger LOG = LogManager.getLogger(CsvBarsDataSource.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String DEFAULT_APPLE_BAR_FILE = "appleinc_bars_from_20130101_usd.csv";
 
@@ -82,7 +82,7 @@ public class CsvBarsLoader {
      */
     public static BarSeries loadCsvSeries(String filename) {
 
-        var stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
+        var stream = CsvBarsDataSource.class.getClassLoader().getResourceAsStream(filename);
 
         if (stream == null) {
             LOG.error("Unable to load CSV file: {} not found in classpath", filename);
@@ -128,7 +128,7 @@ public class CsvBarsLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+        BarSeries series = CsvBarsDataSource.loadSeriesFromFile();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

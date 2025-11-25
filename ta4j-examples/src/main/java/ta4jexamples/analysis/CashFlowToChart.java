@@ -31,7 +31,7 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
@@ -47,7 +47,7 @@ public class CashFlowToChart {
 
     public static void main(String[] args) {
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);

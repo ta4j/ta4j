@@ -41,7 +41,7 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
+import ta4jexamples.datasources.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
+import ta4jexamples.datasources.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
 import java.io.InputStream;

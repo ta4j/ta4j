@@ -74,6 +74,7 @@
         <jfreechart.version>1.5.6</jfreechart.version>
         <junit-jupiter.version>6.0.0</junit-jupiter.version>
         <log4j2.version>2.24.1</log4j2.version>
+        <mockito.version>5.12.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.4.1</poi.version>
         <slf4j.version>2.0.17</slf4j.version>
@@ -113,6 +114,18 @@
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-junit-jupiter</artifactId>
+                <version>${mockito.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>

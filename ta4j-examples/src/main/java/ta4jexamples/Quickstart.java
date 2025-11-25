@@ -49,7 +49,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;
 
 /**
  * Quickstart for ta4j - Your first trading strategy!
@@ -79,7 +79,7 @@ public class Quickstart {
 
         // Step 1: Load historical price data
         System.out.println("[1/6] Loading historical Bitcoin price data from Bitstamp...");
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
         System.out.printf("   [OK] Loaded %d bars of price data%n", series.getBarCount());
         System.out.println();
 
@@ -130,16 +130,19 @@ public class Quickstart {
 
         // Display formatted results
         System.out.printf("   Total Trades:        %d%n", tradingRecord.getPositionCount());
-        System.out.printf("   Net Return:          %.2f%%%n", netReturnValue.multipliedBy(series.numFactory().numOf(100)).doubleValue());
-        System.out.printf("   Win Rate:            %.1f%%%n", winRate.multipliedBy(series.numFactory().numOf(100)).doubleValue());
+        System.out.printf("   Net Return:          %.2f%%%n",
+                netReturnValue.multipliedBy(series.numFactory().numOf(100)).doubleValue());
+        System.out.printf("   Win Rate:            %.1f%%%n",
+                winRate.multipliedBy(series.numFactory().numOf(100)).doubleValue());
         System.out.printf("   Return/Max Drawdown: %.2f%n", romadValue.doubleValue());
-        System.out.printf("   vs Buy & Hold:       %.2f%%%n", vsBuyHold.multipliedBy(series.numFactory().numOf(100)).doubleValue());
+        System.out.printf("   vs Buy & Hold:       %.2f%%%n",
+                vsBuyHold.multipliedBy(series.numFactory().numOf(100)).doubleValue());
         System.out.println();
 
         // Step 6: Visualize the strategy
         System.out.println("[6/6] Generating strategy visualization...");
         boolean isHeadless = GraphicsEnvironment.isHeadless();
-        
+
         if (isHeadless) {
             System.out.println("   [WARN] Headless environment detected - skipping chart display");
             System.out.println("   [TIP] Run in a GUI environment to see interactive charts!");
@@ -154,7 +157,7 @@ public class Quickstart {
                         .withIndicatorOverlay(longSma) // Slow SMA overlay
                         .withSubChart(new NetProfitLossCriterion(), tradingRecord) // Net profit/loss in subchart
                         .toChart();
-                
+
                 chartWorkflow.displayChart(chart, "ta4j Quickstart - SMA Crossover Strategy");
                 System.out.println("   [OK] Chart displayed in new window");
                 System.out.println("   [TIP] Net profit/loss shown in subchart below price chart");

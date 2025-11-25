@@ -41,7 +41,7 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitstampCsvTradesDataSource;
 
 /**
  * Strategies which compares current price to global extrema over a week.
@@ -88,7 +88,7 @@ public class GlobalExtremaStrategy {
     public static void main(final String[] args) {
 
         // Getting the bar series
-        final var series = CsvTradesLoader.loadBitstampSeries();
+        final var series = BitstampCsvTradesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         final var strategy = buildStrategy(series);

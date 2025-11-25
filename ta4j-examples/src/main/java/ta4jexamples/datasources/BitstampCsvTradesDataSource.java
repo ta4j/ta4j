@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.datasources;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,11 +38,13 @@ import java.util.List;
 import java.util.ListIterator;
 
 /**
- * This class builds a Ta4j bar series from a CSV file containing trades.
+ * This class builds a Ta4j bar series from a Bitstamp CSV file containing
+ * trades. It reads trade-level data (timestamp, price, volume) and aggregates
+ * them into OHLCV bars suitable for technical analysis.
  */
-public class CsvTradesLoader {
+public class BitstampCsvTradesDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(CsvTradesLoader.class);
+    private static final Logger LOG = LogManager.getLogger(BitstampCsvTradesDataSource.class);
     private static final String DEFAULT_BITSTAMP_FILE = "bitstamp_trades_from_20131125_usd.csv";
 
     /**
@@ -68,7 +70,7 @@ public class CsvTradesLoader {
     public static BarSeries loadBitstampSeries(String bitstampCsvFile) {
 
         // Reading all lines of the CSV file
-        InputStream stream = CsvTradesLoader.class.getClassLoader().getResourceAsStream(bitstampCsvFile);
+        InputStream stream = BitstampCsvTradesDataSource.class.getClassLoader().getResourceAsStream(bitstampCsvFile);
         List<String[]> lines = null;
         if (stream == null) {
             LOG.error("Unable to find CSV file: {}", bitstampCsvFile);
@@ -146,7 +148,7 @@ public class CsvTradesLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());
