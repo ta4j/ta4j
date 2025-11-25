@@ -58,7 +58,7 @@ public class NaN implements Num {
      * Returns a {@code Num} version of the given {@code Number}.
      *
      * <p>
-     * <b>Warning:</b> This method returns {@link NaN} regardless of {@link val}.
+     * <b>Warning:</b> This method returns {@link NaN} regardless of {@code val}.
      *
      * @param val the number
      * @return {@link #NaN}
@@ -209,6 +209,11 @@ public class NaN implements Num {
 
     @Override
     public Num log() {
+        return this;
+    }
+
+    @Override
+    public Num exp() {
         return this;
     }
 

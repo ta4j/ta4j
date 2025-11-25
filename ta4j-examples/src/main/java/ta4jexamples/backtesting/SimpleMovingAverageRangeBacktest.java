@@ -46,7 +46,7 @@ public class SimpleMovingAverageRangeBacktest {
     private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageRangeBacktest.class);
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
 
         int start = 3;
         int stop = 50;
@@ -62,7 +62,7 @@ public class SimpleMovingAverageRangeBacktest {
         List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
                 Trade.TradeType.BUY);
 
-        LOG.info(printReport(tradingStatements));
+        LOG.debug(printReport(tradingStatements));
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,8 +39,9 @@ import org.ta4j.core.num.Num;
  */
 public class MassIndexIndicator extends CachedIndicator<Num> {
 
-    private final EMAIndicator singleEma;
-    private final EMAIndicator doubleEma;
+    private final transient EMAIndicator singleEma;
+    private final transient EMAIndicator doubleEma;
+    private final int emaBarCount;
     private final int barCount;
 
     /**
@@ -52,11 +53,12 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
      */
     public MassIndexIndicator(BarSeries series, int emaBarCount, int barCount) {
         super(series);
-        final var highLowDifferential = BinaryOperation.difference(new HighPriceIndicator(series),
+        final var highLowDifferential = BinaryOperationIndicator.difference(new HighPriceIndicator(series),
                 new LowPriceIndicator(series));
+        this.emaBarCount = emaBarCount;
+        this.barCount = barCount;
         this.singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
         this.doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
-        this.barCount = barCount;
     }
 
     @Override

@@ -37,10 +37,11 @@ import org.ta4j.core.num.Num;
 public class IsLowestRuleTest {
 
     private IsLowestRule rule;
+    private BarSeries series;
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().build();
+        series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
         rule = new IsLowestRule(indicator, 3);
     }
@@ -57,5 +58,11 @@ public class IsLowestRuleTest {
         assertFalse(rule.isSatisfied(7));
         assertFalse(rule.isSatisfied(8));
         assertTrue(rule.isSatisfied(9));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }
 }

@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.numeric.BinaryOperation;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -145,7 +145,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      *                             (must be > 0)
      * @param neutralPivotValue    the neutral/equilibrium value of the oscillator;
      *                             fractional pivots are supported
-     * @throws IllegalArgumentException if timeFrame <= 0
+     * @throws IllegalArgumentException if timeFrame {@literal <=} 0
      * @throws NullPointerException     if oscillatingIndicator or neutralPivotValue
      *                                  is null
      */
@@ -165,8 +165,8 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      * @param decayFactor          the per-bar retention factor in [0, 1]. Use 1 for
      *                             no decay, values below 1 pull the indicator back
      *                             toward the neutral pivot over time
-     * @throws IllegalArgumentException if timeFrame <= 0 or decayFactor is outside
-     *                                  [0, 1]
+     * @throws IllegalArgumentException if timeFrame {@literal <=} 0 or decayFactor
+     *                                  is outside [0, 1]
      * @throws NullPointerException     if oscillatingIndicator, neutralPivotValue
      *                                  or decayFactor is null
      * @since 0.19
@@ -185,7 +185,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         this.oscillatingIndicator = oscillatingIndicator;
         this.timeFrame = timeFrame;
         this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        this.deltaFromNeutralIndicator = BinaryOperation.difference(smoothedIndicator, neutralPivotValue);
+        this.deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator, neutralPivotValue);
 
         double rawDecay = decayFactor.doubleValue();
         if (Double.isNaN(rawDecay) || Double.isInfinite(rawDecay) || rawDecay < 0.0 || rawDecay > 1.0) {
@@ -206,7 +206,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      * @param timeFrame    the period for the running total calculation (must be >
      *                     0)
      * @return the configured {@link NetMomentumIndicator}
-     * @throws IllegalArgumentException if timeFrame <= 0
+     * @throws IllegalArgumentException if timeFrame {@literal <=} 0
      * @throws NullPointerException     if rsiIndicator is null
      * @since 0.19
      */
@@ -223,8 +223,8 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
      *                     0)
      * @param decayFactor  the per-bar retention factor in [0, 1]
      * @return the configured {@link NetMomentumIndicator}
-     * @throws IllegalArgumentException if timeFrame <= 0 or decayFactor is outside
-     *                                  [0, 1]
+     * @throws IllegalArgumentException if timeFrame {@literal <=} 0 or decayFactor
+     *                                  is outside [0, 1]
      * @throws NullPointerException     if rsiIndicator or decayFactor is null
      * @since 0.19
      */

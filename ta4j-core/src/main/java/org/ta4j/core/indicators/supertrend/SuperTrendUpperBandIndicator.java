@@ -52,7 +52,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
      * Constructor.
      *
      * @param barSeries    the bar series
-     * @param atrIndicator the {@link #ATRIndicator}
+     * @param atrIndicator the {@link ATRIndicator}
      * @param multiplier   the multiplier
      */
     public SuperTrendUpperBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,

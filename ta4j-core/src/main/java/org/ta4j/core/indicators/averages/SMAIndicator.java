@@ -38,7 +38,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> indicator;
-    private final RunningTotalIndicator previousSum;
+    private final transient RunningTotalIndicator previousSum;
 
     /**
      * Constructor.

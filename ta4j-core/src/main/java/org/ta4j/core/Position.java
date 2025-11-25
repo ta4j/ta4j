@@ -176,7 +176,8 @@ public class Position implements Serializable {
      * @param price  the price
      * @param amount the amount
      * @return the trade
-     * @throws IllegalStateException if {@link #isOpened()} and index < entry.index
+     * @throws IllegalStateException if {@link #isOpened()} and index {@literal <}
+     *                               entry.index
      */
     public Trade operate(int index, Num price, Num amount) {
         Trade trade = null;
@@ -222,7 +223,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return true if position is closed and {@link #getProfit()} < 0
+     * @return true if position is closed and {@link #getProfit()} {@literal <} 0
      */
     public boolean hasLoss() {
         return getProfit().isNegative();

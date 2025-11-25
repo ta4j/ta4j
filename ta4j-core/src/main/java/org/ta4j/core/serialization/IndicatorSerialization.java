@@ -1,0 +1,1005 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.serialization;
+
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.jar.JarFile;
+import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
+
+/**
+ * Serializes and deserializes {@link Indicator} instances into structured
+ * {@link ComponentDescriptor} payloads.
+ *
+ * <p>
+ * <b>Security Considerations:</b>
+ * </p>
+ * <ul>
+ * <li>Uses reflection extensively; may require appropriate security permissions
+ * or module opens directives</li>
+ * <li>Only instantiates classes from the {@code org.ta4j.core.indicators}
+ * package</li>
+ * <li>Deserialization from untrusted sources should be validated at the
+ * application level</li>
+ * </ul>
+ *
+ * @since 0.19
+ */
+
+public final class IndicatorSerialization {
+
+    private static final Logger log = LoggerFactory.getLogger(IndicatorSerialization.class);
+    private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
+    private static final String PACKAGE_PATH = INDICATOR_PACKAGE.replace('.', '/');
+    private static final ConcurrentMap<String, List<Class<?>>> INDICATOR_TYPES = new ConcurrentHashMap<>();
+    private static final Set<String> IGNORED_CHILD_INDICATORS = Set.of();
+
+    private static final Set<String> IGNORED_CHILD_FIELDS = Set.of();
+    private static final Object NO_PARAMETER_VALUE = new Object();
+
+    private IndicatorSerialization() {
+    }
+
+    /**
+     * Serializes an {@link Indicator} to a JSON payload.
+     *
+     * @param indicator indicator instance
+     * @return JSON representation
+     * @throws IndicatorSerializationException if serialization fails due to
+     *                                         reflection errors, class loading
+     *                                         issues, or JSON generation problems
+     */
+    public static String toJson(Indicator<?> indicator) {
+        try {
+            return ComponentSerialization.toJson(describe(indicator));
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException(
+                    "Failed to serialize indicator to JSON: " + indicator.getClass().getName(), e);
+        }
+    }
+
+    /**
+     * Converts an {@link Indicator} into a {@link ComponentDescriptor} hierarchy.
+     *
+     * @param indicator indicator instance
+     * @return descriptor representing the indicator
+     * @throws IndicatorSerializationException if descriptor creation fails due to
+     *                                         reflection errors, class loading
+     *                                         issues, or circular reference
+     *                                         problems
+     */
+    public static ComponentDescriptor describe(Indicator<?> indicator) {
+        try {
+            Objects.requireNonNull(indicator, "indicator");
+            IdentityHashMap<Indicator<?>, ComponentDescriptor> visited = new IdentityHashMap<>();
+            return describe(indicator, visited);
+        } catch (NullPointerException e) {
+            throw new IndicatorSerializationException("Indicator cannot be null", e);
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException(
+                    "Failed to create descriptor for indicator: " + indicator.getClass().getName(), e);
+        }
+    }
+
+    /**
+     * Rebuilds an indicator from a JSON payload.
+     *
+     * @param series bar series to attach to the indicator
+     * @param json   JSON representation generated by {@link #toJson(Indicator)}
+     * @return reconstructed indicator
+     * @throws IndicatorSerializationException if deserialization fails due to
+     *                                         invalid JSON, unknown indicator
+     *                                         types, missing parameters,
+     *                                         instantiation failures, or class
+     *                                         loading issues
+     */
+    public static Indicator<?> fromJson(BarSeries series, String json) {
+        try {
+            ComponentDescriptor descriptor = ComponentSerialization.parse(json);
+            return fromDescriptor(series, descriptor);
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException("Failed to deserialize indicator from JSON", e);
+        }
+    }
+
+    /**
+     * Rebuilds an indicator from a descriptor tree.
+     *
+     * @param series     bar series to attach to the indicator
+     * @param descriptor descriptor describing the indicator
+     * @return reconstructed indicator
+     * @throws IndicatorSerializationException if instantiation fails due to unknown
+     *                                         indicator types, missing parameters,
+     *                                         constructor failures, or class
+     *                                         loading issues
+     */
+    public static Indicator<?> fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
+        try {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(descriptor, "descriptor");
+            return instantiate(series, descriptor);
+        } catch (NullPointerException e) {
+            throw new IndicatorSerializationException("Series and descriptor cannot be null", e);
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException(
+                    "Failed to instantiate indicator from descriptor: " + descriptor.getType(), e);
+        }
+    }
+
+    private static ComponentDescriptor describe(Indicator<?> indicator,
+            IdentityHashMap<Indicator<?>, ComponentDescriptor> visited) {
+        ComponentDescriptor cached = visited.get(indicator);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Extract type and parameters first
+        String type = indicator.getClass().getSimpleName();
+        Map<String, Object> parameters = extractNumericParameters(indicator);
+
+        // Create a placeholder descriptor with type and parameters (no children yet)
+        // and insert it into visited BEFORE processing children to prevent infinite
+        // recursion on circular indicator graphs
+        ComponentDescriptor.Builder placeholderBuilder = ComponentDescriptor.builder().withType(type);
+        if (!parameters.isEmpty()) {
+            placeholderBuilder.withParameters(parameters);
+        }
+        ComponentDescriptor placeholder = placeholderBuilder.build();
+        visited.put(indicator, placeholder);
+
+        // Now process children - if we encounter a circular reference, we'll find
+        // the placeholder in visited and return it, breaking the cycle
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
+        if (!parameters.isEmpty()) {
+            builder.withParameters(parameters);
+        }
+
+        List<ChildView> childIndicators = extractChildIndicators(indicator);
+        for (ChildView child : childIndicators) {
+            ComponentDescriptor childDescriptor = describe(child.indicator(), visited);
+            // Indicators don't use labels - add component directly without label
+            builder.addComponent(childDescriptor);
+        }
+
+        // Build the final descriptor with all children and replace the placeholder
+        ComponentDescriptor descriptor = builder.build();
+        visited.put(indicator, descriptor);
+        return descriptor;
+    }
+
+    private static Indicator<?> instantiate(BarSeries series, ComponentDescriptor descriptor) {
+        Class<?> type;
+        try {
+            type = resolveIndicatorClass(descriptor.getType());
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException("Failed to resolve indicator class: " + descriptor.getType(), e);
+        }
+        if (type == null) {
+            throw new IndicatorSerializationException("Unknown indicator type: " + descriptor.getType());
+        }
+        List<Indicator<?>> components = new ArrayList<>();
+        for (ComponentDescriptor componentDescriptor : descriptor.getComponents()) {
+            components.add(instantiate(series, componentDescriptor));
+        }
+
+        Map<String, Object> parameters = descriptor.getParameters();
+        Object instance;
+        try {
+            instance = tryInstantiate(type, series, components, parameters);
+        } catch (RuntimeException e) {
+            if (e instanceof IndicatorSerializationException) {
+                throw e;
+            }
+            throw new IndicatorSerializationException("Failed to instantiate indicator: " + type.getName(), e);
+        }
+        if (!(instance instanceof Indicator<?> indicator)) {
+            throw new IndicatorSerializationException(
+                    "Constructed type does not implement Indicator: " + type.getName());
+        }
+        return indicator;
+    }
+
+    private static Object tryInstantiate(Class<?> type, BarSeries series, List<Indicator<?>> components,
+            Map<String, Object> parameters) {
+        Constructor<?>[] constructors = type.getDeclaredConstructors();
+        Arrays.sort(constructors,
+                (left, right) -> Integer.compare(right.getParameterCount(), left.getParameterCount()));
+        Map<String, Object> parameterValues = parameters == null ? Map.of() : new LinkedHashMap<>(parameters);
+        boolean hasIndicatorConstructor = Arrays.stream(constructors)
+                .filter(constructor -> !Modifier.isPrivate(constructor.getModifiers()))
+                .anyMatch(IndicatorSerialization::constructorConsumesIndicators);
+        InvocationPlan bestPlan = null;
+        for (Constructor<?> constructor : constructors) {
+            if (Modifier.isPrivate(constructor.getModifiers())) {
+                continue;
+            }
+            Optional<InvocationPlan> plan = tryInvoke(constructor, series, components, parameterValues,
+                    hasIndicatorConstructor);
+            if (plan.isEmpty()) {
+                continue;
+            }
+            InvocationPlan candidate = plan.get();
+            if (bestPlan == null || isBetterMatch(candidate, bestPlan, components.size())) {
+                bestPlan = candidate;
+                if (candidate.consumedComponents() == components.size()) {
+                    break;
+                }
+            }
+        }
+        if (bestPlan != null) {
+            try {
+                bestPlan.constructor().setAccessible(true);
+            } catch (SecurityException ignored) {
+                // Ignore - proceed with existing accessibility
+            }
+            try {
+                return bestPlan.constructor().newInstance(bestPlan.arguments());
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new IndicatorSerializationException("Unable to instantiate indicator: " + type.getName(), e);
+            }
+        }
+        throw new IndicatorSerializationException(
+                "Unable to instantiate indicator: " + type.getName() + " - no suitable constructor found");
+    }
+
+    private static Optional<InvocationPlan> tryInvoke(Constructor<?> constructor, BarSeries series,
+            List<Indicator<?>> components, Map<String, Object> parameters, boolean hasIndicatorConstructor) {
+        if (components == null) {
+            return Optional.empty();
+        }
+        Class<?>[] parameterTypes = constructor.getParameterTypes();
+        Parameter[] parameterMetadata = constructor.getParameters();
+        Type[] genericParameterTypes = constructor.getGenericParameterTypes();
+        Object[] args = new Object[parameterTypes.length];
+        int componentIndex = 0;
+        boolean bulkConsumed = false;
+        boolean constructorUsesIndicators = false;
+        LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(parameters);
+        List<NumericParameterRequest> numericRequests = new ArrayList<>();
+
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> parameterType = parameterTypes[i];
+            Parameter parameter = parameterMetadata.length > i ? parameterMetadata[i] : null;
+            if (BarSeries.class.isAssignableFrom(parameterType)) {
+                args[i] = series;
+            } else if (Indicator.class.isAssignableFrom(parameterType)) {
+                constructorUsesIndicators = true;
+                if (componentIndex >= components.size()) {
+                    return Optional.empty();
+                }
+                Indicator<?> component = components.get(componentIndex++);
+                if (!parameterType.isInstance(component)) {
+                    return Optional.empty();
+                }
+                args[i] = component;
+            } else if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
+                constructorUsesIndicators = true;
+                if (bulkConsumed) {
+                    return Optional.empty();
+                }
+                Indicator<?>[] remaining = components.subList(componentIndex, components.size())
+                        .toArray(Indicator[]::new);
+                for (Indicator<?> component : remaining) {
+                    if (!parameterType.getComponentType().isInstance(component)) {
+                        return Optional.empty();
+                    }
+                }
+                args[i] = remaining;
+                componentIndex = components.size();
+                bulkConsumed = true;
+            } else if (List.class.isAssignableFrom(parameterType)) {
+                Type genericType = i < genericParameterTypes.length ? genericParameterTypes[i] : null;
+                Class<?> listElementType = getListElementType(genericType);
+                if (listElementType != null && Indicator.class.isAssignableFrom(listElementType)) {
+                    constructorUsesIndicators = true;
+                    if (bulkConsumed) {
+                        return Optional.empty();
+                    }
+                    List<Indicator<?>> remaining = new ArrayList<>(
+                            components.subList(componentIndex, components.size()));
+                    for (Indicator<?> component : remaining) {
+                        if (!listElementType.isInstance(component)) {
+                            return Optional.empty();
+                        }
+                    }
+                    args[i] = remaining;
+                    componentIndex = components.size();
+                    bulkConsumed = true;
+                } else {
+                    numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
+                }
+            } else {
+                numericRequests.add(new NumericParameterRequest(i, parameterType, parameter));
+            }
+        }
+
+        Map<Integer, Object> resolvedValues = new HashMap<>();
+        for (NumericParameterRequest request : numericRequests) {
+            Object value = extractNamedParameterValue(request.parameter(), parameterPool);
+            if (value != NO_PARAMETER_VALUE) {
+                resolvedValues.put(request.index(), value);
+            }
+        }
+
+        for (NumericParameterRequest request : numericRequests) {
+            if (resolvedValues.containsKey(request.index())) {
+                continue;
+            }
+            Object value = pollNextParameterValue(parameterPool);
+            if (value == NO_PARAMETER_VALUE) {
+                return Optional.empty();
+            }
+            resolvedValues.put(request.index(), value);
+        }
+
+        for (NumericParameterRequest request : numericRequests) {
+            Object value = resolvedValues.get(request.index());
+            Object converted = convertNumericValue(value, request.type(), series);
+            if (converted == null) {
+                return Optional.empty();
+            }
+            args[request.index()] = converted;
+        }
+
+        // Validate that all components were consumed
+        // Note: components is guaranteed non-null due to early return check above
+        boolean hasComponents = !components.isEmpty();
+        if (!constructorUsesIndicators && hasComponents && hasIndicatorConstructor) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators));
+    }
+
+    private static boolean constructorConsumesIndicators(Constructor<?> constructor) {
+        Class<?>[] parameterTypes = constructor.getParameterTypes();
+        Type[] genericTypes = constructor.getGenericParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> parameterType = parameterTypes[i];
+            if (Indicator.class.isAssignableFrom(parameterType)) {
+                return true;
+            }
+            if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
+                return true;
+            }
+            if (List.class.isAssignableFrom(parameterType)) {
+                Type genericType = i < genericTypes.length ? genericTypes[i] : null;
+                Class<?> elementType = getListElementType(genericType);
+                if (elementType != null && Indicator.class.isAssignableFrom(elementType)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isBetterMatch(InvocationPlan candidate, InvocationPlan current, int totalComponents) {
+        if (current == null) {
+            return true;
+        }
+        boolean candidateUsesAll = totalComponents > 0 && candidate.consumedComponents() >= totalComponents;
+        boolean currentUsesAll = totalComponents > 0 && current.consumedComponents() >= totalComponents;
+        if (candidateUsesAll && !currentUsesAll) {
+            return true;
+        }
+        if (currentUsesAll && !candidateUsesAll) {
+            return false;
+        }
+        if (candidate.consumedComponents() != current.consumedComponents()) {
+            return candidate.consumedComponents() > current.consumedComponents();
+        }
+        if (candidate.usesIndicators() && !current.usesIndicators()) {
+            return true;
+        }
+        return false;
+    }
+
+    private static Class<?> getListElementType(Type genericType) {
+        if (genericType instanceof ParameterizedType parameterizedType) {
+            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            if (typeArguments.length > 0) {
+                Type elementType = typeArguments[0];
+                if (elementType instanceof Class<?> clazz) {
+                    return clazz;
+                } else if (elementType instanceof ParameterizedType parameterizedElementType) {
+                    Type rawType = parameterizedElementType.getRawType();
+                    if (rawType instanceof Class<?> clazz) {
+                        return clazz;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Object extractNamedParameterValue(Parameter parameter, LinkedHashMap<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty() || parameter == null || !parameter.isNamePresent()) {
+            return NO_PARAMETER_VALUE;
+        }
+        String name = parameter.getName();
+        if (parameters.containsKey(name)) {
+            return parameters.remove(name);
+        }
+        Iterator<Map.Entry<String, Object>> iterator = parameters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            if (entry.getKey().equalsIgnoreCase(name)) {
+                iterator.remove();
+                return entry.getValue();
+            }
+        }
+        String normalizedName = normalizeName(name);
+        if (normalizedName.isEmpty()) {
+            return NO_PARAMETER_VALUE;
+        }
+        iterator = parameters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            String normalizedKey = normalizeName(entry.getKey());
+            if (normalizedKey.startsWith(normalizedName)) {
+                iterator.remove();
+                return entry.getValue();
+            }
+        }
+        return NO_PARAMETER_VALUE;
+    }
+
+    private static Object pollNextParameterValue(LinkedHashMap<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return NO_PARAMETER_VALUE;
+        }
+        Iterator<Map.Entry<String, Object>> iterator = parameters.entrySet().iterator();
+        if (!iterator.hasNext()) {
+            return NO_PARAMETER_VALUE;
+        }
+        Map.Entry<String, Object> entry = iterator.next();
+        iterator.remove();
+        return entry.getValue();
+    }
+
+    private static String normalizeName(String name) {
+        StringBuilder builder = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                builder.append(Character.toLowerCase(ch));
+            }
+        }
+        return builder.toString();
+    }
+
+    private static Object convertNumericValue(Object value, Class<?> targetType, BarSeries series) {
+        if (value == null) {
+            return null;
+        }
+        if (targetType == boolean.class || targetType == Boolean.class) {
+            return convertBooleanValue(value);
+        }
+        if (targetType.isArray()) {
+            return convertNumericArrayValue(value, targetType, series);
+        }
+        if (targetType == String.class) {
+            return value.toString();
+        }
+        if (targetType.isEnum()) {
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
+            return Enum.valueOf(enumClass, value.toString());
+        }
+        if (Num.class.isAssignableFrom(targetType)) {
+            return series.numFactory().numOf(value.toString());
+        }
+        if (targetType == Object.class) {
+            try {
+                return series.numFactory().numOf(value.toString());
+            } catch (NumberFormatException ex) {
+                return value;
+            }
+        }
+        Number coerced = coerceNumber(value);
+        if (targetType == int.class || targetType == Integer.class) {
+            return coerced.intValue();
+        }
+        if (targetType == long.class || targetType == Long.class) {
+            return coerced.longValue();
+        }
+        if (targetType == double.class || targetType == Double.class) {
+            return coerced.doubleValue();
+        }
+        if (targetType == float.class || targetType == Float.class) {
+            return coerced.floatValue();
+        }
+        if (targetType == short.class || targetType == Short.class) {
+            return coerced.shortValue();
+        }
+        if (targetType == byte.class || targetType == Byte.class) {
+            return coerced.byteValue();
+        }
+        if (Number.class.isAssignableFrom(targetType)) {
+            if (targetType.isInstance(coerced)) {
+                return coerced;
+            }
+            if (targetType == BigDecimal.class) {
+                return new BigDecimal(coerced.toString());
+            }
+        }
+        return null;
+    }
+
+    private static Object convertNumericArrayValue(Object value, Class<?> arrayType, BarSeries series) {
+        Class<?> componentType = arrayType.getComponentType();
+        List<?> elements;
+        if (value instanceof List<?> list) {
+            elements = list;
+        } else if (value != null && value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            List<Object> copied = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                copied.add(Array.get(value, i));
+            }
+            elements = copied;
+        } else {
+            elements = List.of(value);
+        }
+        Object array = Array.newInstance(componentType, elements.size());
+        for (int i = 0; i < elements.size(); i++) {
+            Object converted = convertNumericValue(elements.get(i), componentType, series);
+            if (converted == null) {
+                return null;
+            }
+            Array.set(array, i, converted);
+        }
+        return array;
+    }
+
+    private static Number coerceNumber(Object value) {
+        if (value instanceof Number number) {
+            return number;
+        }
+        return new BigDecimal(value.toString());
+    }
+
+    private static Boolean convertBooleanValue(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof String string) {
+            return Boolean.parseBoolean(string);
+        }
+        return null;
+    }
+
+    private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        for (FieldView field : collectFields(indicator)) {
+            if (!field.isNumeric()) {
+                Object raw = field.value();
+                if (raw instanceof Enum<?> enumValue) {
+                    parameters.put(field.label(), enumValue.name());
+                } else if (raw instanceof List<?> list && isNumericList(list)) {
+                    parameters.put(field.label(), formatNumericList(list));
+                } else if (raw != null && raw.getClass().isArray() && isNumericArray(raw)) {
+                    parameters.put(field.label(), formatNumericArray(raw));
+                } else if (raw instanceof List<?> list && isBooleanList(list)) {
+                    parameters.put(field.label(), formatBooleanList(list));
+                } else if (raw != null && raw.getClass().isArray() && isBooleanArray(raw)) {
+                    parameters.put(field.label(), formatBooleanArray(raw));
+                } else if (raw instanceof Boolean) {
+                    parameters.put(field.label(), raw);
+                }
+                continue;
+            }
+            Object formatted = formatNumericValue(field.value());
+            if (formatted != null) {
+                parameters.put(field.label(), formatted);
+            }
+        }
+        return parameters;
+    }
+
+    private static List<ChildView> extractChildIndicators(Indicator<?> indicator) {
+        List<ChildView> children = new ArrayList<>();
+        for (FieldView field : collectFields(indicator)) {
+            if (!field.isIndicator()) {
+                continue;
+            }
+            Object value = field.value();
+            if (value instanceof Indicator<?> child && child != indicator) {
+                if (!shouldIgnoreChild(child) && !shouldIgnoreChildField(field.label(), indicator)) {
+                    children.add(new ChildView(field.label(), child));
+                }
+            } else if (value instanceof List<?> list) {
+                int index = 0;
+                for (Object element : list) {
+                    if (element instanceof Indicator<?> child) {
+                        if (!shouldIgnoreChild(child)) {
+                            children.add(new ChildView(field.label() + "[" + index + "]", child));
+                        }
+                        index++;
+                    }
+                }
+            } else if (value != null && value.getClass().isArray()
+                    && Indicator.class.isAssignableFrom(value.getClass().getComponentType())) {
+                Indicator<?>[] array = (Indicator<?>[]) value;
+                for (int i = 0; i < array.length; i++) {
+                    Indicator<?> child = array[i];
+                    if (child != null && !shouldIgnoreChild(child)) {
+                        children.add(new ChildView(field.label() + "[" + i + "]", child));
+                    }
+                }
+            }
+        }
+        return children;
+    }
+
+    private static boolean shouldIgnoreChild(Indicator<?> indicator) {
+        return IGNORED_CHILD_INDICATORS.contains(indicator.getClass().getName());
+    }
+
+    private static boolean shouldIgnoreChildField(String fieldName, Indicator<?> parent) {
+        String fullName = parent.getClass().getName() + "$" + fieldName;
+        return IGNORED_CHILD_FIELDS.contains(fullName);
+    }
+
+    private static Object formatNumericValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Num num) {
+            return trimDecimal(num.getDelegate().toString());
+        }
+        if (value instanceof BigDecimal decimal) {
+            return trimDecimal(decimal.toString());
+        }
+        if (value instanceof Double || value instanceof Float) {
+            BigDecimal decimal = BigDecimal.valueOf(((Number) value).doubleValue());
+            return trimDecimal(decimal.toPlainString());
+        }
+        if (value instanceof Number) {
+            return value;
+        }
+        return null;
+    }
+
+    private static boolean isNumericArray(Object array) {
+        int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(array, i);
+            if (!isNumericElement(element)) {
+                return false;
+            }
+        }
+        return length > 0;
+    }
+
+    private static boolean isNumericList(List<?> list) {
+        if (list.isEmpty()) {
+            return false;
+        }
+        for (Object element : list) {
+            if (!isNumericElement(element)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isNumericElement(Object value) {
+        if (value == null) {
+            return false;
+        }
+        return value instanceof Num || value instanceof Number || value instanceof String;
+    }
+
+    private static List<Object> formatNumericList(List<?> list) {
+        List<Object> formatted = new ArrayList<>(list.size());
+        for (Object element : list) {
+            formatted.add(formatNumericValue(element));
+        }
+        return formatted;
+    }
+
+    private static List<Object> formatNumericArray(Object array) {
+        int length = Array.getLength(array);
+        List<Object> formatted = new ArrayList<>(length);
+        for (int i = 0; i < length; i++) {
+            formatted.add(formatNumericValue(Array.get(array, i)));
+        }
+        return formatted;
+    }
+
+    private static boolean isBooleanArray(Object array) {
+        int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            if (!(Array.get(array, i) instanceof Boolean)) {
+                return false;
+            }
+        }
+        return length > 0;
+    }
+
+    private static boolean isBooleanList(List<?> list) {
+        if (list.isEmpty()) {
+            return false;
+        }
+        for (Object element : list) {
+            if (!(element instanceof Boolean)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<Boolean> formatBooleanList(List<?> list) {
+        List<Boolean> formatted = new ArrayList<>(list.size());
+        for (Object element : list) {
+            formatted.add((Boolean) element);
+        }
+        return formatted;
+    }
+
+    private static List<Boolean> formatBooleanArray(Object array) {
+        int length = Array.getLength(array);
+        List<Boolean> formatted = new ArrayList<>(length);
+        for (int i = 0; i < length; i++) {
+            formatted.add((Boolean) Array.get(array, i));
+        }
+        return formatted;
+    }
+
+    private static String trimDecimal(String value) {
+        try {
+            BigDecimal decimal = new BigDecimal(value);
+            decimal = decimal.stripTrailingZeros();
+            if (decimal.scale() < 0) {
+                decimal = decimal.setScale(0);
+            }
+            return decimal.toPlainString();
+        } catch (NumberFormatException e) {
+            return value;
+        }
+    }
+
+    private static List<FieldView> collectFields(Indicator<?> indicator) {
+        List<FieldView> fields = new ArrayList<>();
+        Class<?> type = indicator.getClass();
+        while (type != null && type != Object.class && type != AbstractIndicator.class && type != CachedIndicator.class
+                && type != RecursiveCachedIndicator.class) {
+            Field[] declared = type.getDeclaredFields();
+            for (Field field : declared) {
+                if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()
+                        || Modifier.isTransient(field.getModifiers())) {
+                    continue;
+                }
+                field.setAccessible(true);
+                try {
+                    Object value = field.get(indicator);
+                    fields.add(new FieldView(field.getName(), value, field.getType()));
+                } catch (IllegalAccessException e) {
+                    log.warn("Unable to access field '{}' in class '{}' for indicator serialization", field.getName(),
+                            type.getName(), e);
+                }
+            }
+            type = type.getSuperclass();
+        }
+        return fields;
+    }
+
+    private static Class<?> resolveIndicatorClass(String simpleName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return null;
+        }
+        ensureTypeCache();
+        List<Class<?>> types = INDICATOR_TYPES.get(simpleName);
+        if (types == null || types.isEmpty()) {
+            return null;
+        }
+        if (types.size() > 1) {
+            throw new IndicatorSerializationException(
+                    "Multiple indicator classes share the simple name: " + simpleName);
+        }
+        return types.getFirst();
+    }
+
+    private static void ensureTypeCache() {
+        if (!INDICATOR_TYPES.isEmpty()) {
+            return;
+        }
+        synchronized (INDICATOR_TYPES) {
+            if (!INDICATOR_TYPES.isEmpty()) {
+                return;
+            }
+            try {
+                ClassLoader loader = Thread.currentThread().getContextClassLoader();
+                if (loader == null) {
+                    loader = IndicatorSerialization.class.getClassLoader();
+                }
+                if (loader == null) {
+                    throw new IndicatorSerializationException(
+                            "No ClassLoader available: both Thread.currentThread().getContextClassLoader() "
+                                    + "and IndicatorSerialization.class.getClassLoader() returned null. "
+                                    + "Cannot initialize indicator type cache.");
+                }
+                Enumeration<URL> resources = loader.getResources(PACKAGE_PATH);
+                while (resources.hasMoreElements()) {
+                    URL resource = resources.nextElement();
+                    scanResource(loader, resource);
+                }
+            } catch (IOException e) {
+                throw new IndicatorSerializationException("Failed to scan indicator classes", e);
+            }
+        }
+    }
+
+    private static void scanResource(ClassLoader loader, URL resource) {
+        String protocol = resource.getProtocol();
+        if ("file".equals(protocol)) {
+            try {
+                Path root = Paths.get(resource.toURI());
+                scanDirectory(loader, root, INDICATOR_PACKAGE);
+            } catch (IOException | URISyntaxException e) {
+                throw new IndicatorSerializationException("Failed to scan indicator directory", e);
+            }
+        } else if ("jar".equals(protocol)) {
+            try {
+                JarURLConnection connection = (JarURLConnection) resource.openConnection();
+                try (JarFile jarFile = connection.getJarFile()) {
+                    scanJar(loader, jarFile, PACKAGE_PATH);
+                }
+            } catch (IOException e) {
+                throw new IndicatorSerializationException("Failed to scan indicator jar", e);
+            }
+        }
+    }
+
+    private static void scanDirectory(ClassLoader loader, Path root, String packageName) throws IOException {
+        try (Stream<Path> paths = Files.walk(root)) {
+            paths.filter(path -> Files.isRegularFile(path) && path.toString().endsWith(".class")).forEach(path -> {
+                Path relative = root.relativize(path);
+                String className = packageName + '.' + toClassName(relative);
+                registerIfIndicator(loader, className);
+            });
+        }
+    }
+
+    private static void scanJar(ClassLoader loader, JarFile jarFile, String packagePath) {
+        jarFile.stream()
+                .filter(entry -> !entry.isDirectory() && entry.getName().startsWith(packagePath)
+                        && entry.getName().endsWith(".class"))
+                .forEach(entry -> {
+                    String className = entry.getName().replace('/', '.').replaceAll("\\.class$", "");
+                    registerIfIndicator(loader, className);
+                });
+    }
+
+    private static String toClassName(Path relative) {
+        String joined = relative.toString().replace('/', '.').replace('\\', '.');
+        return joined.substring(0, joined.length() - ".class".length());
+    }
+
+    private static void registerIfIndicator(ClassLoader loader, String className) {
+        if (className.contains("$")) {
+            return;
+        }
+        try {
+            Class<?> type = Class.forName(className, false, loader);
+            if (!Indicator.class.isAssignableFrom(type) || Modifier.isAbstract(type.getModifiers())) {
+                return;
+            }
+            INDICATOR_TYPES.compute(type.getSimpleName(), (key, existing) -> {
+                List<Class<?>> list = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+                list.add(type);
+                return list;
+            });
+        } catch (ClassNotFoundException ignored) {
+            // Ignore classes that cannot be loaded
+        }
+    }
+
+    private record FieldView(String label, Object value, Class<?> type) {
+
+        boolean isIndicator() {
+            if (value instanceof Indicator<?> || value instanceof List<?>) {
+                return true;
+            }
+            if (value != null && value.getClass().isArray()) {
+                return Indicator.class.isAssignableFrom(value.getClass().getComponentType());
+            }
+            return Indicator.class.isAssignableFrom(type);
+        }
+
+        boolean isNumeric() {
+            if (value instanceof Num) {
+                return true;
+            }
+            if (type.isPrimitive()) {
+                return type != boolean.class && type != char.class;
+            }
+            return Number.class.isAssignableFrom(type) || value instanceof Number;
+        }
+    }
+
+    private record ChildView(String label, Indicator<?> indicator) {
+    }
+
+    private record NumericParameterRequest(int index, Class<?> type, Parameter parameter) {
+    }
+
+    private record InvocationPlan(Constructor<?> constructor, Object[] arguments, int consumedComponents,
+            boolean usesIndicators) {
+    }
+}

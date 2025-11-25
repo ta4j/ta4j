@@ -43,7 +43,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
  * Shared fixtures for charting tests. Relies on the {@code Mock*} utilities
  * from {@code ta4j-core} to guarantee deterministic datasets.
  */
-final class ChartingTestFixtures {
+public final class ChartingTestFixtures {
 
     private static final Instant START_TIME = Instant.EPOCH.plus(Duration.ofDays(1));
     private static final Duration DAILY_PERIOD = Duration.ofDays(1);
@@ -53,31 +53,31 @@ final class ChartingTestFixtures {
         throw new AssertionError("No instances");
     }
 
-    static BarSeries standardDailySeries() {
+    public static BarSeries standardDailySeries() {
         return linearSeries("Test Series", DAILY_PERIOD, 10, 100.0, 1.0, 1.0, 1000.0, 100.0);
     }
 
-    static BarSeries dailySeries(final String name) {
+    public static BarSeries dailySeries(final String name) {
         return linearSeries(name, DAILY_PERIOD, 10, 100.0, 1.0, 1.0, 1000.0, 100.0);
     }
 
-    static BarSeries hourlySeries(final String name) {
+    public static BarSeries hourlySeries(final String name) {
         return linearSeries(name, HOURLY_PERIOD, 5, 100.0, 0.5, 0.5, 500.0, 50.0);
     }
 
-    static BarSeries problematicSeries() {
+    public static BarSeries problematicSeries() {
         final var series = new MockBarSeriesBuilder().withName("Problematic Series").build();
         addBar(series, START_TIME, DAILY_PERIOD, 0.0, 0.0, 0.0, 0.0, 0.0);
         return series;
     }
 
-    static BarSeries seriesWithSpecialChars() {
+    public static BarSeries seriesWithSpecialChars() {
         final var series = new MockBarSeriesBuilder().withName("Test:Series/With\\Special?Chars*<>|\"").build();
         addBar(series, START_TIME, DAILY_PERIOD, 100.0, 105.0, 99.0, 104.0, 1000.0);
         return series;
     }
 
-    static TradingRecord completedTradeRecord(final BarSeries series) {
+    public static TradingRecord completedTradeRecord(final BarSeries series) {
         final TradingRecord record = new BaseTradingRecord();
 
         if (series.getBarCount() >= 6) {
@@ -91,11 +91,11 @@ final class ChartingTestFixtures {
         return record;
     }
 
-    static TradingRecord emptyRecord() {
+    public static TradingRecord emptyRecord() {
         return new BaseTradingRecord();
     }
 
-    static TradingRecord openPositionRecord(final BarSeries series) {
+    public static TradingRecord openPositionRecord(final BarSeries series) {
         final TradingRecord record = new BaseTradingRecord();
         if (!series.isEmpty()) {
             final Bar firstBar = series.getBar(series.getBeginIndex());
@@ -104,16 +104,16 @@ final class ChartingTestFixtures {
         return record;
     }
 
-    static DefaultOHLCDataset singleCandleDataset(final boolean upCandle) {
+    public static DefaultOHLCDataset singleCandleDataset(final boolean upCandle) {
         final double close = upCandle ? 104.0 : 96.0;
         return buildDataset("Test", List.of(ohlcItem(100.0, 105.0, 99.0, close, 1000.0, START_TIME)));
     }
 
-    static DefaultOHLCDataset candleDatasetWithZeros() {
+    public static DefaultOHLCDataset candleDatasetWithZeros() {
         return buildDataset("Test", List.of(ohlcItem(0.0, 0.0, 0.0, 0.0, 0.0, START_TIME)));
     }
 
-    static DefaultOHLCDataset linearOhlcDataset(final String name, final int count) {
+    public static DefaultOHLCDataset linearOhlcDataset(final String name, final int count) {
         final var items = IntStream.range(0, count).mapToObj(i -> {
             final Instant endTime = START_TIME.plus(DAILY_PERIOD.multipliedBy(i));
             final double open = 100.0 + i;
@@ -126,7 +126,7 @@ final class ChartingTestFixtures {
         return buildDataset(name, items);
     }
 
-    static DefaultOHLCDataset seriesToDataset(final BarSeries barSeries) {
+    public static DefaultOHLCDataset seriesToDataset(final BarSeries barSeries) {
         final var items = IntStream.rangeClosed(barSeries.getBeginIndex(), barSeries.getEndIndex()).mapToObj(i -> {
             final Bar bar = barSeries.getBar(i);
             return new OHLCDataItem(Date.from(bar.getEndTime()), bar.getOpenPrice().doubleValue(),

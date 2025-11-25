@@ -30,6 +30,7 @@ import com.google.gson.JsonParser;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.serialization.DurationTypeAdapter;
 
@@ -89,8 +90,9 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * <p>
      * Performance: Uses a hybrid approach that selects the optimal algorithm based
      * on the limit size relative to the total number of strategies. For small
-     * limits (< 25% of total), uses a heap-based partial sort O(n log k). For
-     * larger limits, uses a full sort O(n log n) which is more cache-friendly.
+     * limits ({@literal <} 25% of total), uses a heap-based partial sort O(n log
+     * k). For larger limits, uses a full sort O(n log n) which is more
+     * cache-friendly.
      *
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
@@ -119,24 +121,61 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         // Pre-calculate criterion values for all statements using IdentityHashMap
         // (faster than HashMap for object identity)
         Map<TradingStatement, List<Num>> criterionValuesMap = new IdentityHashMap<>(tradingStatements.size());
+        Map<TradingStatement, Map<AnalysisCriterion, Num>> criterionScoresMap = new IdentityHashMap<>(
+                tradingStatements.size());
         for (TradingStatement statement : tradingStatements) {
             List<Num> values = new ArrayList<>(criteria.size());
+            Map<AnalysisCriterion, Num> scores = new HashMap<>(criteria.size());
             for (AnalysisCriterion criterion : criteria) {
                 Num value = criterion.calculate(barSeries, statement.getTradingRecord());
                 values.add(value);
+                scores.put(criterion, value);
             }
             criterionValuesMap.put(statement, values);
+            criterionScoresMap.put(statement, scores);
         }
 
         Comparator<TradingStatement> comparator = createComparator(criteria, criterionValuesMap);
 
         // Use heap-based partial sort for small limits (more efficient O(n log k))
         // Use full sort for large limits (more cache-friendly)
+        List<TradingStatement> topStatements;
         if (effectiveLimit < tradingStatements.size() / 4) {
-            return selectTopKWithHeap(tradingStatements, effectiveLimit, comparator);
+            topStatements = selectTopKWithHeap(tradingStatements, effectiveLimit, comparator);
         } else {
-            return selectTopKWithSort(tradingStatements, effectiveLimit, comparator);
+            topStatements = selectTopKWithSort(tradingStatements, effectiveLimit, comparator);
         }
+
+        // Attach criterion scores to the returned statements
+        return attachCriterionScores(topStatements, criterionScoresMap);
+    }
+
+    /**
+     * Attaches criterion scores to trading statements by creating new
+     * BaseTradingStatement instances with the scores included.
+     *
+     * @param statements         the trading statements to attach scores to
+     * @param criterionScoresMap map of statement to criterion scores
+     * @return list of trading statements with criterion scores attached
+     */
+    private List<TradingStatement> attachCriterionScores(List<TradingStatement> statements,
+            Map<TradingStatement, Map<AnalysisCriterion, Num>> criterionScoresMap) {
+        List<TradingStatement> result = new ArrayList<>(statements.size());
+        for (TradingStatement statement : statements) {
+            Map<AnalysisCriterion, Num> scores = criterionScoresMap.get(statement);
+            if (statement instanceof BaseTradingStatement && scores != null && !scores.isEmpty()) {
+                // Create a new BaseTradingStatement with the criterion scores attached
+                BaseTradingStatement baseStatement = (BaseTradingStatement) statement;
+                BaseTradingStatement statementWithScores = new BaseTradingStatement(baseStatement.strategy,
+                        baseStatement.tradingRecord, baseStatement.positionStatsReport, baseStatement.performanceReport,
+                        scores);
+                result.add(statementWithScores);
+            } else {
+                // If not a BaseTradingStatement or no scores, return as-is
+                result.add(statement);
+            }
+        }
+        return result;
     }
 
     /**

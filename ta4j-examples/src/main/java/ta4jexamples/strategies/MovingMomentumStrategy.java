@@ -23,6 +23,9 @@
  */
 package ta4jexamples.strategies;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
@@ -38,6 +41,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -48,6 +52,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  *      http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
  */
 public class MovingMomentumStrategy {
+
+    private static final Logger LOG = LogManager.getLogger(MovingMomentumStrategy.class);
 
     /**
      * @param series the bar series
@@ -97,10 +103,32 @@ public class MovingMomentumStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        LOG.debug(() -> strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         // Analysis
         var grossReturn = new GrossReturnCriterion().calculate(series, tradingRecord);
-        System.out.println("Gross return for the strategy: " + grossReturn);
+        LOG.debug("{}'s gross return: {}", strategy.getName(), grossReturn);
+
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
+        EMAIndicator longEma = new EMAIndicator(closePrice, 26);
+        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
+        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
+        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
+
+        // Charting
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withIndicatorOverlay(shortEma)
+                .withIndicatorOverlay(longEma)
+                .withSubChart(macd)
+                .withIndicatorOverlay(emaMacd)
+                .withSubChart(stochasticOscillK)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
     }
 }

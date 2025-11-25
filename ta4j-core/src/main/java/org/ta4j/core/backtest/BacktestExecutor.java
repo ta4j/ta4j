@@ -189,12 +189,19 @@ public class BacktestExecutor {
      * {@value #DEFAULT_BATCH_SIZE} to prevent memory exhaustion. For smaller
      * counts, uses standard parallel execution.
      * </p>
+     * <p>
+     * If {@code progressCallback} is null, uses {@link ProgressCompletion#noOp()}
+     * as the default (no progress reporting). To use default logging progress, pass
+     * {@link ProgressCompletion#logging(Class)} or
+     * {@link ProgressCompletion#logging(String)} with your class or logger name.
+     * </p>
      *
      * @param strategies       the strategies
      * @param amount           the amount used to open/close the position
      * @param tradeType        the {@link Trade.TradeType} used to open the position
      * @param progressCallback optional callback for progress updates (receives
-     *                         completed count). May be null.
+     *                         completed count). May be null, in which case
+     *                         {@link ProgressCompletion#noOp()} is used.
      * @return execution result with trading statements and runtime report
      *
      * @since 0.19
@@ -220,7 +227,7 @@ public class BacktestExecutor {
      * @param progressCallback optional callback for progress updates (receives
      *                         completed count). May be null.
      * @param batchSize        the maximum number of strategies to process in each
-     *                         batch. Ignored if strategy count <=
+     *                         batch. Ignored if strategy count {@literal <=}
      *                         {@value #PARALLEL_THRESHOLD}.
      * @return execution result with trading statements and runtime report
      *
@@ -246,6 +253,11 @@ public class BacktestExecutor {
         TradingStatement[] statements = new TradingStatement[strategyCount];
         long[] durations = new long[strategyCount];
 
+        // Use default no-op callback if none provided, and set total strategies for
+        // logging callbacks
+        Consumer<Integer> effectiveCallback = ProgressCompletion.withTotalStrategies(
+                progressCallback != null ? progressCallback : ProgressCompletion.noOp(), strategyCount);
+
         long overallStart = System.nanoTime();
 
         // For large strategy counts, use batched processing to prevent memory
@@ -253,10 +265,10 @@ public class BacktestExecutor {
         if (strategyCount > PARALLEL_THRESHOLD) {
             int effectiveBatchSize = strategyCount > LARGE_COUNT_THRESHOLD ? Math.min(batchSize, SMALL_BATCH_SIZE)
                     : batchSize;
-            executeBatched(strategyArray, statements, durations, amount, tradeType, progressCallback,
+            executeBatched(strategyArray, statements, durations, amount, tradeType, effectiveCallback,
                     effectiveBatchSize);
         } else {
-            executeUnbounded(strategyArray, statements, durations, amount, tradeType, progressCallback);
+            executeUnbounded(strategyArray, statements, durations, amount, tradeType, effectiveCallback);
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
@@ -327,7 +339,11 @@ public class BacktestExecutor {
                 bestFirstComparator.reversed());
 
         ConcurrentLinkedQueue<StrategyEvaluation> batchResults = new ConcurrentLinkedQueue<>();
-        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
+        // Use default no-op callback if none provided, and set total strategies for
+        // logging callbacks
+        Consumer<Integer> effectiveCallback = ProgressCompletion.withTotalStrategies(
+                progressCallback != null ? progressCallback : ProgressCompletion.noOp(), strategyCount);
+        ProgressTracker progressTracker = ProgressTracker.create(effectiveCallback);
 
         long overallStart = System.nanoTime();
 

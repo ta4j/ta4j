@@ -123,4 +123,11 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertFalse(rule.isSatisfied(1, sellRecord));
         assertTrue(rule.isSatisfied(2, sellRecord));
     }
+
+    @Test
+    public void serializeAndDeserialize() {
+        var rule = new StopLossRule(closePrice, numOf(8));
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
 }

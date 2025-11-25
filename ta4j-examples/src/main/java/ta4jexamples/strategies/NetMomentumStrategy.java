@@ -28,13 +28,15 @@ import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.criteria.ExpectancyCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.charting.ChartMaker;
+import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
 
 import java.io.IOException;
@@ -78,30 +80,30 @@ public class NetMomentumStrategy {
         Strategy strategy = createStrategy(rsiM);
 
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        LOG.debug("Number of positions for the strategy: {}", tradingRecord.getPositionCount());
+        LOG.debug(() -> strategy.toJson());
+        LOG.debug("{}'s number of positions: {}", strategy.getName(), tradingRecord.getPositionCount());
 
         var netProfitLoss = new NetProfitLossCriterion().calculate(series, tradingRecord);
-        LOG.debug("Net Profit Loss for the strategy: {}", netProfitLoss);
+        LOG.debug("{}'s net profit/loss: {}", strategy.getName(), netProfitLoss);
 
         // Charting
-        ChartMaker chartMaker = new ChartMaker("ta4j-examples/log/charts");
-
-        JFreeChart tradingRecordChart = chartMaker.createTradingRecordChart(series, strategy.getName(), tradingRecord,
-                rsiIndicator, rsiM);
-        chartMaker.displayChart(tradingRecordChart);
-        chartMaker.saveChartImage(tradingRecordChart, series);
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withTradingRecordOverlay(tradingRecord)
+                .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
+                .withSubChart(rsiIndicator)
+                .withSubChart(rsiM)
+                .toChart();
+        chartWorkflow.displayChart(chart);
+        chartWorkflow.saveChartImage(chart, series, "net-momentum-strategy", "ta4j-examples/log/charts");
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {
         Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_OVERSOLD_THRESHOLD);
         Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_OVERBOUGHT_THRESHOLD);
 
-        String strategyName = "Entry Crossed Up: {rsiBarCount=" + DEFAULT_RSI_BARCOUNT + ", timeFrame="
-                + DEFAULT_MOMENTUM_TIMEFRAME + ", oversoldThreshold=" + DEFAULT_OVERSOLD_THRESHOLD
-                + "}, Exit Crossed Down: {rsiBarCount=" + DEFAULT_RSI_BARCOUNT + ", timeFrame="
-                + DEFAULT_MOMENTUM_TIMEFRAME + ", overboughtThreshold=" + DEFAULT_OVERBOUGHT_THRESHOLD
-                + ", decayFactor=" + DEFAULT_DECAY_FACTOR + "}";
-        return new BaseStrategy(strategyName, entryRule, exitRule);
+        return new BaseStrategy(NetMomentumStrategy.class.getSimpleName(), entryRule, exitRule);
     }
 
 }

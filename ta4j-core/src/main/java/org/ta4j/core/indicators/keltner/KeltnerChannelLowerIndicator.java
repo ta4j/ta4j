@@ -36,9 +36,10 @@ import org.ta4j.core.num.Num;
  */
 public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
-    private final ATRIndicator averageTrueRangeIndicator;
+    private final transient ATRIndicator averageTrueRangeIndicator;
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
     private final Num ratio;
+    private final int barCountATR;
 
     /**
      * Constructor.
@@ -63,6 +64,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
         this.ratio = getBarSeries().numFactory().numOf(ratio);
+        this.barCountATR = atr.getBarCount();
     }
 
     @Override
