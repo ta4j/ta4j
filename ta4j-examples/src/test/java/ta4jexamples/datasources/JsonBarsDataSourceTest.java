@@ -39,10 +39,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for the {@link JsonBarsDataSource} class.
  * <p>
- * This test class verifies the behavior of the
- * {@code JsonBarsDataSource} when loading bar series data from various
- * JSON input streams, including valid Coinbase and Binance formatted data, as
- * well as edge cases such as a null input stream.
+ * This test class verifies the behavior of the {@code JsonBarsDataSource} when
+ * loading bar series data from various JSON input streams, including valid
+ * Coinbase and Binance formatted data, as well as edge cases such as a null
+ * input stream.
  * </p>
  */
 public class JsonBarsDataSourceTest {
@@ -87,7 +87,7 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadNullInputStream() {
-        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries((InputStream) null);
+        BarSeries series = JsonBarsDataSource.loadSeries((InputStream) null);
         assertNull(series, "Should return null for null input stream");
     }
 

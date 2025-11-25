@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples;
+package ta4jexamples.backtesting;
 
 import java.awt.GraphicsEnvironment;
 
@@ -63,7 +63,7 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.YahooFinanceDataSource;
 
 /**
- * Yahoo Finance Data Source Example - Advanced Multi-Indicator Strategy
+ * Yahoo Finance Data Source Backtest - Advanced Multi-Indicator Strategy
  * <p>
  * This example demonstrates advanced ta4j features beyond the Quickstart:
  * <ul>
@@ -88,9 +88,9 @@ import ta4jexamples.datasources.YahooFinanceDataSource;
  * Run this example to see an advanced trading strategy backtested on real
  * market data with comprehensive analysis!
  */
-public class YahooFinanceBacktestExample {
+public class YahooFinanceBacktest {
 
-    private static final Logger LOG = LogManager.getLogger(YahooFinanceBacktestExample.class);
+    private static final Logger LOG = LogManager.getLogger(YahooFinanceBacktest.class);
 
     public static void main(String[] args) {
         System.out.println("╔══════════════════════════════════════════════════════════════╗");

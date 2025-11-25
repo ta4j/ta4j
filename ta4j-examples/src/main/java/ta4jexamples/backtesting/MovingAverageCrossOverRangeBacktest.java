@@ -37,7 +37,7 @@ import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.datasources.json.AdaptiveJsonBarsSerializer;
+import ta4jexamples.datasources.JsonBarsDataSource;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -62,7 +62,7 @@ public class MovingAverageCrossOverRangeBacktest {
             return;
         }
 
-        BarSeries series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+        BarSeries series = JsonBarsDataSource.loadSeries(resourceStream);
         if (series == null || series.isEmpty()) {
             LOG.error("Bar series was null or empty: {}", series);
             return;

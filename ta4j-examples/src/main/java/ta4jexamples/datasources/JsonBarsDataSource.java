@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.datasources.json;
+package ta4jexamples.datasources;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -29,26 +29,27 @@ import com.google.gson.stream.JsonReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import ta4jexamples.datasources.json.AdaptiveBarSeriesTypeAdapter;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
 /**
- * A serializer for BarSeries objects that can adapt to different JSON formats.
- * This class provides methods to deserialize BarSeries data from JSON format,
+ * A data source for BarSeries objects that can adapt to different JSON formats.
+ * This class provides methods to load BarSeries data from JSON format,
  * specifically supporting multiple exchange formats such as Binance and
  * Coinbase. It uses Gson with a custom TypeAdapter to handle the
- * deserialization process. The serializer can read from either an InputStream
+ * deserialization process. The data source can read from either an InputStream
  * or a file path.
  *
  * @since 0.19
  */
-public class AdaptiveJsonBarsSerializer {
+public class JsonBarsDataSource {
     private static final Gson TYPEADAPTER_GSON = new GsonBuilder()
             .registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter())
             .create();
-    private static final Logger LOG = LogManager.getLogger(AdaptiveJsonBarsSerializer.class);
+    private static final Logger LOG = LogManager.getLogger(JsonBarsDataSource.class);
 
     /**
      * Loads a BarSeries from the provided input stream containing JSON data. The

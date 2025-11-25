@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
-import ta4jexamples.datasources.json.AdaptiveJsonBarsSerializer;
+import ta4jexamples.datasources.JsonBarsDataSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -98,7 +98,7 @@ public class TopStrategiesExampleBacktest {
         BarSeries series = null;
         try (InputStream resourceStream = TopStrategiesExampleBacktest.class.getClassLoader()
                 .getResourceAsStream(jsonOhlcResourceFile)) {
-            series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+            series = JsonBarsDataSource.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
         }
