@@ -172,7 +172,7 @@ public final class ChartBuilder {
                     indicator, context.type);
             return new StyledOverlayStageImpl(context, null);
         }
-        OverlayContext overlay = OverlayContext.indicator(type, indicator, slot, colorPalette.nextColor());
+        OverlayContext overlay = OverlayContext.indicator(type, indicator, slot, colorPalette.nextColor(), null);
         context.overlays.add(overlay);
         return new StyledOverlayStageImpl(context, overlay);
     }
@@ -353,6 +353,8 @@ public final class ChartBuilder {
         StyledOverlayStage withLineWidth(float width);
 
         StyledOverlayStage withConnectAcrossNaN(boolean connectAcrossNaN);
+
+        StyledOverlayStage withLabel(String label);
     }
 
     /**
@@ -536,6 +538,13 @@ public final class ChartBuilder {
             return this;
         }
 
+        @Override
+        public StyledOverlayStage withLabel(String label) {
+            ensureOverlay();
+            overlay.setLabel(label);
+            return this;
+        }
+
         private void ensureOverlay() {
             if (overlay == null) {
                 throw new IllegalStateException(
@@ -658,19 +667,21 @@ public final class ChartBuilder {
         private final TradingRecord tradingRecord;
         private final AxisSlot axisSlot;
         private final OverlayStyle style;
+        private final String label;
 
         private OverlayDefinition(OverlayType type, Indicator<Num> indicator, TradingRecord tradingRecord,
-                AxisSlot axisSlot, OverlayStyle style) {
+                AxisSlot axisSlot, OverlayStyle style, String label) {
             this.type = type;
             this.indicator = indicator;
             this.tradingRecord = tradingRecord;
             this.axisSlot = axisSlot;
             this.style = style;
+            this.label = label;
         }
 
         static OverlayDefinition fromContext(OverlayContext context) {
             return new OverlayDefinition(context.type, context.indicator, context.tradingRecord, context.axisSlot,
-                    context.style);
+                    context.style, context.label);
         }
 
         public OverlayType type() {
@@ -692,6 +703,10 @@ public final class ChartBuilder {
         public OverlayStyle style() {
             return style;
         }
+
+        public String label() {
+            return label;
+        }
     }
 
     private static final class OverlayContext {
@@ -700,23 +715,30 @@ public final class ChartBuilder {
         private final TradingRecord tradingRecord;
         private final AxisSlot axisSlot;
         private final OverlayStyle style;
+        private String label;
 
         private OverlayContext(OverlayType type, Indicator<Num> indicator, TradingRecord tradingRecord,
-                AxisSlot axisSlot, OverlayStyle style) {
+                AxisSlot axisSlot, OverlayStyle style, String label) {
             this.type = type;
             this.indicator = indicator;
             this.tradingRecord = tradingRecord;
             this.axisSlot = axisSlot;
             this.style = style;
+            this.label = label;
         }
 
-        static OverlayContext indicator(OverlayType type, Indicator<Num> indicator, AxisSlot axis, Color defaultColor) {
-            return new OverlayContext(type, indicator, null, axis, OverlayStyle.defaultStyle(defaultColor));
+        static OverlayContext indicator(OverlayType type, Indicator<Num> indicator, AxisSlot axis, Color defaultColor,
+                String label) {
+            return new OverlayContext(type, indicator, null, axis, OverlayStyle.defaultStyle(defaultColor), label);
         }
 
         static OverlayContext tradingRecord(TradingRecord tradingRecord) {
             return new OverlayContext(OverlayType.TRADING_RECORD, null, tradingRecord, AxisSlot.PRIMARY,
-                    OverlayStyle.defaultStyle(Color.LIGHT_GRAY));
+                    OverlayStyle.defaultStyle(Color.LIGHT_GRAY), null);
+        }
+
+        void setLabel(String label) {
+            this.label = label;
         }
     }
 

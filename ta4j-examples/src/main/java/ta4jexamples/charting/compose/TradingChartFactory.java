@@ -480,7 +480,8 @@ public final class TradingChartFactory {
         }
         BarSeries series = indicator.getBarSeries() != null ? indicator.getBarSeries() : definition.series();
         boolean connectGaps = overlay.style().connectGaps();
-        TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, indicator.toString(), connectGaps);
+        String label = overlay.label() != null ? overlay.label() : indicator.toString();
+        TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, label, connectGaps);
         int datasetIndex = plot.getDatasetCount();
         plot.setDataset(datasetIndex, dataset);
 
@@ -494,7 +495,7 @@ public final class TradingChartFactory {
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
         if (axisIndex == 1) {
-            ensureSecondaryAxisExists(plot, indicator.toString());
+            ensureSecondaryAxisExists(plot, label);
         }
         plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
     }

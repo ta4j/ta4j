@@ -964,7 +964,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         /**
          * Weight for the fraction of swing points that touch the trend line. Higher
          * values favor trend lines that pass through more swing points. Default: 0.30
-         * (30%).
+         * (40%).
          */
         public final double touchCountWeight;
 
@@ -977,14 +977,14 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         /**
          * Weight for whether the trend line touches the extreme swing point (lowest for
          * support, highest for resistance). Higher values favor trend lines that
-         * include the extreme point. Default: 0.20 (20%).
+         * include the extreme point. Default: 0.15 (15%).
          */
         public final double touchesExtremeWeight;
 
         /**
          * Weight for minimizing average deviation of swing points from the trend line.
          * Higher values favor trend lines that stay close to all swing prices. Default:
-         * 0.20 (20%).
+         * 0.15 (15%).
          */
         public final double averageDeviationWeight;
 
@@ -1006,13 +1006,13 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         /**
          * Returns default scoring weights that provide balanced evaluation across all
-         * factors: 30% touch count, 20% extreme point, 15% outside count, 20%
+         * factors: 40% touch count, 15% extreme point, 15% outside count, 15%
          * deviation, 15% recency.
          *
          * @return default scoring weights
          */
         public static ScoringWeights defaultWeights() {
-            return new ScoringWeights(0.30d, 0.20d, 0.15d, 0.20d, 0.15d);
+            return new ScoringWeights(0.40d, 0.15d, 0.15d, 0.15d, 0.15d);
         }
 
         /**
@@ -1040,7 +1040,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
          *
          * @return scoring weights favoring touch count
          */
-        public static ScoringWeights preferAnchorPointCountPreset() {
+        public static ScoringWeights touchCountBiasPreset() {
             return new ScoringWeights(0.50d, 0.15d, 0.10d, 0.10d, 0.15d);
         }
 
@@ -1052,7 +1052,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
          *
          * @return scoring weights favoring extreme point inclusion
          */
-        public static ScoringWeights preferAnchoringToExtremePreset() {
+        public static ScoringWeights extremeSwingBiasPreset() {
             return new ScoringWeights(0.35d, 0.35d, 0.10d, 0.10d, 0.10d);
         }
 
@@ -1069,10 +1069,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         public static final class Builder {
-            private double touchCountWeight = 0.30d;
+            private double touchCountWeight = 0.40d;
             private double outsideCountWeight = 0.15d;
-            private double touchesExtremeWeight = 0.20d;
-            private double averageDeviationWeight = 0.20d;
+            private double touchesExtremeWeight = 0.15d;
+            private double averageDeviationWeight = 0.15d;
             private double anchorRecencyWeight = 0.15d;
 
             public Builder weightForTouchingSwingPoints(double weightFraction) {

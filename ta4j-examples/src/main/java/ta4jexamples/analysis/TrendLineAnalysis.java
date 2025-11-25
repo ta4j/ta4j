@@ -32,8 +32,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
-import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
-import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvBarsLoader;
@@ -69,52 +67,66 @@ public class TrendLineAnalysis {
         int trendLineLookback = Math.min(series.getBarCount(), 200);
 
         // Create support trendline indicator
-        TrendLineSupportIndicator fractalSupportTrendLine = new TrendLineSupportIndicator(series, 5, trendLineLookback);
+        TrendLineSupportIndicator defaultFractalSupportTrendLine = new TrendLineSupportIndicator(series, 5,
+                trendLineLookback);
+        TrendLineSupportIndicator preferTouchPointFractalSupportTrendLine = new TrendLineSupportIndicator(series, 5,
+                trendLineLookback, TrendLineSupportIndicator.ScoringWeights.touchCountBiasPreset());
+        TrendLineSupportIndicator preferExtremePointFractalSupportTrendLine = new TrendLineSupportIndicator(series, 5,
+                trendLineLookback, TrendLineSupportIndicator.ScoringWeights.extremeSwingBiasPreset());
+
+        logSegment("Fractal support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
+        logSegment("Fractal support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());
+        logSegment("Fractal support (preferExtremePoint)",
+                preferExtremePointFractalSupportTrendLine.getCurrentSegment());
 
         // Create resistance trendline indicator
-        TrendLineResistanceIndicator fractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5,
+        TrendLineResistanceIndicator defaultFractalResistanceTrendLine = new TrendLineResistanceIndicator(series, 5,
                 trendLineLookback);
+        TrendLineResistanceIndicator preferTouchPointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
+                series, 5, trendLineLookback, TrendLineResistanceIndicator.ScoringWeights.touchCountBiasPreset());
+        TrendLineResistanceIndicator preferExtremePointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
+                series, 5, trendLineLookback, TrendLineResistanceIndicator.ScoringWeights.extremeSwingBiasPreset());
+
+        logSegment("Fractal resistance (default)", defaultFractalResistanceTrendLine.getCurrentSegment());
+        logSegment("Fractal resistance (preferTouchPoint)",
+                preferTouchPointFractalResistanceTrendLine.getCurrentSegment());
+        logSegment("Fractal resistance (preferExtremePoint)",
+                preferExtremePointFractalResistanceTrendLine.getCurrentSegment());
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow fractalChartWorkflow = new ChartWorkflow();
         ChartPlan fractalPlan = fractalChartWorkflow.builder()
                 .withTitle("Fractal Support and Resistance Trendlines")
                 .withSeries(series)
-                .withIndicatorOverlay(fractalSupportTrendLine)
+                .withIndicatorOverlay(defaultFractalSupportTrendLine)
                 .withLineColor(Color.GREEN)
                 .withLineWidth(2.0f)
-                .withIndicatorOverlay(fractalResistanceTrendLine)
-                .withLineColor(Color.RED)
+                .withLabel("Fractal support (default weights)")
+                .withIndicatorOverlay(preferTouchPointFractalSupportTrendLine)
+                .withLineColor(Color.BLUE)
                 .withLineWidth(2.0f)
+                .withLabel("Fractal support (preferTouchPoint weights)")
+                .withIndicatorOverlay(preferExtremePointFractalSupportTrendLine)
+                .withLineColor(Color.MAGENTA)
+                .withLineWidth(2.0f)
+                .withLabel("Fractal support (preferExtremePoint weights)")
+                .withIndicatorOverlay(defaultFractalResistanceTrendLine)
+                .withLineColor(Color.YELLOW)
+                .withLineWidth(2.0f)
+                .withLabel("Fractal resistance (default weights)")
+                .withIndicatorOverlay(preferTouchPointFractalResistanceTrendLine)
+                .withLineColor(Color.CYAN)
+                .withLineWidth(2.0f)
+                .withLabel("Fractal resistance (preferTouchPoint weights)")
+                .withIndicatorOverlay(preferExtremePointFractalResistanceTrendLine)
+                .withLineColor(Color.ORANGE)
+                .withLineWidth(2.0f)
+                .withLabel("Fractal resistance (preferExtremePoint weights)")
                 .toPlan();
 
         fractalChartWorkflow.display(fractalPlan);
         fractalChartWorkflow.save(fractalPlan, "log/charts", "fractal-support-resistance-trendlines");
 
-        TrendLineResistanceIndicator zigzagResistanceTrendLine = new TrendLineResistanceIndicator(
-                new RecentZigZagSwingHighIndicator(series), 5, 5, trendLineLookback);
-        TrendLineSupportIndicator zigzagSupportTrendLine = new TrendLineSupportIndicator(
-                new RecentZigZagSwingLowIndicator(series), 5, 5, trendLineLookback);
-
-        ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
-        ChartPlan zigzagPlan = zigzagChartWorkflow.builder()
-                .withTitle("ZigZag Support and Resistance Trendlines")
-                .withSeries(series)
-                .withIndicatorOverlay(zigzagSupportTrendLine)
-                .withLineColor(Color.BLUE)
-                .withLineWidth(2.0f)
-                .withIndicatorOverlay(zigzagResistanceTrendLine)
-                .withLineColor(Color.YELLOW)
-                .withLineWidth(2.0f)
-                .toPlan();
-
-        zigzagChartWorkflow.display(zigzagPlan);
-        zigzagChartWorkflow.save(zigzagPlan, "log/charts", "zigzag-support-resistance-trendlines");
-
-        logSegment("Fractal support", fractalSupportTrendLine.getCurrentSegment());
-        logSegment("Fractal resistance", fractalResistanceTrendLine.getCurrentSegment());
-        logSegment("ZigZag support", zigzagSupportTrendLine.getCurrentSegment());
-        logSegment("ZigZag resistance", zigzagResistanceTrendLine.getCurrentSegment());
     }
 
     private static void logSegment(String label, TrendLineSegment segment) {

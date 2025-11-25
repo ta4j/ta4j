@@ -323,6 +323,92 @@ class ChartBuilderTest {
                 "NaN values should split the series into two segments (before and after the gap)");
     }
 
+    @Test
+    void withLabelSetsCustomLabelInChartLegend() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        String customLabel = "Custom Close Price Label";
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLabel(customLabel)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(customLabel, dataset.getSeriesKey(0), "Custom label should appear in the chart legend");
+    }
+
+    @Test
+    void withLabelDefaultsToIndicatorToStringWhenNotSet() {
+        ConstantIndicator indicator = constantIndicator(100.0, "TestIndicator");
+        JFreeChart chart = chartWorkflow.builder().withSeries(series).withIndicatorOverlay(indicator).toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals("TestIndicator", dataset.getSeriesKey(0),
+                "When no label is set, should fall back to indicator.toString()");
+    }
+
+    @Test
+    void withLabelCanBeChainedWithOtherStylingMethods() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        String customLabel = "Styled Indicator";
+        Color customColor = new Color(128, 0, 128); // Purple color
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLabel(customLabel)
+                .withLineColor(customColor)
+                .withLineWidth(2.5f)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(customLabel, dataset.getSeriesKey(0),
+                "Label should be preserved when chained with other styling methods");
+
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        assertEquals(customColor, renderer.getSeriesPaint(0), "Color should still be applied");
+        BasicStroke stroke = (BasicStroke) renderer.getSeriesStroke(0);
+        assertEquals(2.5f, stroke.getLineWidth(), "Line width should still be applied");
+    }
+
+    @Test
+    void withLabelUsedForSecondaryAxisWhenApplicable() {
+        ConstantIndicator baseIndicator = constantIndicator(5, "base");
+        ConstantIndicator farIndicator = constantIndicator(500, "far-indicator");
+        String customLabel = "Custom Secondary Axis Label";
+        JFreeChart chart = chartWorkflow.builder()
+                .withIndicator(baseIndicator)
+                .withIndicatorOverlay(farIndicator)
+                .withLabel(customLabel)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        assertNotNull(basePlot.getRangeAxis(1), "Secondary axis should be created for the far overlay");
+        assertEquals(customLabel, basePlot.getRangeAxis(1).getLabel(),
+                "Custom label should be used for the secondary axis label");
+        assertTrue(plotContainsSeries(basePlot, customLabel), "Custom label should appear in the dataset");
+    }
+
+    @Test
+    void withLabelCanBeSetAfterOtherStylingMethods() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        String customLabel = "Label Set Last";
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.CYAN)
+                .withLineWidth(3.0f)
+                .withLabel(customLabel)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        assertEquals(customLabel, dataset.getSeriesKey(0), "Label should work when set after other styling methods");
+    }
+
     private ConstantIndicator constantIndicator(double value, String name) {
         return new ConstantIndicator(series, value, name);
     }
