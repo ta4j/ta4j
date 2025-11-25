@@ -487,8 +487,12 @@ public final class TradingChartFactory {
 
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
         // Apply styling to all series segments (for gap handling with NaN values)
+        Color baseColor = overlay.style().color();
+        float opacity = overlay.style().opacity();
+        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                Math.round(opacity * 255));
         for (int i = 0; i < dataset.getSeriesCount(); i++) {
-            renderer.setSeriesPaint(i, overlay.style().color());
+            renderer.setSeriesPaint(i, colorWithOpacity);
             renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
         }
         plot.setRenderer(datasetIndex, renderer);

@@ -223,6 +223,131 @@ class ChartBuilderTest {
     }
 
     @Test
+    void overlayStylingAppliesCustomOpacity() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        float opacity = 0.5f;
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.BLUE)
+                .withOpacity(opacity)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertEquals(Color.BLUE.getRed(), paintColor.getRed());
+        assertEquals(Color.BLUE.getGreen(), paintColor.getGreen());
+        assertEquals(Color.BLUE.getBlue(), paintColor.getBlue());
+        assertEquals(Math.round(opacity * 255), paintColor.getAlpha(),
+                "Opacity should be applied to the color's alpha channel");
+    }
+
+    @Test
+    void overlayOpacityDefaultsToFullyOpaque() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.RED)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertEquals(255, paintColor.getAlpha(), "Default opacity should be 1.0 (fully opaque)");
+    }
+
+    @Test
+    void overlayOpacityValidation() {
+        ChartBuilder.StyledOverlayStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(new ClosePriceIndicator(series));
+
+        assertThrows(IllegalArgumentException.class, () -> stage.withOpacity(-0.1f), "Opacity must be >= 0.0");
+        assertThrows(IllegalArgumentException.class, () -> stage.withOpacity(1.1f), "Opacity must be <= 1.0");
+        assertDoesNotThrow(() -> stage.withOpacity(0.0f), "Opacity 0.0 should be valid");
+        assertDoesNotThrow(() -> stage.withOpacity(1.0f), "Opacity 1.0 should be valid");
+        assertDoesNotThrow(() -> stage.withOpacity(0.5f), "Opacity 0.5 should be valid");
+        assertDoesNotThrow(stage::toChart);
+    }
+
+    @Test
+    void overlayOpacityCanBeChainedWithOtherStylingMethods() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        float opacity = 0.75f;
+        Color customColor = new Color(128, 0, 128); // Purple
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withOpacity(opacity)
+                .withLineColor(customColor)
+                .withLineWidth(2.5f)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertEquals(customColor.getRed(), paintColor.getRed());
+        assertEquals(customColor.getGreen(), paintColor.getGreen());
+        assertEquals(customColor.getBlue(), paintColor.getBlue());
+        assertEquals(Math.round(opacity * 255), paintColor.getAlpha(),
+                "Opacity should be preserved when chained with other styling methods");
+
+        BasicStroke stroke = (BasicStroke) renderer.getSeriesStroke(0);
+        assertEquals(2.5f, stroke.getLineWidth(), "Line width should still be applied");
+    }
+
+    @Test
+    void overlayOpacityCanBeSetAfterOtherStylingMethods() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        float opacity = 0.6f;
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.CYAN)
+                .withLineWidth(3.0f)
+                .withOpacity(opacity)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(1);
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertEquals(Math.round(opacity * 255), paintColor.getAlpha(),
+                "Opacity should work when set after other styling methods");
+    }
+
+    @Test
+    void overlayOpacityEdgeCases() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+
+        // Test fully transparent (0.0)
+        JFreeChart chartTransparent = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.GREEN)
+                .withOpacity(0.0f)
+                .toChart();
+        XYPlot basePlotTransparent = ((CombinedDomainXYPlot) chartTransparent.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer rendererTransparent = (StandardXYItemRenderer) basePlotTransparent.getRenderer(1);
+        Color paintColorTransparent = (Color) rendererTransparent.getSeriesPaint(0);
+        assertEquals(0, paintColorTransparent.getAlpha(), "Opacity 0.0 should result in fully transparent color");
+
+        // Test fully opaque (1.0)
+        JFreeChart chartOpaque = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(closePrice)
+                .withLineColor(Color.GREEN)
+                .withOpacity(1.0f)
+                .toChart();
+        XYPlot basePlotOpaque = ((CombinedDomainXYPlot) chartOpaque.getPlot()).getSubplots().get(0);
+        StandardXYItemRenderer rendererOpaque = (StandardXYItemRenderer) basePlotOpaque.getRenderer(1);
+        Color paintColorOpaque = (Color) rendererOpaque.getSeriesPaint(0);
+        assertEquals(255, paintColorOpaque.getAlpha(), "Opacity 1.0 should result in fully opaque color");
+    }
+
+    @Test
     void withConnectAcrossNaNFalseCreatesMultipleSegmentsForNaNValues() {
         IndicatorWithNaN indicator = new IndicatorWithNaN(series, new int[] { 2, 3, 4 });
         JFreeChart chart = chartWorkflow.builder()
