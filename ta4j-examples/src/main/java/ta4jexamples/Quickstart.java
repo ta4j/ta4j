@@ -80,6 +80,13 @@ public class Quickstart {
         // Step 1: Load historical price data
         System.out.println("[1/6] Loading historical Bitcoin price data from Bitstamp...");
         BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        if (series == null || series.isEmpty()) {
+            System.err.println(
+                    "   [ERROR] Failed to load price data. The Bitstamp CSV file may be missing from the classpath.");
+            System.err.println(
+                    "   [TIP] Ensure the file 'Bitstamp-BTC-USD-PT5M-20131125_20131201.csv' exists in src/main/resources");
+            return;
+        }
         System.out.printf("   [OK] Loaded %d bars of price data%n", series.getBarCount());
         System.out.println();
 

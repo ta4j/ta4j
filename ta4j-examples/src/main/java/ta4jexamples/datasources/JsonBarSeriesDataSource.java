@@ -98,6 +98,9 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
         String intervalStr = formatIntervalForFilename(interval);
 
         // Try with exchange prefixes (Coinbase-, Binance-)
+        // NOTE: All branches must call filterSeriesByDateRange() to ensure data is
+        // filtered
+        // to the requested date range, even when files contain broader date ranges.
         String[] exchangePrefixes = { "Coinbase-", "Binance-" };
         for (String exchange : exchangePrefixes) {
             // Try exact pattern with interval-appropriate format:
@@ -110,6 +113,8 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
             }
 
             // Fallback to date-only format for existing files
+            // NOTE: Date-only format may match files with broader date ranges, so filtering
+            // is required
             String patternDateOnly = exchange + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
                     + endDateStr + ".json";
             series = loadFromSource(patternDateOnly);
@@ -127,6 +132,8 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
         }
 
         // Fallback to date-only format
+        // NOTE: Date-only format may match files with broader date ranges, so filtering
+        // is required
         String patternDateOnly = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr
                 + ".json";
         series = loadFromSource(patternDateOnly);
