@@ -173,11 +173,16 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             for (int currentIndex = Math.max(beginIndex,
                     lastScannedIndex + 1); currentIndex <= targetIndex; currentIndex++) {
                 final int swingIndex = swingIndexDetector.apply(currentIndex);
-                if (swingIndex < beginIndex || swingIndex > currentIndex) {
-                    continue;
+                final int confirmedSwingIndex = swingIndex >= beginIndex && swingIndex <= currentIndex ? swingIndex
+                        : -1;
+
+                while (!swingPointIndexes.isEmpty()
+                        && swingPointIndexes.get(swingPointIndexes.size() - 1) > confirmedSwingIndex) {
+                    swingPointIndexes.remove(swingPointIndexes.size() - 1);
                 }
-                if (swingPointIndexes.isEmpty() || swingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1)) {
-                    swingPointIndexes.add(swingIndex);
+                if (confirmedSwingIndex >= 0 && (swingPointIndexes.isEmpty()
+                        || confirmedSwingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1))) {
+                    swingPointIndexes.add(confirmedSwingIndex);
                 }
             }
             lastScannedIndex = targetIndex;

@@ -114,6 +114,19 @@ public class RecentFractalSwingHighIndicatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void shouldRemoveStaleSwingPointsWhenFlatTopExceedsAllowance() {
+        final var plateauSeries = createSeriesFromHighs(9, 10, 10, 10, 10, 8, 7);
+        final var indicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(plateauSeries), 1, 0, 1);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(1, 2);
+        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(2);
+
+        assertThat(indicator.getLatestSwingIndex(4)).isEqualTo(-1);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).isEmpty();
+        assertThat(indicator.getSwingPointIndexes()).isEmpty();
+    }
+
+    @Test
     public void shouldPropagateNaNFromUnderlyingIndicator() {
         final var baseSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 17, 16, 14, 18, 16, 13);
         final var highIndicator = new HighPriceIndicator(baseSeries);

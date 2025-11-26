@@ -152,6 +152,21 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
         super(recentSwingHighIndicator, barCount, TrendLineSide.RESISTANCE, scoringWeights);
     }
 
+    /**
+     * Constructs a TrendLineResistanceIndicator with the specified swing high
+     * indicator and bar parameters.
+     *
+     * @param recentSwingHighIndicator the indicator that identifies recent swing
+     *                                 high points
+     * @param precedingLowerBars       the number of bars that must be lower before
+     *                                 a swing high to confirm the trend line
+     * @param followingLowerBars       the number of bars that must be lower after a
+     *                                 swing high to confirm the trend line
+     * @param barCount                 the total number of bars to consider when
+     *                                 calculating the trend line resistance
+     *
+     * @since 0.20
+     */
     public TrendLineResistanceIndicator(RecentSwingIndicator recentSwingHighIndicator, int precedingLowerBars,
             int followingLowerBars, int barCount) {
         this(recentSwingHighIndicator, precedingLowerBars, followingLowerBars, barCount,
