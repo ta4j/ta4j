@@ -44,33 +44,45 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for the {@link YahooFinanceBarSeriesDataSource} class.
+ * Unit tests for the {@link CoinbaseBarSeriesDataSource} class.
  * <p>
  * This test class verifies the behavior of the
- * {@code YahooFinanceBarSeriesDataSource} when loading bar series data from
- * Yahoo Finance API, including successful responses, error handling,
- * pagination, and edge cases.
+ * {@code CoinbaseBarSeriesDataSource} when loading bar series data from
+ * Coinbase API, including successful responses, error handling, pagination, and
+ * edge cases.
  * </p>
  */
 @SuppressWarnings("unchecked")
-public class YahooFinanceBarSeriesDataSourceTest {
+public class CoinbaseBarSeriesDataSourceTest {
 
     private static final String VALID_JSON_RESPONSE = """
             {
-                "chart": {
-                    "result": [{
-                        "timestamp": [1609459200, 1609545600, 1609632000],
-                        "indicators": {
-                            "quote": [{
-                                "open": [100.0, 101.0, 102.0],
-                                "high": [105.0, 106.0, 107.0],
-                                "low": [99.0, 100.0, 101.0],
-                                "close": [104.0, 105.0, 106.0],
-                                "volume": [1000000, 1100000, 1200000]
-                            }]
-                        }
-                    }]
-                }
+                "candles": [
+                    {
+                        "start": "1609459200",
+                        "low": "99.0",
+                        "high": "105.0",
+                        "open": "100.0",
+                        "close": "104.0",
+                        "volume": "1000000"
+                    },
+                    {
+                        "start": "1609545600",
+                        "low": "100.0",
+                        "high": "106.0",
+                        "open": "101.0",
+                        "close": "105.0",
+                        "volume": "1100000"
+                    },
+                    {
+                        "start": "1609632000",
+                        "low": "101.0",
+                        "high": "107.0",
+                        "open": "102.0",
+                        "close": "106.0",
+                        "volume": "1200000"
+                    }
+                ]
             }
             """;
 
@@ -78,7 +90,8 @@ public class YahooFinanceBarSeriesDataSourceTest {
      * Helper method to clean up cache files matching a pattern. This ensures tests
      * start with a clean cache state.
      *
-     * @param pattern the filename pattern to match (e.g., "YahooFinance-AAPL-1d-")
+     * @param pattern the filename pattern to match (e.g.,
+     *                "Coinbase-BTC-USD-ONE_DAY-")
      */
     private void cleanupCacheFiles(String pattern) {
         Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
@@ -100,10 +113,10 @@ public class YahooFinanceBarSeriesDataSourceTest {
     /**
      * Helper method to build cache file prefix using getSourceName().
      *
-     * @return the cache file prefix (e.g., "YahooFinance-")
+     * @return the cache file prefix (e.g., "Coinbase-")
      */
     private String getCachePrefix() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource();
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         return sourceName.isEmpty() ? "" : sourceName + "-";
     }
@@ -111,21 +124,21 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithNullHttpClientWrapper() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource((HttpClientWrapper) null);
+            new CoinbaseBarSeriesDataSource((HttpClientWrapper) null);
         }, "Constructor should throw IllegalArgumentException for null HttpClientWrapper");
     }
 
     @Test
     public void testConstructorWithHttpClientWrapper() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         assertNotNull(dataSource, "DataSource should be created successfully");
     }
 
     @Test
     public void testConstructorWithHttpClient() {
         HttpClient httpClient = HttpClient.newHttpClient();
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(httpClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient);
         assertNotNull(dataSource, "DataSource should be created successfully");
     }
 
@@ -138,55 +151,55 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(3, series.getBarCount(), "Should have 3 bars");
-        assertEquals("AAPL", series.getName(), "Series name should match ticker");
+        assertEquals("BTC-USD", series.getName(), "Series name should match product ID");
         assertTrue(series.getBar(0).getClosePrice().doubleValue() > 0, "Close price should be positive");
     }
 
     @Test
-    public void testLoadSeriesWithNullTicker() throws IOException, InterruptedException {
+    public void testLoadSeriesWithNullProductId() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance(null,
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance(null, CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY,
+                start, end);
 
-        assertNull(series, "Should return null for null ticker");
+        assertNull(series, "Should return null for null product ID");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test
-    public void testLoadSeriesWithEmptyTicker() throws IOException, InterruptedException {
+    public void testLoadSeriesWithEmptyProductId() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("   ",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("   ", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY,
+                start, end);
 
-        assertNull(series, "Should return null for empty ticker");
+        assertNull(series, "Should return null for empty product ID");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test
     public void testLoadSeriesWithNullStartDateTime() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, null, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, null, end);
 
         assertNull(series, "Should return null for null start date");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -195,11 +208,11 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithNullEndDateTime() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, null);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, null);
 
         assertNull(series, "Should return null for null end date");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -208,12 +221,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithInvalidDateRange() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-03T00:00:00Z");
         Instant end = Instant.parse("2021-01-01T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when start is after end");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -227,12 +240,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.statusCode()).thenReturn(404);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for HTTP error status");
     }
@@ -243,12 +256,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new IOException("Network error"));
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when IOException occurs");
     }
@@ -259,12 +272,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new InterruptedException("Interrupted"));
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when InterruptedException occurs");
     }
@@ -278,12 +291,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn("invalid json");
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for invalid JSON");
     }
@@ -292,9 +305,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     public void testLoadSeriesWithEmptyResults() throws IOException, InterruptedException {
         String emptyResultsJson = """
                 {
-                    "chart": {
-                        "result": []
-                    }
+                    "candles": []
                 }
                 """;
 
@@ -305,12 +316,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(emptyResultsJson);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for empty results");
     }
@@ -319,20 +330,32 @@ public class YahooFinanceBarSeriesDataSourceTest {
     public void testLoadSeriesWithNullValuesInData() throws IOException, InterruptedException {
         String jsonWithNulls = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200, null, 1609632000],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0, null, 102.0],
-                                    "high": [105.0, 106.0, 107.0],
-                                    "low": [99.0, 100.0, 101.0],
-                                    "close": [104.0, null, 106.0],
-                                    "volume": [1000000, 1100000, 1200000]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1609459200",
+                            "low": "99.0",
+                            "high": "105.0",
+                            "open": "100.0",
+                            "close": "104.0",
+                            "volume": "1000000"
+                        },
+                        {
+                            "start": null,
+                            "low": "100.0",
+                            "high": "106.0",
+                            "open": null,
+                            "close": "105.0",
+                            "volume": "1100000"
+                        },
+                        {
+                            "start": "1609632000",
+                            "low": "101.0",
+                            "high": "107.0",
+                            "open": "102.0",
+                            "close": "106.0",
+                            "volume": "1200000"
+                        }
+                    ]
                 }
                 """;
 
@@ -343,63 +366,57 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(jsonWithNulls);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(2, series.getBarCount(), "Should skip bars with null values");
     }
 
     @Test
-    public void testLoadSeriesStaticMethodWithBarCount() throws IOException, InterruptedException {
+    public void testLoadSeriesStaticMethodWithBarCount() {
         // Note: Static methods use DEFAULT_INSTANCE which uses real HttpClient
         // This test verifies the static method signature and error handling
-        BarSeries series = YahooFinanceBarSeriesDataSource.loadSeries("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 0);
+        BarSeries series = CoinbaseBarSeriesDataSource.loadSeries("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 0);
 
         assertNull(series, "Should return null for bar count <= 0");
     }
 
     @Test
-    public void testLoadSeriesStaticMethodWithDays() throws IOException, InterruptedException {
+    public void testLoadSeriesStaticMethodWithDays() {
         // Note: Static methods use DEFAULT_INSTANCE which uses real HttpClient
         // This test verifies the static method signature
-        // In a real scenario, this would make an actual API call
-        // For unit testing, we focus on instance methods with mocked HttpClient
-        BarSeries series = YahooFinanceBarSeriesDataSource.loadSeries("AAPL", 0);
+        BarSeries series = CoinbaseBarSeriesDataSource.loadSeries("BTC-USD", 0);
 
         assertNull(series, "Should return null for days <= 0");
     }
 
     @Test
-    public void testYahooFinanceIntervalEnum() {
-        YahooFinanceBarSeriesDataSource.YahooFinanceInterval interval = YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1;
+    public void testCoinbaseIntervalEnum() {
+        CoinbaseBarSeriesDataSource.CoinbaseInterval interval = CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY;
         assertEquals(Duration.ofDays(1), interval.getDuration(), "Duration should match");
-        assertEquals("1d", interval.getApiValue(), "API value should match");
+        assertEquals("ONE_DAY", interval.getApiValue(), "API value should match");
     }
 
     @Test
     public void testLoadSeriesSkipsNullVolume() throws IOException, InterruptedException {
         String jsonWithNullVolume = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0],
-                                    "high": [105.0],
-                                    "low": [99.0],
-                                    "close": [104.0],
-                                    "volume": [null]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1609459200",
+                            "low": "99.0",
+                            "high": "105.0",
+                            "open": "100.0",
+                            "close": "104.0",
+                            "volume": null
+                        }
+                    ]
                 }
                 """;
 
@@ -410,79 +427,51 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(jsonWithNullVolume);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-02T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(1, series.getBarCount(), "Should have 1 bar");
         assertEquals(0.0, series.getBar(0).getVolume().doubleValue(), 0.001, "Null volume should be 0");
     }
 
-    /**
-     * Test subclass that allows overriding the conservative limit for testing
-     * pagination.
-     */
-    private static class TestableYahooFinanceDataSource extends YahooFinanceBarSeriesDataSource {
-        private final Duration testConservativeLimit;
-
-        TestableYahooFinanceDataSource(HttpClientWrapper httpClient, Duration testConservativeLimit) {
-            super(httpClient);
-            this.testConservativeLimit = testConservativeLimit;
-        }
-
-        @Override
-        protected Duration getConservativeLimit(YahooFinanceInterval interval) {
-            return testConservativeLimit;
-        }
-    }
-
     @Test
     public void testPaginationWithMultipleChunks() throws IOException, InterruptedException {
-        // Use a very small conservative limit (1 day) to force pagination
-        Duration testLimit = Duration.ofDays(1);
+        // Test pagination by requesting more than 350 candles
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
 
-        // First chunk response
-        String chunk1Json = """
-                {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200, 1609545600],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0, 101.0],
-                                    "high": [105.0, 106.0],
-                                    "low": [99.0, 100.0],
-                                    "close": [104.0, 105.0],
-                                    "volume": [1000000, 1100000]
-                                }]
-                            }
-                        }]
-                    }
-                }
-                """;
+        // First chunk response (350 candles worth)
+        StringBuilder chunk1Json = new StringBuilder("{\"candles\":[");
+        for (int i = 0; i < 350; i++) {
+            if (i > 0) {
+                chunk1Json.append(",");
+            }
+            long timestamp = 1609459200L + (i * 86400L); // Daily candles
+            chunk1Json.append(String.format(
+                    "{\"start\":\"%d\",\"low\":\"99.0\",\"high\":\"105.0\",\"open\":\"100.0\",\"close\":\"104.0\",\"volume\":\"1000000\"}",
+                    timestamp));
+        }
+        chunk1Json.append("]}");
 
-        // Second chunk response
+        // Second chunk response - timestamp should be after first chunk ends
+        // First chunk ends at: 1609459200 + (350 * 86400) = 1639699200
+        // Second chunk starts at: 1639699200 + 86400 = 1639785600
         String chunk2Json = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609632000, 1609718400],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [102.0, 103.0],
-                                    "high": [107.0, 108.0],
-                                    "low": [101.0, 102.0],
-                                    "close": [106.0, 107.0],
-                                    "volume": [1200000, 1300000]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1639785600",
+                            "low": "101.0",
+                            "high": "107.0",
+                            "open": "102.0",
+                            "close": "106.0",
+                            "volume": "1200000"
+                        }
+                    ]
                 }
                 """;
 
@@ -490,7 +479,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
         HttpResponseWrapper<String> mockResponse2 = mock(HttpResponseWrapper.class);
 
         when(mockResponse1.statusCode()).thenReturn(200);
-        when(mockResponse1.body()).thenReturn(chunk1Json);
+        when(mockResponse1.body()).thenReturn(chunk1Json.toString());
         when(mockResponse2.statusCode()).thenReturn(200);
         when(mockResponse2.body()).thenReturn(chunk2Json);
 
@@ -499,16 +488,17 @@ public class YahooFinanceBarSeriesDataSourceTest {
                 .thenReturn(mockResponse2)
                 .thenReturn(mockResponse2); // In case there are more calls
 
-        TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        // Request 351 days of daily data (exceeds 350 candle limit)
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
-        Instant end = Instant.parse("2021-01-03T00:00:00Z"); // 2 days, exceeds 1-day limit
+        Instant end = Instant.parse("2021-12-18T00:00:00Z"); // ~351 days
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
-        assertEquals(4, series.getBarCount(), "Should have 4 bars from 2 chunks");
-        assertEquals("AAPL", series.getName(), "Series name should match ticker");
+        assertEquals(351, series.getBarCount(), "Should have 351 bars from 2 chunks");
+        assertEquals("BTC-USD", series.getName(), "Series name should match product ID");
 
         // Verify that multiple HTTP requests were made (pagination occurred)
         verify(mockClient, atLeast(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -517,45 +507,44 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testPaginationWithOverlappingTimestamps() throws IOException, InterruptedException {
         // Test that pagination correctly deduplicates overlapping timestamps
-        Duration testLimit = Duration.ofDays(1);
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
 
         // Both chunks have the same timestamp (overlap scenario)
         String chunk1Json = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0],
-                                    "high": [105.0],
-                                    "low": [99.0],
-                                    "close": [104.0],
-                                    "volume": [1000000]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1609459200",
+                            "low": "99.0",
+                            "high": "105.0",
+                            "open": "100.0",
+                            "close": "104.0",
+                            "volume": "1000000"
+                        }
+                    ]
                 }
                 """;
 
         String chunk2Json = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200, 1609545600],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0, 101.0],
-                                    "high": [105.0, 106.0],
-                                    "low": [99.0, 100.0],
-                                    "close": [104.0, 105.0],
-                                    "volume": [1000000, 1100000]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1609459200",
+                            "low": "99.0",
+                            "high": "105.0",
+                            "open": "100.0",
+                            "close": "104.0",
+                            "volume": "1000000"
+                        },
+                        {
+                            "start": "1609545600",
+                            "low": "100.0",
+                            "high": "106.0",
+                            "open": "101.0",
+                            "close": "105.0",
+                            "volume": "1100000"
+                        }
+                    ]
                 }
                 """;
 
@@ -570,12 +559,13 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        // Request range that would trigger pagination
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
-        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+        Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         // Should deduplicate the overlapping timestamp, so only 2 unique bars
@@ -585,25 +575,20 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testPaginationWithFailedChunk() throws IOException, InterruptedException {
         // Test that pagination continues even if one chunk fails
-        Duration testLimit = Duration.ofDays(1);
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
 
         String chunk1Json = """
                 {
-                    "chart": {
-                        "result": [{
-                            "timestamp": [1609459200],
-                            "indicators": {
-                                "quote": [{
-                                    "open": [100.0],
-                                    "high": [105.0],
-                                    "low": [99.0],
-                                    "close": [104.0],
-                                    "volume": [1000000]
-                                }]
-                            }
-                        }]
-                    }
+                    "candles": [
+                        {
+                            "start": "1609459200",
+                            "low": "99.0",
+                            "high": "105.0",
+                            "open": "100.0",
+                            "close": "104.0",
+                            "volume": "1000000"
+                        }
+                    ]
                 }
                 """;
 
@@ -617,12 +602,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
-        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+        Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(1, series.getBarCount(), "Should have 1 bar from successful chunk");
@@ -631,7 +616,6 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testPaginationWithAllChunksFailing() throws IOException, InterruptedException {
         // Test that pagination returns null if all chunks fail
-        Duration testLimit = Duration.ofDays(1);
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
 
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -640,20 +624,19 @@ public class YahooFinanceBarSeriesDataSourceTest {
 
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
-        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+        Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when all chunks fail");
     }
 
     @Test
     public void testNoPaginationWhenUnderLimit() throws IOException, InterruptedException {
-        // Test that pagination is NOT triggered when range is under the limit
-        Duration testLimit = Duration.ofDays(10); // Large limit
+        // Test that pagination is NOT triggered when range is under 350 candles
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
 
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -662,12 +645,12 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        TestableYahooFinanceDataSource dataSource = new TestableYahooFinanceDataSource(mockClient, testLimit);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
-        Instant end = Instant.parse("2021-01-02T00:00:00Z"); // Only 1 day, under 10-day limit
+        Instant end = Instant.parse("2021-01-03T00:00:00Z"); // Only 3 days, under 350 limit
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         // Should only make one request (no pagination)
@@ -677,27 +660,27 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithCachingEnabled() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
     }
 
     @Test
     public void testConstructorWithCachingDisabled() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, false);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, false);
         assertNotNull(dataSource, "DataSource should be created successfully with caching disabled");
     }
 
     @Test
     public void testConstructorWithBooleanCachingParameter() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true);
         assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
     }
 
     @Test
     public void testCacheHitForSameRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files for this test
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -706,21 +689,21 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request - should make API call
-        BarSeries series1 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series1, "First request should return data");
         assertEquals(3, series1.getBarCount(), "Should have 3 bars");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request with same parameters - should use cache
-        BarSeries series2 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series2, "Second request should return cached data");
         assertEquals(3, series2.getBarCount(), "Should have 3 bars from cache");
@@ -728,14 +711,14 @@ public class YahooFinanceBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up cache files created by this test
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
     }
 
     @Test
-    public void testCacheMissForDifferentTicker() throws IOException, InterruptedException {
+    public void testCacheMissForDifferentProductId() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "MSFT-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
+        cleanupCacheFiles(getCachePrefix() + "ETH-USD-ONE_DAY-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -744,28 +727,28 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        // First request for AAPL
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        // First request for BTC-USD
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
-        // Second request for MSFT - should be a cache miss
-        dataSource.loadSeriesInstance("MSFT", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        // Second request for ETH-USD - should be a cache miss
+        dataSource.loadSeriesInstance("ETH-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "MSFT-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
+        cleanupCacheFiles(getCachePrefix() + "ETH-USD-ONE_DAY-");
     }
 
     @Test
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_HOUR-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -774,27 +757,27 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        // First request with DAY_1 interval
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        // First request with ONE_DAY interval
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
-        // Second request with HOUR_1 interval - should be a cache miss
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.HOUR_1, start, end);
+        // Second request with ONE_HOUR interval - should be a cache miss
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_HOUR, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_HOUR-");
     }
 
     @Test
     public void testCacheHitWithTruncatedTimestamps() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
 
         // Test that cache hits work when timestamps are truncated to the same cache key
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -804,33 +787,33 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant baseStart = Instant.parse("2021-01-01T00:00:00Z");
         Instant baseEnd = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, baseStart,
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, baseStart,
                 baseEnd);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request with slightly different timestamps that should truncate to the
         // same cache key
-        // For DAY_1, timestamps should truncate to start of day
+        // For ONE_DAY, timestamps should truncate to start of day
         Instant start2 = Instant.parse("2021-01-01T12:30:45Z"); // Same day, different time
         Instant end2 = Instant.parse("2021-01-03T18:20:10Z"); // Same day, different time
 
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start2, end2);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start2, end2);
         // Should use cache because timestamps truncate to the same values
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
     }
 
     @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -839,23 +822,23 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "Should return data");
         // Verify that a cache file was created (indirectly by checking that second
         // request uses cache)
-        BarSeries series2 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series2, "Second request should return cached data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
     }
 
     @Test
@@ -867,23 +850,23 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, false);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, false);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request - should make another API call since caching is disabled
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test
     public void testCacheHitForHistoricalData() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
 
         // Historical data (end date in the past) should be cached indefinitely
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -893,30 +876,29 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         // Use historical dates (more than 1 day in the past)
         Instant start = Instant.parse("2020-01-01T00:00:00Z");
         Instant end = Instant.parse("2020-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request - should use cache even though time has passed
-        // (We can't actually wait, but we can verify the cache file would be used)
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
     }
 
     @Test
     public void testCacheWithBarCountMethod() throws IOException, InterruptedException {
         // Use a unique notes identifier to avoid cache collisions with other tests
         String uniqueNotes = String.valueOf(System.currentTimeMillis());
-        String ticker = "TEST-BARCOUNT";
-        cleanupCacheFiles(getCachePrefix() + ticker + "-1d-");
+        String productId = "TEST-BARCOUNT";
+        cleanupCacheFiles(getCachePrefix() + productId + "-ONE_DAY-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -925,32 +907,30 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
 
         // First request using barCount method with notes
-        BarSeries series1 = dataSource.loadSeriesInstance(ticker,
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 3, uniqueNotes);
+        BarSeries series1 = dataSource.loadSeriesInstance(productId,
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
         assertNotNull(series1, "Should return data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request with same barCount and notes - should use cache
-        // For DAY_1 interval, cache is valid for 1 day, so this should definitely hit
-        // cache
-        BarSeries series2 = dataSource.loadSeriesInstance(ticker,
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 3, uniqueNotes);
+        BarSeries series2 = dataSource.loadSeriesInstance(productId,
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
         assertNotNull(series2, "Should return data");
         // Should use cache - only 1 API call total
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + ticker + "-1d-");
+        cleanupCacheFiles(getCachePrefix() + productId + "-ONE_DAY-");
     }
 
     @Test
     public void testCacheDirectoryCreation() {
         // Test that cache directory is created when caching is enabled
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
 
         // The constructor should attempt to create the cache directory
         // We can't easily test this without file system access, but we can verify
@@ -961,7 +941,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-5m-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-FIVE_MINUTE-");
 
         // Test that different intervals truncate timestamps correctly
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -971,35 +951,32 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T12:30:45Z");
         Instant end = Instant.parse("2021-01-01T18:20:10Z");
 
-        // Test MINUTE_5 - should truncate to 5-minute boundaries
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.MINUTE_5, start,
-                end);
+        // Test FIVE_MINUTE - should truncate to 5-minute boundaries
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Same request should hit cache
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.MINUTE_5, start,
-                end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Different 5-minute period should be a cache miss
         Instant start2 = Instant.parse("2021-01-01T12:35:00Z"); // Different 5-minute period
-        dataSource.loadSeriesInstance("AAPL", YahooFinanceBarSeriesDataSource.YahooFinanceInterval.MINUTE_5, start2,
-                end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start2, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-5m-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-FIVE_MINUTE-");
     }
 
     @Test
     public void testCacheWithFailedRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files - important to ensure no cached success
         // response
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_DAY-");
 
         // Test that failed requests don't write to cache
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -1008,36 +985,36 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.statusCode()).thenReturn(404); // Failed request
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request fails
-        BarSeries series1 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNull(series1, "Should return null for failed request");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request should still make API call (no cache for failed requests)
-        BarSeries series2 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNull(series2, "Should return null for failed request");
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test
     public void testGetSourceName() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource();
-        assertEquals("YahooFinance", dataSource.getSourceName(), "Should return 'YahooFinance' as source name");
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        assertEquals("Coinbase", dataSource.getSourceName(), "Should return 'Coinbase' as source name");
     }
 
     @Test
     public void testGetSourceNameUsedInCacheFileGeneration() {
         // Verify that getSourceName() is used in cache file generation
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource();
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         assertFalse(sourceName.isEmpty(), "Source name should not be empty");
-        assertEquals("YahooFinance", sourceName, "Source name should be 'YahooFinance'");
+        assertEquals("Coinbase", sourceName, "Source name should be 'Coinbase'");
 
         // Verify that cache prefix matches source name
         String cachePrefix = getCachePrefix();
@@ -1045,9 +1022,69 @@ public class YahooFinanceBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testAllCoinbaseIntervalValues() {
+        // Test all interval enum values
+        CoinbaseBarSeriesDataSource.CoinbaseInterval[] intervals = CoinbaseBarSeriesDataSource.CoinbaseInterval
+                .values();
+
+        assertTrue(intervals.length > 0, "Should have at least one interval");
+
+        for (CoinbaseBarSeriesDataSource.CoinbaseInterval interval : intervals) {
+            assertNotNull(interval.getDuration(), "Duration should not be null for " + interval);
+            assertNotNull(interval.getApiValue(), "API value should not be null for " + interval);
+            assertFalse(interval.getApiValue().isEmpty(), "API value should not be empty for " + interval);
+        }
+    }
+
+    @Test
+    public void testLoadSeriesWithBarSeriesDataSourceInterface() {
+        // Test the BarSeriesDataSource interface methods
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+
+        // Test loadSeries with Duration
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries(null, Duration.ofDays(1), Instant.now().minusSeconds(86400), Instant.now());
+        }, "Should throw IllegalArgumentException for null product ID");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("BTC-USD", (Duration) null, Instant.now().minusSeconds(86400), Instant.now());
+        }, "Should throw IllegalArgumentException for null interval");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("BTC-USD", Duration.ofDays(1), null, Instant.now());
+        }, "Should throw IllegalArgumentException for null start date");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("BTC-USD", Duration.ofDays(1), Instant.now().minusSeconds(86400), null);
+        }, "Should throw IllegalArgumentException for null end date");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("BTC-USD", Duration.ofDays(1), Instant.now(), Instant.now().minusSeconds(86400));
+        }, "Should throw IllegalArgumentException when start is after end");
+    }
+
+    @Test
+    public void testLoadSeriesWithStringSource() {
+        // Test loadSeries(String source) method
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries((String) null);
+        }, "Should throw IllegalArgumentException for null source");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("   ");
+        }, "Should throw IllegalArgumentException for empty source");
+
+        // Test with non-existent cache file
+        BarSeries series = dataSource.loadSeries("nonexistent-file.json");
+        assertNull(series, "Should return null for non-existent file");
+    }
+
+    @Test
     public void testConstructorWithCustomCacheDirectory() {
-        String customCacheDir = "test-cache/yahoo-custom";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true, customCacheDir);
+        String customCacheDir = "test-cache/custom";
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1056,9 +1093,8 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithHttpClientWrapperAndCustomCacheDirectory() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        String customCacheDir = "test-cache/yahoo-custom-wrapper";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        String customCacheDir = "test-cache/custom-wrapper";
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1067,9 +1103,8 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithHttpClientAndCustomCacheDirectory() {
         HttpClient httpClient = HttpClient.newHttpClient();
-        String customCacheDir = "test-cache/yahoo-custom-http";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(httpClient, true,
-                customCacheDir);
+        String customCacheDir = "test-cache/custom-http";
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient, true, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1078,45 +1113,45 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithNullCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, (String) null);
+            new CoinbaseBarSeriesDataSource(true, (String) null);
         }, "Constructor should throw IllegalArgumentException for null cache directory");
     }
 
     @Test
     public void testConstructorWithEmptyCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, "");
+            new CoinbaseBarSeriesDataSource(true, "");
         }, "Constructor should throw IllegalArgumentException for empty cache directory");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, "   ");
+            new CoinbaseBarSeriesDataSource(true, "   ");
         }, "Constructor should throw IllegalArgumentException for whitespace-only cache directory");
     }
 
     @Test
     public void testGetResponseCacheDirWithDefaultDirectory() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource();
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
         assertEquals(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR, dataSource.getResponseCacheDir(),
                 "Default cache directory should be used when not specified");
     }
 
     @Test
     public void testGetResponseCacheDirWithCustomDirectory() {
-        String customCacheDir = "my-custom-yahoo-cache";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true, customCacheDir);
+        String customCacheDir = "my-custom-cache";
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDir);
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(), "Custom cache directory should be returned");
     }
 
     @Test
     public void testCacheFilesCreatedInCustomDirectory() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/yahoo-custom-dir-test";
+        String customCacheDir = "test-cache/custom-dir-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1133,33 +1168,32 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request - should create cache file in custom directory
-        BarSeries series1 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series1, "First request should return data");
 
         // Verify cache file was created in custom directory
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         boolean cacheFileExists = Files.list(customCachePath)
-                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"));
+                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"));
         assertTrue(cacheFileExists, "Cache file should be created in custom directory");
 
         // Second request - should use cache (verify only one API call was made)
-        BarSeries series2 = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series2, "Second request should return cached data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1173,23 +1207,22 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testCacheDirectoryTrimming() {
         // Test that cache directory paths are trimmed
-        String customCacheDirWithWhitespace = "  test-cache/yahoo-trimmed  ";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true,
-                customCacheDirWithWhitespace);
-        assertEquals("test-cache/yahoo-trimmed", dataSource.getResponseCacheDir(),
+        String customCacheDirWithWhitespace = "  test-cache/trimmed  ";
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDirWithWhitespace);
+        assertEquals("test-cache/trimmed", dataSource.getResponseCacheDir(),
                 "Cache directory should be trimmed of leading/trailing whitespace");
     }
 
     @Test
     public void testDeleteAllCacheFiles() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/yahoo-delete-all-test";
+        String customCacheDir = "test-cache/delete-all-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1206,21 +1239,20 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Verify cache file was created
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         long fileCountBefore = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                 .count();
         assertTrue(fileCountBefore > 0, "Cache file should exist");
 
@@ -1230,7 +1262,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
 
         // Verify cache files are gone
         long fileCountAfter = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                 .count();
         assertEquals(0, fileCountAfter, "All cache files should be deleted");
     }
@@ -1238,7 +1270,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testDeleteCacheFilesOlderThan() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/yahoo-delete-old-test";
+        String customCacheDir = "test-cache/delete-old-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1261,15 +1293,14 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Verify cache file was created
@@ -1293,7 +1324,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testDeleteStaleCacheFiles() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/yahoo-delete-stale-test";
+        String customCacheDir = "test-cache/delete-stale-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1316,15 +1347,14 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
-        BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Delete stale files (default 30 days) - should not delete recently created
@@ -1339,8 +1369,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true,
-                "non-existent-cache-dir");
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, "non-existent-cache-dir");
         int deletedCount = dataSource.deleteAllCacheFiles();
         assertEquals(0, deletedCount, "Should return 0 for non-existent directory");
     }

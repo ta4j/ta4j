@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import ta4jexamples.datasources.http.AbstractHttpBarSeriesDataSource;
 import ta4jexamples.datasources.http.DefaultHttpClientWrapper;
 import ta4jexamples.datasources.http.HttpClientWrapper;
 import ta4jexamples.datasources.http.HttpResponseWrapper;
@@ -82,11 +83,19 @@ import java.util.TreeMap;
  * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
- * When caching is enabled, responses are saved to {@code temp/responses}
- * directory and reused for requests within the cache validity period (based on
- * the interval). For example, daily data is cached for the day, 15-minute data
- * is cached for 15 minutes, etc. Historical data (end date in the past) is
- * cached indefinitely.
+ * To use a custom cache directory, use the constructor with
+ * {@code responseCacheDir}:
+ *
+ * <pre>
+ * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(true, "/path/to/cache");
+ * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
+ * </pre>
+ * <p>
+ * When caching is enabled, responses are saved to the cache directory (default:
+ * {@code temp/responses}) and reused for requests within the cache validity
+ * period (based on the interval). For example, daily data is cached for the
+ * day, 15-minute data is cached for 15 minutes, etc. Historical data (end date
+ * in the past) is cached indefinitely.
  * <p>
  * <strong>Unit Testing:</strong> For unit testing with a mock HttpClient, use
  * the constructor:
@@ -103,10 +112,9 @@ import java.util.TreeMap;
  *
  * @since 0.20
  */
-public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
+public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSource {
 
     public static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
-    public static final String RESPONSE_CACHE_DIR = "temp/responses";
 
     private static final Logger LOG = LogManager.getLogger(YahooFinanceBarSeriesDataSource.class);
 
@@ -118,8 +126,6 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
     private static final HttpClientWrapper DEFAULT_HTTP_CLIENT = new DefaultHttpClientWrapper();
     private static final YahooFinanceBarSeriesDataSource DEFAULT_INSTANCE = new YahooFinanceBarSeriesDataSource(
             DEFAULT_HTTP_CLIENT);
-    private final HttpClientWrapper httpClient;
-    private final boolean enableResponseCaching;
 
     /**
      * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient. For
@@ -127,7 +133,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      * to inject a mock HttpClientWrapper.
      */
     public YahooFinanceBarSeriesDataSource() {
-        this(DEFAULT_HTTP_CLIENT, false);
+        super(DEFAULT_HTTP_CLIENT, false);
     }
 
     /**
@@ -138,7 +144,20 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      *                              faster subsequent requests
      */
     public YahooFinanceBarSeriesDataSource(boolean enableResponseCaching) {
-        this(DEFAULT_HTTP_CLIENT, enableResponseCaching);
+        super(DEFAULT_HTTP_CLIENT, enableResponseCaching);
+    }
+
+    /**
+     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient,
+     * caching option, and custom cache directory.
+     *
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     * @param responseCacheDir      the directory path for caching responses (can be
+     *                              relative or absolute)
+     */
+    public YahooFinanceBarSeriesDataSource(boolean enableResponseCaching, String responseCacheDir) {
+        super(DEFAULT_HTTP_CLIENT, enableResponseCaching, responseCacheDir);
     }
 
     /**
@@ -150,7 +169,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      *                   mock for testing)
      */
     public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient) {
-        this(httpClient, false);
+        super(httpClient, false);
     }
 
     /**
@@ -165,14 +184,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      *                              faster subsequent requests
      */
     public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
-        if (httpClient == null) {
-            throw new IllegalArgumentException("HttpClientWrapper cannot be null");
-        }
-        this.httpClient = httpClient;
-        this.enableResponseCaching = enableResponseCaching;
-        if (enableResponseCaching) {
-            ensureCacheDirectoryExists();
-        }
+        super(httpClient, enableResponseCaching);
     }
 
     /**
@@ -183,7 +195,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      * @param httpClient the HttpClient to use for API requests
      */
     public YahooFinanceBarSeriesDataSource(HttpClient httpClient) {
-        this(new DefaultHttpClientWrapper(httpClient), false);
+        super(httpClient, false);
     }
 
     /**
@@ -195,7 +207,38 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      *                              faster subsequent requests
      */
     public YahooFinanceBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
-        this(new DefaultHttpClientWrapper(httpClient), enableResponseCaching);
+        super(httpClient, enableResponseCaching);
+    }
+
+    /**
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * HttpClientWrapper, caching option, and custom cache directory.
+     *
+     * @param httpClient            the HttpClientWrapper to use for API requests
+     *                              (can be a mock for testing)
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     * @param responseCacheDir      the directory path for caching responses (can be
+     *                              relative or absolute)
+     */
+    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching,
+            String responseCacheDir) {
+        super(httpClient, enableResponseCaching, responseCacheDir);
+    }
+
+    /**
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient,
+     * caching option, and custom cache directory.
+     *
+     * @param httpClient            the HttpClient to use for API requests
+     * @param enableResponseCaching if true, responses will be cached to disk for
+     *                              faster subsequent requests
+     * @param responseCacheDir      the directory path for caching responses (can be
+     *                              relative or absolute)
+     */
+    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching,
+            String responseCacheDir) {
+        super(httpClient, enableResponseCaching, responseCacheDir);
     }
 
     /**
@@ -524,7 +567,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
 
         // Check if it's a cache file path
         String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
-        if (source.startsWith(RESPONSE_CACHE_DIR) || (!sourcePrefix.isEmpty() && source.contains(sourcePrefix))) {
+        if (source.startsWith(responseCacheDir) || (!sourcePrefix.isEmpty() && source.contains(sourcePrefix))) {
             Path cacheFile = Paths.get(source);
             if (Files.exists(cacheFile)) {
                 String cachedResponse = readFromCache(cacheFile);
@@ -541,14 +584,8 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
                     if (parts.length >= 5) {
                         // Check if last part contains underscore (indicating notes section)
                         // Format: END or END_NOTES
-                        String lastPart = parts[parts.length - 1];
-                        String endTimestampStr = lastPart;
-                        if (lastPart.contains("_")) {
-                            // Split on underscore - first part is end timestamp, rest is notes
-                            int underscoreIndex = lastPart.indexOf("_");
-                            endTimestampStr = lastPart.substring(0, underscoreIndex);
-                            // Notes section is ignored for parsing
-                        }
+                        // Notes section is ignored for parsing, so we just need to extract the ticker
+                        // and interval
 
                         String ticker = parts[1];
                         // Try to determine interval from filename
@@ -658,25 +695,15 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
     }
 
     /**
-     * Ensures the cache directory exists, creating it if necessary.
-     */
-    private void ensureCacheDirectoryExists() {
-        try {
-            Path cacheDir = Paths.get(RESPONSE_CACHE_DIR);
-            if (!Files.exists(cacheDir)) {
-                Files.createDirectories(cacheDir);
-                LOG.debug("Created cache directory: {}", cacheDir.toAbsolutePath());
-            }
-        } catch (IOException e) {
-            LOG.warn("Failed to create cache directory: {}", e.getMessage());
-        }
-    }
-
-    /**
      * Truncates a timestamp based on the interval to enable cache hits for requests
-     * within the same time period. For example, for 1-day intervals, timestamps are
-     * truncated to the start of the day. For 15-minute intervals, timestamps are
-     * truncated to the start of the 15-minute period.
+     * within the same time period. This override provides Yahoo Finance-specific
+     * truncation logic for week and month boundaries.
+     * <p>
+     * For example, for 1-day intervals, timestamps are truncated to the start of
+     * the day. For 15-minute intervals, timestamps are truncated to the start of
+     * the 15-minute period. For weekly intervals, timestamps are truncated to the
+     * start of the week (Monday). For monthly intervals, timestamps are truncated
+     * to the start of the month.
      *
      * @param instant  the timestamp to truncate
      * @param interval the interval to use for truncation
@@ -752,16 +779,12 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
      */
     private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime, String notes) {
+        // Use Yahoo Finance-specific truncation for week/month boundaries
         Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
         Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
 
-        String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
-        String notesSuffix = (notes != null && !notes.trim().isEmpty()) ? "_" + notes.trim() : "";
-        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix,
-                ticker.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), interval.getApiValue(),
-                truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond(), notesSuffix);
-
-        return Paths.get(RESPONSE_CACHE_DIR, filename);
+        return getCacheFilePath(ticker, interval.getApiValue(), truncatedStart, truncatedEnd, interval.getDuration(),
+                notes);
     }
 
     /**
@@ -776,89 +799,6 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
     private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
         return getCacheFilePath(ticker, interval, startDateTime, endDateTime, null);
-    }
-
-    /**
-     * Checks if a cache file exists and is still valid based on the interval. For
-     * historical data (end date in the past), cache is valid indefinitely. For
-     * current data (end date is recent), cache expires after the interval duration.
-     *
-     * @param cacheFile   the cache file path
-     * @param interval    the interval
-     * @param endDateTime the end date/time of the request
-     * @return true if cache is valid, false otherwise
-     */
-    private boolean isCacheValid(Path cacheFile, YahooFinanceInterval interval, Instant endDateTime) {
-        if (!Files.exists(cacheFile)) {
-            return false;
-        }
-
-        try {
-            // Check file modification time
-            Instant fileModified = Files.getLastModifiedTime(cacheFile).toInstant();
-            Instant now = Instant.now();
-
-            // If the request is for historical data (end date is in the past), cache is
-            // valid
-            // indefinitely
-            if (endDateTime.isBefore(now.minus(interval.getDuration()))) {
-                return true;
-            }
-
-            // For current/recent data, cache expires after the interval duration
-            Duration age = Duration.between(fileModified, now);
-            return age.compareTo(interval.getDuration()) < 0;
-        } catch (IOException e) {
-            LOG.warn("Failed to check cache file validity: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Reads a cached response from disk.
-     *
-     * @param cacheFile the cache file path
-     * @return the cached JSON response, or null if read fails
-     */
-    private String readFromCache(Path cacheFile) {
-        try {
-            String content = Files.readString(cacheFile, StandardCharsets.UTF_8);
-            LOG.debug("Cache hit: {}", cacheFile.getFileName());
-            return content;
-        } catch (IOException e) {
-            LOG.warn("Failed to read from cache: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Writes a response to the cache.
-     *
-     * @param cacheFile the cache file path
-     * @param response  the JSON response to cache
-     */
-    private void writeToCache(Path cacheFile, String response) {
-        try {
-            // Ensure parent directory exists
-            Path parentDir = cacheFile.getParent();
-            if (parentDir != null && !Files.exists(parentDir)) {
-                Files.createDirectories(parentDir);
-            }
-            Files.writeString(cacheFile, response, StandardCharsets.UTF_8);
-            LOG.debug("Cached response: {}", cacheFile.getFileName());
-        } catch (IOException e) {
-            LOG.warn("Failed to write to cache: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Makes a single API request for the specified date range. This is used for
-     * requests that don't exceed conservative limits. If caching is enabled, checks
-     * cache first before making the API request.
-     */
-    private BarSeries loadSeriesSingleRequest(String ticker, YahooFinanceInterval interval, Instant startDateTime,
-            Instant endDateTime) {
-        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime, null);
     }
 
     /**
@@ -880,7 +820,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
         if (enableResponseCaching) {
             // Try exact match first (with or without notes)
             Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime, notes);
-            if (isCacheValid(cacheFile, interval, endDateTime)) {
+            if (isCacheValid(cacheFile, interval.getDuration(), endDateTime)) {
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
@@ -890,7 +830,7 @@ public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
             // Also try without notes (for backward compatibility)
             if (notes != null && !notes.trim().isEmpty()) {
                 Path cacheFileNoNotes = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
-                if (isCacheValid(cacheFileNoNotes, interval, endDateTime)) {
+                if (isCacheValid(cacheFileNoNotes, interval.getDuration(), endDateTime)) {
                     String cachedResponse = readFromCache(cacheFileNoNotes);
                     if (cachedResponse != null) {
                         LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);

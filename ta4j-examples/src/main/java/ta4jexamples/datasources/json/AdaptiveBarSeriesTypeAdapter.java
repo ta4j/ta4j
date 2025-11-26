@@ -42,13 +42,25 @@ import java.util.List;
 /**
  * A TypeAdapter implementation for deserializing JSON data into BarSeries
  * objects. This adapter supports multiple JSON formats by detecting the
- * structure of the input data. It currently handles two formats: - Coinbase
- * format: identified by the presence of a "candles" array - Binance format:
- * identified by the presence of an "ohlc" array
+ * structure of the input data. It currently handles two formats:
+ * <ul>
+ * <li><strong>Coinbase format:</strong> identified by the presence of a
+ * "candles" array. The "start" field represents the start of the candle period,
+ * and the end time is calculated as start + duration. This adapter can be used
+ * for both Coinbase API responses (where the interval is known) and Coinbase
+ * JSON files (where the interval can be inferred from the data).</li>
+ * <li><strong>Binance format:</strong> identified by the presence of an "ohlc"
+ * array</li>
+ * </ul>
  * <p>
  * The adapter parses the JSON input and converts it into a BaseBarSeries
  * instance populated with the appropriate bar data. The bar data is sorted by
  * timestamp for the Coinbase format to ensure chronological order.
+ * <p>
+ * For Coinbase format, the adapter provides a static helper method
+ * {@link #parseCoinbaseFormat(JsonObject, String, Duration)} that can be used
+ * directly when parsing Coinbase data, allowing you to specify a known interval
+ * (for API responses) or let it be inferred (for JSON files).
  * <p>
  * Write operations are not supported by this adapter and will throw an
  * exception.
@@ -102,38 +114,98 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
      * Parses a JSON object in Coinbase format into a BarSeries. The input JSON is
      * expected to contain a "candles" array where each element represents a bar
      * with start time, open, high, low, close, and volume values.
+     * <p>
+     * Note: Coinbase API's "start" field represents the start of the time interval
+     * for the candle. The end time is calculated as start + duration. This method
+     * infers the duration from the data. For cases where the interval is known, use
+     * {@link #parseCoinbaseFormat(JsonObject, String, Duration)} instead.
      *
      * @param root the JsonObject representing the root of the JSON data in Coinbase
      *             format
      * @return a BarSeries populated with data parsed from the Coinbase format JSON
      */
     private BarSeries parseCoinbaseFormat(JsonObject root) {
+        return parseCoinbaseFormat(root, "CoinbaseData", null);
+    }
+
+    /**
+     * Parses a JSON object in Coinbase format into a BarSeries with a known
+     * interval and series name. The input JSON is expected to contain a "candles"
+     * array where each element represents a bar with start time, open, high, low,
+     * close, and volume values.
+     * <p>
+     * Note: Coinbase API's "start" field represents the start of the time interval
+     * for the candle. The end time is calculated as start + duration. This method
+     * uses the provided interval directly instead of inferring it from the data.
+     * <p>
+     * This method can be used for both API responses (where the interval is known)
+     * and JSON files (where the interval can be inferred or provided).
+     *
+     * @param root          the JsonObject representing the root of the JSON data in
+     *                      Coinbase format
+     * @param seriesName    the name to use for the BarSeries
+     * @param knownInterval the known bar interval (if null, will be inferred from
+     *                      the data by calculating the difference between
+     *                      consecutive start times)
+     * @return a BarSeries populated with data parsed from the Coinbase format JSON
+     */
+    public static BarSeries parseCoinbaseFormat(JsonObject root, String seriesName, Duration knownInterval) {
         LOG.trace("Parsing Coinbase format");
 
         JsonArray candles = root.getAsJsonArray("candles");
+        if (candles == null || candles.isEmpty()) {
+            return new BaseBarSeriesBuilder().withName(seriesName).build();
+        }
+
         List<CoinbaseBar> barList = new ArrayList<>();
 
         for (JsonElement candle : candles) {
             JsonObject candleObj = candle.getAsJsonObject();
+
+            // Skip candles with null or missing required fields
+            if (candleObj.get("start") == null || candleObj.get("start").isJsonNull() || candleObj.get("open") == null
+                    || candleObj.get("open").isJsonNull() || candleObj.get("high") == null
+                    || candleObj.get("high").isJsonNull() || candleObj.get("low") == null
+                    || candleObj.get("low").isJsonNull() || candleObj.get("close") == null
+                    || candleObj.get("close").isJsonNull()) {
+                continue;
+            }
+
+            // Handle null volume by defaulting to "0"
+            String volume = "0";
+            if (candleObj.get("volume") != null && !candleObj.get("volume").isJsonNull()) {
+                volume = candleObj.get("volume").getAsString();
+            }
+
             barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(),
                     candleObj.get("high").getAsString(), candleObj.get("low").getAsString(),
-                    candleObj.get("close").getAsString(), candleObj.get("volume").getAsString()));
+                    candleObj.get("close").getAsString(), volume));
         }
 
-        // Sort by timestamp
+        // Sort by timestamp (ascending order)
         barList.sort(Comparator.comparingLong(CoinbaseBar::getStartTime));
 
         // Build series
-        BaseBarSeries series = new BaseBarSeriesBuilder().withName("CoinbaseData").build();
-        Duration lastDuration = null;
+        BaseBarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
+        Duration lastDuration = knownInterval;
         for (int i = 0; i < barList.size(); i++) {
             CoinbaseBar bar = barList.get(i);
-            Instant previousStart = i > 0 ? barList.get(i - 1).getStartInstant() : null;
-            Instant currentStart = bar.getStartInstant();
-            Instant nextStart = i + 1 < barList.size() ? barList.get(i + 1).getStartInstant() : null;
-            Duration duration = inferDuration(previousStart, currentStart, nextStart, lastDuration);
-            lastDuration = duration;
-            Instant endTime = currentStart.plus(duration);
+            // Coinbase "start" field is the start of the candle period
+            Instant startTime = bar.getStartInstant();
+            Duration duration;
+            if (knownInterval != null) {
+                duration = knownInterval;
+            } else {
+                // Infer duration from data by calculating the difference between consecutive
+                // start times
+                Instant previousStart = i > 0 ? barList.get(i - 1).getStartInstant() : null;
+                Instant currentStart = bar.getStartInstant();
+                Instant nextStart = i + 1 < barList.size() ? barList.get(i + 1).getStartInstant() : null;
+                duration = inferDuration(previousStart, currentStart, nextStart, lastDuration);
+                lastDuration = duration;
+            }
+            // End time is start time + duration
+            Instant endTime = startTime.plus(duration);
             bar.addToSeries(series, endTime, duration);
         }
 
