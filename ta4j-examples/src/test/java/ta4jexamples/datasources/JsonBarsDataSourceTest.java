@@ -29,6 +29,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 
 import static org.hamcrest.core.Is.is;
@@ -49,11 +51,11 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadCoinbaseInputStream() {
-        String jsonFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        String jsonFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
         assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
 
-        BarSeries series = JsonBarsDataSource.loadSeries(inputStream);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(inputStream);
 
         assertNotNull(series, "BarSeries should be loaded successfully with deserializer");
         assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
@@ -68,11 +70,11 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadBinanceInputStream() {
-        String jsonFile = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        String jsonFile = "Binance-ETH-USD-PT5M-20230313_20230315.json";
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
         assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
 
-        BarSeries series = JsonBarsDataSource.loadSeries(inputStream);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(inputStream);
 
         assertNotNull(series, "BarSeries should be loaded successfully");
         assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
@@ -87,16 +89,16 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadNullInputStream() {
-        BarSeries series = JsonBarsDataSource.loadSeries((InputStream) null);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries((InputStream) null);
         assertNull(series, "Should return null for null input stream");
     }
 
     @Test
     public void testLoadSeriesFromValidFile() {
-        String jsonFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        String jsonFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         String resourcePath = Objects.requireNonNull(getClass().getClassLoader().getResource(jsonFile)).getPath();
 
-        BarSeries series = JsonBarsDataSource.loadSeries(resourcePath);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(resourcePath);
 
         assertNotNull(series, "BarSeries should be loaded successfully from file");
         assertTrue(series.getBarCount() > 0, "BarSeries should contain bars");
@@ -119,21 +121,21 @@ public class JsonBarsDataSourceTest {
     public void testLoadSeriesFromNonExistentFile() {
         String nonExistentPath = "non-existent-file.json";
 
-        BarSeries series = JsonBarsDataSource.loadSeries(nonExistentPath);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(nonExistentPath);
 
         assertNull(series, "Should return null for non-existent file");
     }
 
     @Test
     public void testLoadSeriesFromNullFilename() {
-        BarSeries series = JsonBarsDataSource.loadSeries((String) null);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries((String) null);
 
         assertNull(series, "Should return null for null filename");
     }
 
     @Test
     public void testLoadSeriesFromEmptyFilename() {
-        BarSeries series = JsonBarsDataSource.loadSeries("");
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries("");
 
         assertNull(series, "Should return null for empty filename");
     }
@@ -149,7 +151,7 @@ public class JsonBarsDataSourceTest {
             tempFilePath = tempFile.toString();
             Files.write(tempFile, invalidJsonContent.getBytes());
 
-            BarSeries series = JsonBarsDataSource.loadSeries(tempFilePath);
+            BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(tempFilePath);
 
             assertNull(series, "Should return null for invalid JSON file");
         } catch (Exception e) {
@@ -164,5 +166,113 @@ public class JsonBarsDataSourceTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testLoadSeriesWithStandardNamingPatternCoinbase() {
+        // Test loading Coinbase data using domain-driven interface with standard naming pattern
+        // Pattern: {Exchange}-{ticker}-{interval}-{startDate}_{endDate}.json
+        String expectedFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-11-05T00:00:00Z");
+        Instant end = Instant.parse("2025-10-20T23:59:59Z");
+
+        BarSeries series = dataSource.loadSeries("ETH-USD", Duration.ofDays(1), start, end);
+
+        assertNotNull(series, "Should load series using standard naming pattern with Coinbase prefix");
+        assertTrue(series.getBarCount() > 0, "Series should contain bars");
+        assertEquals("CoinbaseData", series.getName(), "Series name should be set correctly");
+    }
+
+    @Test
+    public void testLoadSeriesWithStandardNamingPatternBinance() {
+        // Test loading Binance data using domain-driven interface with standard naming pattern
+        String expectedFile = "Binance-ETH-USD-PT5M-20230313_20230315.json";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2023-03-13T00:00:00Z");
+        Instant end = Instant.parse("2023-03-15T23:59:59Z");
+
+        BarSeries series = dataSource.loadSeries("ETH-USD", Duration.ofMinutes(5), start, end);
+
+        assertNotNull(series, "Should load series using standard naming pattern with Binance prefix");
+        assertTrue(series.getBarCount() > 0, "Series should contain bars");
+    }
+
+    @Test
+    public void testLoadSeriesWithNonExistentTicker() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant end = Instant.parse("2024-12-31T23:59:59Z");
+
+        BarSeries series = dataSource.loadSeries("NONEXISTENT-USD", Duration.ofDays(1), start, end);
+
+        assertNull(series, "Should return null for non-existent ticker");
+    }
+
+    @Test
+    public void testLoadSeriesWithInvalidDateRange() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-12-31T23:59:59Z");
+        Instant end = Instant.parse("2024-01-01T00:00:00Z"); // End before start
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("ETH-USD", Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException when end date is before start date");
+    }
+
+    @Test
+    public void testLoadSeriesWithNullTicker() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant end = Instant.parse("2024-12-31T23:59:59Z");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries(null, Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException for null ticker");
+    }
+
+    @Test
+    public void testLoadSeriesWithEmptyTicker() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant end = Instant.parse("2024-12-31T23:59:59Z");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("", Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException for empty ticker");
+    }
+
+    @Test
+    public void testLoadSeriesWithInvalidInterval() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant end = Instant.parse("2024-12-31T23:59:59Z");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("ETH-USD", Duration.ZERO, start, end);
+        }, "Should throw IllegalArgumentException for zero interval");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("ETH-USD", Duration.ofSeconds(-1), start, end);
+        }, "Should throw IllegalArgumentException for negative interval");
+    }
+
+    @Test
+    public void testLoadSeriesWithNullDates() {
+        JsonBarsDataSource dataSource = new JsonBarsDataSource();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("ETH-USD", Duration.ofDays(1), null, Instant.now());
+        }, "Should throw IllegalArgumentException for null start date");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("ETH-USD", Duration.ofDays(1), Instant.now(), null);
+        }, "Should throw IllegalArgumentException for null end date");
     }
 }

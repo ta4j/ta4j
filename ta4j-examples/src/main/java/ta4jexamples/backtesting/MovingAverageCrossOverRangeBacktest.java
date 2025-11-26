@@ -54,7 +54,7 @@ public class MovingAverageCrossOverRangeBacktest {
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String resourceName = "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json";
+        String resourceName = "Binance-ETH-USD-PT5M-20230313_20230315.json";
         InputStream resourceStream = MovingAverageCrossOverRangeBacktest.class.getClassLoader()
                 .getResourceAsStream(resourceName);
         if (resourceStream == null) {
@@ -62,7 +62,7 @@ public class MovingAverageCrossOverRangeBacktest {
             return;
         }
 
-        BarSeries series = JsonBarsDataSource.loadSeries(resourceStream);
+        BarSeries series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
         if (series == null || series.isEmpty()) {
             LOG.error("Bar series was null or empty: {}", series);
             return;

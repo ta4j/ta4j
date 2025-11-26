@@ -72,7 +72,7 @@ public class MultiStrategyBacktest {
     public static void main(String[] args) {
         DecimalNum.configureDefaultPrecision(DEFAULT_DECIMAL_PRECISION);
 
-        String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json";
+        String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         new MultiStrategyBacktest().runBacktest(jsonOhlcResourceFile);
     }
 
@@ -150,7 +150,7 @@ public class MultiStrategyBacktest {
         BarSeries series = null;
         try (InputStream resourceStream = MultiStrategyBacktest.class.getClassLoader()
                 .getResourceAsStream(jsonOHLCResourceFile)) {
-            series = JsonBarsDataSource.loadSeries(resourceStream);
+            series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOHLCResourceFile, ex.getMessage());
         }

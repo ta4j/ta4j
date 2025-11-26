@@ -103,7 +103,7 @@ import java.util.TreeMap;
  *
  * @since 0.20
  */
-public class YahooFinanceDataSource {
+public class YahooFinanceDataSource implements BarSeriesDataSource {
 
     /**
      * Supported intervals for Yahoo Finance API. These correspond to the intervals
@@ -313,6 +313,100 @@ public class YahooFinanceDataSource {
         Instant startDateTime = endDateTime.minus(totalDuration);
 
         return loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
+    }
+
+    @Override
+    public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
+        if (ticker == null || ticker.trim().isEmpty()) {
+            throw new IllegalArgumentException("Ticker cannot be null or empty");
+        }
+        if (interval == null || interval.isNegative() || interval.isZero()) {
+            throw new IllegalArgumentException("Interval must be positive");
+        }
+        if (start == null || end == null) {
+            throw new IllegalArgumentException("Start and end dates cannot be null");
+        }
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
+
+        // Map Duration to YahooFinanceInterval
+        YahooFinanceInterval yfInterval = mapDurationToInterval(interval);
+        if (yfInterval == null) {
+            LOG.warn("Unsupported interval duration: {}. Falling back to DAY_1", interval);
+            yfInterval = YahooFinanceInterval.DAY_1;
+        }
+
+        return loadSeriesInstance(ticker, yfInterval, start, end);
+    }
+
+    @Override
+    public BarSeries loadSeries(String source) {
+        if (source == null || source.trim().isEmpty()) {
+            throw new IllegalArgumentException("Source cannot be null or empty");
+        }
+
+        // Check if it's a cache file path
+        if (source.startsWith(CACHE_DIR) || source.contains("yahoofinance-")) {
+            Path cacheFile = Paths.get(source);
+            if (Files.exists(cacheFile)) {
+                String cachedResponse = readFromCache(cacheFile);
+                if (cachedResponse != null) {
+                    // Try to extract ticker from filename
+                    String filename = cacheFile.getFileName().toString();
+                    // Format: yahoofinance-TICKER-INTERVAL-START-END.json
+                    String[] parts = filename.replace(".json", "").split("-");
+                    if (parts.length >= 2) {
+                        String ticker = parts[1];
+                        // Try to determine interval from filename
+                        YahooFinanceInterval interval = YahooFinanceInterval.DAY_1; // Default
+                        if (parts.length >= 3) {
+                            try {
+                                interval = parseIntervalFromApiValue(parts[2]);
+                            } catch (IllegalArgumentException e) {
+                                LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
+                            }
+                        }
+                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                    }
+                }
+            }
+        }
+
+        // If not a cache file, return null (could be extended to parse other formats)
+        return null;
+    }
+
+    /**
+     * Maps a Duration to the closest matching YahooFinanceInterval.
+     *
+     * @param duration the duration to map
+     * @return the matching YahooFinanceInterval, or null if no close match is found
+     */
+    private YahooFinanceInterval mapDurationToInterval(Duration duration) {
+        long seconds = duration.getSeconds();
+        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
+            if (interval.getDuration().getSeconds() == seconds) {
+                return interval;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parses a YahooFinanceInterval from its API value string.
+     *
+     * @param apiValue the API value (e.g., "1m", "1d", "1wk")
+     * @return the matching YahooFinanceInterval
+     * @throws IllegalArgumentException if no matching interval is found
+     */
+    private YahooFinanceInterval parseIntervalFromApiValue(String apiValue) {
+        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
+            if (interval.getApiValue().equals(apiValue)) {
+                return interval;
+            }
+        }
+        throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
     }
 
     /**

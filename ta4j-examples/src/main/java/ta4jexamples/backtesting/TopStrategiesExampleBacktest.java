@@ -93,12 +93,12 @@ public class TopStrategiesExampleBacktest {
 
     public static void main(String[] args) {
         // Load the bar series
-        String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
+        String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
 
         BarSeries series = null;
         try (InputStream resourceStream = TopStrategiesExampleBacktest.class.getClassLoader()
                 .getResourceAsStream(jsonOhlcResourceFile)) {
-            series = JsonBarsDataSource.loadSeries(resourceStream);
+            series = JsonBarsDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
         }
