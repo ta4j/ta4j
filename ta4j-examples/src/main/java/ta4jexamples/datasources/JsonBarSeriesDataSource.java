@@ -32,8 +32,9 @@ import org.ta4j.core.BarSeries;
 import ta4jexamples.datasources.json.AdaptiveBarSeriesTypeAdapter;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -189,6 +190,9 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
 
     /**
      * Internal implementation for loading from InputStream.
+     * <p>
+     * This method fully consumes the stream but does not close it, as per the
+     * interface contract. The caller is responsible for closing the stream.
      */
     private BarSeries loadFromStream(InputStream inputStream) {
         if (inputStream == null) {
@@ -196,7 +200,19 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
             return null;
         }
 
-        try (JsonReader reader = new JsonReader(new InputStreamReader(inputStream))) {
+        // Read the stream fully into a String without closing it
+        // This ensures we fully consume the stream while respecting the contract
+        // that the caller is responsible for closing it
+        String jsonContent;
+        try {
+            jsonContent = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            LOG.debug("Unable to read from input stream", e);
+            return null;
+        }
+
+        // Parse the JSON content from the String
+        try (JsonReader reader = new JsonReader(new java.io.StringReader(jsonContent))) {
             return TYPEADAPTER_GSON.fromJson(reader, BarSeries.class);
         } catch (Exception e) {
             LOG.debug("Unable to load bars from JSON using TypeAdapter", e);
