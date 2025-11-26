@@ -129,20 +129,48 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      */
     private BarSeries searchAndLoadCsvFile(String pattern, Instant start, Instant end) {
         // Try direct pattern match as resource
-        if (pattern.contains("*")) {
-            // For wildcard patterns, try common variations
-            String[] variations = { pattern.replace("*", "PT1D"), pattern.replace("*", "PT5M"),
-                    pattern.replace("*", "") };
-            for (String variation : variations) {
+        if (!pattern.contains("*")) {
+            return loadCsvSeries(pattern);
+        }
+
+        // Count wildcards to determine replacement strategy
+        long wildcardCount = pattern.chars().filter(ch -> ch == '*').count();
+
+        if (wildcardCount == 1) {
+            // Single wildcard: try common interval values
+            String[] intervalVariations = { "PT1D", "PT5M", "PT1H", "" };
+            for (String interval : intervalVariations) {
+                String variation = pattern.replaceFirst("\\*", interval);
                 BarSeries series = loadCsvSeries(variation);
                 if (series != null && !series.isEmpty()) {
                     return series;
                 }
             }
-        } else {
-            // Direct match
-            return loadCsvSeries(pattern);
+        } else if (wildcardCount >= 2) {
+            // Multiple wildcards: replace the first (interval) with common values,
+            // and the second (end date) with the actual end date from parameters
+            String[] intervalVariations = { "PT1D", "PT5M", "PT1H" };
+            // Format end date in both date-only and datetime formats
+            String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
+            String endDateTimeStr = end.atZone(ZoneOffset.UTC)
+                    .format(getDateTimeFormatterForInterval(Duration.ofDays(1)));
+
+            for (String interval : intervalVariations) {
+                // Replace first wildcard with interval, second with end date (date-only format)
+                String variation = pattern.replaceFirst("\\*", interval).replaceFirst("\\*", endDateStr);
+                BarSeries series = loadCsvSeries(variation);
+                if (series != null && !series.isEmpty()) {
+                    return series;
+                }
+                // Also try with datetime format for the end date
+                variation = pattern.replaceFirst("\\*", interval).replaceFirst("\\*", endDateTimeStr);
+                series = loadCsvSeries(variation);
+                if (series != null && !series.isEmpty()) {
+                    return series;
+                }
+            }
         }
+
         return null;
     }
 

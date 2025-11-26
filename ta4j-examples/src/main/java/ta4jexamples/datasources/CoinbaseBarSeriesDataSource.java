@@ -507,13 +507,12 @@ public class CoinbaseBarSeriesDataSource extends AbstractHttpBarSeriesDataSource
                         String productId = parts[1];
                         // Try to determine interval from filename
                         CoinbaseInterval interval = CoinbaseInterval.ONE_DAY; // Default
-                        if (parts.length >= 3) {
-                            try {
-                                interval = parseIntervalFromApiValue(parts[2]);
-                            } catch (IllegalArgumentException e) {
-                                LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
-                            }
+                        try {
+                            interval = parseIntervalFromApiValue(parts[2]);
+                        } catch (IllegalArgumentException e) {
+                            LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
                         }
+
                         return parseCoinbaseResponse(cachedResponse, productId, interval.getDuration());
                     }
                 }
