@@ -23,10 +23,19 @@
  */
 package ta4jexamples.datasources;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.WriterAppender;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -39,6 +48,34 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for the {@link BitStampCSVTradesBarSeriesDataSource} class.
  */
 public class BitStampCSVTradesBarSeriesDataSourceTest {
+
+    private StringWriter logOutput;
+    private Appender appender;
+
+    @BeforeEach
+    public void setUp() {
+        logOutput = new StringWriter();
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        Configuration config = context.getConfiguration();
+        PatternLayout layout = PatternLayout.newBuilder().withPattern("%level %msg%n").build();
+        appender = WriterAppender.newBuilder().setTarget(logOutput).setLayout(layout).setName("TestAppender").build();
+        appender.start();
+        config.addAppender(appender);
+        org.apache.logging.log4j.core.Logger logger = (org.apache.logging.log4j.core.Logger) LogManager
+                .getLogger(BitStampCSVTradesBarSeriesDataSource.class);
+        logger.addAppender(appender);
+        logger.setLevel(org.apache.logging.log4j.Level.WARN);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        if (appender != null) {
+            org.apache.logging.log4j.core.Logger logger = (org.apache.logging.log4j.core.Logger) LogManager
+                    .getLogger(BitStampCSVTradesBarSeriesDataSource.class);
+            logger.removeAppender(appender);
+            appender.stop();
+        }
+    }
 
     @Test
     public void testMain() {
@@ -167,5 +204,33 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         BarSeries series = dataSource.loadSeries("BTC-USD", Duration.ofMinutes(5), start, end);
         assertNotNull(series, "Should find file using source name prefix");
         assertTrue(expectedFile.startsWith(sourceName + "-"), "Expected file should start with source name prefix");
+    }
+
+    @Test
+    public void testLoadSeriesWithMismatchedIntervalReturnsNull() {
+        // Test that when requesting a different interval than what's in the file,
+        // null is returned (file search won't find files with mismatched intervals).
+        //
+        // Note: The fix in filterAndAggregateSeries ensures that if a file is ever
+        // found but has a mismatched interval, a warning will be logged instead of
+        // failing silently. However, the current file search logic prevents this
+        // scenario from occurring through the public API, so we test the expected
+        // behavior (null return) rather than the warning.
+        String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        Instant start = Instant.parse("2013-11-25T00:00:00Z");
+        Instant end = Instant.parse("2013-12-01T23:59:59Z");
+
+        // First verify the file can be loaded with matching interval
+        BarSeries seriesWithMatchingInterval = dataSource.loadSeries("BTC-USD", Duration.ofMinutes(5), start, end);
+        assertNotNull(seriesWithMatchingInterval, "File should be loadable with matching 5-minute interval");
+
+        // Request 1-hour bars - file search won't find the 5-minute file, so returns
+        // null
+        BarSeries series = dataSource.loadSeries("BTC-USD", Duration.ofHours(1), start, end);
+        assertNull(series, "Should return null when no file matches the requested interval");
     }
 }

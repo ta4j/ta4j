@@ -237,15 +237,32 @@ public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource
         // This is a simplified implementation - in practice, you'd want to
         // re-aggregate from the original trade data
         var filteredSeries = new BaseBarSeriesBuilder().withName(series.getName()).build();
+        int barsInDateRange = 0;
+        int barsWithMatchingInterval = 0;
+        Duration actualInterval = null;
+
         for (int i = 0; i < series.getBarCount(); i++) {
             var bar = series.getBar(i);
             Instant barEnd = bar.getEndTime();
             if (!barEnd.isBefore(start) && !barEnd.isAfter(end)) {
+                barsInDateRange++;
+                if (actualInterval == null) {
+                    actualInterval = bar.getTimePeriod();
+                }
                 // If interval matches, add as-is; otherwise would need re-aggregation
                 if (bar.getTimePeriod().equals(interval)) {
+                    barsWithMatchingInterval++;
                     filteredSeries.addBar(bar);
                 }
             }
+        }
+
+        // Log warning if bars exist in date range but intervals don't match
+        if (barsInDateRange > 0 && barsWithMatchingInterval == 0 && actualInterval != null) {
+            LOG.warn(
+                    "Found {} bars within date range [{} to {}], but bar interval ({}) does not match requested interval ({}). "
+                            + "Re-aggregation from original trade data is required but not implemented. Returning null.",
+                    barsInDateRange, start, end, actualInterval, interval);
         }
 
         return filteredSeries.isEmpty() ? null : filteredSeries;
