@@ -168,7 +168,12 @@ public class JsonBarSeriesDataSource implements BarSeriesDataSource {
             // Try as classpath resource
             InputStream resourceStream = JsonBarSeriesDataSource.class.getClassLoader().getResourceAsStream(source);
             if (resourceStream != null) {
-                return loadFromStream(resourceStream);
+                try (resourceStream) {
+                    return loadFromStream(resourceStream);
+                } catch (Exception resourceException) {
+                    LOG.debug("Unable to load bars from classpath resource: {}", source, resourceException);
+                    return null;
+                }
             }
             LOG.debug("Unable to load bars from file: {}", source, e);
             return null;
