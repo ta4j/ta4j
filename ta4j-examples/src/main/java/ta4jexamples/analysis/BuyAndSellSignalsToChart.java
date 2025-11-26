@@ -29,7 +29,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeries;
 
 import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -41,7 +41,7 @@ public class BuyAndSellSignalsToChart {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
 

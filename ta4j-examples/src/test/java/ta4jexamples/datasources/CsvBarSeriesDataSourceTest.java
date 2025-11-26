@@ -36,13 +36,13 @@ import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the {@link CsvBarSeriesDataSource} class.
+ * Unit tests for the {@link CsvFileBarSeriesDataSource} class.
  */
 public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testMain() {
-        CsvBarSeriesDataSource.main(null);
+        CsvFileBarSeriesDataSource.main(null);
     }
 
     @Test
@@ -54,7 +54,7 @@ public class CsvBarSeriesDataSourceTest {
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
         assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
 
@@ -68,7 +68,7 @@ public class CsvBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithDirectFilename() {
         // Test loading by direct filename (backward compatibility)
-        BarSeries series = CsvBarSeriesDataSource.loadCsvSeries("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries("AAPL-PT1D-20130102_20131231.csv");
 
         assertNotNull(series, "Should load series from direct filename");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
@@ -76,7 +76,7 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNonExistentTicker() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
 
@@ -87,7 +87,7 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidDateRange() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-12-31T23:59:59Z");
         Instant end = Instant.parse("2013-01-02T00:00:00Z"); // End before start
 
@@ -98,7 +98,7 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNullTicker() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
 
@@ -109,7 +109,7 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithEmptyTicker() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
 
@@ -120,7 +120,7 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidInterval() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
 
@@ -135,14 +135,14 @@ public class CsvBarSeriesDataSourceTest {
 
     @Test
     public void testGetSourceName() {
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         assertEquals("", dataSource.getSourceName(), "Should return empty string as CSV files don't use source prefix");
     }
 
     @Test
     public void testGetSourceNameUsedInFileSearchPattern() {
         // Verify that getSourceName() returns empty string and files don't use prefix
-        CsvBarSeriesDataSource dataSource = new CsvBarSeriesDataSource();
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         assertTrue(sourceName.isEmpty(), "Source name should be empty for generic CSV files");
 

@@ -48,47 +48,28 @@ import java.time.format.DateTimeFormatter;
  * ticker, interval, and date range. Searches for CSV files matching the
  * specified criteria in the classpath.
  */
-public class CsvBarSeriesDataSource implements BarSeriesDataSource {
+public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(CsvBarSeriesDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(CsvFileBarSeriesDataSource.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
-    private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
-            .ofPattern("yyyyMMddHHmm");
     private static final String DEFAULT_APPLE_BAR_FILE = "AAPL-PT1D-20130102_20131231.csv";
 
+    /**
+     * Creates a new CsvFileBarSeriesDataSource with no source prefix.
+     */
+    public CsvFileBarSeriesDataSource() {
+        super("");
+    }
+
     @Override
-    public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
-        if (ticker == null || ticker.trim().isEmpty()) {
-            throw new IllegalArgumentException("Ticker cannot be null or empty");
-        }
-        if (interval == null || interval.isNegative() || interval.isZero()) {
-            throw new IllegalArgumentException("Interval must be positive");
-        }
-        if (start == null || end == null) {
-            throw new IllegalArgumentException("Start and end dates cannot be null");
-        }
-        if (start.isAfter(end)) {
-            throw new IllegalArgumentException("Start date must be before or equal to end date");
-        }
+    protected String getFileExtension() {
+        return "csv";
+    }
 
-        // Build search patterns for filename matching
-        // Standard pattern: {ticker}-{interval}-{startDateTime}_{endDateTime}.csv
-        // DateTime format depends on interval: minutes -> HHmm, hours -> HH, days ->
-        // date only
-        // Note: Existing files use date-only format (yyyyMMdd), but the code supports
-        // granular formats for future files with multiple files per day
-        DateTimeFormatter dateTimeFormatter = getDateTimeFormatterForInterval(interval);
-        String startDateTimeStr = start.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
-        String endDateTimeStr = end.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
-
-        // Also prepare date-only format since existing files use this format
-        String startDateStr = start.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
-        String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
-
-        String intervalStr = formatIntervalForFilename(interval);
-
+    @Override
+    protected BarSeries searchAndLoadFile(String ticker, String intervalStr, String sourcePrefix,
+            String startDateTimeStr, String endDateTimeStr, String startDateStr, String endDateStr, Duration interval,
+            Instant start, Instant end) {
         // Try exact pattern with interval-appropriate format:
         // {ticker}-{interval}-{startDateTime}_{endDateTime}.csv
         String exactPattern = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_" + endDateTimeStr
@@ -127,8 +108,6 @@ public class CsvBarSeriesDataSource implements BarSeriesDataSource {
             return filterSeriesByDateRange(series, start, end);
         }
 
-        LOG.debug("No CSV file found matching ticker: {}, interval: {}, date range: {} to {}", ticker, interval, start,
-                end);
         return null;
     }
 
@@ -138,48 +117,6 @@ public class CsvBarSeriesDataSource implements BarSeriesDataSource {
             throw new IllegalArgumentException("Source cannot be null or empty");
         }
         return loadCsvSeries(source);
-    }
-
-    /**
-     * Determines the appropriate DateTimeFormatter for filename datetime formatting
-     * based on the interval. For minute-level intervals, includes hours and
-     * minutes. For hour-level intervals, includes hours. For day-level intervals,
-     * uses date only.
-     *
-     * @param interval the bar interval
-     * @return the appropriate DateTimeFormatter
-     */
-    private DateTimeFormatter getDateTimeFormatterForInterval(Duration interval) {
-        long seconds = interval.getSeconds();
-        if (seconds < 3600) {
-            // Interval is in minutes or seconds - include hours and minutes
-            return FILENAME_DATETIME_MINUTE_FORMAT;
-        } else if (seconds < 86400) {
-            // Interval is in hours - include hours
-            return FILENAME_DATETIME_HOUR_FORMAT;
-        } else {
-            // Interval is in days or longer - date only
-            return FILENAME_DATE_FORMAT;
-        }
-    }
-
-    /**
-     * Formats a Duration as an ISO 8601 interval string for use in filenames.
-     *
-     * @param interval the duration to format
-     * @return the ISO 8601 duration string (e.g., "PT1D", "PT5M", "PT1H")
-     */
-    private String formatIntervalForFilename(Duration interval) {
-        long seconds = interval.getSeconds();
-        if (seconds % 86400 == 0) {
-            return "PT" + (seconds / 86400) + "D";
-        } else if (seconds % 3600 == 0) {
-            return "PT" + (seconds / 3600) + "H";
-        } else if (seconds % 60 == 0) {
-            return "PT" + (seconds / 60) + "M";
-        } else {
-            return "PT" + seconds + "S";
-        }
     }
 
     /**
@@ -207,32 +144,6 @@ public class CsvBarSeriesDataSource implements BarSeriesDataSource {
             return loadCsvSeries(pattern);
         }
         return null;
-    }
-
-    /**
-     * Filters a BarSeries to only include bars within the specified date range.
-     *
-     * @param series the series to filter
-     * @param start  the start date (inclusive)
-     * @param end    the end date (inclusive)
-     * @return a new BarSeries containing only bars within the date range, or null
-     *         if no bars match
-     */
-    private BarSeries filterSeriesByDateRange(BarSeries series, Instant start, Instant end) {
-        if (series == null || series.isEmpty()) {
-            return null;
-        }
-
-        var filteredSeries = new BaseBarSeriesBuilder().withName(series.getName()).build();
-        for (int i = 0; i < series.getBarCount(); i++) {
-            var bar = series.getBar(i);
-            Instant barEnd = bar.getEndTime();
-            if (!barEnd.isBefore(start) && !barEnd.isAfter(end)) {
-                filteredSeries.addBar(bar);
-            }
-        }
-
-        return filteredSeries.isEmpty() ? null : filteredSeries;
     }
 
     /**
@@ -267,7 +178,7 @@ public class CsvBarSeriesDataSource implements BarSeriesDataSource {
      */
     public static BarSeries loadCsvSeries(String filename) {
 
-        var stream = CsvBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        var stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
 
         if (stream == null) {
             LOG.debug("CSV file not found in classpath: {}", filename);
@@ -314,7 +225,7 @@ public class CsvBarSeriesDataSource implements BarSeriesDataSource {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarSeriesDataSource.loadSeriesFromFile();
+        BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

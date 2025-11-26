@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
  * This class displays an example of the transaction cost calculation.
@@ -56,7 +56,7 @@ public class TradeCost {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         // Building the short selling trading strategy
         Strategy strategy = buildShortSellingMomentumStrategy(series);
 

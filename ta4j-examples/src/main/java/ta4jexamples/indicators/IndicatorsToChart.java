@@ -48,7 +48,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 
-import ta4jexamples.datasources.CsvBarSeriesDataSource;
+import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 /**
  * This class builds a graphical chart showing values from indicators.
@@ -96,7 +96,7 @@ public class IndicatorsToChart {
         /*
          * Getting bar series
          */
-        BarSeries series = CsvBarSeriesDataSource.loadSeriesFromFile();
+        BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
 
         /*
          * Creating indicators

@@ -33,8 +33,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
@@ -48,54 +46,31 @@ import java.util.ListIterator;
  * ticker, interval, and date range. Searches for Bitstamp CSV files matching
  * the specified criteria in the classpath.
  */
-public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource {
+public class BitStampCsvTradesFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(BitStampCSVTradesBarSeriesDataSource.class);
-
-    @Override
-    public String getSourceName() {
-        return "Bitstamp";
-    }
+    private static final Logger LOG = LogManager.getLogger(BitStampCsvTradesFileBarSeriesDataSource.class);
 
     private static final String DEFAULT_BITSTAMP_FILE = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
-    private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
-    private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
-            .ofPattern("yyyyMMddHHmm");
+
+    /**
+     * Creates a new BitStampCsvTradesFileBarSeriesDataSource with "Bitstamp" as the
+     * source name.
+     */
+    public BitStampCsvTradesFileBarSeriesDataSource() {
+        super("Bitstamp");
+    }
 
     @Override
-    public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
-        if (ticker == null || ticker.trim().isEmpty()) {
-            throw new IllegalArgumentException("Ticker cannot be null or empty");
-        }
-        if (interval == null || interval.isNegative() || interval.isZero()) {
-            throw new IllegalArgumentException("Interval must be positive");
-        }
-        if (start == null || end == null) {
-            throw new IllegalArgumentException("Start and end dates cannot be null");
-        }
-        if (start.isAfter(end)) {
-            throw new IllegalArgumentException("Start date must be before or equal to end date");
-        }
+    protected String getFileExtension() {
+        return "csv";
+    }
 
-        // Build search patterns for Bitstamp CSV files
-        // Standard pattern:
-        // Bitstamp-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
-        // DateTime format depends on interval: minutes -> HHmm, hours -> HH, days ->
-        // date only
-        DateTimeFormatter dateTimeFormatter = getDateTimeFormatterForInterval(interval);
-        String startDateTimeStr = start.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
-        String endDateTimeStr = end.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
-
-        // Also prepare date-only format for backward compatibility with existing files
-        String startDateStr = start.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
-        String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
-
-        String intervalStr = formatIntervalForFilename(interval);
-
+    @Override
+    protected BarSeries searchAndLoadFile(String ticker, String intervalStr, String sourcePrefix,
+            String startDateTimeStr, String endDateTimeStr, String startDateStr, String endDateStr, Duration interval,
+            Instant start, Instant end) {
         // Try exact pattern with interval-appropriate format:
         // {sourceName}-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
-        String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
         String exactPattern = sourcePrefix + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_"
                 + endDateTimeStr + ".csv";
         BarSeries series = loadBitstampSeries(exactPattern);
@@ -132,9 +107,6 @@ public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource
             return series;
         }
 
-        String sourceName = getSourceName().isEmpty() ? "" : getSourceName() + " ";
-        LOG.debug("No {}CSV file found matching ticker: {}, interval: {}, date range: {} to {}", sourceName, ticker,
-                interval, start, end);
         return null;
     }
 
@@ -173,48 +145,6 @@ public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource
             }
         }
         return null;
-    }
-
-    /**
-     * Determines the appropriate DateTimeFormatter for filename datetime formatting
-     * based on the interval. For minute-level intervals, includes hours and
-     * minutes. For hour-level intervals, includes hours. For day-level intervals,
-     * uses date only.
-     *
-     * @param interval the bar interval
-     * @return the appropriate DateTimeFormatter
-     */
-    private DateTimeFormatter getDateTimeFormatterForInterval(Duration interval) {
-        long seconds = interval.getSeconds();
-        if (seconds < 3600) {
-            // Interval is in minutes or seconds - include hours and minutes
-            return FILENAME_DATETIME_MINUTE_FORMAT;
-        } else if (seconds < 86400) {
-            // Interval is in hours - include hours
-            return FILENAME_DATETIME_HOUR_FORMAT;
-        } else {
-            // Interval is in days or longer - date only
-            return FILENAME_DATE_FORMAT;
-        }
-    }
-
-    /**
-     * Formats a Duration as an ISO 8601 interval string for use in filenames.
-     *
-     * @param interval the duration to format
-     * @return the ISO 8601 duration string (e.g., "PT1D", "PT5M", "PT1H")
-     */
-    private String formatIntervalForFilename(Duration interval) {
-        long seconds = interval.getSeconds();
-        if (seconds % 86400 == 0) {
-            return "PT" + (seconds / 86400) + "D";
-        } else if (seconds % 3600 == 0) {
-            return "PT" + (seconds / 3600) + "H";
-        } else if (seconds % 60 == 0) {
-            return "PT" + (seconds / 60) + "M";
-        } else {
-            return "PT" + seconds + "S";
-        }
     }
 
     /**
@@ -291,7 +221,7 @@ public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource
     public static BarSeries loadBitstampSeries(String bitstampCsvFile) {
 
         // Reading all lines of the CSV file
-        InputStream stream = BitStampCSVTradesBarSeriesDataSource.class.getClassLoader()
+        InputStream stream = BitStampCsvTradesFileBarSeriesDataSource.class.getClassLoader()
                 .getResourceAsStream(bitstampCsvFile);
         List<String[]> lines = null;
         if (stream == null) {
@@ -370,7 +300,7 @@ public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource
     }
 
     public static void main(String[] args) {
-        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

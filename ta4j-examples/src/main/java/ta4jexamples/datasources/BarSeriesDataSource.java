@@ -44,8 +44,8 @@ import java.time.Instant;
  * <pre>
  * // All data sources work with business concepts
  * BarSeriesDataSource yahoo = new YahooFinanceBarSeriesDataSource(true);
- * BarSeriesDataSource csv = new CsvBarSeriesDataSource();
- * BarSeriesDataSource json = new JsonBarSeriesDataSource();
+ * BarSeriesDataSource csv = new CsvFileBarSeriesDataSource();
+ * BarSeriesDataSource json = new JsonFileBarSeriesDataSource();
  *
  * // Same interface, different implementations
  * BarSeries aapl = yahoo.loadSeries("AAPL", Duration.ofDays(1), Instant.parse("2023-01-01T00:00:00Z"),
@@ -67,10 +67,10 @@ import java.time.Instant;
  * <p>
  * <strong>Implementation Behavior:</strong>
  * <ul>
- * <li><strong>File-based sources</strong> (CsvBarSeriesDataSource,
- * JsonBarSeriesDataSource, BitStampCSVTradesBarSeriesDataSource): Search for
- * files matching ticker/interval/date range patterns in the classpath or
- * configured directories. The exact filename pattern is
+ * <li><strong>File-based sources</strong> (CsvFileBarSeriesDataSource,
+ * JsonFileBarSeriesDataSource, BitStampCsvTradesFileBarSeriesDataSource):
+ * Search for files matching ticker/interval/date range patterns in the
+ * classpath or configured directories. The exact filename pattern is
  * implementation-specific.</li>
  * <li><strong>API-based sources</strong> (YahooFinanceBarSeriesDataSource):
  * Fetch data from the API. If caching is enabled, will first check for cached

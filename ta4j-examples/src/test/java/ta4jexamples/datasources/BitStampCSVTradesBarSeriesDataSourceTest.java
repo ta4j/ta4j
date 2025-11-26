@@ -45,7 +45,7 @@ import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the {@link BitStampCSVTradesBarSeriesDataSource} class.
+ * Unit tests for the {@link BitStampCsvTradesFileBarSeriesDataSource} class.
  */
 public class BitStampCSVTradesBarSeriesDataSourceTest {
 
@@ -62,7 +62,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         appender.start();
         config.addAppender(appender);
         org.apache.logging.log4j.core.Logger logger = (org.apache.logging.log4j.core.Logger) LogManager
-                .getLogger(BitStampCSVTradesBarSeriesDataSource.class);
+                .getLogger(BitStampCsvTradesFileBarSeriesDataSource.class);
         logger.addAppender(appender);
         logger.setLevel(org.apache.logging.log4j.Level.WARN);
     }
@@ -71,7 +71,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
     public void tearDown() {
         if (appender != null) {
             org.apache.logging.log4j.core.Logger logger = (org.apache.logging.log4j.core.Logger) LogManager
-                    .getLogger(BitStampCSVTradesBarSeriesDataSource.class);
+                    .getLogger(BitStampCsvTradesFileBarSeriesDataSource.class);
             logger.removeAppender(appender);
             appender.stop();
         }
@@ -79,7 +79,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testMain() {
-        BitStampCSVTradesBarSeriesDataSource.main(null);
+        BitStampCsvTradesFileBarSeriesDataSource.main(null);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
         assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -105,7 +105,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithDirectFilename() {
         // Test loading by direct filename (backward compatibility)
-        BarSeries series = BitStampCSVTradesBarSeriesDataSource
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource
                 .loadBitstampSeries("Bitstamp-BTC-USD-PT5M-20131125_20131201.csv");
 
         assertNotNull(series, "Should load series from direct filename with Bitstamp prefix");
@@ -115,7 +115,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithDefaultFile() {
         // Test loading default Bitstamp file
-        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
         assertNotNull(series, "Should load default Bitstamp series");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
@@ -123,7 +123,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNonExistentTicker() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -134,7 +134,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidDateRange() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-12-01T23:59:59Z");
         Instant end = Instant.parse("2013-11-25T00:00:00Z"); // End before start
 
@@ -145,7 +145,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNullTicker() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -156,7 +156,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithEmptyTicker() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -167,7 +167,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidInterval() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -182,14 +182,14 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testGetSourceName() {
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         assertEquals("Bitstamp", dataSource.getSourceName(), "Should return 'Bitstamp' as source name");
     }
 
     @Test
     public void testGetSourceNameUsedInFileSearchPattern() {
         // Verify that getSourceName() is used in file search patterns
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         assertFalse(sourceName.isEmpty(), "Source name should not be empty");
         assertEquals("Bitstamp", sourceName, "Source name should be 'Bitstamp'");
@@ -220,7 +220,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
         assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
-        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 

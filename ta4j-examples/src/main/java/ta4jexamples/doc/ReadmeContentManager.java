@@ -39,7 +39,7 @@ import org.ta4j.core.rules.*;
 import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.RuleSerialization;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
@@ -103,7 +103,7 @@ public class ReadmeContentManager {
         LOG.info("Generating EMA Crossover chart for README...");
 
         // Load historical price data
-        BarSeries fullSeries = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries fullSeries = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         LOG.info("Loaded {} bars from Bitstamp series", fullSeries.getBarCount());
 
         // Use a smaller subset for a cleaner chart (last ~150 bars)
@@ -175,7 +175,7 @@ public class ReadmeContentManager {
         LOG.info("Generating RSI Strategy chart with subchart for README...");
 
         // Load historical price data
-        BarSeries fullSeries = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries fullSeries = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         LOG.info("Loaded {} bars from Bitstamp series", fullSeries.getBarCount());
 
         // Use a smaller subset for a cleaner chart (last ~150 bars)
@@ -229,7 +229,7 @@ public class ReadmeContentManager {
         LOG.info("Generating Strategy Performance chart with metrics subchart for README...");
 
         // Load historical price data
-        BarSeries fullSeries = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries fullSeries = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         LOG.info("Loaded {} bars from Bitstamp series", fullSeries.getBarCount());
 
         // Use a smaller subset for a cleaner chart (last ~150 bars)
@@ -286,7 +286,7 @@ public class ReadmeContentManager {
         LOG.info("Generating Advanced Multi-Indicator Strategy chart for README...");
 
         // Load historical price data
-        BarSeries fullSeries = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
+        BarSeries fullSeries = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         LOG.info("Loaded {} bars from Bitstamp series", fullSeries.getBarCount());
 
         // Use a smaller subset for a cleaner chart (last ~150 bars)

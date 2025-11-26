@@ -36,7 +36,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.JsonBarSeriesDataSource;
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -58,7 +58,7 @@ public class NetMomentumStrategy {
         BarSeries series = null;
         try (InputStream resourceStream = NetMomentumStrategy.class.getClassLoader()
                 .getResourceAsStream(jsonOhlcResourceFile)) {
-            series = JsonBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
+            series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
         }
