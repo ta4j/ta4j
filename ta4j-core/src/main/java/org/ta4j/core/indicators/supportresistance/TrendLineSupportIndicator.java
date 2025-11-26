@@ -224,7 +224,6 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * @param swingLowIndicator          the swing-low indicator to use
      * @param barCount                   number of bars to look back when selecting
      *                                   swing points
-     * @param side                       the trend line side (should be SUPPORT)
      * @param touchCountWeight           weight for swing point touch count
      * @param touchesExtremeWeight       weight for extreme point inclusion
      * @param outsideCountWeight         weight for minimizing outside swings
