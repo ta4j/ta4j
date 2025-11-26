@@ -39,6 +39,7 @@ out/
 *.rar
 
 # temp files #
+temp/
 ta4j-examples/indicators.csv
 
 # Mobile Tools for Java (J2ME)
