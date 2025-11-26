@@ -53,6 +53,9 @@ public class CsvBarsDataSource implements BarSeriesDataSource {
     private static final Logger LOG = LogManager.getLogger(CsvBarsDataSource.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
+    private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmm");
     private static final String DEFAULT_APPLE_BAR_FILE = "AAPL-PT1D-20130102_20131231.csv";
 
     @Override
@@ -71,21 +74,48 @@ public class CsvBarsDataSource implements BarSeriesDataSource {
         }
 
         // Build search patterns for filename matching
-        // Standard pattern: {ticker}-{interval}-{startDate}_{endDate}.csv
+        // Standard pattern: {ticker}-{interval}-{startDateTime}_{endDateTime}.csv
+        // DateTime format depends on interval: minutes -> HHmm, hours -> HH, days ->
+        // date only
+        // Note: Existing files use date-only format (yyyyMMdd), but the code supports
+        // granular formats for future files with multiple files per day
+        DateTimeFormatter dateTimeFormatter = getDateTimeFormatterForInterval(interval);
+        String startDateTimeStr = start.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+        String endDateTimeStr = end.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+
+        // Also prepare date-only format since existing files use this format
         String startDateStr = start.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
         String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
+
         String intervalStr = formatIntervalForFilename(interval);
 
-        // Try exact pattern first: {ticker}-{interval}-{startDate}_{endDate}.csv
-        String exactPattern = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr + ".csv";
+        // Try exact pattern with interval-appropriate format:
+        // {ticker}-{interval}-{startDateTime}_{endDateTime}.csv
+        String exactPattern = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_" + endDateTimeStr
+                + ".csv";
         BarSeries series = loadCsvSeries(exactPattern);
         if (series != null && !series.isEmpty()) {
             return series;
         }
 
-        // Try broader pattern: {ticker}-*-{startDate}_*.csv
-        String broaderPattern = ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
+        // Fallback to date-only format for existing files
+        String exactPatternDateOnly = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr
+                + ".csv";
+        series = loadCsvSeries(exactPatternDateOnly);
+        if (series != null && !series.isEmpty()) {
+            return series;
+        }
+
+        // Try broader pattern: {ticker}-*-{startDateTime}_*.csv
+        String broaderPattern = ticker.toUpperCase() + "-*-" + startDateTimeStr + "_*.csv";
         series = searchAndLoadCsvFile(broaderPattern, start, end);
+        if (series != null && !series.isEmpty()) {
+            return series;
+        }
+
+        // Fallback to date-only format for broader pattern
+        String broaderPatternDateOnly = ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
+        series = searchAndLoadCsvFile(broaderPatternDateOnly, start, end);
         if (series != null && !series.isEmpty()) {
             return series;
         }
@@ -108,6 +138,29 @@ public class CsvBarsDataSource implements BarSeriesDataSource {
             throw new IllegalArgumentException("Source cannot be null or empty");
         }
         return loadCsvSeries(source);
+    }
+
+    /**
+     * Determines the appropriate DateTimeFormatter for filename datetime formatting
+     * based on the interval. For minute-level intervals, includes hours and
+     * minutes. For hour-level intervals, includes hours. For day-level intervals,
+     * uses date only.
+     *
+     * @param interval the bar interval
+     * @return the appropriate DateTimeFormatter
+     */
+    private DateTimeFormatter getDateTimeFormatterForInterval(Duration interval) {
+        long seconds = interval.getSeconds();
+        if (seconds < 3600) {
+            // Interval is in minutes or seconds - include hours and minutes
+            return FILENAME_DATETIME_MINUTE_FORMAT;
+        } else if (seconds < 86400) {
+            // Interval is in hours - include hours
+            return FILENAME_DATETIME_HOUR_FORMAT;
+        } else {
+            // Interval is in days or longer - date only
+            return FILENAME_DATE_FORMAT;
+        }
     }
 
     /**

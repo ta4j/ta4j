@@ -47,7 +47,8 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithStandardNamingPattern() {
-        // Test loading Bitstamp BTC data using domain-driven interface with standard naming pattern
+        // Test loading Bitstamp BTC data using domain-driven interface with standard
+        // naming pattern
         // Pattern: Bitstamp-{ticker}-{interval}-{startDate}_{endDate}.csv
         String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
@@ -61,14 +62,14 @@ public class BitstampCsvTradesDataSourceTest {
 
         assertNotNull(series, "Should load series using standard naming pattern with Bitstamp prefix");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
-        assertEquals(expectedFile, series.getName(),
-                "Series name should match the filename with Bitstamp prefix");
+        assertEquals(expectedFile, series.getName(), "Series name should match the filename with Bitstamp prefix");
     }
 
     @Test
     public void testLoadSeriesWithDirectFilename() {
         // Test loading by direct filename (backward compatibility)
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries("Bitstamp-BTC-USD-PT5M-20131125_20131201.csv");
+        BarSeries series = BitstampCsvTradesDataSource
+                .loadBitstampSeries("Bitstamp-BTC-USD-PT5M-20131125_20131201.csv");
 
         assertNotNull(series, "Should load series from direct filename with Bitstamp prefix");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");

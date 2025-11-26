@@ -29,6 +29,7 @@ import ta4jexamples.datasources.http.HttpClientWrapper;
 import ta4jexamples.datasources.http.HttpResponseWrapper;
 
 import java.io.IOException;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -75,10 +76,10 @@ public class YahooFinanceDataSourceTest {
      * Helper method to clean up cache files matching a pattern. This ensures tests
      * start with a clean cache state.
      *
-     * @param pattern the filename pattern to match (e.g., "yahoofinance-AAPL-1d-")
+     * @param pattern the filename pattern to match (e.g., "YahooFinance-AAPL-1d-")
      */
     private void cleanupCacheFiles(String pattern) {
-        Path cacheDir = Paths.get("temp/responses");
+        Path cacheDir = Paths.get(YahooFinanceDataSource.RESPONSE_CACHE_DIR);
         if (Files.exists(cacheDir)) {
             try {
                 Files.list(cacheDir).filter(path -> path.getFileName().toString().startsWith(pattern)).forEach(path -> {
@@ -110,7 +111,7 @@ public class YahooFinanceDataSourceTest {
 
     @Test
     public void testConstructorWithHttpClient() {
-        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
+        HttpClient httpClient = HttpClient.newHttpClient();
         YahooFinanceDataSource dataSource = new YahooFinanceDataSource(httpClient);
         assertNotNull(dataSource, "DataSource should be created successfully");
     }
@@ -683,7 +684,7 @@ public class YahooFinanceDataSourceTest {
     @Test
     public void testCacheHitForSameRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files for this test
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -714,14 +715,14 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up cache files created by this test
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles("YahooFinance-AAPL-1d-");
     }
 
     @Test
     public void testCacheMissForDifferentTicker() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
-        cleanupCacheFiles("yahoofinance-MSFT-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "MSFT-1d-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -743,15 +744,15 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
-        cleanupCacheFiles("yahoofinance-MSFT-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "MSFT-1d-");
     }
 
     @Test
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
-        cleanupCacheFiles("yahoofinance-AAPL-1h-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1h-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -773,14 +774,14 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
-        cleanupCacheFiles("yahoofinance-AAPL-1h-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1h-");
     }
 
     @Test
     public void testCacheHitWithTruncatedTimestamps() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
 
         // Test that cache hits work when timestamps are truncated to the same cache key
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -809,13 +810,13 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
     }
 
     @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -840,7 +841,7 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
     }
 
     @Test
@@ -868,7 +869,7 @@ public class YahooFinanceDataSourceTest {
     @Test
     public void testCacheHitForHistoricalData() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
 
         // Historical data (end date in the past) should be cached indefinitely
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -893,14 +894,14 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
     }
 
     @Test
     public void testCacheWithBarCountMethod() throws IOException, InterruptedException {
         // Use a unique ticker to avoid cache collisions with other tests
         String uniqueTicker = "TEST-BARCOUNT-" + System.currentTimeMillis();
-        cleanupCacheFiles("yahoofinance-" + uniqueTicker + "-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + uniqueTicker + "-1d-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -927,7 +928,7 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-" + uniqueTicker + "-1d-");
+        cleanupCacheFiles("YahooFinance-" + uniqueTicker + "-1d-");
     }
 
     @Test
@@ -945,7 +946,7 @@ public class YahooFinanceDataSourceTest {
     @Test
     public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles("yahoofinance-AAPL-5m-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-5m-");
 
         // Test that different intervals truncate timestamps correctly
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -973,14 +974,14 @@ public class YahooFinanceDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles("yahoofinance-AAPL-5m-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-5m-");
     }
 
     @Test
     public void testCacheWithFailedRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files - important to ensure no cached success
         // response
-        cleanupCacheFiles("yahoofinance-AAPL-1d-");
+        cleanupCacheFiles(YahooFinanceDataSource.RESPONSE_CACHE_PREFIX + "AAPL-1d-");
 
         // Test that failed requests don't write to cache
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);

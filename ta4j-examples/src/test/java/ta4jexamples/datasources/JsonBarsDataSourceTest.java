@@ -170,7 +170,8 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadSeriesWithStandardNamingPatternCoinbase() {
-        // Test loading Coinbase data using domain-driven interface with standard naming pattern
+        // Test loading Coinbase data using domain-driven interface with standard naming
+        // pattern
         // Pattern: {Exchange}-{ticker}-{interval}-{startDate}_{endDate}.json
         String expectedFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
@@ -189,7 +190,8 @@ public class JsonBarsDataSourceTest {
 
     @Test
     public void testLoadSeriesWithStandardNamingPatternBinance() {
-        // Test loading Binance data using domain-driven interface with standard naming pattern
+        // Test loading Binance data using domain-driven interface with standard naming
+        // pattern
         String expectedFile = "Binance-ETH-USD-PT5M-20230313_20230315.json";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
         assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));

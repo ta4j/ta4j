@@ -59,6 +59,9 @@ public class JsonBarsDataSource implements BarSeriesDataSource {
             .create();
     private static final Logger LOG = LogManager.getLogger(JsonBarsDataSource.class);
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
+    private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmm");
 
     @Override
     public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
@@ -76,28 +79,57 @@ public class JsonBarsDataSource implements BarSeriesDataSource {
         }
 
         // Build search patterns for JSON files
-        // Standard pattern: {Exchange}-{ticker}-{interval}-{startDate}_{endDate}.json
+        // Standard pattern:
+        // {Exchange}-{ticker}-{interval}-{startDateTime}_{endDateTime}.json
         // Exchange prefixes: Coinbase-, Binance- (required for JSON files as they're
         // exchange-specific)
+        // DateTime format depends on interval: minutes -> HHmm, hours -> HH, days ->
+        // date only
+        // Note: Existing files use date-only format (yyyyMMdd), but the code supports
+        // granular formats for future files with multiple files per day
+        DateTimeFormatter dateTimeFormatter = getDateTimeFormatterForInterval(interval);
+        String startDateTimeStr = start.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+        String endDateTimeStr = end.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+
+        // Also prepare date-only format since existing files use this format
         String startDateStr = start.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
         String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
+
         String intervalStr = formatIntervalForFilename(interval);
 
         // Try with exchange prefixes (Coinbase-, Binance-)
         String[] exchangePrefixes = { "Coinbase-", "Binance-" };
         for (String exchange : exchangePrefixes) {
-            // Try exact pattern: {Exchange}-{ticker}-{interval}-{startDate}_{endDate}.json
-            String pattern = exchange + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr
-                    + ".json";
+            // Try exact pattern with interval-appropriate format:
+            // {Exchange}-{ticker}-{interval}-{startDateTime}_{endDateTime}.json
+            String pattern = exchange + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_"
+                    + endDateTimeStr + ".json";
             BarSeries series = loadFromSource(pattern);
+            if (series != null && !series.isEmpty()) {
+                return filterSeriesByDateRange(series, start, end);
+            }
+
+            // Fallback to date-only format for existing files
+            String patternDateOnly = exchange + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
+                    + endDateStr + ".json";
+            series = loadFromSource(patternDateOnly);
             if (series != null && !series.isEmpty()) {
                 return filterSeriesByDateRange(series, start, end);
             }
         }
 
         // Try without exchange prefix as fallback (for generic JSON files)
-        String pattern = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr + ".json";
+        String pattern = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_" + endDateTimeStr
+                + ".json";
         BarSeries series = loadFromSource(pattern);
+        if (series != null && !series.isEmpty()) {
+            return filterSeriesByDateRange(series, start, end);
+        }
+
+        // Fallback to date-only format
+        String patternDateOnly = ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_" + endDateStr
+                + ".json";
+        series = loadFromSource(patternDateOnly);
         if (series != null && !series.isEmpty()) {
             return filterSeriesByDateRange(series, start, end);
         }
@@ -157,6 +189,29 @@ public class JsonBarsDataSource implements BarSeriesDataSource {
         } catch (Exception e) {
             LOG.debug("Unable to load bars from JSON using TypeAdapter", e);
             return null;
+        }
+    }
+
+    /**
+     * Determines the appropriate DateTimeFormatter for filename datetime formatting
+     * based on the interval. For minute-level intervals, includes hours and
+     * minutes. For hour-level intervals, includes hours. For day-level intervals,
+     * uses date only.
+     *
+     * @param interval the bar interval
+     * @return the appropriate DateTimeFormatter
+     */
+    private DateTimeFormatter getDateTimeFormatterForInterval(Duration interval) {
+        long seconds = interval.getSeconds();
+        if (seconds < 3600) {
+            // Interval is in minutes or seconds - include hours and minutes
+            return FILENAME_DATETIME_MINUTE_FORMAT;
+        } else if (seconds < 86400) {
+            // Interval is in hours - include hours
+            return FILENAME_DATETIME_HOUR_FORMAT;
+        } else {
+            // Interval is in days or longer - date only
+            return FILENAME_DATE_FORMAT;
         }
     }
 

@@ -53,6 +53,9 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
     private static final Logger LOG = LogManager.getLogger(BitstampCsvTradesDataSource.class);
     private static final String DEFAULT_BITSTAMP_FILE = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
+    private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmm");
 
     @Override
     public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
@@ -70,22 +73,47 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
         }
 
         // Build search patterns for Bitstamp CSV files
-        // Standard pattern: Bitstamp-{ticker}-{interval}-{startDate}_{endDate}.csv
+        // Standard pattern:
+        // Bitstamp-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
+        // DateTime format depends on interval: minutes -> HHmm, hours -> HH, days ->
+        // date only
+        DateTimeFormatter dateTimeFormatter = getDateTimeFormatterForInterval(interval);
+        String startDateTimeStr = start.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+        String endDateTimeStr = end.atZone(ZoneOffset.UTC).format(dateTimeFormatter);
+
+        // Also prepare date-only format for backward compatibility with existing files
         String startDateStr = start.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
         String endDateStr = end.atZone(ZoneOffset.UTC).format(FILENAME_DATE_FORMAT);
 
-        // Try exact pattern: Bitstamp-{ticker}-{interval}-{startDate}_{endDate}.csv
         String intervalStr = formatIntervalForFilename(interval);
-        String exactPattern = "Bitstamp-" + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
-                + endDateStr + ".csv";
+
+        // Try exact pattern with interval-appropriate format:
+        // Bitstamp-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
+        String exactPattern = "Bitstamp-" + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_"
+                + endDateTimeStr + ".csv";
         BarSeries series = loadBitstampSeries(exactPattern);
         if (series != null && !series.isEmpty()) {
             return filterAndAggregateSeries(series, interval, start, end);
         }
 
-        // Try broader pattern: Bitstamp-{ticker}-*-{startDate}_*.csv
-        String broaderPattern = "Bitstamp-" + ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
+        // Fallback to date-only format for backward compatibility with existing files
+        String exactPatternDateOnly = "Bitstamp-" + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
+                + endDateStr + ".csv";
+        series = loadBitstampSeries(exactPatternDateOnly);
+        if (series != null && !series.isEmpty()) {
+            return filterAndAggregateSeries(series, interval, start, end);
+        }
+
+        // Try broader pattern: Bitstamp-{ticker}-*-{startDateTime}_*.csv
+        String broaderPattern = "Bitstamp-" + ticker.toUpperCase() + "-*-" + startDateTimeStr + "_*.csv";
         series = searchAndLoadBitstampFile(broaderPattern, interval, start, end);
+        if (series != null && !series.isEmpty()) {
+            return series;
+        }
+
+        // Fallback to date-only format for broader pattern
+        String broaderPatternDateOnly = "Bitstamp-" + ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
+        series = searchAndLoadBitstampFile(broaderPatternDateOnly, interval, start, end);
         if (series != null && !series.isEmpty()) {
             return series;
         }
@@ -129,10 +157,7 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
         }
 
         // For wildcard patterns, try common variations
-        String[] variations = { pattern.replace("*", "PT5M"), pattern.replace("*", "PT1D"), DEFAULT_BITSTAMP_FILE // Fallback
-                                                                                                                  // to
-                                                                                                                  // default
-        };
+        String[] variations = { pattern.replace("*", "PT5M"), pattern.replace("*", "PT1D") };
         for (String variation : variations) {
             BarSeries series = loadBitstampSeries(variation);
             if (series != null && !series.isEmpty()) {
@@ -140,6 +165,29 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
             }
         }
         return null;
+    }
+
+    /**
+     * Determines the appropriate DateTimeFormatter for filename datetime formatting
+     * based on the interval. For minute-level intervals, includes hours and
+     * minutes. For hour-level intervals, includes hours. For day-level intervals,
+     * uses date only.
+     *
+     * @param interval the bar interval
+     * @return the appropriate DateTimeFormatter
+     */
+    private DateTimeFormatter getDateTimeFormatterForInterval(Duration interval) {
+        long seconds = interval.getSeconds();
+        if (seconds < 3600) {
+            // Interval is in minutes or seconds - include hours and minutes
+            return FILENAME_DATETIME_MINUTE_FORMAT;
+        } else if (seconds < 86400) {
+            // Interval is in hours - include hours
+            return FILENAME_DATETIME_HOUR_FORMAT;
+        } else {
+            // Interval is in days or longer - date only
+            return FILENAME_DATE_FORMAT;
+        }
     }
 
     /**

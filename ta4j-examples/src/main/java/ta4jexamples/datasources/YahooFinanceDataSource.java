@@ -105,63 +105,13 @@ import java.util.TreeMap;
  */
 public class YahooFinanceDataSource implements BarSeriesDataSource {
 
-    /**
-     * Supported intervals for Yahoo Finance API. These correspond to the intervals
-     * that Yahoo Finance's chart API supports.
-     */
-    public enum YahooFinanceInterval {
-        /** 1 minute bars */
-        MINUTE_1(Duration.ofMinutes(1), "1m"),
-        /** 5 minute bars */
-        MINUTE_5(Duration.ofMinutes(5), "5m"),
-        /** 15 minute bars */
-        MINUTE_15(Duration.ofMinutes(15), "15m"),
-        /** 30 minute bars */
-        MINUTE_30(Duration.ofMinutes(30), "30m"),
-        /** 1 hour bars */
-        HOUR_1(Duration.ofHours(1), "1h"),
-        /** 4 hour bars */
-        HOUR_4(Duration.ofHours(4), "4h"),
-        /** 1 day bars */
-        DAY_1(Duration.ofDays(1), "1d"),
-        /** 1 week bars */
-        WEEK_1(Duration.ofDays(7), "1wk"),
-        /** 1 month bars */
-        MONTH_1(Duration.ofDays(30), "1mo");
-
-        private final Duration duration;
-        private final String apiValue;
-
-        YahooFinanceInterval(Duration duration, String apiValue) {
-            this.duration = duration;
-            this.apiValue = apiValue;
-        }
-
-        /**
-         * Returns the Duration for this interval.
-         *
-         * @return the Duration
-         */
-        public Duration getDuration() {
-            return duration;
-        }
-
-        /**
-         * Returns the API string value for this interval.
-         *
-         * @return the API string value
-         */
-        public String getApiValue() {
-            return apiValue;
-        }
-    }
+    public static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
+    public static final String RESPONSE_CACHE_DIR = "temp/responses";
+    public static final String RESPONSE_CACHE_PREFIX = "YahooFinance-";
 
     private static final Logger LOG = LogManager.getLogger(YahooFinanceDataSource.class);
-    private static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
     private static final HttpClientWrapper DEFAULT_HTTP_CLIENT = new DefaultHttpClientWrapper();
     private static final YahooFinanceDataSource DEFAULT_INSTANCE = new YahooFinanceDataSource(DEFAULT_HTTP_CLIENT);
-    private static final String CACHE_DIR = "temp/responses";
-
     private final HttpClientWrapper httpClient;
     private final boolean enableResponseCaching;
 
@@ -286,164 +236,6 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
     public static BarSeries loadSeries(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
         return DEFAULT_INSTANCE.loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
-    }
-
-    /**
-     * Instance method that loads historical OHLCV data for a given ticker symbol
-     * with a specified number of bars. The end date/time is set to the current
-     * time, and the start date/time is calculated based on the bar count and
-     * interval.
-     *
-     * @param ticker   the ticker symbol (e.g., "AAPL", "MSFT", "BTC-USD",
-     *                 "ETH-USD")
-     * @param interval the bar interval (must be one of the supported Yahoo Finance
-     *                 intervals)
-     * @param barCount the number of bars to fetch
-     * @return a BarSeries containing the historical data, or null if the request
-     *         fails
-     */
-    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, int barCount) {
-        if (barCount <= 0) {
-            LOG.error("Bar count must be greater than 0");
-            return null;
-        }
-
-        Instant endDateTime = Instant.now();
-        Duration totalDuration = interval.getDuration().multipliedBy(barCount);
-        Instant startDateTime = endDateTime.minus(totalDuration);
-
-        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
-    }
-
-    @Override
-    public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
-        if (ticker == null || ticker.trim().isEmpty()) {
-            throw new IllegalArgumentException("Ticker cannot be null or empty");
-        }
-        if (interval == null || interval.isNegative() || interval.isZero()) {
-            throw new IllegalArgumentException("Interval must be positive");
-        }
-        if (start == null || end == null) {
-            throw new IllegalArgumentException("Start and end dates cannot be null");
-        }
-        if (start.isAfter(end)) {
-            throw new IllegalArgumentException("Start date must be before or equal to end date");
-        }
-
-        // Map Duration to YahooFinanceInterval
-        YahooFinanceInterval yfInterval = mapDurationToInterval(interval);
-        if (yfInterval == null) {
-            LOG.warn("Unsupported interval duration: {}. Falling back to DAY_1", interval);
-            yfInterval = YahooFinanceInterval.DAY_1;
-        }
-
-        return loadSeriesInstance(ticker, yfInterval, start, end);
-    }
-
-    @Override
-    public BarSeries loadSeries(String source) {
-        if (source == null || source.trim().isEmpty()) {
-            throw new IllegalArgumentException("Source cannot be null or empty");
-        }
-
-        // Check if it's a cache file path
-        if (source.startsWith(CACHE_DIR) || source.contains("yahoofinance-")) {
-            Path cacheFile = Paths.get(source);
-            if (Files.exists(cacheFile)) {
-                String cachedResponse = readFromCache(cacheFile);
-                if (cachedResponse != null) {
-                    // Try to extract ticker from filename
-                    String filename = cacheFile.getFileName().toString();
-                    // Format: yahoofinance-TICKER-INTERVAL-START-END.json
-                    String[] parts = filename.replace(".json", "").split("-");
-                    if (parts.length >= 2) {
-                        String ticker = parts[1];
-                        // Try to determine interval from filename
-                        YahooFinanceInterval interval = YahooFinanceInterval.DAY_1; // Default
-                        if (parts.length >= 3) {
-                            try {
-                                interval = parseIntervalFromApiValue(parts[2]);
-                            } catch (IllegalArgumentException e) {
-                                LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
-                            }
-                        }
-                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
-                    }
-                }
-            }
-        }
-
-        // If not a cache file, return null (could be extended to parse other formats)
-        return null;
-    }
-
-    /**
-     * Maps a Duration to the closest matching YahooFinanceInterval.
-     *
-     * @param duration the duration to map
-     * @return the matching YahooFinanceInterval, or null if no close match is found
-     */
-    private YahooFinanceInterval mapDurationToInterval(Duration duration) {
-        long seconds = duration.getSeconds();
-        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
-            if (interval.getDuration().getSeconds() == seconds) {
-                return interval;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Parses a YahooFinanceInterval from its API value string.
-     *
-     * @param apiValue the API value (e.g., "1m", "1d", "1wk")
-     * @return the matching YahooFinanceInterval
-     * @throws IllegalArgumentException if no matching interval is found
-     */
-    private YahooFinanceInterval parseIntervalFromApiValue(String apiValue) {
-        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
-            if (interval.getApiValue().equals(apiValue)) {
-                return interval;
-            }
-        }
-        throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
-    }
-
-    /**
-     * Instance method that performs the actual loading logic. This method uses the
-     * instance's HttpClient (which can be injected for testing).
-     */
-    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
-            Instant endDateTime) {
-        if (ticker == null || ticker.trim().isEmpty()) {
-            LOG.error("Ticker symbol cannot be null or empty");
-            return null;
-        }
-
-        if (startDateTime == null || endDateTime == null) {
-            LOG.error("Start and end date/time cannot be null");
-            return null;
-        }
-
-        if (startDateTime.isAfter(endDateTime)) {
-            LOG.error("Start date/time must be before or equal to end date/time");
-            return null;
-        }
-
-        Duration requestedRange = Duration.between(startDateTime, endDateTime);
-        Duration conservativeLimit = this.getConservativeLimit(interval);
-
-        // If the requested range exceeds conservative limits, paginate the request
-        if (requestedRange.compareTo(conservativeLimit) > 0) {
-            LOG.debug(
-                    "Requested date range ({}) exceeds conservative limit ({}) for interval {}. "
-                            + "Splitting into multiple requests and combining results.",
-                    requestedRange, conservativeLimit, interval);
-            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit);
-        }
-
-        // Single request for smaller ranges
-        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime);
     }
 
     /**
@@ -600,11 +392,215 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
     }
 
     /**
+     * Merges multiple BarSeries into a single BarSeries, removing duplicates and
+     * sorting chronologically. Uses a TreeMap keyed by timestamp to automatically
+     * handle deduplication and sorting.
+     *
+     * @param chunks      list of BarSeries to merge
+     * @param ticker      the ticker symbol (for the merged series name)
+     * @param barInterval the bar interval
+     * @return a merged BarSeries
+     */
+    private static BarSeries mergeBarSeries(List<BarSeries> chunks, String ticker, Duration barInterval) {
+        // Use TreeMap to automatically sort by timestamp and deduplicate
+        TreeMap<Instant, BarData> barMap = new TreeMap<>();
+
+        // Collect all bars from all chunks
+        for (BarSeries chunk : chunks) {
+            for (int i = 0; i < chunk.getBarCount(); i++) {
+                var bar = chunk.getBar(i);
+                Instant endTime = bar.getEndTime();
+
+                // If we already have a bar at this timestamp, keep the first one (or you could
+                // merge)
+                barMap.putIfAbsent(endTime, new BarData(bar));
+            }
+        }
+
+        // Build the merged series
+        BarSeries merged = new BaseBarSeriesBuilder().withName(ticker).build();
+
+        for (BarData barData : barMap.values()) {
+            merged.barBuilder()
+                    .timePeriod(barInterval)
+                    .endTime(barData.endTime)
+                    .openPrice(barData.open)
+                    .highPrice(barData.high)
+                    .lowPrice(barData.low)
+                    .closePrice(barData.close)
+                    .volume(barData.volume)
+                    .amount(0)
+                    .add();
+        }
+
+        LOG.debug("Merged {} chunks into {} unique bars for ticker {}", chunks.size(), merged.getBarCount(), ticker);
+        return merged;
+    }
+
+    /**
+     * Instance method that loads historical OHLCV data for a given ticker symbol
+     * with a specified number of bars. The end date/time is set to the current
+     * time, and the start date/time is calculated based on the bar count and
+     * interval.
+     *
+     * @param ticker   the ticker symbol (e.g., "AAPL", "MSFT", "BTC-USD",
+     *                 "ETH-USD")
+     * @param interval the bar interval (must be one of the supported Yahoo Finance
+     *                 intervals)
+     * @param barCount the number of bars to fetch
+     * @return a BarSeries containing the historical data, or null if the request
+     *         fails
+     */
+    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, int barCount) {
+        if (barCount <= 0) {
+            LOG.error("Bar count must be greater than 0");
+            return null;
+        }
+
+        Instant endDateTime = Instant.now();
+        Duration totalDuration = interval.getDuration().multipliedBy(barCount);
+        Instant startDateTime = endDateTime.minus(totalDuration);
+
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
+    }
+
+    @Override
+    public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
+        if (ticker == null || ticker.trim().isEmpty()) {
+            throw new IllegalArgumentException("Ticker cannot be null or empty");
+        }
+        if (interval == null || interval.isNegative() || interval.isZero()) {
+            throw new IllegalArgumentException("Interval must be positive");
+        }
+        if (start == null || end == null) {
+            throw new IllegalArgumentException("Start and end dates cannot be null");
+        }
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
+
+        // Map Duration to YahooFinanceInterval
+        YahooFinanceInterval yfInterval = mapDurationToInterval(interval);
+        if (yfInterval == null) {
+            LOG.warn("Unsupported interval duration: {}. Falling back to DAY_1", interval);
+            yfInterval = YahooFinanceInterval.DAY_1;
+        }
+
+        return loadSeriesInstance(ticker, yfInterval, start, end);
+    }
+
+    @Override
+    public BarSeries loadSeries(String source) {
+        if (source == null || source.trim().isEmpty()) {
+            throw new IllegalArgumentException("Source cannot be null or empty");
+        }
+
+        // Check if it's a cache file path
+        if (source.startsWith(RESPONSE_CACHE_DIR) || source.contains(RESPONSE_CACHE_PREFIX)) {
+            Path cacheFile = Paths.get(source);
+            if (Files.exists(cacheFile)) {
+                String cachedResponse = readFromCache(cacheFile);
+                if (cachedResponse != null) {
+                    // Try to extract ticker from filename
+                    String filename = cacheFile.getFileName().toString();
+                    // Format: YahooFinance-TICKER-INTERVAL-START-END.json
+                    String[] parts = filename.replace(".json", "").split("-");
+                    if (parts.length >= 2) {
+                        String ticker = parts[1];
+                        // Try to determine interval from filename
+                        YahooFinanceInterval interval = YahooFinanceInterval.DAY_1; // Default
+                        if (parts.length >= 3) {
+                            try {
+                                interval = parseIntervalFromApiValue(parts[2]);
+                            } catch (IllegalArgumentException e) {
+                                LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
+                            }
+                        }
+                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                    }
+                }
+            }
+        }
+
+        // If not a cache file, return null (could be extended to parse other formats)
+        return null;
+    }
+
+    /**
+     * Maps a Duration to the closest matching YahooFinanceInterval.
+     *
+     * @param duration the duration to map
+     * @return the matching YahooFinanceInterval, or null if no close match is found
+     */
+    private YahooFinanceInterval mapDurationToInterval(Duration duration) {
+        long seconds = duration.getSeconds();
+        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
+            if (interval.getDuration().getSeconds() == seconds) {
+                return interval;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parses a YahooFinanceInterval from its API value string.
+     *
+     * @param apiValue the API value (e.g., "1m", "1d", "1wk")
+     * @return the matching YahooFinanceInterval
+     * @throws IllegalArgumentException if no matching interval is found
+     */
+    private YahooFinanceInterval parseIntervalFromApiValue(String apiValue) {
+        for (YahooFinanceInterval interval : YahooFinanceInterval.values()) {
+            if (interval.getApiValue().equals(apiValue)) {
+                return interval;
+            }
+        }
+        throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
+    }
+
+    /**
+     * Instance method that performs the actual loading logic. This method uses the
+     * instance's HttpClient (which can be injected for testing).
+     */
+    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime) {
+        if (ticker == null || ticker.trim().isEmpty()) {
+            LOG.error("Ticker symbol cannot be null or empty");
+            return null;
+        }
+
+        if (startDateTime == null || endDateTime == null) {
+            LOG.error("Start and end date/time cannot be null");
+            return null;
+        }
+
+        if (startDateTime.isAfter(endDateTime)) {
+            LOG.error("Start date/time must be before or equal to end date/time");
+            return null;
+        }
+
+        Duration requestedRange = Duration.between(startDateTime, endDateTime);
+        Duration conservativeLimit = this.getConservativeLimit(interval);
+
+        // If the requested range exceeds conservative limits, paginate the request
+        if (requestedRange.compareTo(conservativeLimit) > 0) {
+            LOG.debug(
+                    "Requested date range ({}) exceeds conservative limit ({}) for interval {}. "
+                            + "Splitting into multiple requests and combining results.",
+                    requestedRange, conservativeLimit, interval);
+            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit);
+        }
+
+        // Single request for smaller ranges
+        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime);
+    }
+
+    /**
      * Ensures the cache directory exists, creating it if necessary.
      */
     private void ensureCacheDirectoryExists() {
         try {
-            Path cacheDir = Paths.get(CACHE_DIR);
+            Path cacheDir = Paths.get(RESPONSE_CACHE_DIR);
             if (!Files.exists(cacheDir)) {
                 Files.createDirectories(cacheDir);
                 LOG.debug("Created cache directory: {}", cacheDir.toAbsolutePath());
@@ -695,11 +691,11 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
         Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
         Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
 
-        String filename = String.format("yahoofinance-%s-%s-%d-%d.json",
+        String filename = String.format("%s%s-%s-%d-%d.json", RESPONSE_CACHE_PREFIX,
                 ticker.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), interval.getApiValue(),
                 truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond());
 
-        return Paths.get(CACHE_DIR, filename);
+        return Paths.get(RESPONSE_CACHE_DIR, filename);
     }
 
     /**
@@ -906,49 +902,92 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
     }
 
     /**
-     * Merges multiple BarSeries into a single BarSeries, removing duplicates and
-     * sorting chronologically. Uses a TreeMap keyed by timestamp to automatically
-     * handle deduplication and sorting.
+     * Returns the conservative (safe) maximum date range for a given interval.
+     * These are smaller than the absolute maximums to ensure reliable API
+     * responses. Used to determine when pagination is needed.
+     * <p>
+     * This method is protected to allow subclasses (e.g., in tests) to override the
+     * conservative limit for testing pagination functionality.
      *
-     * @param chunks      list of BarSeries to merge
-     * @param ticker      the ticker symbol (for the merged series name)
-     * @param barInterval the bar interval
-     * @return a merged BarSeries
+     * @param interval the bar interval
+     * @return the conservative maximum date range
      */
-    private static BarSeries mergeBarSeries(List<BarSeries> chunks, String ticker, Duration barInterval) {
-        // Use TreeMap to automatically sort by timestamp and deduplicate
-        TreeMap<Instant, BarData> barMap = new TreeMap<>();
+    protected Duration getConservativeLimit(YahooFinanceInterval interval) {
+        return switch (interval) {
+        case MINUTE_1, MINUTE_5, MINUTE_15, MINUTE_30 -> Duration.ofDays(30); // 30 days for intraday (conservative)
+        case HOUR_1, HOUR_4 -> Duration.ofDays(60); // 60 days for hourly (conservative)
+        case DAY_1 -> Duration.ofDays(365); // 1 year for daily (conservative)
+        case WEEK_1, MONTH_1 -> Duration.ofDays(365 * 5); // 5 years for weekly/monthly (conservative)
+        };
+    }
 
-        // Collect all bars from all chunks
-        for (BarSeries chunk : chunks) {
-            for (int i = 0; i < chunk.getBarCount(); i++) {
-                var bar = chunk.getBar(i);
-                Instant endTime = bar.getEndTime();
+    /**
+     * Supported intervals for Yahoo Finance API. These correspond to the intervals
+     * that Yahoo Finance's chart API supports.
+     */
+    public enum YahooFinanceInterval {
+        /**
+         * 1 minute bars
+         */
+        MINUTE_1(Duration.ofMinutes(1), "1m"),
+        /**
+         * 5 minute bars
+         */
+        MINUTE_5(Duration.ofMinutes(5), "5m"),
+        /**
+         * 15 minute bars
+         */
+        MINUTE_15(Duration.ofMinutes(15), "15m"),
+        /**
+         * 30 minute bars
+         */
+        MINUTE_30(Duration.ofMinutes(30), "30m"),
+        /**
+         * 1 hour bars
+         */
+        HOUR_1(Duration.ofHours(1), "1h"),
+        /**
+         * 4 hour bars
+         */
+        HOUR_4(Duration.ofHours(4), "4h"),
+        /**
+         * 1 day bars
+         */
+        DAY_1(Duration.ofDays(1), "1d"),
+        /**
+         * 1 week bars
+         */
+        WEEK_1(Duration.ofDays(7), "1wk"),
+        /**
+         * 1 month bars
+         */
+        MONTH_1(Duration.ofDays(30), "1mo");
 
-                // If we already have a bar at this timestamp, keep the first one (or you could
-                // merge)
-                barMap.putIfAbsent(endTime, new BarData(bar));
-            }
+        private final Duration duration;
+        private final String apiValue;
+
+        YahooFinanceInterval(Duration duration, String apiValue) {
+            this.duration = duration;
+            this.apiValue = apiValue;
         }
 
-        // Build the merged series
-        BarSeries merged = new BaseBarSeriesBuilder().withName(ticker).build();
-
-        for (BarData barData : barMap.values()) {
-            merged.barBuilder()
-                    .timePeriod(barInterval)
-                    .endTime(barData.endTime)
-                    .openPrice(barData.open)
-                    .highPrice(barData.high)
-                    .lowPrice(barData.low)
-                    .closePrice(barData.close)
-                    .volume(barData.volume)
-                    .amount(0)
-                    .add();
+        /**
+         * Returns the Duration for this interval.
+         *
+         * @return the Duration
+         */
+        public Duration getDuration() {
+            return duration;
         }
 
-        LOG.debug("Merged {} chunks into {} unique bars for ticker {}", chunks.size(), merged.getBarCount(), ticker);
-        return merged;
+        /**
+         * Returns the API string value for this interval.
+         *
+         * @return the API string value
+         */
+        public String getApiValue() {
+            return apiValue;
+        }
     }
 
     /**
@@ -970,26 +1009,6 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
             this.close = bar.getClosePrice().doubleValue();
             this.volume = bar.getVolume().doubleValue();
         }
-    }
-
-    /**
-     * Returns the conservative (safe) maximum date range for a given interval.
-     * These are smaller than the absolute maximums to ensure reliable API
-     * responses. Used to determine when pagination is needed.
-     * <p>
-     * This method is protected to allow subclasses (e.g., in tests) to override the
-     * conservative limit for testing pagination functionality.
-     *
-     * @param interval the bar interval
-     * @return the conservative maximum date range
-     */
-    protected Duration getConservativeLimit(YahooFinanceInterval interval) {
-        return switch (interval) {
-        case MINUTE_1, MINUTE_5, MINUTE_15, MINUTE_30 -> Duration.ofDays(30); // 30 days for intraday (conservative)
-        case HOUR_1, HOUR_4 -> Duration.ofDays(60); // 60 days for hourly (conservative)
-        case DAY_1 -> Duration.ofDays(365); // 1 year for daily (conservative)
-        case WEEK_1, MONTH_1 -> Duration.ofDays(365 * 5); // 5 years for weekly/monthly (conservative)
-        };
     }
 
 }

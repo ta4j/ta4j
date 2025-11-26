@@ -47,7 +47,8 @@ public class CsvBarsDataSourceTest {
 
     @Test
     public void testLoadSeriesWithStandardNamingPattern() {
-        // Test loading AAPL data using domain-driven interface with standard naming pattern
+        // Test loading AAPL data using domain-driven interface with standard naming
+        // pattern
         // Pattern: {ticker}-{interval}-{startDate}_{endDate}.csv
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
