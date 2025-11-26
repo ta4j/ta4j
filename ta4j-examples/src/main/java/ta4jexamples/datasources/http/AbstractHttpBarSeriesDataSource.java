@@ -279,8 +279,8 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * current data (end date is recent), cache expires after the interval duration.
      * <p>
      * Cache validity is determined by the file's modification time (when the cache
-     * file was created), not access time. This is appropriate because we want to know
-     * how old the cached data is, not when it was last read.
+     * file was created), not access time. This is appropriate because we want to
+     * know how old the cached data is, not when it was last read.
      *
      * @param cacheFile   the cache file path
      * @param interval    the interval duration
@@ -366,11 +366,11 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * are deleted based on their file modification time (when the cache file was
      * created/written).
      * <p>
-     * <strong>Note:</strong> This method uses file modification time, not access time.
-     * Modification time represents when the cache file was created (when the response
-     * was cached), which is appropriate for determining cache age. Access time (when
-     * the file was last read) is not used because it's not reliably available across
-     * all platforms and filesystems.
+     * <strong>Note:</strong> This method uses file modification time, not access
+     * time. Modification time represents when the cache file was created (when the
+     * response was cached), which is appropriate for determining cache age. Access
+     * time (when the file was last read) is not used because it's not reliably
+     * available across all platforms and filesystems.
      *
      * @param maxAge the maximum age of files to keep (files older than this will be
      *               deleted). Use {@link Duration#ZERO} to delete all files.
