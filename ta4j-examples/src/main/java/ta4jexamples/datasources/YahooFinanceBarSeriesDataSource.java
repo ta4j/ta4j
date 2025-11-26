@@ -87,7 +87,7 @@ import java.util.TreeMap;
  * {@code responseCacheDir}:
  *
  * <pre>
- * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(true, "/path/to/cache");
+ * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource("/path/to/cache");
  * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
@@ -148,16 +148,15 @@ public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient,
-     * caching option, and custom cache directory.
+     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient and
+     * custom cache directory. Response caching is automatically enabled when a
+     * cache directory is specified.
      *
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(boolean enableResponseCaching, String responseCacheDir) {
-        super(DEFAULT_HTTP_CLIENT, enableResponseCaching, responseCacheDir);
+    public YahooFinanceBarSeriesDataSource(String responseCacheDir) {
+        super(DEFAULT_HTTP_CLIENT, responseCacheDir);
     }
 
     /**
@@ -212,33 +211,29 @@ public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
 
     /**
      * Creates a new YahooFinanceBarSeriesDataSource with the specified
-     * HttpClientWrapper, caching option, and custom cache directory.
+     * HttpClientWrapper and custom cache directory. Response caching is
+     * automatically enabled when a cache directory is specified.
      *
-     * @param httpClient            the HttpClientWrapper to use for API requests
-     *                              (can be a mock for testing)
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClientWrapper to use for API requests (can be
+     *                         a mock for testing)
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching,
-            String responseCacheDir) {
-        super(httpClient, enableResponseCaching, responseCacheDir);
+    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
+        super(httpClient, responseCacheDir);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient,
-     * caching option, and custom cache directory.
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient
+     * and custom cache directory. Response caching is automatically enabled when a
+     * cache directory is specified.
      *
-     * @param httpClient            the HttpClient to use for API requests
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClient to use for API requests
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching,
-            String responseCacheDir) {
-        super(httpClient, enableResponseCaching, responseCacheDir);
+    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
+        super(httpClient, responseCacheDir);
     }
 
     /**

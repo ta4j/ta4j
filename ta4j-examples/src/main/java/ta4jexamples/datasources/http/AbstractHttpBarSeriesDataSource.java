@@ -96,24 +96,30 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * @throws IllegalArgumentException if httpClient is null
      */
     protected AbstractHttpBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
-        this(httpClient, enableResponseCaching, DEFAULT_RESPONSE_CACHE_DIR);
+        if (httpClient == null) {
+            throw new IllegalArgumentException("HttpClientWrapper cannot be null");
+        }
+        this.httpClient = httpClient;
+        this.enableResponseCaching = enableResponseCaching;
+        this.responseCacheDir = DEFAULT_RESPONSE_CACHE_DIR;
+        if (enableResponseCaching) {
+            ensureCacheDirectoryExists();
+        }
     }
 
     /**
      * Creates a new AbstractHttpBarSeriesDataSource with the specified
-     * HttpClientWrapper, caching option, and custom cache directory.
+     * HttpClientWrapper and custom cache directory. Response caching is
+     * automatically enabled when a cache directory is specified.
      *
-     * @param httpClient            the HttpClientWrapper to use for API requests
-     *                              (can be a mock for testing)
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClientWrapper to use for API requests (can be
+     *                         a mock for testing)
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      * @throws IllegalArgumentException if httpClient is null or responseCacheDir is
      *                                  null or empty
      */
-    protected AbstractHttpBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching,
-            String responseCacheDir) {
+    protected AbstractHttpBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
         if (httpClient == null) {
             throw new IllegalArgumentException("HttpClientWrapper cannot be null");
         }
@@ -121,11 +127,9 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
             throw new IllegalArgumentException("Response cache directory cannot be null or empty");
         }
         this.httpClient = httpClient;
-        this.enableResponseCaching = enableResponseCaching;
+        this.enableResponseCaching = true;
         this.responseCacheDir = responseCacheDir.trim();
-        if (enableResponseCaching) {
-            ensureCacheDirectoryExists();
-        }
+        ensureCacheDirectoryExists();
     }
 
     /**
@@ -144,17 +148,15 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
     /**
      * Creates a new AbstractHttpBarSeriesDataSource with the specified HttpClient
      * and custom cache directory. This is a convenience constructor that wraps the
-     * HttpClient in a DefaultHttpClientWrapper.
+     * HttpClient in a DefaultHttpClientWrapper. Response caching is automatically
+     * enabled when a cache directory is specified.
      *
-     * @param httpClient            the HttpClient to use for API requests
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClient to use for API requests
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching,
-            String responseCacheDir) {
-        this(new DefaultHttpClientWrapper(httpClient), enableResponseCaching, responseCacheDir);
+    protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
+        this(new DefaultHttpClientWrapper(httpClient), responseCacheDir);
     }
 
     @Override

@@ -1047,7 +1047,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithCustomCacheDirectory() {
         String customCacheDir = "test-cache/yahoo-custom";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true, customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1057,8 +1057,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     public void testConstructorWithHttpClientWrapperAndCustomCacheDirectory() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         String customCacheDir = "test-cache/yahoo-custom-wrapper";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1068,8 +1067,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     public void testConstructorWithHttpClientAndCustomCacheDirectory() {
         HttpClient httpClient = HttpClient.newHttpClient();
         String customCacheDir = "test-cache/yahoo-custom-http";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(httpClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(httpClient, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1078,18 +1076,18 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithNullCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, (String) null);
+            new YahooFinanceBarSeriesDataSource((String) null);
         }, "Constructor should throw IllegalArgumentException for null cache directory");
     }
 
     @Test
     public void testConstructorWithEmptyCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, "");
+            new YahooFinanceBarSeriesDataSource("");
         }, "Constructor should throw IllegalArgumentException for empty cache directory");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            new YahooFinanceBarSeriesDataSource(true, "   ");
+            new YahooFinanceBarSeriesDataSource("   ");
         }, "Constructor should throw IllegalArgumentException for whitespace-only cache directory");
     }
 
@@ -1103,7 +1101,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     @Test
     public void testGetResponseCacheDirWithCustomDirectory() {
         String customCacheDir = "my-custom-yahoo-cache";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true, customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(customCacheDir);
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(), "Custom cache directory should be returned");
     }
 
@@ -1133,8 +1131,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1174,8 +1171,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
     public void testCacheDirectoryTrimming() {
         // Test that cache directory paths are trimmed
         String customCacheDirWithWhitespace = "  test-cache/yahoo-trimmed  ";
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true,
-                customCacheDirWithWhitespace);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(customCacheDirWithWhitespace);
         assertEquals("test-cache/yahoo-trimmed", dataSource.getResponseCacheDir(),
                 "Cache directory should be trimmed of leading/trailing whitespace");
     }
@@ -1206,8 +1202,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1261,8 +1256,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1316,8 +1310,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, true,
-                customCacheDir);
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1339,8 +1332,7 @@ public class YahooFinanceBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() {
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true,
-                "non-existent-cache-dir");
+        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource("non-existent-cache-dir");
         int deletedCount = dataSource.deleteAllCacheFiles();
         assertEquals(0, deletedCount, "Should return 0 for non-existent directory");
     }

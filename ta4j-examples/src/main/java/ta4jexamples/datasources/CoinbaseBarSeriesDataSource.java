@@ -86,7 +86,7 @@ import java.util.TreeMap;
  * {@code responseCacheDir}:
  *
  * <pre>
- * CoinbaseBarSeriesDataSource loader = new CoinbaseBarSeriesDataSource(true, "/path/to/cache");
+ * CoinbaseBarSeriesDataSource loader = new CoinbaseBarSeriesDataSource("/path/to/cache");
  * BarSeries series = loader.loadSeriesInstance("BTC-USD", CoinbaseInterval.ONE_DAY, start, end);
  * </pre>
  * <p>
@@ -152,16 +152,15 @@ public class CoinbaseBarSeriesDataSource extends AbstractHttpBarSeriesDataSource
     }
 
     /**
-     * Creates a new CoinbaseBarSeriesDataSource with a default HttpClient, caching
-     * option, and custom cache directory.
+     * Creates a new CoinbaseBarSeriesDataSource with a default HttpClient and
+     * custom cache directory. Response caching is automatically enabled when a
+     * cache directory is specified.
      *
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public CoinbaseBarSeriesDataSource(boolean enableResponseCaching, String responseCacheDir) {
-        super(DEFAULT_HTTP_CLIENT, enableResponseCaching, responseCacheDir);
+    public CoinbaseBarSeriesDataSource(String responseCacheDir) {
+        super(DEFAULT_HTTP_CLIENT, responseCacheDir);
     }
 
     /**
@@ -216,32 +215,29 @@ public class CoinbaseBarSeriesDataSource extends AbstractHttpBarSeriesDataSource
 
     /**
      * Creates a new CoinbaseBarSeriesDataSource with the specified
-     * HttpClientWrapper, caching option, and custom cache directory.
+     * HttpClientWrapper and custom cache directory. Response caching is
+     * automatically enabled when a cache directory is specified.
      *
-     * @param httpClient            the HttpClientWrapper to use for API requests
-     *                              (can be a mock for testing)
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClientWrapper to use for API requests (can be
+     *                         a mock for testing)
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public CoinbaseBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching,
-            String responseCacheDir) {
-        super(httpClient, enableResponseCaching, responseCacheDir);
+    public CoinbaseBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
+        super(httpClient, responseCacheDir);
     }
 
     /**
-     * Creates a new CoinbaseBarSeriesDataSource with the specified HttpClient,
-     * caching option, and custom cache directory.
+     * Creates a new CoinbaseBarSeriesDataSource with the specified HttpClient and
+     * custom cache directory. Response caching is automatically enabled when a
+     * cache directory is specified.
      *
-     * @param httpClient            the HttpClient to use for API requests
-     * @param enableResponseCaching if true, responses will be cached to disk for
-     *                              faster subsequent requests
-     * @param responseCacheDir      the directory path for caching responses (can be
-     *                              relative or absolute)
+     * @param httpClient       the HttpClient to use for API requests
+     * @param responseCacheDir the directory path for caching responses (can be
+     *                         relative or absolute)
      */
-    public CoinbaseBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching, String responseCacheDir) {
-        super(httpClient, enableResponseCaching, responseCacheDir);
+    public CoinbaseBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
+        super(httpClient, responseCacheDir);
     }
 
     /**

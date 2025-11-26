@@ -1084,7 +1084,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithCustomCacheDirectory() {
         String customCacheDir = "test-cache/custom";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1094,7 +1094,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testConstructorWithHttpClientWrapperAndCustomCacheDirectory() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         String customCacheDir = "test-cache/custom-wrapper";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1104,7 +1104,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testConstructorWithHttpClientAndCustomCacheDirectory() {
         HttpClient httpClient = HttpClient.newHttpClient();
         String customCacheDir = "test-cache/custom-http";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient, customCacheDir);
         assertNotNull(dataSource, "DataSource should be created successfully");
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
                 "Cache directory should match the provided custom directory");
@@ -1113,18 +1113,18 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithNullCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource(true, (String) null);
+            new CoinbaseBarSeriesDataSource((String) null);
         }, "Constructor should throw IllegalArgumentException for null cache directory");
     }
 
     @Test
     public void testConstructorWithEmptyCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource(true, "");
+            new CoinbaseBarSeriesDataSource("");
         }, "Constructor should throw IllegalArgumentException for empty cache directory");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource(true, "   ");
+            new CoinbaseBarSeriesDataSource("   ");
         }, "Constructor should throw IllegalArgumentException for whitespace-only cache directory");
     }
 
@@ -1138,7 +1138,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testGetResponseCacheDirWithCustomDirectory() {
         String customCacheDir = "my-custom-cache";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDir);
         assertEquals(customCacheDir, dataSource.getResponseCacheDir(), "Custom cache directory should be returned");
     }
 
@@ -1168,7 +1168,7 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1208,7 +1208,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testCacheDirectoryTrimming() {
         // Test that cache directory paths are trimmed
         String customCacheDirWithWhitespace = "  test-cache/trimmed  ";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, customCacheDirWithWhitespace);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDirWithWhitespace);
         assertEquals("test-cache/trimmed", dataSource.getResponseCacheDir(),
                 "Cache directory should be trimmed of leading/trailing whitespace");
     }
@@ -1239,7 +1239,7 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1293,7 +1293,7 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1347,7 +1347,7 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true, customCacheDir);
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
@@ -1369,7 +1369,7 @@ public class CoinbaseBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true, "non-existent-cache-dir");
+        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource("non-existent-cache-dir");
         int deletedCount = dataSource.deleteAllCacheFiles();
         assertEquals(0, deletedCount, "Should return 0 for non-existent directory");
     }
