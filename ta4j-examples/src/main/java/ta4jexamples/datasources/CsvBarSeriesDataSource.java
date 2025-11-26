@@ -48,9 +48,9 @@ import java.time.format.DateTimeFormatter;
  * ticker, interval, and date range. Searches for CSV files matching the
  * specified criteria in the classpath.
  */
-public class CsvBarsDataSource implements BarSeriesDataSource {
+public class CsvBarSeriesDataSource implements BarSeriesDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(CsvBarsDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(CsvBarSeriesDataSource.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
@@ -267,7 +267,7 @@ public class CsvBarsDataSource implements BarSeriesDataSource {
      */
     public static BarSeries loadCsvSeries(String filename) {
 
-        var stream = CsvBarsDataSource.class.getClassLoader().getResourceAsStream(filename);
+        var stream = CsvBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
 
         if (stream == null) {
             LOG.debug("CSV file not found in classpath: {}", filename);
@@ -314,7 +314,7 @@ public class CsvBarsDataSource implements BarSeriesDataSource {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsDataSource.loadSeriesFromFile();
+        BarSeries series = CsvBarSeriesDataSource.loadSeriesFromFile();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

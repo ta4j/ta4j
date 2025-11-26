@@ -143,7 +143,7 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 - **Strategies**: Combine entry and exit rules into a complete trading system
 - **BarSeries**: Your price data (OHLCV bars) that everything operates on
 
-**Note:** The example below uses `BitstampCsvTradesDataSource` from `ta4j-examples` for convenience. See the [Sourcing market data](#sourcing-market-data) section below for more options.
+**Note:** The example below uses `BitStampCSVTradesBarSeriesDataSource` from `ta4j-examples` for convenience. See the [Sourcing market data](#sourcing-market-data) section below for more options.
 
 ```java
 import org.ta4j.core.*;
@@ -151,10 +151,10 @@ import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.*;
 import org.ta4j.core.backtest.BarSeriesManager;
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;  // Requires ta4j-examples dependency
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;  // Requires ta4j-examples dependency
 
 // Load historical price data (or use your own data source)
-BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
 // Create indicators: calculate moving averages from close prices
 ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -186,21 +186,21 @@ System.out.println("Number of positions: " + record.getPositionCount());
 
 ### Quick solution: Yahoo Finance (no API key required)
 
-The easiest way to get started is using the built-in `YahooFinanceDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API—no registration or API key needed.
+The easiest way to get started is using the built-in `YahooFinanceBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API—no registration or API key needed.
 
 ```java
-import ta4jexamples.datasources.YahooFinanceDataSource;
+import ta4jexamples.datasources.YahooFinanceBarSeriesDataSource;
 
 // Enable response caching to avoid hitting API limits during development
-YahooFinanceDataSource dataSource = new YahooFinanceDataSource(true);
+YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true);
 
 // Load data by desired bar count (e.g., 2 years of daily candles)
 BarSeries series = dataSource.loadSeriesInstance("AAPL", 
-    YahooFinanceDataSource.YahooFinanceInterval.DAY_1, 730);
+    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
 
 // Or load by date range
 BarSeries series = dataSource.loadSeriesInstance("AAPL",
-    YahooFinanceDataSource.YahooFinanceInterval.DAY_1,
+    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1,
     Instant.parse("2023-01-01T00:00:00Z"),
     Instant.parse("2023-12-31T23:59:59Z"));
 ```
@@ -214,7 +214,7 @@ BarSeries series = dataSource.loadSeriesInstance("AAPL",
 - Intraday: `MINUTE_1`, `MINUTE_5`, `MINUTE_15`, `MINUTE_30`, `HOUR_1`, `HOUR_4`
 - Daily/weekly/monthly: `DAY_1`, `WEEK_1`, `MONTH_1`
 
-**💡 Tip:** Enable caching (`new YahooFinanceDataSource(true)`) to cache API responses locally. This speeds up development and reduces API calls. Cached data is automatically reused for the same requests.
+**💡 Tip:** Enable caching (`new YahooFinanceBarSeriesDataSource(true)`) to cache API responses locally. This speeds up development and reduces API calls. Cached data is automatically reused for the same requests.
 
 **See it in action:** Run the complete example with:
 ```bash
@@ -227,10 +227,10 @@ This example demonstrates loading data from Yahoo Finance, building an advanced 
 
 Ta4j works with any OHLCV (Open, High, Low, Close, Volume) data. The `ta4j-examples` module includes examples for several data sources:
 
-- **[YahooFinanceDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceDataSource.java)** - Fetch live data from Yahoo Finance API (stocks, ETFs, crypto)
-- **[CsvBarsDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvBarsDataSource.java)** - Load OHLCV data from CSV files
-- **[BitstampCsvTradesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitstampCsvTradesDataSource.java)** - Load trade data from Bitstamp CSV and aggregate into bars
-- **[JsonBarsDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonBarsDataSource.java)** - Load Coinbase/Binance OHLCV data from json files
+- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch live data from Yahoo Finance API (stocks, ETFs, crypto)
+- **[CsvBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvBarSeriesDataSource.java)** - Load OHLCV data from CSV files
+- **[BitStampCSVTradesBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCSVTradesBarSeriesDataSource.java)** - Load trade data from Bitstamp CSV and aggregate into bars
+- **[JsonBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonBarSeriesDataSource.java)** - Load Coinbase/Binance OHLCV data from json files
 
 **Create your own data source:** Simply implement a method that returns a `BarSeries`. You can load data from:
 - CSV files
@@ -546,11 +546,11 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
 
 ### Data Loading Examples
-- **[YahooFinanceDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceDataSource.java)** - Fetch historical OHLCV data from Yahoo Finance API (stocks, ETFs, crypto). Includes response caching to reduce API calls. See the [Sourcing market data](#sourcing-market-data) section above for a quick start guide.
+- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch historical OHLCV data from Yahoo Finance API (stocks, ETFs, crypto). Includes response caching to reduce API calls. See the [Sourcing market data](#sourcing-market-data) section above for a quick start guide.
 - **[YahooFinanceBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/YahooFinanceBacktest.java)** - Complete example demonstrating Yahoo Finance data loading, advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), backtesting, and visualization
-- **[BitstampCsvTradesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitstampCsvTradesDataSource.java)** - Load historical trade data from Bitstamp CSV files and aggregate into OHLCV bars
-- **[CsvBarsDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvBarsDataSource.java)** - Load OHLCV bar data from CSV
-- **[JsonBarsDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonBarsDataSource.java)** - Parse JSON data from Coinbase/Binance APIs
+- **[BitStampCSVTradesBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCSVTradesBarSeriesDataSource.java)** - Load historical trade data from Bitstamp CSV files and aggregate into OHLCV bars
+- **[CsvBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvBarSeriesDataSource.java)** - Load OHLCV bar data from CSV
+- **[JsonBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonBarSeriesDataSource.java)** - Parse JSON data from Coinbase/Binance APIs
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis

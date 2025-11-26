@@ -49,7 +49,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.StopLossRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
 
 /**
  * Quickstart for ta4j - Your first trading strategy!
@@ -79,7 +79,7 @@ public class Quickstart {
 
         // Step 1: Load historical price data
         System.out.println("[1/6] Loading historical Bitcoin price data from Bitstamp...");
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
         System.out.printf("   [OK] Loaded %d bars of price data%n", series.getBarCount());
         System.out.println();
 

@@ -46,7 +46,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
 
 /**
  * This class builds a traditional candlestick chart.
@@ -124,7 +124,7 @@ public class CandlestickChart {
         /*
          * Getting bar series
          */
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
         /*
          * Creating the OHLC dataset

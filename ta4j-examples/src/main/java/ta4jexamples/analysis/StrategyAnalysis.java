@@ -39,7 +39,7 @@ import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
@@ -53,7 +53,7 @@ public class StrategyAnalysis {
     public static void main(String[] args) {
 
         // Getting the bar series
-        var series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        var series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
         // Building the trading strategy
         var strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy

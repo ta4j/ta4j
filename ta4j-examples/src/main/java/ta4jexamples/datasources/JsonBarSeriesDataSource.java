@@ -53,11 +53,11 @@ import java.time.format.DateTimeFormatter;
  *
  * @since 0.19
  */
-public class JsonBarsDataSource implements BarSeriesDataSource {
+public class JsonBarSeriesDataSource implements BarSeriesDataSource {
     private static final Gson TYPEADAPTER_GSON = new GsonBuilder()
             .registerTypeAdapter(BarSeries.class, new AdaptiveBarSeriesTypeAdapter())
             .create();
-    private static final Logger LOG = LogManager.getLogger(JsonBarsDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(JsonBarSeriesDataSource.class);
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
     private static final DateTimeFormatter FILENAME_DATETIME_MINUTE_FORMAT = DateTimeFormatter
@@ -143,7 +143,7 @@ public class JsonBarsDataSource implements BarSeriesDataSource {
      * Default instance for backward compatibility with static method calls. Use
      * this instance when migrating from static methods to instance methods.
      */
-    public static final JsonBarsDataSource DEFAULT_INSTANCE = new JsonBarsDataSource();
+    public static final JsonBarSeriesDataSource DEFAULT_INSTANCE = new JsonBarSeriesDataSource();
 
     @Override
     public BarSeries loadSeries(String source) {
@@ -166,7 +166,7 @@ public class JsonBarsDataSource implements BarSeriesDataSource {
             return loadFromStream(fis);
         } catch (Exception e) {
             // Try as classpath resource
-            InputStream resourceStream = JsonBarsDataSource.class.getClassLoader().getResourceAsStream(source);
+            InputStream resourceStream = JsonBarSeriesDataSource.class.getClassLoader().getResourceAsStream(source);
             if (resourceStream != null) {
                 return loadFromStream(resourceStream);
             }

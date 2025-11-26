@@ -34,7 +34,7 @@ import java.io.*;
 /**
  * @deprecated // TODO: Remove in 0.20
  *             <p>
- *             Use {@link JsonBarsDataSource} instead.
+ *             Use {@link JsonBarSeriesDataSource} instead.
  *             </p>
  */
 @Deprecated(since = "0.19")
@@ -95,7 +95,7 @@ public class JsonBarsSerializer {
      *
      * @deprecated
      *             <p>
-     *             Use {@link JsonBarsDataSource#loadSeries(String)} instead.
+     *             Use {@link JsonBarSeriesDataSource#loadSeries(String)} instead.
      *
      * @param inputStream the input stream containing JSON data to be parsed into a
      *                    BarSeries

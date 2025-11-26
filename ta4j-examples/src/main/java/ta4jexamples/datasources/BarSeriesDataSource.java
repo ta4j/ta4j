@@ -43,9 +43,9 @@ import java.time.Instant;
  *
  * <pre>
  * // All data sources work with business concepts
- * BarSeriesDataSource yahoo = new YahooFinanceDataSource(true);
- * BarSeriesDataSource csv = new CsvBarsDataSource();
- * BarSeriesDataSource json = new JsonBarsDataSource();
+ * BarSeriesDataSource yahoo = new YahooFinanceBarSeriesDataSource(true);
+ * BarSeriesDataSource csv = new CsvBarSeriesDataSource();
+ * BarSeriesDataSource json = new JsonBarSeriesDataSource();
  *
  * // Same interface, different implementations
  * BarSeries aapl = yahoo.loadSeries("AAPL", Duration.ofDays(1), Instant.parse("2023-01-01T00:00:00Z"),
@@ -67,13 +67,14 @@ import java.time.Instant;
  * <p>
  * <strong>Implementation Behavior:</strong>
  * <ul>
- * <li><strong>File-based sources</strong> (CsvBarsDataSource,
- * JsonBarsDataSource, BitstampCsvTradesDataSource): Search for files matching
- * ticker/interval/date range patterns in the classpath or configured
- * directories. The exact filename pattern is implementation-specific.</li>
- * <li><strong>API-based sources</strong> (YahooFinanceDataSource): Fetch data
- * from the API. If caching is enabled, will first check for cached files
- * matching the criteria.</li>
+ * <li><strong>File-based sources</strong> (CsvBarSeriesDataSource,
+ * JsonBarSeriesDataSource, BitStampCSVTradesBarSeriesDataSource): Search for
+ * files matching ticker/interval/date range patterns in the classpath or
+ * configured directories. The exact filename pattern is
+ * implementation-specific.</li>
+ * <li><strong>API-based sources</strong> (YahooFinanceBarSeriesDataSource):
+ * Fetch data from the API. If caching is enabled, will first check for cached
+ * files matching the criteria.</li>
  * </ul>
  *
  * @since 0.20
@@ -144,5 +145,21 @@ public interface BarSeriesDataSource {
     default BarSeries loadSeries(InputStream inputStream) {
         throw new UnsupportedOperationException(
                 "InputStream loading not supported by " + this.getClass().getSimpleName());
+    }
+
+    /**
+     * Returns the source name for this data source. This is used for building file
+     * search patterns, cache file names, and other source-specific identifiers.
+     * <p>
+     * For example, a Yahoo Finance data source would return "YahooFinance", which
+     * would be used to build cache file names like "YahooFinance-AAPL-1d-...".
+     * <p>
+     * File-based sources that don't use a source prefix (e.g., generic CSV files)
+     * should return an empty string.
+     *
+     * @return the source name, or an empty string if no source prefix is used
+     */
+    default String getSourceName() {
+        return "";
     }
 }

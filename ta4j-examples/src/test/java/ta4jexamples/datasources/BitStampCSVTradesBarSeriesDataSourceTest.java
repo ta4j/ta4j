@@ -36,13 +36,13 @@ import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the {@link BitstampCsvTradesDataSource} class.
+ * Unit tests for the {@link BitStampCSVTradesBarSeriesDataSource} class.
  */
-public class BitstampCsvTradesDataSourceTest {
+public class BitStampCSVTradesBarSeriesDataSourceTest {
 
     @Test
     public void testMain() {
-        BitstampCsvTradesDataSource.main(null);
+        BitStampCSVTradesBarSeriesDataSource.main(null);
     }
 
     @Test
@@ -54,7 +54,7 @@ public class BitstampCsvTradesDataSourceTest {
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
         assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -68,7 +68,7 @@ public class BitstampCsvTradesDataSourceTest {
     @Test
     public void testLoadSeriesWithDirectFilename() {
         // Test loading by direct filename (backward compatibility)
-        BarSeries series = BitstampCsvTradesDataSource
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource
                 .loadBitstampSeries("Bitstamp-BTC-USD-PT5M-20131125_20131201.csv");
 
         assertNotNull(series, "Should load series from direct filename with Bitstamp prefix");
@@ -78,7 +78,7 @@ public class BitstampCsvTradesDataSourceTest {
     @Test
     public void testLoadSeriesWithDefaultFile() {
         // Test loading default Bitstamp file
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
         assertNotNull(series, "Should load default Bitstamp series");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
@@ -86,7 +86,7 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNonExistentTicker() {
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -97,7 +97,7 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidDateRange() {
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-12-01T23:59:59Z");
         Instant end = Instant.parse("2013-11-25T00:00:00Z"); // End before start
 
@@ -108,7 +108,7 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithNullTicker() {
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -119,7 +119,7 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithEmptyTicker() {
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -130,7 +130,7 @@ public class BitstampCsvTradesDataSourceTest {
 
     @Test
     public void testLoadSeriesWithInvalidInterval() {
-        BitstampCsvTradesDataSource dataSource = new BitstampCsvTradesDataSource();
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
 
@@ -141,5 +141,31 @@ public class BitstampCsvTradesDataSourceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             dataSource.loadSeries("BTC-USD", Duration.ofSeconds(-1), start, end);
         }, "Should throw IllegalArgumentException for negative interval");
+    }
+
+    @Test
+    public void testGetSourceName() {
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        assertEquals("Bitstamp", dataSource.getSourceName(), "Should return 'Bitstamp' as source name");
+    }
+
+    @Test
+    public void testGetSourceNameUsedInFileSearchPattern() {
+        // Verify that getSourceName() is used in file search patterns
+        BitStampCSVTradesBarSeriesDataSource dataSource = new BitStampCSVTradesBarSeriesDataSource();
+        String sourceName = dataSource.getSourceName();
+        assertFalse(sourceName.isEmpty(), "Source name should not be empty");
+        assertEquals("Bitstamp", sourceName, "Source name should be 'Bitstamp'");
+
+        // Test that file search uses the source name prefix
+        Instant start = Instant.parse("2013-11-25T00:00:00Z");
+        Instant end = Instant.parse("2013-12-01T23:59:59Z");
+        String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+
+        BarSeries series = dataSource.loadSeries("BTC-USD", Duration.ofMinutes(5), start, end);
+        assertNotNull(series, "Should find file using source name prefix");
+        assertTrue(expectedFile.startsWith(sourceName + "-"), "Expected file should start with source name prefix");
     }
 }

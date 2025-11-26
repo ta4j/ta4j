@@ -48,9 +48,15 @@ import java.util.ListIterator;
  * ticker, interval, and date range. Searches for Bitstamp CSV files matching
  * the specified criteria in the classpath.
  */
-public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
+public class BitStampCSVTradesBarSeriesDataSource implements BarSeriesDataSource {
 
-    private static final Logger LOG = LogManager.getLogger(BitstampCsvTradesDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(BitStampCSVTradesBarSeriesDataSource.class);
+
+    @Override
+    public String getSourceName() {
+        return "Bitstamp";
+    }
+
     private static final String DEFAULT_BITSTAMP_FILE = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
     private static final DateTimeFormatter FILENAME_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter FILENAME_DATETIME_HOUR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHH");
@@ -88,8 +94,9 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
         String intervalStr = formatIntervalForFilename(interval);
 
         // Try exact pattern with interval-appropriate format:
-        // Bitstamp-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
-        String exactPattern = "Bitstamp-" + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_"
+        // {sourceName}-{ticker}-{interval}-{startDateTime}_{endDateTime}.csv
+        String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
+        String exactPattern = sourcePrefix + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateTimeStr + "_"
                 + endDateTimeStr + ".csv";
         BarSeries series = loadBitstampSeries(exactPattern);
         if (series != null && !series.isEmpty()) {
@@ -97,35 +104,36 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
         }
 
         // Fallback to date-only format for backward compatibility with existing files
-        String exactPatternDateOnly = "Bitstamp-" + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
+        String exactPatternDateOnly = sourcePrefix + ticker.toUpperCase() + "-" + intervalStr + "-" + startDateStr + "_"
                 + endDateStr + ".csv";
         series = loadBitstampSeries(exactPatternDateOnly);
         if (series != null && !series.isEmpty()) {
             return filterAndAggregateSeries(series, interval, start, end);
         }
 
-        // Try broader pattern: Bitstamp-{ticker}-*-{startDateTime}_*.csv
-        String broaderPattern = "Bitstamp-" + ticker.toUpperCase() + "-*-" + startDateTimeStr + "_*.csv";
+        // Try broader pattern: {sourceName}-{ticker}-*-{startDateTime}_*.csv
+        String broaderPattern = sourcePrefix + ticker.toUpperCase() + "-*-" + startDateTimeStr + "_*.csv";
         series = searchAndLoadBitstampFile(broaderPattern, interval, start, end);
         if (series != null && !series.isEmpty()) {
             return series;
         }
 
         // Fallback to date-only format for broader pattern
-        String broaderPatternDateOnly = "Bitstamp-" + ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
+        String broaderPatternDateOnly = sourcePrefix + ticker.toUpperCase() + "-*-" + startDateStr + "_*.csv";
         series = searchAndLoadBitstampFile(broaderPatternDateOnly, interval, start, end);
         if (series != null && !series.isEmpty()) {
             return series;
         }
 
-        // Try even broader: Bitstamp-{ticker}-*.csv (then filter by date range)
-        String broadestPattern = "Bitstamp-" + ticker.toUpperCase() + "-*.csv";
+        // Try even broader: {sourceName}-{ticker}-*.csv (then filter by date range)
+        String broadestPattern = sourcePrefix + ticker.toUpperCase() + "-*.csv";
         series = searchAndLoadBitstampFile(broadestPattern, interval, start, end);
         if (series != null && !series.isEmpty()) {
             return series;
         }
 
-        LOG.debug("No Bitstamp CSV file found matching ticker: {}, interval: {}, date range: {} to {}", ticker,
+        String sourceName = getSourceName().isEmpty() ? "" : getSourceName() + " ";
+        LOG.debug("No {}CSV file found matching ticker: {}, interval: {}, date range: {} to {}", sourceName, ticker,
                 interval, start, end);
         return null;
     }
@@ -266,7 +274,8 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
     public static BarSeries loadBitstampSeries(String bitstampCsvFile) {
 
         // Reading all lines of the CSV file
-        InputStream stream = BitstampCsvTradesDataSource.class.getClassLoader().getResourceAsStream(bitstampCsvFile);
+        InputStream stream = BitStampCSVTradesBarSeriesDataSource.class.getClassLoader()
+                .getResourceAsStream(bitstampCsvFile);
         List<String[]> lines = null;
         if (stream == null) {
             LOG.debug("CSV file not found in classpath: {}", bitstampCsvFile);
@@ -344,7 +353,7 @@ public class BitstampCsvTradesDataSource implements BarSeriesDataSource {
     }
 
     public static void main(String[] args) {
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
         LOG.debug("Series: {} ({})", series.getName(), series.getSeriesPeriodDescription());
         LOG.debug("Number of bars: {}", series.getBarCount());

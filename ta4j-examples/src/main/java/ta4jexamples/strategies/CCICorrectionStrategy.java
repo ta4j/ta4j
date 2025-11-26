@@ -41,7 +41,7 @@ import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
 
 /**
  * CCI Correction Strategy
@@ -83,7 +83,7 @@ public class CCICorrectionStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);

@@ -43,7 +43,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceRatioIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 
-import ta4jexamples.datasources.BitstampCsvTradesDataSource;
+import ta4jexamples.datasources.BitStampCSVTradesBarSeriesDataSource;
 
 /**
  * This class builds a CSV file containing values from indicators.
@@ -57,7 +57,7 @@ public class IndicatorsToCsv {
         /*
          * Getting bar series
          */
-        BarSeries series = BitstampCsvTradesDataSource.loadBitstampSeries();
+        BarSeries series = BitStampCSVTradesBarSeriesDataSource.loadBitstampSeries();
 
         /*
          * Creating indicators

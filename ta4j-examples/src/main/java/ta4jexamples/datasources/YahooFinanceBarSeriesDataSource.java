@@ -63,22 +63,22 @@ import java.util.TreeMap;
  *
  * <pre>
  * // Load 1 year of daily data for Apple stock (using days)
- * BarSeries series = YahooFinanceDataSource.loadSeries("AAPL", 365);
+ * BarSeries series = YahooFinanceBarSeriesDataSource.loadSeries("AAPL", 365);
  *
  * // Load 500 bars of hourly data for Bitcoin (using bar count)
- * BarSeries btcSeries = YahooFinanceDataSource.loadSeries("BTC-USD", YahooFinanceInterval.HOUR_1, 500);
+ * BarSeries btcSeries = YahooFinanceBarSeriesDataSource.loadSeries("BTC-USD", YahooFinanceInterval.HOUR_1, 500);
  *
  * // Load data for a specific date range
  * Instant start = Instant.parse("2023-01-01T00:00:00Z");
  * Instant end = Instant.parse("2023-12-31T23:59:59Z");
- * BarSeries msftSeries = YahooFinanceDataSource.loadSeries("MSFT", YahooFinanceInterval.DAY_1, start, end);
+ * BarSeries msftSeries = YahooFinanceBarSeriesDataSource.loadSeries("MSFT", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
  * <strong>Response Caching:</strong> To enable response caching for faster
  * subsequent requests, use the constructor with {@code enableResponseCaching}:
  *
  * <pre>
- * YahooFinanceDataSource loader = new YahooFinanceDataSource(true);
+ * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(true);
  * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
@@ -93,7 +93,7 @@ import java.util.TreeMap;
  *
  * <pre>
  * HttpClientWrapper mockHttpClient = mock(HttpClientWrapper.class);
- * YahooFinanceDataSource loader = new YahooFinanceDataSource(mockHttpClient);
+ * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(mockHttpClient);
  * // Use loader instance methods or inject into your code
  * </pre>
  * <p>
@@ -103,61 +103,68 @@ import java.util.TreeMap;
  *
  * @since 0.20
  */
-public class YahooFinanceDataSource implements BarSeriesDataSource {
+public class YahooFinanceBarSeriesDataSource implements BarSeriesDataSource {
 
     public static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
     public static final String RESPONSE_CACHE_DIR = "temp/responses";
-    public static final String RESPONSE_CACHE_PREFIX = "YahooFinance-";
 
-    private static final Logger LOG = LogManager.getLogger(YahooFinanceDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(YahooFinanceBarSeriesDataSource.class);
+
+    @Override
+    public String getSourceName() {
+        return "YahooFinance";
+    }
+
     private static final HttpClientWrapper DEFAULT_HTTP_CLIENT = new DefaultHttpClientWrapper();
-    private static final YahooFinanceDataSource DEFAULT_INSTANCE = new YahooFinanceDataSource(DEFAULT_HTTP_CLIENT);
+    private static final YahooFinanceBarSeriesDataSource DEFAULT_INSTANCE = new YahooFinanceBarSeriesDataSource(
+            DEFAULT_HTTP_CLIENT);
     private final HttpClientWrapper httpClient;
     private final boolean enableResponseCaching;
 
     /**
-     * Creates a new YahooFinanceDataSource with a default HttpClient. For unit
-     * testing, use {@link #YahooFinanceDataSource(HttpClientWrapper)} to inject a
-     * mock HttpClientWrapper.
+     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient. For
+     * unit testing, use {@link #YahooFinanceBarSeriesDataSource(HttpClientWrapper)}
+     * to inject a mock HttpClientWrapper.
      */
-    public YahooFinanceDataSource() {
+    public YahooFinanceBarSeriesDataSource() {
         this(DEFAULT_HTTP_CLIENT, false);
     }
 
     /**
-     * Creates a new YahooFinanceDataSource with a default HttpClient and caching
-     * option.
+     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient and
+     * caching option.
      *
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceDataSource(boolean enableResponseCaching) {
+    public YahooFinanceBarSeriesDataSource(boolean enableResponseCaching) {
         this(DEFAULT_HTTP_CLIENT, enableResponseCaching);
     }
 
     /**
-     * Creates a new YahooFinanceDataSource with the specified HttpClientWrapper.
-     * This constructor allows dependency injection of a mock HttpClientWrapper for
-     * unit testing.
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * HttpClientWrapper. This constructor allows dependency injection of a mock
+     * HttpClientWrapper for unit testing.
      *
      * @param httpClient the HttpClientWrapper to use for API requests (can be a
      *                   mock for testing)
      */
-    public YahooFinanceDataSource(HttpClientWrapper httpClient) {
+    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient) {
         this(httpClient, false);
     }
 
     /**
-     * Creates a new YahooFinanceDataSource with the specified HttpClientWrapper and
-     * caching option. This constructor allows dependency injection of a mock
-     * HttpClientWrapper for unit testing and enables response caching.
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * HttpClientWrapper and caching option. This constructor allows dependency
+     * injection of a mock HttpClientWrapper for unit testing and enables response
+     * caching.
      *
      * @param httpClient            the HttpClientWrapper to use for API requests
      *                              (can be a mock for testing)
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
+    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
         if (httpClient == null) {
             throw new IllegalArgumentException("HttpClientWrapper cannot be null");
         }
@@ -169,25 +176,25 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
     }
 
     /**
-     * Creates a new YahooFinanceDataSource with the specified HttpClient. This is a
-     * convenience constructor that wraps the HttpClient in a
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient.
+     * This is a convenience constructor that wraps the HttpClient in a
      * DefaultHttpClientWrapper.
      *
      * @param httpClient the HttpClient to use for API requests
      */
-    public YahooFinanceDataSource(HttpClient httpClient) {
+    public YahooFinanceBarSeriesDataSource(HttpClient httpClient) {
         this(new DefaultHttpClientWrapper(httpClient), false);
     }
 
     /**
-     * Creates a new YahooFinanceDataSource with the specified HttpClient and
-     * caching option.
+     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient
+     * and caching option.
      *
      * @param httpClient            the HttpClient to use for API requests
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceDataSource(HttpClient httpClient, boolean enableResponseCaching) {
+    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
         this(new DefaultHttpClientWrapper(httpClient), enableResponseCaching);
     }
 
@@ -452,6 +459,26 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
      *         fails
      */
     public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, int barCount) {
+        return loadSeriesInstance(ticker, interval, barCount, null);
+    }
+
+    /**
+     * Instance method that loads historical OHLCV data for a given ticker symbol
+     * with a specified number of bars and optional notes for cache file naming. The
+     * end date/time is set to the current time, and the start date/time is
+     * calculated based on the bar count and interval.
+     *
+     * @param ticker   the ticker symbol (e.g., "AAPL", "MSFT", "BTC-USD",
+     *                 "ETH-USD")
+     * @param interval the bar interval (must be one of the supported Yahoo Finance
+     *                 intervals)
+     * @param barCount the number of bars to fetch
+     * @param notes    optional notes to include in cache filename (for uniqueness,
+     *                 e.g., test identifiers)
+     * @return a BarSeries containing the historical data, or null if the request
+     *         fails
+     */
+    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, int barCount, String notes) {
         if (barCount <= 0) {
             LOG.error("Bar count must be greater than 0");
             return null;
@@ -461,7 +488,7 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
         Duration totalDuration = interval.getDuration().multipliedBy(barCount);
         Instant startDateTime = endDateTime.minus(totalDuration);
 
-        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime);
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime, notes);
     }
 
     @Override
@@ -496,16 +523,33 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
         }
 
         // Check if it's a cache file path
-        if (source.startsWith(RESPONSE_CACHE_DIR) || source.contains(RESPONSE_CACHE_PREFIX)) {
+        String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
+        if (source.startsWith(RESPONSE_CACHE_DIR) || (!sourcePrefix.isEmpty() && source.contains(sourcePrefix))) {
             Path cacheFile = Paths.get(source);
             if (Files.exists(cacheFile)) {
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     // Try to extract ticker from filename
                     String filename = cacheFile.getFileName().toString();
-                    // Format: YahooFinance-TICKER-INTERVAL-START-END.json
-                    String[] parts = filename.replace(".json", "").split("-");
-                    if (parts.length >= 2) {
+                    // Format: {sourceName}-TICKER-INTERVAL-START-END[_NOTES].json
+                    // Remove extension
+                    String baseName = filename.replace(".json", "");
+                    // Notes section is everything after the last underscore that follows the end
+                    // timestamp
+                    // We need to parse: {sourceName}-TICKER-INTERVAL-START-END[_NOTES]
+                    String[] parts = baseName.split("-");
+                    if (parts.length >= 5) {
+                        // Check if last part contains underscore (indicating notes section)
+                        // Format: END or END_NOTES
+                        String lastPart = parts[parts.length - 1];
+                        String endTimestampStr = lastPart;
+                        if (lastPart.contains("_")) {
+                            // Split on underscore - first part is end timestamp, rest is notes
+                            int underscoreIndex = lastPart.indexOf("_");
+                            endTimestampStr = lastPart.substring(0, underscoreIndex);
+                            // Notes section is ignored for parsing
+                        }
+
                         String ticker = parts[1];
                         // Try to determine interval from filename
                         YahooFinanceInterval interval = YahooFinanceInterval.DAY_1; // Default
@@ -564,6 +608,24 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
      */
     public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime, null);
+    }
+
+    /**
+     * Instance method that performs the actual loading logic with optional notes.
+     * This method uses the instance's HttpClient (which can be injected for
+     * testing).
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the interval
+     * @param startDateTime the start date/time
+     * @param endDateTime   the end date/time
+     * @param notes         optional notes to include in cache filename (for
+     *                      uniqueness)
+     * @return the BarSeries or null if request fails
+     */
+    public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime, String notes) {
         if (ticker == null || ticker.trim().isEmpty()) {
             LOG.error("Ticker symbol cannot be null or empty");
             return null;
@@ -588,11 +650,11 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
                     "Requested date range ({}) exceeds conservative limit ({}) for interval {}. "
                             + "Splitting into multiple requests and combining results.",
                     requestedRange, conservativeLimit, interval);
-            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit);
+            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit, notes);
         }
 
         // Single request for smaller ranges
-        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime);
+        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime, notes);
     }
 
     /**
@@ -684,18 +746,36 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
      * @param interval      the interval
      * @param startDateTime the start date/time (will be truncated)
      * @param endDateTime   the end date/time (will be truncated)
+     * @param notes         optional notes section to append to filename (can be
+     *                      null or empty)
+     * @return the cache file path
+     */
+    private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime, String notes) {
+        Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
+        Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
+
+        String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
+        String notesSuffix = (notes != null && !notes.trim().isEmpty()) ? "_" + notes.trim() : "";
+        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix,
+                ticker.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), interval.getApiValue(),
+                truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond(), notesSuffix);
+
+        return Paths.get(RESPONSE_CACHE_DIR, filename);
+    }
+
+    /**
+     * Generates the cache file path for a given request (without notes).
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the interval
+     * @param startDateTime the start date/time (will be truncated)
+     * @param endDateTime   the end date/time (will be truncated)
      * @return the cache file path
      */
     private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
-        Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
-        Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
-
-        String filename = String.format("%s%s-%s-%d-%d.json", RESPONSE_CACHE_PREFIX,
-                ticker.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), interval.getApiValue(),
-                truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond());
-
-        return Paths.get(RESPONSE_CACHE_DIR, filename);
+        return getCacheFilePath(ticker, interval, startDateTime, endDateTime, null);
     }
 
     /**
@@ -778,14 +858,44 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
      */
     private BarSeries loadSeriesSingleRequest(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime) {
+        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime, null);
+    }
+
+    /**
+     * Makes a single API request for the specified date range with optional notes.
+     * This is used for requests that don't exceed conservative limits. If caching
+     * is enabled, checks cache first before making the API request.
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the interval
+     * @param startDateTime the start date/time
+     * @param endDateTime   the end date/time
+     * @param notes         optional notes to include in cache filename (for
+     *                      uniqueness)
+     * @return the BarSeries or null if request fails
+     */
+    private BarSeries loadSeriesSingleRequest(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime, String notes) {
         // Check cache first if caching is enabled
         if (enableResponseCaching) {
-            Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
+            // Try exact match first (with or without notes)
+            Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime, notes);
             if (isCacheValid(cacheFile, interval, endDateTime)) {
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
                     return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                }
+            }
+            // Also try without notes (for backward compatibility)
+            if (notes != null && !notes.trim().isEmpty()) {
+                Path cacheFileNoNotes = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
+                if (isCacheValid(cacheFileNoNotes, interval, endDateTime)) {
+                    String cachedResponse = readFromCache(cacheFileNoNotes);
+                    if (cachedResponse != null) {
+                        LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
+                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                    }
                 }
             }
         }
@@ -819,7 +929,7 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
 
             // Cache the response if caching is enabled
             if (enableResponseCaching) {
-                Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime);
+                Path cacheFile = getCacheFilePath(ticker, interval, startDateTime, endDateTime, notes);
                 writeToCache(cacheFile, responseBody);
             }
 
@@ -841,10 +951,12 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
      * @param startDateTime the start date/time
      * @param endDateTime   the end date/time
      * @param chunkSize     the maximum size for each chunk
+     * @param notes         optional notes to include in cache filename (for
+     *                      uniqueness)
      * @return a BarSeries containing all merged data, or null if all requests fail
      */
     private BarSeries loadSeriesPaginated(String ticker, YahooFinanceInterval interval, Instant startDateTime,
-            Instant endDateTime, Duration chunkSize) {
+            Instant endDateTime, Duration chunkSize, String notes) {
         List<BarSeries> chunks = new ArrayList<>();
         Instant currentStart = startDateTime;
         int requestCount = 0;
@@ -864,7 +976,7 @@ public class YahooFinanceDataSource implements BarSeriesDataSource {
             requestCount++;
             LOG.trace("Fetching chunk {}/? ({} to {})", requestCount, currentStart, chunkEnd);
 
-            BarSeries chunk = loadSeriesSingleRequest(ticker, interval, currentStart, chunkEnd);
+            BarSeries chunk = loadSeriesSingleRequest(ticker, interval, currentStart, chunkEnd, notes);
             if (chunk != null && chunk.getBarCount() > 0) {
                 chunks.add(chunk);
                 LOG.trace("Successfully loaded chunk {} with {} bars", requestCount, chunk.getBarCount());
