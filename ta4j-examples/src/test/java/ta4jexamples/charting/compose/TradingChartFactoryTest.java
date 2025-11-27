@@ -457,12 +457,55 @@ class TradingChartFactoryTest {
         assertEquals(Boolean.FALSE, renderer.getSeriesLinesVisible(0),
                 "Dots-only overlay should not connect points when connectAcrossNaN is false");
         assertEquals(Color.GREEN, renderer.getSeriesPaint(0), "Dot color should follow overlay color");
+        assertEquals(Color.GREEN, renderer.getSeriesFillPaint(0), "Dot fill color should follow overlay color");
         assertNotNull(renderer.getSeriesShape(0), "Renderer should provide a dot shape");
         double expectedDiameter = Math.max(3.0, lineWidth * 2.4);
         assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getWidth(), 0.001,
                 "Dot diameter should scale with line width");
         assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getHeight(), 0.001,
                 "Dot height should match diameter for a circle");
+    }
+
+    @Test
+    void testSwingPointOverlayRespectsOpacity() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        Color customColor = Color.BLUE;
+        float customOpacity = 0.7f;
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(customColor)
+                .withOpacity(customOpacity)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+
+        // Verify color with opacity
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertNotNull(paintColor, "Paint color should not be null");
+        assertEquals(customColor.getRed(), paintColor.getRed(), "Red component should match");
+        assertEquals(customColor.getGreen(), paintColor.getGreen(), "Green component should match");
+        assertEquals(customColor.getBlue(), paintColor.getBlue(), "Blue component should match");
+        assertEquals(Math.round(customOpacity * 255), paintColor.getAlpha(), "Alpha component should reflect opacity");
+
+        // Verify fill paint also has opacity applied
+        Color fillPaintColor = (Color) renderer.getSeriesFillPaint(0);
+        assertNotNull(fillPaintColor, "Fill paint color should not be null");
+        assertEquals(customColor.getRed(), fillPaintColor.getRed(), "Fill red component should match");
+        assertEquals(customColor.getGreen(), fillPaintColor.getGreen(), "Fill green component should match");
+        assertEquals(customColor.getBlue(), fillPaintColor.getBlue(), "Fill blue component should match");
+        assertEquals(Math.round(customOpacity * 255), fillPaintColor.getAlpha(),
+                "Fill alpha component should reflect opacity");
     }
 
     @Test

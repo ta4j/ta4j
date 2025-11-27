@@ -555,6 +555,7 @@ public final class TradingChartFactory {
 
         for (int i = 0; i < dataset.getSeriesCount(); i++) {
             renderer.setSeriesPaint(i, colorWithOpacity);
+            renderer.setSeriesFillPaint(i, colorWithOpacity);
             renderer.setSeriesShape(i, shape);
             renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
             renderer.setSeriesLinesVisible(i, connectLines);
