@@ -78,12 +78,19 @@ cleanup_old_logs() {
     # Find all full-build-*.log files and sort by filename (which contains timestamp)
     # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log
     # Sorting alphabetically gives chronological order (newest last)
-    local files_to_delete
-    files_to_delete=$(find "$log_dir" -maxdepth 1 -type f -name "full-build-*.log" 2>/dev/null | \
-        sort | \
-        head -n -$keep_count || true)
-    
-    if [[ -n "$files_to_delete" ]]; then
+    local files
+    files=$(find "$log_dir" -maxdepth 1 -type f -name "full-build-*.log" 2>/dev/null | sort || true)
+    if [[ -z "$files" ]]; then
+        return 0
+    fi
+
+    # Delete everything except the newest keep_count files; use POSIX-safe tail/awk
+    local file_count
+    file_count=$(printf '%s\n' "$files" | grep -c . || true)
+    local delete_count=$((file_count - keep_count))
+    if ((delete_count > 0)); then
+        local files_to_delete
+        files_to_delete=$(printf '%s\n' "$files" | head -n "$delete_count")
         while IFS= read -r file; do
             if [[ -n "$file" && -f "$file" ]]; then
                 rm -f "$file"
