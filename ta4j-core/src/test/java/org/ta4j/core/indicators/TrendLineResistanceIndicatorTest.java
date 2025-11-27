@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
@@ -198,10 +199,18 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final var indicator = new TrendLineResistanceIndicator(series, 1, 12, weights);
 
         final ComponentDescriptor descriptor = indicator.toDescriptor();
-        assertThat(Double.parseDouble(descriptor.getParameters().get("touchesExtremeWeight").toString()))
-                .isEqualTo(weights.touchesExtremeWeight);
-        assertThat(Double.parseDouble(descriptor.getParameters().get("touchCountWeight").toString()))
-                .isEqualTo(weights.touchCountWeight);
+        try {
+            assertThat(Double.parseDouble(descriptor.getParameters().get("touchesExtremeWeight").toString()))
+                    .isEqualTo(weights.touchesExtremeWeight);
+        } catch (NumberFormatException e) {
+            fail("Failed to parse 'touchesExtremeWeight' parameter as double", e);
+        }
+        try {
+            assertThat(Double.parseDouble(descriptor.getParameters().get("touchCountWeight").toString()))
+                    .isEqualTo(weights.touchCountWeight);
+        } catch (NumberFormatException e) {
+            fail("Failed to parse 'touchCountWeight' parameter as double", e);
+        }
 
         final String json = indicator.toJson();
         final Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
