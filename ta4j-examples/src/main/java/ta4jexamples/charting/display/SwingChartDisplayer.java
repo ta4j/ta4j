@@ -173,6 +173,8 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         ApplicationFrame frame = new ApplicationFrame(title);
         frame.setContentPane(containerPanel);
         frame.pack();
+        frame.setAlwaysOnTop(false);
+        frame.setAutoRequestFocus(false);
         frame.setVisible(true);
     }
 

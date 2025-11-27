@@ -51,6 +51,7 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.SwingPointMarkerIndicator;
 import org.ta4j.core.num.Num;
 import ta4jexamples.charting.builder.ChartBuilder;
 import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
@@ -62,7 +63,10 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -498,14 +502,35 @@ public final class TradingChartFactory {
             return;
         }
         BarSeries series = indicator.getBarSeries() != null ? indicator.getBarSeries() : definition.series();
+        if (series != null && series.getBarCount() > 0) {
+            indicator.getValue(series.getEndIndex()); // warm caches so retrospective swing markers render
+        }
         boolean connectGaps = overlay.style().connectGaps();
         String label = overlay.label() != null ? overlay.label() : indicator.toString();
-        TimeSeriesCollection dataset = createTimeSeriesDataset(series, indicator, label, connectGaps);
+        TimeSeriesCollection dataset;
+        if (indicator instanceof SwingPointMarkerIndicator swingMarker) {
+            dataset = createSwingMarkerDataset(series, swingMarker, label);
+        } else {
+            dataset = createTimeSeriesDataset(series, indicator, label, connectGaps);
+        }
         int datasetIndex = plot.getDatasetCount();
         plot.setDataset(datasetIndex, dataset);
 
+        plot.setRenderer(datasetIndex,
+                indicator instanceof SwingPointMarkerIndicator
+                        ? createSwingMarkerRenderer((SwingPointMarkerIndicator) indicator, dataset, overlay)
+                        : createStandardOverlayRenderer(dataset, overlay));
+
+        int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
+        if (axisIndex == 1) {
+            ensureSecondaryAxisExists(plot, label);
+        }
+        plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
+    }
+
+    private StandardXYItemRenderer createStandardOverlayRenderer(TimeSeriesCollection dataset,
+            ChartBuilder.OverlayDefinition overlay) {
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
-        // Apply styling to all series segments (for gap handling with NaN values)
         Color baseColor = overlay.style().color();
         float opacity = overlay.style().opacity();
         Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
@@ -514,15 +539,32 @@ public final class TradingChartFactory {
             renderer.setSeriesPaint(i, colorWithOpacity);
             renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
         }
-        // Set tooltip generator to show series name, date, and value
         renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
-        plot.setRenderer(datasetIndex, renderer);
+        return renderer;
+    }
 
-        int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
-        if (axisIndex == 1) {
-            ensureSecondaryAxisExists(plot, label);
+    private XYLineAndShapeRenderer createSwingMarkerRenderer(SwingPointMarkerIndicator marker,
+            TimeSeriesCollection dataset, ChartBuilder.OverlayDefinition overlay) {
+        boolean connectLines = overlay.style().connectGaps();
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
+        Color baseColor = overlay.style().color();
+        float opacity = overlay.style().opacity();
+        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                Math.round(opacity * 255));
+        double diameter = Math.max(3.0, overlay.style().lineWidth() * 2.4);
+        Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
+
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            renderer.setSeriesPaint(i, colorWithOpacity);
+            renderer.setSeriesShape(i, shape);
+            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+            renderer.setSeriesLinesVisible(i, connectLines);
         }
-        plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
+        renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
+        renderer.setDefaultShapesFilled(true);
+        renderer.setUseFillPaint(true);
+        renderer.setUseOutlinePaint(false);
+        return renderer;
     }
 
     private void ensureSecondaryAxisExists(XYPlot plot, String label) {
@@ -907,6 +949,32 @@ public final class TradingChartFactory {
             collection.addSeries(currentSegment);
         }
 
+        return collection;
+    }
+
+    private TimeSeriesCollection createSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
+            String seriesName) {
+        TimeSeriesCollection collection = new TimeSeriesCollection();
+        if (series == null || series.isEmpty()) {
+            return collection;
+        }
+
+        List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
+        Collections.sort(swingIndexes);
+        TimeSeries swingSeries = new TimeSeries(seriesName);
+        for (Integer index : swingIndexes) {
+            Num value = marker.getPriceIndicator().getValue(index);
+            if (value == null || value.isNaN()) {
+                value = series.getBar(index).getClosePrice();
+            }
+            if (value != null && !value.isNaN()) {
+                Date barDate = Date.from(series.getBar(index).getEndTime());
+                swingSeries.add(new Minute(barDate), value.doubleValue());
+            }
+        }
+        if (swingSeries.getItemCount() > 0) {
+            collection.addSeries(swingSeries);
+        }
         return collection;
     }
 

@@ -114,6 +114,18 @@ public class SwingPointMarkerIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(markerIndicator.getValue(7)).isEqualByComparingTo(NaN);
     }
 
+    @Test
+    public void shouldExposeUnderlyingSwingAndPriceIndicators() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2 };
+        final var priceIndicator = new ClosePriceIndicator(series);
+        final var swingIndicator = new FixedSwingIndicator(priceIndicator, latestSwingIndexes);
+        final var markerIndicator = new SwingPointMarkerIndicator(series, swingIndicator);
+
+        assertThat(markerIndicator.getSwingIndicator()).isSameAs(swingIndicator);
+        assertThat(markerIndicator.getPriceIndicator()).isSameAs(priceIndicator);
+    }
+
     private BarSeries seriesFromCloses(double... closes) {
         final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : closes) {

@@ -23,6 +23,7 @@
  */
 package ta4jexamples.charting.compose;
 
+import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.DateAxis;
@@ -38,6 +39,7 @@ import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -46,18 +48,29 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
+import org.ta4j.core.indicators.SwingPointMarkerIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -297,6 +310,190 @@ class TradingChartFactoryTest {
         assertFalse(domainMarkers.isEmpty(), "Should have marker for open position");
     }
 
+    @Test
+    void testSwingPointOverlayChartMatchesSwingPointAnalysisFlow() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        LowPriceIndicator lowPrice = new LowPriceIndicator(swingSeries);
+        HighPriceIndicator highPrice = new HighPriceIndicator(swingSeries);
+        RecentFractalSwingLowIndicator swingLowIndicator = new RecentFractalSwingLowIndicator(lowPrice, 5, 5, 0);
+        RecentFractalSwingHighIndicator swingHighIndicator = new RecentFractalSwingHighIndicator(highPrice, 5, 5, 0);
+
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries, swingLowIndicator);
+        SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(swingSeries, swingHighIndicator);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withTitle("Fractal Swing Point Analysis")
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .withIndicatorOverlay(swingHighMarkers)
+                .withLineColor(Color.RED)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(true)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        assertEquals(3, basePlot.getRendererCount(),
+                "Candles plus the two swing overlays should register separate renderers");
+        assertEquals(3, basePlot.getDatasetCount(),
+                "Base price data plus low and high swing marker overlays expected on the plot");
+        assertNotNull(basePlot.getRenderer(0), "Primary candlestick renderer should be present");
+        assertNotNull(basePlot.getRenderer(1), "Low swing overlay renderer should be present");
+        assertNotNull(basePlot.getRenderer(2), "High swing overlay renderer should be present");
+        TimeSeriesCollection lowDataset = (TimeSeriesCollection) basePlot.getDataset(1);
+        TimeSeriesCollection highDataset = (TimeSeriesCollection) basePlot.getDataset(2);
+        int lowSeriesCount = lowDataset.getSeriesCount();
+        int highSeriesCount = highDataset.getSeriesCount();
+        List<Integer> swingLowIndexes = new java.util.ArrayList<>(swingLowMarkers.getSwingPointIndexes());
+        List<Integer> swingHighIndexes = new java.util.ArrayList<>(swingHighMarkers.getSwingPointIndexes());
+        Num swingLowValue = swingLowIndexes.isEmpty() ? NaN.NaN
+                : swingLowMarkers.getPriceIndicator().getValue(swingLowIndexes.get(0));
+        Num swingHighValue = swingHighIndexes.isEmpty() ? NaN.NaN
+                : swingHighMarkers.getPriceIndicator().getValue(swingHighIndexes.get(0));
+        XYLineAndShapeRenderer lowRenderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+        XYLineAndShapeRenderer highRenderer = (XYLineAndShapeRenderer) basePlot.getRenderer(2);
+        assertEquals(Boolean.TRUE, lowRenderer.getSeriesLinesVisible(0),
+                "withConnectAcrossNaN(true) should connect swing low markers with lines");
+        assertEquals(Boolean.TRUE, highRenderer.getSeriesLinesVisible(0),
+                "withConnectAcrossNaN(true) should connect swing high markers with lines");
+
+        LegendItemCollection legendItems = basePlot.getLegendItems();
+        assertNotNull(legendItems, "Legend items should be available");
+        List<String> legendLabels = new java.util.ArrayList<>();
+        for (int i = 0; i < legendItems.getItemCount(); i++) {
+            legendLabels.add(legendItems.get(i).getLabel());
+        }
+        assertEquals(3, legendItems.getItemCount(),
+                "Price series and both swing marker overlays should appear in the legend. Series counts low/high: "
+                        + lowSeriesCount + "/" + highSeriesCount + ". Swing indexes low/high: " + swingLowIndexes + "/"
+                        + swingHighIndexes + ". Swing values low/high: " + swingLowValue + "/" + swingHighValue
+                        + ". Actual labels: " + legendLabels);
+
+        String baseSeriesLabel = swingSeries.getName().split(" ")[0];
+        int swingMarkerLegendEntries = 0;
+        boolean baseSeriesSeen = false;
+        for (int i = 0; i < legendItems.getItemCount(); i++) {
+            String label = legendItems.get(i).getLabel();
+            if (baseSeriesLabel.equals(label)) {
+                baseSeriesSeen = true;
+            } else if (swingLowMarkers.toString().equals(label)) {
+                swingMarkerLegendEntries++;
+            }
+        }
+        assertTrue(baseSeriesSeen, "Legend should include the base bar series label");
+        assertEquals(2, swingMarkerLegendEntries,
+                "Both swing marker overlays (low and high) should be represented in the legend");
+
+        assertFalse(swingLowIndexes.isEmpty(), "Fixture should produce swing lows");
+        assertFalse(swingHighIndexes.isEmpty(), "Fixture should produce swing highs");
+    }
+
+    @Test
+    void testSwingPointOverlayRespectsConnectAcrossNaNDisabled() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        LowPriceIndicator lowPrice = new LowPriceIndicator(swingSeries);
+        HighPriceIndicator highPrice = new HighPriceIndicator(swingSeries);
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(lowPrice, 5, 5, 0));
+        SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingHighIndicator(highPrice, 5, 5, 0));
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withTitle("Fractal Swing Point Analysis (No Connect)")
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(false)
+                .withIndicatorOverlay(swingHighMarkers)
+                .withLineColor(Color.RED)
+                .withLineWidth(3.0f)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        XYLineAndShapeRenderer lowRenderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+        XYLineAndShapeRenderer highRenderer = (XYLineAndShapeRenderer) basePlot.getRenderer(2);
+
+        assertEquals(Boolean.FALSE, lowRenderer.getSeriesLinesVisible(0),
+                "withConnectAcrossNaN(false) should leave swing low markers unconnected");
+        assertEquals(Boolean.FALSE, highRenderer.getSeriesLinesVisible(0),
+                "withConnectAcrossNaN(false) should leave swing high markers unconnected");
+    }
+
+    @Test
+    void testSwingPointOverlayUsesCircularDotsScaledByLineWidth() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        float lineWidth = 5.0f;
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.GREEN)
+                .withLineWidth(lineWidth)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+
+        assertEquals(Boolean.FALSE, renderer.getSeriesLinesVisible(0),
+                "Dots-only overlay should not connect points when connectAcrossNaN is false");
+        assertEquals(Color.GREEN, renderer.getSeriesPaint(0), "Dot color should follow overlay color");
+        assertNotNull(renderer.getSeriesShape(0), "Renderer should provide a dot shape");
+        double expectedDiameter = Math.max(3.0, lineWidth * 2.4);
+        assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getWidth(), 0.001,
+                "Dot diameter should scale with line width");
+        assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getHeight(), 0.001,
+                "Dot height should match diameter for a circle");
+    }
+
+    @Test
+    void testSwingMarkerDatasetFallsBackToClosePriceWhenIndicatorIsNaN() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries series = swingPointSeries();
+        NaNPriceIndicator priceIndicator = new NaNPriceIndicator(series);
+        StubSwingIndicator swingIndicator = new StubSwingIndicator(priceIndicator, List.of(2, 5));
+        SwingPointMarkerIndicator swingMarkers = new SwingPointMarkerIndicator(series, swingIndicator);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(swingMarkers)
+                .withLineColor(Color.MAGENTA)
+                .withLineWidth(2.0f)
+                .withConnectAcrossNaN(false)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        TimeSeriesCollection dataset = (TimeSeriesCollection) basePlot.getDataset(1);
+
+        assertEquals(1, dataset.getSeriesCount(), "Fallback should still produce a series for swing markers");
+        assertEquals(series.getBar(2).getClosePrice().doubleValue(), dataset.getYValue(0, 0), 0.0001,
+                "Swing marker value should fall back to bar close when indicator is NaN");
+        assertEquals(series.getBar(5).getClosePrice().doubleValue(), dataset.getYValue(0, 1), 0.0001,
+                "Second swing marker should also use fallback close price");
+    }
+
     // ========== Dual-Axis Chart Tests ==========
 
     @Test
@@ -492,6 +689,69 @@ class TradingChartFactoryTest {
         assertEquals(1, markers.size(), "Expected a single marker");
         assertEquals(TextAnchor.TOP_LEFT, markers.get(0).getLabelTextAnchor(),
                 "Non-edge markers should remain left aligned");
+    }
+
+    private BarSeries swingPointSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("Swing Fixture Series").build();
+        Duration period = Duration.ofDays(1);
+        Instant start = Instant.EPOCH;
+        double[] basePrices = new double[] { 10.0, 11.0, 12.0, 13.0, 14.0, 5.0, 12.0, 13.0, 14.0, 15.0, 16.0, 25.0,
+                20.0, 19.0, 18.0, 17.0, 16.0 };
+
+        for (int i = 0; i < basePrices.length; i++) {
+            double basePrice = basePrices[i];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(start.plus(period.multipliedBy(i)))
+                    .openPrice(basePrice)
+                    .highPrice(basePrice + 0.5)
+                    .lowPrice(basePrice - 0.5)
+                    .closePrice(basePrice)
+                    .volume(1000.0 + i)
+                    .add();
+        }
+
+        return series;
+    }
+
+    private static final class NaNPriceIndicator extends AbstractIndicator<Num> {
+
+        NaNPriceIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return NaN.NaN;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class StubSwingIndicator extends AbstractRecentSwingIndicator {
+
+        private final List<Integer> swingIndexes;
+
+        StubSwingIndicator(Indicator<Num> priceIndicator, List<Integer> swingIndexes) {
+            super(priceIndicator, 0);
+            this.swingIndexes = List.copyOf(swingIndexes);
+        }
+
+        @Override
+        protected int detectLatestSwingIndex(int index) {
+            int latest = -1;
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    latest = swingIndex;
+                } else {
+                    break;
+                }
+            }
+            return latest;
+        }
     }
 
     private boolean plotContainsSeries(XYPlot plot, String seriesName) {

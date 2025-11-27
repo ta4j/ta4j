@@ -126,4 +126,24 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
     public Set<Integer> getSwingPointIndexes() {
         return Set.copyOf(swingIndicator.getSwingPointIndexes());
     }
+
+    /**
+     * Returns the swing indicator that supplies the swing point indexes.
+     *
+     * @return the underlying swing indicator
+     * @since 0.20
+     */
+    public RecentSwingIndicator getSwingIndicator() {
+        return swingIndicator;
+    }
+
+    /**
+     * Returns the price indicator used to fetch values at swing point indexes.
+     *
+     * @return the price indicator associated with the swing indicator
+     * @since 0.20
+     */
+    public Indicator<Num> getPriceIndicator() {
+        return priceIndicator;
+    }
 }

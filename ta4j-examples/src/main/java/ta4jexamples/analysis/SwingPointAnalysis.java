@@ -78,15 +78,6 @@ public class SwingPointAnalysis {
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(series, swingLowIndicator);
         SwingPointMarkerIndicator swingHighMarkers = new SwingPointMarkerIndicator(series, swingHighIndicator);
 
-        LOG.info("Identified {} fractal swing lows and {} fractal swing highs",
-                swingLowMarkers.getSwingPointIndexes().size(), swingHighMarkers.getSwingPointIndexes().size());
-        swingLowMarkers.getSwingPointIndexes()
-                .stream()
-                .forEach(index -> LOG.debug("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
-        swingHighMarkers.getSwingPointIndexes()
-                .stream()
-                .forEach(index -> LOG.debug("Fractal swing high {} at index {}", highPrice.getValue(index), index));
-
         // Build and display chart using ChartWorkflow
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         ChartPlan plan = chartWorkflow.builder()
@@ -105,20 +96,20 @@ public class SwingPointAnalysis {
         chartWorkflow.display(plan);
         chartWorkflow.save(plan, "temp/charts", "fractal-swing-point-analysis");
 
+        LOG.info("Identified {} fractal swing lows and {} fractal swing highs",
+                swingLowMarkers.getSwingPointIndexes().size(), swingHighMarkers.getSwingPointIndexes().size());
+        swingLowMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.debug("Fractal swing low {} at index {}", lowPrice.getValue(index), index));
+        swingHighMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.debug("Fractal swing high {} at index {}", highPrice.getValue(index), index));
+
         RecentZigZagSwingLowIndicator zigzagLowIndicator = new RecentZigZagSwingLowIndicator(series);
         RecentZigZagSwingHighIndicator zigzagHighIndicator = new RecentZigZagSwingHighIndicator(series);
 
         SwingPointMarkerIndicator zigzagLowMarkers = new SwingPointMarkerIndicator(series, zigzagLowIndicator);
         SwingPointMarkerIndicator zigzagHighMarkers = new SwingPointMarkerIndicator(series, zigzagHighIndicator);
-
-        LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs",
-                zigzagLowMarkers.getSwingPointIndexes().size(), zigzagHighMarkers.getSwingPointIndexes().size());
-        zigzagLowMarkers.getSwingPointIndexes()
-                .stream()
-                .forEach(index -> LOG.debug("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
-        zigzagHighMarkers.getSwingPointIndexes()
-                .stream()
-                .forEach(index -> LOG.debug("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
 
         // Build and display chart using ChartWorkflow
         ChartWorkflow zigzagChartWorkflow = new ChartWorkflow();
@@ -132,10 +123,20 @@ public class SwingPointAnalysis {
                 .withIndicatorOverlay(zigzagHighMarkers)
                 .withLineColor(Color.RED)
                 .withLineWidth(3.0f)
-                .withConnectAcrossNaN(true)
+                .withConnectAcrossNaN(false)
                 .toPlan();
 
         zigzagChartWorkflow.display(zigzagPlan);
         zigzagChartWorkflow.save(zigzagPlan, "temp/charts", "zigzag-swing-point-analysis");
+
+        LOG.info("Identified {} zigzag swing lows and {} zigzag swing highs",
+                zigzagLowMarkers.getSwingPointIndexes().size(), zigzagHighMarkers.getSwingPointIndexes().size());
+        zigzagLowMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.debug("ZigZag swing low {} at index {}", lowPrice.getValue(index), index));
+        zigzagHighMarkers.getSwingPointIndexes()
+                .stream()
+                .forEach(index -> LOG.debug("ZigZag swing high {} at index {}", highPrice.getValue(index), index));
+
     }
 }

@@ -89,6 +89,8 @@ public class IndicatorsToChart {
         frame.pack();
         UIUtils.centerFrameOnScreen(frame);
         frame.setVisible(true);
+        frame.setAlwaysOnTop(false);
+        frame.setAutoRequestFocus(false);
     }
 
     public static void main(String[] args) {
