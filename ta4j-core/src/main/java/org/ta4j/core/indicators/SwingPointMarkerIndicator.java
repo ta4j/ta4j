@@ -79,12 +79,10 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public SwingPointMarkerIndicator(BarSeries series, RecentSwingIndicator swingIndicator) {
-        super(swingIndicator.getPriceIndicator());
+        super(Objects.requireNonNull(swingIndicator.getPriceIndicator(),
+                "Swing indicator must provide a price indicator"));
         Objects.requireNonNull(series, "Series cannot be null");
         Objects.requireNonNull(swingIndicator, "Swing indicator cannot be null");
-
-        Indicator<Num> priceIndicator = swingIndicator.getPriceIndicator();
-        Objects.requireNonNull(priceIndicator, "Swing indicator must provide a price indicator");
 
         BarSeries swingSeries = swingIndicator.getBarSeries();
         if (swingSeries == null || !swingSeries.equals(series)) {
@@ -92,7 +90,7 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
         }
 
         this.swingIndicator = swingIndicator;
-        this.priceIndicator = priceIndicator;
+        this.priceIndicator = swingIndicator.getPriceIndicator();
         this.unstableBars = swingIndicator.getCountOfUnstableBars();
     }
 

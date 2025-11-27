@@ -525,6 +525,49 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(1).isNaN()).isTrue();
     }
 
+    @Test
+    public void shouldRecomputeTrendLineWhenNewSwingIsConfirmed() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2025-01-01T00:00:00Z", 12d); // 0
+        addBar(series, "2025-01-02T00:00:00Z", 10d); // 1 swing
+        addBar(series, "2025-01-03T00:00:00Z", 11d); // 2
+        addBar(series, "2025-01-04T00:00:00Z", 9d); // 3 swing
+        addBar(series, "2025-01-05T00:00:00Z", 12d); // 4
+
+        final var lowIndicator = new LowPriceIndicator(series);
+        final var swingIndicator = new MutableSwingIndicator(lowIndicator, List.of(1, 3));
+        final var weights = ScoringWeights.defaultWeights();
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, Integer.MAX_VALUE, weights.touchCountWeight,
+                weights.touchesExtremeWeight, weights.outsideCountWeight, weights.averageDeviationWeight,
+                weights.anchorRecencyWeight, ToleranceSettings.defaultSettings(), 2, 10);
+
+        final int initialEnd = series.getEndIndex();
+        final Num initialValue = indicator.getValue(initialEnd);
+        final var initialSegment = indicator.getCurrentSegment();
+        final Num expectedInitial = expectedProjection(series, 1, 3, initialEnd);
+
+        assertThat(initialSegment).isNotNull();
+        assertThat(initialSegment.firstIndex).isEqualTo(1);
+        assertThat(initialSegment.secondIndex).isEqualTo(3);
+        assertThat(initialValue).isEqualByComparingTo(expectedInitial);
+
+        addBar(series, "2025-01-06T00:00:00Z", 8d); // 5 new swing
+        swingIndicator.addSwing(5);
+
+        final int updatedEnd = series.getEndIndex();
+        final Num updatedValue = indicator.getValue(updatedEnd);
+        final var updatedSegment = indicator.getCurrentSegment();
+        final Num expectedUpdated = expectedProjection(series, 3, 5, updatedEnd);
+
+        assertThat(updatedSegment).isNotNull();
+        assertThat(updatedSegment.firstIndex).isEqualTo(3);
+        assertThat(updatedSegment.secondIndex).isEqualTo(5);
+        assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
+        assertThat(updatedValue).isNotEqualByComparingTo(initialValue);
+    }
+
     private BarSeries seriesFromLows(double... lows) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();

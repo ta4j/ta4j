@@ -28,6 +28,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -347,6 +348,50 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(endIndex)).isEqualByComparingTo(expected);
     }
 
+    @Test
+    public void shouldRecomputeTrendLineWhenNewSwingIsConfirmed() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+
+        addBar(series, "2025-01-01T00:00:00Z", 18d); // 0
+        addBar(series, "2025-01-02T00:00:00Z", 20d); // 1 swing
+        addBar(series, "2025-01-03T00:00:00Z", 19d); // 2
+        addBar(series, "2025-01-04T00:00:00Z", 21d); // 3 swing
+        addBar(series, "2025-01-05T00:00:00Z", 19d); // 4
+
+        final var highIndicator = new HighPriceIndicator(series);
+        final var swingIndicator = new MutableSwingIndicator(highIndicator, List.of(1, 3));
+        final var weights = ScoringWeights.defaultWeights();
+        final var indicator = new TrendLineResistanceIndicator(swingIndicator, Integer.MAX_VALUE,
+                weights.touchCountWeight, weights.touchesExtremeWeight, weights.outsideCountWeight,
+                weights.averageDeviationWeight, weights.anchorRecencyWeight, ToleranceSettings.defaultSettings(), 2,
+                10);
+
+        final int initialEnd = series.getEndIndex();
+        final Num initialValue = indicator.getValue(initialEnd);
+        final var initialSegment = indicator.getCurrentSegment();
+        final Num expectedInitial = expectedProjection(series, 1, 3, initialEnd);
+
+        assertThat(initialSegment).isNotNull();
+        assertThat(initialSegment.firstIndex).isEqualTo(1);
+        assertThat(initialSegment.secondIndex).isEqualTo(3);
+        assertThat(initialValue).isEqualByComparingTo(expectedInitial);
+
+        addBar(series, "2025-01-06T00:00:00Z", 22d); // 5 new swing
+        swingIndicator.addSwing(5);
+
+        final int updatedEnd = series.getEndIndex();
+        final Num updatedValue = indicator.getValue(updatedEnd);
+        final var updatedSegment = indicator.getCurrentSegment();
+        final Num expectedUpdated = expectedProjection(series, 3, 5, updatedEnd);
+
+        assertThat(updatedSegment).isNotNull();
+        assertThat(updatedSegment.firstIndex).isEqualTo(3);
+        assertThat(updatedSegment.secondIndex).isEqualTo(5);
+        assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
+        assertThat(updatedValue).isNotEqualByComparingTo(initialValue);
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
@@ -367,6 +412,62 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
                 .lowPrice(Math.max(0d, highPrice - 1d))
                 .volume(1d)
                 .add();
+    }
+
+    private static final class MutableSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
+
+        private final Indicator<Num> priceIndicator;
+        private final List<Integer> swingIndexes;
+
+        private MutableSwingIndicator(Indicator<Num> priceIndicator, List<Integer> swingIndexes) {
+            super(priceIndicator);
+            this.priceIndicator = priceIndicator;
+            this.swingIndexes = new ArrayList<>(swingIndexes);
+        }
+
+        void addSwing(int index) {
+            swingIndexes.add(index);
+            swingIndexes.sort(Integer::compare);
+            invalidateCache();
+        }
+
+        @Override
+        public int getLatestSwingIndex(int index) {
+            for (int i = swingIndexes.size() - 1; i >= 0; i--) {
+                final int swingIndex = swingIndexes.get(i);
+                if (swingIndex <= index) {
+                    return swingIndex;
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public List<Integer> getSwingPointIndexesUpTo(int index) {
+            final List<Integer> result = new ArrayList<>();
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    result.add(swingIndex);
+                }
+            }
+            return List.copyOf(result);
+        }
+
+        @Override
+        public Indicator<Num> getPriceIndicator() {
+            return priceIndicator;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final int swingIndex = getLatestSwingIndex(index);
+            return swingIndex >= 0 ? priceIndicator.getValue(swingIndex) : NaN;
+        }
     }
 
     private Num expectedProjection(BarSeries series, int startIndex, int endIndex, int targetIndex) {
