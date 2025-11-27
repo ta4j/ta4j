@@ -82,6 +82,15 @@ public final class SwingChartDisplayer implements ChartDisplayer {
     static final String HOVER_DELAY_PROPERTY = "ta4j.chart.hoverDelay";
 
     /**
+     * System property key to disable chart display (useful for automated tests).
+     * When set to "true", charts will not be displayed and the display method will
+     * return immediately without creating any windows.
+     *
+     * @since 0.19
+     */
+    public static final String DISABLE_DISPLAY_PROPERTY = "ta4j.chart.disableDisplay";
+
+    /**
      * Default chart display scale.
      *
      * @since 0.19
@@ -112,6 +121,12 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
     @Override
     public void display(JFreeChart chart, String windowTitle) {
+        // Check if display is disabled via system property (useful for automated tests)
+        if (isDisplayDisabled()) {
+            LOG.debug("Chart display is disabled via system property {}", DISABLE_DISPLAY_PROPERTY);
+            return;
+        }
+
         // Serialize and deserialize the chart to create a deep copy that prevents
         // ChartPanel from modifying the original
         JFreeChart chartClone;
@@ -237,6 +252,16 @@ public final class SwingChartDisplayer implements ChartDisplayer {
             }
         }
         return DEFAULT_HOVER_DELAY_MS;
+    }
+
+    /**
+     * Checks if chart display is disabled via system property.
+     *
+     * @return true if display is disabled, false otherwise
+     */
+    boolean isDisplayDisabled() {
+        String disableDisplay = System.getProperty(DISABLE_DISPLAY_PROPERTY);
+        return "true".equalsIgnoreCase(disableDisplay);
     }
 
     private JFreeChart deepCopyChart(JFreeChart chart) throws Exception {

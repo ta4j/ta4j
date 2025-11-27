@@ -24,11 +24,19 @@
 package ta4jexamples;
 
 import org.junit.Test;
+import ta4jexamples.charting.display.SwingChartDisplayer;
 
 public class QuickstartTest {
 
     @Test
     public void test() {
-        Quickstart.main(null);
+        // Disable chart display during tests to prevent windows from popping up
+        // (Quickstart doesn't display charts, but set it anyway for consistency)
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            Quickstart.main(null);
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
     }
 }

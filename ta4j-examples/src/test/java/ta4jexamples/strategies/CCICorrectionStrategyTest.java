@@ -25,6 +25,7 @@ package ta4jexamples.strategies;
 
 import org.junit.Assume;
 import org.junit.Test;
+import ta4jexamples.charting.display.SwingChartDisplayer;
 
 import java.awt.GraphicsEnvironment;
 
@@ -33,6 +34,12 @@ public class CCICorrectionStrategyTest {
     @Test
     public void test() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        CCICorrectionStrategy.main(null);
+        // Disable chart display during tests to prevent windows from popping up
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            CCICorrectionStrategy.main(null);
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
     }
 }
