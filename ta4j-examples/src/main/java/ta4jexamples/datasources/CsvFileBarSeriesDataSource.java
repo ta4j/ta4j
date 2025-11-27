@@ -215,33 +215,35 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
 
         var series = new BaseBarSeriesBuilder().withName(filename).build();
 
-        try {
-            try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
-                    .withSkipLines(1)
-                    .build()) {
-                String[] line;
-                while ((line = csvReader.readNext()) != null) {
-                    Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
-                    double open = Double.parseDouble(line[1]);
-                    double high = Double.parseDouble(line[2]);
-                    double low = Double.parseDouble(line[3]);
-                    double close = Double.parseDouble(line[4]);
-                    double volume = Double.parseDouble(line[5]);
+        try (stream) {
+            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                try (CSVReader csvReader = new CSVReaderBuilder(reader)
+                        .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
+                        .withSkipLines(1)
+                        .build()) {
+                    String[] line;
+                    while ((line = csvReader.readNext()) != null) {
+                        Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
+                        double open = Double.parseDouble(line[1]);
+                        double high = Double.parseDouble(line[2]);
+                        double low = Double.parseDouble(line[3]);
+                        double close = Double.parseDouble(line[4]);
+                        double volume = Double.parseDouble(line[5]);
 
-                    series.barBuilder()
-                            .timePeriod(Duration.ofDays(1))
-                            .endTime(date)
-                            .openPrice(open)
-                            .closePrice(close)
-                            .highPrice(high)
-                            .lowPrice(low)
-                            .volume(volume)
-                            .amount(0)
-                            .add();
+                        series.barBuilder()
+                                .timePeriod(Duration.ofDays(1))
+                                .endTime(date)
+                                .openPrice(open)
+                                .closePrice(close)
+                                .highPrice(high)
+                                .lowPrice(low)
+                                .volume(volume)
+                                .amount(0)
+                                .add();
+                    }
+                } catch (CsvValidationException e) {
+                    LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
                 }
-            } catch (CsvValidationException e) {
-                LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
             }
         } catch (IOException ioe) {
             LOG.error("Unable to load bars from CSV", ioe);
