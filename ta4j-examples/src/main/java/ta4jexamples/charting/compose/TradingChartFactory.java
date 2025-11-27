@@ -517,8 +517,7 @@ public final class TradingChartFactory {
         plot.setDataset(datasetIndex, dataset);
 
         plot.setRenderer(datasetIndex,
-                indicator instanceof SwingPointMarkerIndicator
-                        ? createSwingMarkerRenderer((SwingPointMarkerIndicator) indicator, dataset, overlay)
+                indicator instanceof SwingPointMarkerIndicator ? createSwingMarkerRenderer(dataset, overlay)
                         : createStandardOverlayRenderer(dataset, overlay));
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
@@ -543,8 +542,8 @@ public final class TradingChartFactory {
         return renderer;
     }
 
-    private XYLineAndShapeRenderer createSwingMarkerRenderer(SwingPointMarkerIndicator marker,
-            TimeSeriesCollection dataset, ChartBuilder.OverlayDefinition overlay) {
+    private XYLineAndShapeRenderer createSwingMarkerRenderer(TimeSeriesCollection dataset,
+            ChartBuilder.OverlayDefinition overlay) {
         boolean connectLines = overlay.style().connectGaps();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
         Color baseColor = overlay.style().color();

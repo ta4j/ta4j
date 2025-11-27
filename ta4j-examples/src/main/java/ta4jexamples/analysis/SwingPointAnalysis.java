@@ -119,6 +119,7 @@ public class SwingPointAnalysis {
                 .withIndicatorOverlay(zigzagLowMarkers)
                 .withLineColor(Color.GREEN)
                 .withLineWidth(3.0f)
+                .withOpacity(0.25f)
                 .withConnectAcrossNaN(true)
                 .withIndicatorOverlay(zigzagHighMarkers)
                 .withLineColor(Color.RED)
