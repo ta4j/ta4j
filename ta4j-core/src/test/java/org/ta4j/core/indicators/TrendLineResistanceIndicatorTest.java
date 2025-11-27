@@ -193,7 +193,7 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void shouldRoundTripCustomScoringWeightsThroughSerialization() {
+    public void shouldRoundTripCustomScoringWeightsThroughSerialization()  {
         final var series = seriesFromHighs(11, 14, 13, 16, 12, 15, 11, 14, 13);
         final var weights = ScoringWeights.extremeSwingBiasPreset();
         final var indicator = new TrendLineResistanceIndicator(series, 1, 12, weights);
