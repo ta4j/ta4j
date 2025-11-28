@@ -239,8 +239,15 @@ public class BitStampCsvTradesFileBarSeriesDataSource extends AbstractFileBarSer
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
-            Instant beginTime = Instant.ofEpochMilli(Long.parseLong(lines.get(0)[0]) * 1000);
-            Instant endTime = Instant.ofEpochMilli(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
+            Instant beginTime = null;
+            Instant endTime = null;
+            try {
+                beginTime = Instant.ofEpochMilli(Long.parseLong(lines.get(0)[0]) * 1000);
+                endTime = Instant.ofEpochMilli(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
+            } catch (NumberFormatException nfe) {
+                LOG.error("Invalid trade timestamp format in CSV: {}", nfe.getMessage());
+                return null;
+            }
             if (beginTime.isAfter(endTime)) {
                 beginTime = endTime;
                 // Since the CSV file has the most recent trades at the top of the file, we'll
