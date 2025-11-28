@@ -35,6 +35,7 @@ import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -243,6 +244,33 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertThat(Double.isNaN(value5.doubleValue())).isFalse();
         // Should be a valid EMA calculation from 14.0
         assertThat(value5.doubleValue()).isGreaterThan(14.0);
+    }
+
+    @Test
+    public void recoversWhenChainedAfterRsiIndicator() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsi = new RSIIndicator(closePrice, 3);
+        EMAIndicator emaOnRsi = new EMAIndicator(rsi, 2);
+
+        // EMA unstable period is shorter than RSI, so NaN should propagate through the
+        // RSI unstable window
+        assertThat(Num.isNaNOrNull(emaOnRsi.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(emaOnRsi.getValue(1))).isTrue();
+        assertThat(Num.isNaNOrNull(emaOnRsi.getValue(2))).isTrue();
+
+        Num firstRsiValue = rsi.getValue(3);
+        assertThat(firstRsiValue).isEqualByComparingTo(numFactory.hundred());
+        // Recovery: EMA resets to the first stable RSI value instead of remaining NaN
+        assertThat(emaOnRsi.getValue(3)).isEqualByComparingTo(firstRsiValue);
+
+        Num multiplier = numFactory.two().dividedBy(numFactory.numOf(emaOnRsi.getBarCount() + 1));
+
+        Num expectedIndex4 = firstRsiValue.plus(rsi.getValue(4).minus(firstRsiValue).multipliedBy(multiplier));
+        assertThat(emaOnRsi.getValue(4)).isEqualByComparingTo(expectedIndex4);
+
+        Num expectedIndex5 = expectedIndex4.plus(rsi.getValue(5).minus(expectedIndex4).multipliedBy(multiplier));
+        assertThat(emaOnRsi.getValue(5)).isEqualByComparingTo(expectedIndex5);
     }
 
     @Test
