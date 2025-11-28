@@ -142,25 +142,29 @@ public class JsonBarSeriesDataSourceTest {
 
     @Test
     public void testLoadSeriesFromInvalidJsonFile() {
-        // Create a temporary file with invalid JSON content
+        // Create a temporary file with invalid JSON content in temp/ directory
         String invalidJsonContent = "invalid json content";
-        String tempFilePath = null;
+        Path tempDir = Paths.get("temp");
+        Path tempFile = null;
 
         try {
-            Path tempFile = Files.createTempFile("invalid", ".json");
-            tempFilePath = tempFile.toString();
+            // Ensure temp directory exists
+            Files.createDirectories(tempDir);
+
+            // Create temp file in temp/ directory
+            tempFile = tempDir.resolve("invalid-" + System.currentTimeMillis() + ".json");
             Files.write(tempFile, invalidJsonContent.getBytes());
 
-            BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(tempFilePath);
+            BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(tempFile.toString());
 
             assertNull(series, "Should return null for invalid JSON file");
         } catch (Exception e) {
             fail("Unexpected exception during test setup: " + e.getMessage());
         } finally {
             // Clean up temporary file
-            if (tempFilePath != null) {
+            if (tempFile != null) {
                 try {
-                    Files.deleteIfExists(Paths.get(tempFilePath));
+                    Files.deleteIfExists(tempFile);
                 } catch (Exception e) {
                     // Ignore cleanup errors
                 }

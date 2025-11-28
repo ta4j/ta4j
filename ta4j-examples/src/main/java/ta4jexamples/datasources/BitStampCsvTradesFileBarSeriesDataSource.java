@@ -28,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;

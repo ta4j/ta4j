@@ -43,7 +43,7 @@ import java.time.Instant;
  *
  * <pre>
  * // All data sources work with business concepts
- * BarSeriesDataSource yahoo = new YahooFinanceBarSeriesDataSource(true);
+ * BarSeriesDataSource yahoo = new YahooFinanceHttpBarSeriesDataSource(true);
  * BarSeriesDataSource csv = new CsvFileBarSeriesDataSource();
  * BarSeriesDataSource json = new JsonFileBarSeriesDataSource();
  *
@@ -72,7 +72,7 @@ import java.time.Instant;
  * Search for files matching ticker/interval/date range patterns in the
  * classpath or configured directories. The exact filename pattern is
  * implementation-specific.</li>
- * <li><strong>API-based sources</strong> (YahooFinanceBarSeriesDataSource):
+ * <li><strong>API-based sources</strong> (YahooFinanceHttpBarSeriesDataSource):
  * Fetch data from the API. If caching is enabled, will first check for cached
  * files matching the criteria.</li>
  * </ul>

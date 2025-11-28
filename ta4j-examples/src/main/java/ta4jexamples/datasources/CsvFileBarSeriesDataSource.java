@@ -31,6 +31,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.IOException;
 import java.io.InputStreamReader;

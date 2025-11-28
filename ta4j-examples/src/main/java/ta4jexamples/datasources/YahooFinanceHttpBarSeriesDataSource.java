@@ -64,22 +64,23 @@ import java.util.TreeMap;
  *
  * <pre>
  * // Load 1 year of daily data for Apple stock (using days)
- * BarSeries series = YahooFinanceBarSeriesDataSource.loadSeries("AAPL", 365);
+ * BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("AAPL", 365);
  *
  * // Load 500 bars of hourly data for Bitcoin (using bar count)
- * BarSeries btcSeries = YahooFinanceBarSeriesDataSource.loadSeries("BTC-USD", YahooFinanceInterval.HOUR_1, 500);
+ * BarSeries btcSeries = YahooFinanceHttpBarSeriesDataSource.loadSeries("BTC-USD", YahooFinanceInterval.HOUR_1, 500);
  *
  * // Load data for a specific date range
  * Instant start = Instant.parse("2023-01-01T00:00:00Z");
  * Instant end = Instant.parse("2023-12-31T23:59:59Z");
- * BarSeries msftSeries = YahooFinanceBarSeriesDataSource.loadSeries("MSFT", YahooFinanceInterval.DAY_1, start, end);
+ * BarSeries msftSeries = YahooFinanceHttpBarSeriesDataSource.loadSeries("MSFT", YahooFinanceInterval.DAY_1, start,
+ *         end);
  * </pre>
  * <p>
  * <strong>Response Caching:</strong> To enable response caching for faster
  * subsequent requests, use the constructor with {@code enableResponseCaching}:
  *
  * <pre>
- * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(true);
+ * YahooFinanceHttpBarSeriesDataSource loader = new YahooFinanceHttpBarSeriesDataSource(true);
  * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
@@ -87,7 +88,7 @@ import java.util.TreeMap;
  * {@code responseCacheDir}:
  *
  * <pre>
- * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource("/path/to/cache");
+ * YahooFinanceHttpBarSeriesDataSource loader = new YahooFinanceHttpBarSeriesDataSource("/path/to/cache");
  * BarSeries series = loader.loadSeriesInstance("AAPL", YahooFinanceInterval.DAY_1, start, end);
  * </pre>
  * <p>
@@ -102,7 +103,7 @@ import java.util.TreeMap;
  *
  * <pre>
  * HttpClientWrapper mockHttpClient = mock(HttpClientWrapper.class);
- * YahooFinanceBarSeriesDataSource loader = new YahooFinanceBarSeriesDataSource(mockHttpClient);
+ * YahooFinanceHttpBarSeriesDataSource loader = new YahooFinanceHttpBarSeriesDataSource(mockHttpClient);
  * // Use loader instance methods or inject into your code
  * </pre>
  * <p>
@@ -112,11 +113,11 @@ import java.util.TreeMap;
  *
  * @since 0.20
  */
-public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSource {
+public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSource {
 
     public static final String YAHOO_FINANCE_API_URL = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
-    private static final Logger LOG = LogManager.getLogger(YahooFinanceBarSeriesDataSource.class);
+    private static final Logger LOG = LogManager.getLogger(YahooFinanceHttpBarSeriesDataSource.class);
 
     @Override
     public String getSourceName() {
@@ -124,55 +125,56 @@ public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
     }
 
     private static final HttpClientWrapper DEFAULT_HTTP_CLIENT = new DefaultHttpClientWrapper();
-    private static final YahooFinanceBarSeriesDataSource DEFAULT_INSTANCE = new YahooFinanceBarSeriesDataSource(
+    private static final YahooFinanceHttpBarSeriesDataSource DEFAULT_INSTANCE = new YahooFinanceHttpBarSeriesDataSource(
             DEFAULT_HTTP_CLIENT);
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient. For
-     * unit testing, use {@link #YahooFinanceBarSeriesDataSource(HttpClientWrapper)}
-     * to inject a mock HttpClientWrapper.
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with a default HttpClient.
+     * For unit testing, use
+     * {@link #YahooFinanceHttpBarSeriesDataSource(HttpClientWrapper)} to inject a
+     * mock HttpClientWrapper.
      */
-    public YahooFinanceBarSeriesDataSource() {
+    public YahooFinanceHttpBarSeriesDataSource() {
         super(DEFAULT_HTTP_CLIENT, false);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient and
-     * caching option.
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with a default HttpClient
+     * and caching option.
      *
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceBarSeriesDataSource(boolean enableResponseCaching) {
+    public YahooFinanceHttpBarSeriesDataSource(boolean enableResponseCaching) {
         super(DEFAULT_HTTP_CLIENT, enableResponseCaching);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with a default HttpClient and
-     * custom cache directory. Response caching is automatically enabled when a
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with a default HttpClient
+     * and custom cache directory. Response caching is automatically enabled when a
      * cache directory is specified.
      *
      * @param responseCacheDir the directory path for caching responses (can be
      *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(String responseCacheDir) {
+    public YahooFinanceHttpBarSeriesDataSource(String responseCacheDir) {
         super(DEFAULT_HTTP_CLIENT, responseCacheDir);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
      * HttpClientWrapper. This constructor allows dependency injection of a mock
      * HttpClientWrapper for unit testing.
      *
      * @param httpClient the HttpClientWrapper to use for API requests (can be a
      *                   mock for testing)
      */
-    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClientWrapper httpClient) {
         super(httpClient, false);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
      * HttpClientWrapper and caching option. This constructor allows dependency
      * injection of a mock HttpClientWrapper for unit testing and enables response
      * caching.
@@ -182,35 +184,35 @@ public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
         super(httpClient, enableResponseCaching);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient.
-     * This is a convenience constructor that wraps the HttpClient in a
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
+     * HttpClient. This is a convenience constructor that wraps the HttpClient in a
      * DefaultHttpClientWrapper.
      *
      * @param httpClient the HttpClient to use for API requests
      */
-    public YahooFinanceBarSeriesDataSource(HttpClient httpClient) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClient httpClient) {
         super(httpClient, false);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient
-     * and caching option.
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
+     * HttpClient and caching option.
      *
      * @param httpClient            the HttpClient to use for API requests
      * @param enableResponseCaching if true, responses will be cached to disk for
      *                              faster subsequent requests
      */
-    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
         super(httpClient, enableResponseCaching);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
      * HttpClientWrapper and custom cache directory. Response caching is
      * automatically enabled when a cache directory is specified.
      *
@@ -219,20 +221,20 @@ public class YahooFinanceBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
      * @param responseCacheDir the directory path for caching responses (can be
      *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
         super(httpClient, responseCacheDir);
     }
 
     /**
-     * Creates a new YahooFinanceBarSeriesDataSource with the specified HttpClient
-     * and custom cache directory. Response caching is automatically enabled when a
-     * cache directory is specified.
+     * Creates a new YahooFinanceHttpBarSeriesDataSource with the specified
+     * HttpClient and custom cache directory. Response caching is automatically
+     * enabled when a cache directory is specified.
      *
      * @param httpClient       the HttpClient to use for API requests
      * @param responseCacheDir the directory path for caching responses (can be
      *                         relative or absolute)
      */
-    public YahooFinanceBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
+    public YahooFinanceHttpBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
         super(httpClient, responseCacheDir);
     }
 

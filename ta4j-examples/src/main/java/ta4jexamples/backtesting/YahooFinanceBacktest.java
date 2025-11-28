@@ -60,7 +60,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.YahooFinanceBarSeriesDataSource;
+import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 
 /**
  * Yahoo Finance Data Source Backtest - Advanced Multi-Indicator Strategy
@@ -104,9 +104,9 @@ public class YahooFinanceBacktest {
         System.out.println("   (More data = better indicator calculations)");
 
         // Load 2 years of data for better indicator stability
-        YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true);
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(true);
         BarSeries series = dataSource.loadSeriesInstance("AAPL",
-                YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
         // Alternative methods you can try:
         // BarSeries series = dataSource.loadSeriesInstance("AAPL",
         // YahooFinanceInterval.DAY_1, 500); // 500 bars

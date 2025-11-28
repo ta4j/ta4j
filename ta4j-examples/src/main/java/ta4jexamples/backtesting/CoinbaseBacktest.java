@@ -59,7 +59,7 @@ import org.ta4j.core.rules.StopGainRule;
 import org.ta4j.core.rules.TrailingStopLossRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.CoinbaseBarSeriesDataSource;
+import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 
 /**
  * Coinbase Data Source Backtest - Advanced Risk Management & Transaction Costs
@@ -109,9 +109,9 @@ public class CoinbaseBacktest {
         System.out.println("   (Crypto markets are 24/7 - perfect for trend strategies)");
 
         // Load 1 year of daily data
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(true);
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 365);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 365);
         // Alternative methods you can try:
         // BarSeries series = dataSource.loadSeriesInstance("ETH-USD",
         // CoinbaseInterval.ONE_DAY, 500); // 500 bars

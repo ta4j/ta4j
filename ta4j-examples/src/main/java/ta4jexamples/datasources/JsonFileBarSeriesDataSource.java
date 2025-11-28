@@ -29,6 +29,7 @@ import com.google.gson.stream.JsonReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 import ta4jexamples.datasources.json.AdaptiveBarSeriesTypeAdapter;
 
 import java.io.FileInputStream;

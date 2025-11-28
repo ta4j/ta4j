@@ -21,9 +21,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.datasources;
+package ta4jexamples.datasources.http;
 
-import ta4jexamples.datasources.http.HttpClientWrapper;
+import ta4jexamples.datasources.BarSeriesDataSource;
 
 /**
  * Marker interface for HTTP-based BarSeries data sources.
@@ -42,8 +42,8 @@ import ta4jexamples.datasources.http.HttpClientWrapper;
  * </ul>
  * <p>
  * For shared implementation, consider extending
- * {@link ta4jexamples.datasources.http.AbstractHttpBarSeriesDataSource} which
- * provides common HTTP and caching infrastructure.
+ * {@link AbstractHttpBarSeriesDataSource} which provides common HTTP and
+ * caching infrastructure.
  *
  * @since 0.20
  */

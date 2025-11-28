@@ -44,16 +44,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for the {@link CoinbaseBarSeriesDataSource} class.
+ * Unit tests for the {@link CoinbaseHttpBarSeriesDataSource} class.
  * <p>
  * This test class verifies the behavior of the
- * {@code CoinbaseBarSeriesDataSource} when loading bar series data from
+ * {@code CoinbaseHttpBarSeriesDataSource} when loading bar series data from
  * Coinbase API, including successful responses, error handling, pagination, and
  * edge cases.
  * </p>
  */
 @SuppressWarnings("unchecked")
-public class CoinbaseBarSeriesDataSourceTest {
+public class CoinbaseHttpBarSeriesDataSourceTest {
 
     private static final String VALID_JSON_RESPONSE = """
             {
@@ -111,12 +111,47 @@ public class CoinbaseBarSeriesDataSourceTest {
     }
 
     /**
+     * Helper method to delete a directory and all its contents recursively.
+     *
+     * @param dirPath the directory path to delete
+     */
+    private void deleteDirectory(Path dirPath) {
+        if (Files.exists(dirPath)) {
+            try {
+                // Delete all files in the directory first
+                if (Files.isDirectory(dirPath)) {
+                    try (var stream = Files.list(dirPath)) {
+                        stream.forEach(path -> {
+                            try {
+                                if (Files.isDirectory(path)) {
+                                    deleteDirectory(path);
+                                } else {
+                                    Files.delete(path);
+                                }
+                            } catch (IOException e) {
+                                // Ignore cleanup errors
+                            }
+                        });
+                    }
+                    // Delete the directory itself (only works if empty)
+                    Files.delete(dirPath);
+                } else {
+                    // It's a file, not a directory
+                    Files.delete(dirPath);
+                }
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    /**
      * Helper method to build cache file prefix using getSourceName().
      *
      * @return the cache file prefix (e.g., "Coinbase-")
      */
     private String getCachePrefix() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         return sourceName.isEmpty() ? "" : sourceName + "-";
     }
@@ -124,21 +159,21 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithNullHttpClientWrapper() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource((HttpClientWrapper) null);
+            new CoinbaseHttpBarSeriesDataSource((HttpClientWrapper) null);
         }, "Constructor should throw IllegalArgumentException for null HttpClientWrapper");
     }
 
     @Test
     public void testConstructorWithHttpClientWrapper() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         assertNotNull(dataSource, "DataSource should be created successfully");
     }
 
     @Test
     public void testConstructorWithHttpClient() {
         HttpClient httpClient = HttpClient.newHttpClient();
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(httpClient);
         assertNotNull(dataSource, "DataSource should be created successfully");
     }
 
@@ -151,12 +186,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(3, series.getBarCount(), "Should have 3 bars");
@@ -167,11 +202,11 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithNullProductId() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance(null, CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY,
+        BarSeries series = dataSource.loadSeriesInstance(null, CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY,
                 start, end);
 
         assertNull(series, "Should return null for null product ID");
@@ -181,12 +216,12 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithEmptyProductId() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
-        BarSeries series = dataSource.loadSeriesInstance("   ", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY,
-                start, end);
+        BarSeries series = dataSource.loadSeriesInstance("   ",
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for empty product ID");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -195,11 +230,11 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithNullStartDateTime() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, null, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, null, end);
 
         assertNull(series, "Should return null for null start date");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -208,11 +243,11 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithNullEndDateTime() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, null);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, null);
 
         assertNull(series, "Should return null for null end date");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -221,12 +256,12 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithInvalidDateRange() throws IOException, InterruptedException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-03T00:00:00Z");
         Instant end = Instant.parse("2021-01-01T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when start is after end");
         verify(mockClient, never()).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -240,12 +275,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.statusCode()).thenReturn(404);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for HTTP error status");
     }
@@ -256,12 +291,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new IOException("Network error"));
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when IOException occurs");
     }
@@ -272,12 +307,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new InterruptedException("Interrupted"));
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when InterruptedException occurs");
     }
@@ -291,12 +326,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn("invalid json");
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for invalid JSON");
     }
@@ -316,12 +351,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(emptyResultsJson);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null for empty results");
     }
@@ -366,12 +401,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(jsonWithNulls);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(2, series.getBarCount(), "Should skip bars with null values");
@@ -381,8 +416,8 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testLoadSeriesStaticMethodWithBarCount() {
         // Note: Static methods use DEFAULT_INSTANCE which uses real HttpClient
         // This test verifies the static method signature and error handling
-        BarSeries series = CoinbaseBarSeriesDataSource.loadSeries("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 0);
+        BarSeries series = CoinbaseHttpBarSeriesDataSource.loadSeries("BTC-USD",
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 0);
 
         assertNull(series, "Should return null for bar count <= 0");
     }
@@ -391,14 +426,14 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testLoadSeriesStaticMethodWithDays() {
         // Note: Static methods use DEFAULT_INSTANCE which uses real HttpClient
         // This test verifies the static method signature
-        BarSeries series = CoinbaseBarSeriesDataSource.loadSeries("BTC-USD", 0);
+        BarSeries series = CoinbaseHttpBarSeriesDataSource.loadSeries("BTC-USD", 0);
 
         assertNull(series, "Should return null for days <= 0");
     }
 
     @Test
     public void testCoinbaseIntervalEnum() {
-        CoinbaseBarSeriesDataSource.CoinbaseInterval interval = CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY;
+        CoinbaseHttpBarSeriesDataSource.CoinbaseInterval interval = CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY;
         assertEquals(Duration.ofDays(1), interval.getDuration(), "Duration should match");
         assertEquals("ONE_DAY", interval.getApiValue(), "API value should match");
     }
@@ -427,12 +462,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(jsonWithNullVolume);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-02T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(1, series.getBarCount(), "Should have 1 bar");
@@ -488,13 +523,13 @@ public class CoinbaseBarSeriesDataSourceTest {
                 .thenReturn(mockResponse2)
                 .thenReturn(mockResponse2); // In case there are more calls
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         // Request 351 days of daily data (exceeds 350 candle limit)
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // ~351 days
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(351, series.getBarCount(), "Should have 351 bars from 2 chunks");
@@ -559,13 +594,13 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         // Request range that would trigger pagination
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         // Should deduplicate the overlapping timestamp, so only 2 unique bars
@@ -602,12 +637,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         assertEquals(1, series.getBarCount(), "Should have 1 bar from successful chunk");
@@ -624,12 +659,12 @@ public class CoinbaseBarSeriesDataSourceTest {
 
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNull(series, "Should return null when all chunks fail");
     }
@@ -645,12 +680,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z"); // Only 3 days, under 350 limit
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "BarSeries should not be null");
         // Should only make one request (no pagination)
@@ -660,20 +695,20 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testConstructorWithCachingEnabled() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
     }
 
     @Test
     public void testConstructorWithCachingDisabled() {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, false);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, false);
         assertNotNull(dataSource, "DataSource should be created successfully with caching disabled");
     }
 
     @Test
     public void testConstructorWithBooleanCachingParameter() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(true);
         assertNotNull(dataSource, "DataSource should be created successfully with caching enabled");
     }
 
@@ -689,13 +724,13 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request - should make API call
         BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series1, "First request should return data");
         assertEquals(3, series1.getBarCount(), "Should have 3 bars");
@@ -703,7 +738,7 @@ public class CoinbaseBarSeriesDataSourceTest {
 
         // Second request with same parameters - should use cache
         BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series2, "Second request should return cached data");
         assertEquals(3, series2.getBarCount(), "Should have 3 bars from cache");
@@ -727,16 +762,16 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request for BTC-USD
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request for ETH-USD - should be a cache miss
-        dataSource.loadSeriesInstance("ETH-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("ETH-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
@@ -757,16 +792,16 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request with ONE_DAY interval
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request with ONE_HOUR interval - should be a cache miss
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_HOUR, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_HOUR, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
@@ -787,12 +822,12 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant baseStart = Instant.parse("2021-01-01T00:00:00Z");
         Instant baseEnd = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, baseStart,
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, baseStart,
                 baseEnd);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
@@ -802,7 +837,8 @@ public class CoinbaseBarSeriesDataSourceTest {
         Instant start2 = Instant.parse("2021-01-01T12:30:45Z"); // Same day, different time
         Instant end2 = Instant.parse("2021-01-03T18:20:10Z"); // Same day, different time
 
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start2, end2);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start2,
+                end2);
         // Should use cache because timestamps truncate to the same values
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
@@ -822,18 +858,18 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
 
         assertNotNull(series, "Should return data");
         // Verify that a cache file was created (indirectly by checking that second
         // request uses cache)
         BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series2, "Second request should return cached data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
@@ -850,16 +886,16 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, false);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, false);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request - should make another API call since caching is disabled
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
@@ -876,17 +912,17 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         // Use historical dates (more than 1 day in the past)
         Instant start = Instant.parse("2020-01-01T00:00:00Z");
         Instant end = Instant.parse("2020-01-03T00:00:00Z");
 
         // First request
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request - should use cache even though time has passed
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
@@ -907,17 +943,17 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
 
         // First request using barCount method with notes
         BarSeries series1 = dataSource.loadSeriesInstance(productId,
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
         assertNotNull(series1, "Should return data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request with same barCount and notes - should use cache
         BarSeries series2 = dataSource.loadSeriesInstance(productId,
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, 3, uniqueNotes);
         assertNotNull(series2, "Should return data");
         // Should use cache - only 1 API call total
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -930,7 +966,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     public void testCacheDirectoryCreation() {
         // Test that cache directory is created when caching is enabled
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
 
         // The constructor should attempt to create the cache directory
         // We can't easily test this without file system access, but we can verify
@@ -951,21 +987,24 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T12:30:45Z");
         Instant end = Instant.parse("2021-01-01T18:20:10Z");
 
         // Test FIVE_MINUTE - should truncate to 5-minute boundaries
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start,
+                end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Same request should hit cache
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start,
+                end);
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Different 5-minute period should be a cache miss
         Instant start2 = Instant.parse("2021-01-01T12:35:00Z"); // Different 5-minute period
-        dataSource.loadSeriesInstance("BTC-USD", CoinbaseBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start2, end);
+        dataSource.loadSeriesInstance("BTC-USD", CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.FIVE_MINUTE, start2,
+                end);
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
@@ -985,33 +1024,33 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.statusCode()).thenReturn(404); // Failed request
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, true);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request fails
         BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNull(series1, "Should return null for failed request");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Second request should still make API call (no cache for failed requests)
         BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNull(series2, "Should return null for failed request");
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test
     public void testGetSourceName() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
         assertEquals("Coinbase", dataSource.getSourceName(), "Should return 'Coinbase' as source name");
     }
 
     @Test
     public void testGetSourceNameUsedInCacheFileGeneration() {
         // Verify that getSourceName() is used in cache file generation
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         assertFalse(sourceName.isEmpty(), "Source name should not be empty");
         assertEquals("Coinbase", sourceName, "Source name should be 'Coinbase'");
@@ -1024,12 +1063,12 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testAllCoinbaseIntervalValues() {
         // Test all interval enum values
-        CoinbaseBarSeriesDataSource.CoinbaseInterval[] intervals = CoinbaseBarSeriesDataSource.CoinbaseInterval
+        CoinbaseHttpBarSeriesDataSource.CoinbaseInterval[] intervals = CoinbaseHttpBarSeriesDataSource.CoinbaseInterval
                 .values();
 
         assertTrue(intervals.length > 0, "Should have at least one interval");
 
-        for (CoinbaseBarSeriesDataSource.CoinbaseInterval interval : intervals) {
+        for (CoinbaseHttpBarSeriesDataSource.CoinbaseInterval interval : intervals) {
             assertNotNull(interval.getDuration(), "Duration should not be null for " + interval);
             assertNotNull(interval.getApiValue(), "API value should not be null for " + interval);
             assertFalse(interval.getApiValue().isEmpty(), "API value should not be empty for " + interval);
@@ -1039,7 +1078,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithBarSeriesDataSourceInterface() {
         // Test the BarSeriesDataSource interface methods
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
 
         // Test loadSeries with Duration
         assertThrows(IllegalArgumentException.class, () -> {
@@ -1066,7 +1105,7 @@ public class CoinbaseBarSeriesDataSourceTest {
     @Test
     public void testLoadSeriesWithStringSource() {
         // Test loadSeries(String source) method
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
 
         assertThrows(IllegalArgumentException.class, () -> {
             dataSource.loadSeries((String) null);
@@ -1082,70 +1121,96 @@ public class CoinbaseBarSeriesDataSourceTest {
     }
 
     @Test
-    public void testConstructorWithCustomCacheDirectory() {
-        String customCacheDir = "test-cache/custom";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDir);
-        assertNotNull(dataSource, "DataSource should be created successfully");
-        assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
-                "Cache directory should match the provided custom directory");
+    public void testConstructorWithCustomCacheDirectory() throws IOException {
+        String customCacheDir = "temp/custom";
+        Path customCachePath = Paths.get(customCacheDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(customCacheDir);
+            assertNotNull(dataSource, "DataSource should be created successfully");
+            assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
+                    "Cache directory should match the provided custom directory");
+        } finally {
+            // Clean up: delete the directory if it was created
+            deleteDirectory(customCachePath);
+        }
     }
 
     @Test
-    public void testConstructorWithHttpClientWrapperAndCustomCacheDirectory() {
+    public void testConstructorWithHttpClientWrapperAndCustomCacheDirectory() throws IOException {
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
-        String customCacheDir = "test-cache/custom-wrapper";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
-        assertNotNull(dataSource, "DataSource should be created successfully");
-        assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
-                "Cache directory should match the provided custom directory");
+        String customCacheDir = "temp/custom-wrapper";
+        Path customCachePath = Paths.get(customCacheDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            assertNotNull(dataSource, "DataSource should be created successfully");
+            assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
+                    "Cache directory should match the provided custom directory");
+        } finally {
+            // Clean up: delete the directory if it was created
+            deleteDirectory(customCachePath);
+        }
     }
 
     @Test
-    public void testConstructorWithHttpClientAndCustomCacheDirectory() {
+    public void testConstructorWithHttpClientAndCustomCacheDirectory() throws IOException {
         HttpClient httpClient = HttpClient.newHttpClient();
-        String customCacheDir = "test-cache/custom-http";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(httpClient, customCacheDir);
-        assertNotNull(dataSource, "DataSource should be created successfully");
-        assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
-                "Cache directory should match the provided custom directory");
+        String customCacheDir = "temp/custom-http";
+        Path customCachePath = Paths.get(customCacheDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(httpClient,
+                    customCacheDir);
+            assertNotNull(dataSource, "DataSource should be created successfully");
+            assertEquals(customCacheDir, dataSource.getResponseCacheDir(),
+                    "Cache directory should match the provided custom directory");
+        } finally {
+            // Clean up: delete the directory if it was created
+            deleteDirectory(customCachePath);
+        }
     }
 
     @Test
     public void testConstructorWithNullCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource((String) null);
+            new CoinbaseHttpBarSeriesDataSource((String) null);
         }, "Constructor should throw IllegalArgumentException for null cache directory");
     }
 
     @Test
     public void testConstructorWithEmptyCacheDirectory() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource("");
+            new CoinbaseHttpBarSeriesDataSource("");
         }, "Constructor should throw IllegalArgumentException for empty cache directory");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            new CoinbaseBarSeriesDataSource("   ");
+            new CoinbaseHttpBarSeriesDataSource("   ");
         }, "Constructor should throw IllegalArgumentException for whitespace-only cache directory");
     }
 
     @Test
     public void testGetResponseCacheDirWithDefaultDirectory() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource();
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
         assertEquals(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR, dataSource.getResponseCacheDir(),
                 "Default cache directory should be used when not specified");
     }
 
     @Test
-    public void testGetResponseCacheDirWithCustomDirectory() {
-        String customCacheDir = "my-custom-cache";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDir);
-        assertEquals(customCacheDir, dataSource.getResponseCacheDir(), "Custom cache directory should be returned");
+    public void testGetResponseCacheDirWithCustomDirectory() throws IOException {
+        String customCacheDir = "temp/my-custom-cache";
+        Path customCachePath = Paths.get(customCacheDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(customCacheDir);
+            assertEquals(customCacheDir, dataSource.getResponseCacheDir(), "Custom cache directory should be returned");
+        } finally {
+            // Clean up: delete the directory if it was created
+            deleteDirectory(customCachePath);
+        }
     }
 
     @Test
     public void testCacheFilesCreatedInCustomDirectory() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/custom-dir-test";
+        String customCacheDir = "temp/custom-dir-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1168,14 +1233,14 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // First request - should create cache file in custom directory
         BarSeries series1 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series1, "First request should return data");
 
         // Verify cache file was created in custom directory
@@ -1186,37 +1251,35 @@ public class CoinbaseBarSeriesDataSourceTest {
 
         // Second request - should use cache (verify only one API call was made)
         BarSeries series2 = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series2, "Second request should return cached data");
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
-        // Clean up
-        if (Files.exists(customCachePath)) {
-            Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException e) {
-                            // Ignore cleanup errors
-                        }
-                    });
-        }
+        // Clean up: delete all files and then the directory
+        deleteDirectory(customCachePath);
     }
 
     @Test
-    public void testCacheDirectoryTrimming() {
+    public void testCacheDirectoryTrimming() throws IOException {
         // Test that cache directory paths are trimmed
-        String customCacheDirWithWhitespace = "  test-cache/trimmed  ";
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(customCacheDirWithWhitespace);
-        assertEquals("test-cache/trimmed", dataSource.getResponseCacheDir(),
-                "Cache directory should be trimmed of leading/trailing whitespace");
+        String customCacheDirWithWhitespace = "  temp/trimmed  ";
+        String trimmedDir = "temp/trimmed";
+        Path trimmedDirPath = Paths.get(trimmedDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(
+                    customCacheDirWithWhitespace);
+            assertEquals(trimmedDir, dataSource.getResponseCacheDir(),
+                    "Cache directory should be trimmed of leading/trailing whitespace");
+        } finally {
+            // Clean up: delete the directory if it was created
+            deleteDirectory(trimmedDirPath);
+        }
     }
 
     @Test
     public void testDeleteAllCacheFiles() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/delete-all-test";
+        String customCacheDir = "temp/delete-all-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1239,14 +1302,14 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Verify cache file was created
@@ -1265,12 +1328,15 @@ public class CoinbaseBarSeriesDataSourceTest {
                 .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-ONE_DAY-"))
                 .count();
         assertEquals(0, fileCountAfter, "All cache files should be deleted");
+
+        // Clean up: delete the directory
+        deleteDirectory(customCachePath);
     }
 
     @Test
     public void testDeleteCacheFilesOlderThan() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/delete-old-test";
+        String customCacheDir = "temp/delete-old-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1293,14 +1359,14 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Verify cache file was created
@@ -1319,12 +1385,15 @@ public class CoinbaseBarSeriesDataSourceTest {
                 .filter(path -> path.getFileName().toString().startsWith(getCachePrefix()))
                 .count();
         assertEquals(0, fileCountAfter, "All cache files should be deleted");
+
+        // Clean up: delete the directory
+        deleteDirectory(customCachePath);
     }
 
     @Test
     public void testDeleteStaleCacheFiles() throws IOException, InterruptedException {
         // Use a unique custom cache directory for this test
-        String customCacheDir = "test-cache/delete-stale-test";
+        String customCacheDir = "temp/delete-stale-test";
         Path customCachePath = Paths.get(customCacheDir);
 
         // Clean up any existing cache files
@@ -1347,14 +1416,14 @@ public class CoinbaseBarSeriesDataSourceTest {
         when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource(mockClient, customCacheDir);
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, customCacheDir);
 
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-01-03T00:00:00Z");
 
         // Create a cache file
         BarSeries series = dataSource.loadSeriesInstance("BTC-USD",
-                CoinbaseBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end);
         assertNotNull(series, "Should return data");
 
         // Delete stale files (default 30 days) - should not delete recently created
@@ -1365,12 +1434,22 @@ public class CoinbaseBarSeriesDataSourceTest {
         // Delete stale files with custom age (0 days) - should delete all files
         deletedCount = dataSource.deleteStaleCacheFiles(Duration.ZERO);
         assertTrue(deletedCount > 0, "Should have deleted the cache file");
+
+        // Clean up: delete the directory
+        deleteDirectory(customCachePath);
     }
 
     @Test
-    public void testDeleteCacheFilesWithNonExistentDirectory() {
-        CoinbaseBarSeriesDataSource dataSource = new CoinbaseBarSeriesDataSource("non-existent-cache-dir");
-        int deletedCount = dataSource.deleteAllCacheFiles();
-        assertEquals(0, deletedCount, "Should return 0 for non-existent directory");
+    public void testDeleteCacheFilesWithNonExistentDirectory() throws IOException {
+        String cacheDir = "temp/non-existent-cache-dir";
+        Path cacheDirPath = Paths.get(cacheDir);
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(cacheDir);
+            int deletedCount = dataSource.deleteAllCacheFiles();
+            assertEquals(0, deletedCount, "Should return 0 for non-existent directory");
+        } finally {
+            // Clean up: delete the directory if it was created by the constructor
+            deleteDirectory(cacheDirPath);
+        }
     }
 }

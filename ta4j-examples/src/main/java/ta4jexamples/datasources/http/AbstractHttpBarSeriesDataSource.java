@@ -25,7 +25,6 @@ package ta4jexamples.datasources.http;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ta4jexamples.datasources.HttpBarSeriesDataSource;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
