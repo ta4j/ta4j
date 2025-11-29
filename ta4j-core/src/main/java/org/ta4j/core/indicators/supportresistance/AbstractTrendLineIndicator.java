@@ -931,34 +931,32 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     public static final class ScoringWeights {
         /**
          * Weight for the fraction of swing points that touch the trend line. Higher
-         * values favor trend lines that pass through more swing points. Default: 0.10
-         * (10%).
+         * values favor trend lines that pass through more swing points.
          */
         public final double touchCountWeight;
 
         /**
          * Weight for minimizing swing points that fall outside the trend line. Higher
-         * values penalize trend lines with many outside swings. Default: 0.05 (5%).
+         * values penalize trend lines with many outside swings.
          */
         public final double outsideCountWeight;
 
         /**
          * Weight for whether the trend line touches the extreme swing point (lowest for
          * support, highest for resistance). Higher values favor trend lines that
-         * include the extreme point. Default: 0.15 (15%).
+         * include the extreme point.
          */
         public final double touchesExtremeWeight;
 
         /**
          * Weight for minimizing average deviation of swing points from the trend line.
-         * Higher values favor trend lines that stay close to all swing prices. Default:
-         * 0.65 (65%).
+         * Higher values favor trend lines that stay close to all swing prices.
          */
         public final double averageDeviationWeight;
 
         /**
          * Weight for favoring more recent anchor points. Higher values favor trend
-         * lines anchored at more recent swing points. Default: 0.05 (5%).
+         * lines anchored at more recent swing points.
          */
         public final double anchorRecencyWeight;
 
@@ -970,18 +968,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             this.averageDeviationWeight = averageDeviationWeight;
             this.anchorRecencyWeight = anchorRecencyWeight;
             validateWeights();
-        }
-
-        /**
-         * Returns default scoring weights that provide balanced evaluation across all
-         * factors: 10% touch count, 15% extreme point, 5% outside count, 65% deviation,
-         * 5% recency. The defaults strongly value price fit and ensure extreme-point
-         * inclusion matters without overwhelming proximity.
-         *
-         * @return default scoring weights
-         */
-        public static ScoringWeights defaultWeights() {
-            return new ScoringWeights(0.10d, 0.15d, 0.05d, 0.65d, 0.05d);
         }
 
         /**
@@ -1003,9 +989,22 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         /**
-         * Returns preset weights with heavier emphasis on touching swing points (55%)
-         * with stronger penalties for outside swings (20%) and meaningful deviation
-         * control (15%). Useful when you want trend lines that connect as many swing
+         * Returns default scoring weights that provide balanced evaluation across all
+         * factors. Defaults lean most heavily on price fit, keep a meaningful emphasis
+         * on the extreme swing, lightly reward touch count, and preserve a small
+         * recency nudge. Treat this as a “fit-first” preset without hard-coding the
+         * underlying fractions elsewhere.
+         *
+         * @return default scoring weights
+         */
+        public static ScoringWeights defaultWeights() {
+            return new ScoringWeights(0.10d, 0.15d, 0.05d, 0.65d, 0.05d);
+        }
+
+        /**
+         * Returns preset weights with heavier emphasis on touching swing points,
+         * stronger penalties for outside swings, and enough deviation control to keep
+         * fits reasonable. Useful when you want trend lines that connect as many swing
          * points as possible, even if that sacrifices extreme-point anchoring.
          *
          * @return scoring weights favoring touch count
@@ -1016,9 +1015,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         /**
          * Returns preset weights with heavier emphasis on touching the extreme swing
-         * point (50%) while keeping lines reasonably close to price action (15%) and
-         * still rewarding additional touches (20%). Useful when you want trend lines
-         * that definitely include the most significant swing point.
+         * point while still rewarding additional touches and keeping lines reasonably
+         * close to price action. Useful when you want trend lines that definitely
+         * include the most significant swing point.
          *
          * @return scoring weights favoring extreme point inclusion
          */
