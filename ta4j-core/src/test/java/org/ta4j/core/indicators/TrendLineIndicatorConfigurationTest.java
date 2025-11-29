@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings.Mode;
+import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -142,6 +143,210 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
     @Test(expected = IllegalArgumentException.class)
     public void shouldRejectInfiniteToleranceValue() {
         ToleranceSettings.absolute(Double.POSITIVE_INFINITY);
+    }
+
+    @Test
+    public void shouldHaveDefaultWeightsSummingToOne() {
+        final AbstractTrendLineIndicator.ScoringWeights weights = AbstractTrendLineIndicator.ScoringWeights
+                .defaultWeights();
+        final double sum = weights.touchCountWeight + weights.touchesExtremeWeight + weights.outsideCountWeight
+                + weights.averageDeviationWeight + weights.anchorRecencyWeight;
+
+        assertThat(sum).isEqualTo(1.0d);
+    }
+
+    @Test
+    public void shouldHaveTouchCountBiasPresetSummingToOne() {
+        final AbstractTrendLineIndicator.ScoringWeights weights = AbstractTrendLineIndicator.ScoringWeights
+                .touchCountBiasPreset();
+        final double sum = weights.touchCountWeight + weights.touchesExtremeWeight + weights.outsideCountWeight
+                + weights.averageDeviationWeight + weights.anchorRecencyWeight;
+
+        assertThat(sum).isEqualTo(1.0d);
+    }
+
+    @Test
+    public void shouldHaveExtremeSwingBiasPresetSummingToOne() {
+        final AbstractTrendLineIndicator.ScoringWeights weights = AbstractTrendLineIndicator.ScoringWeights
+                .extremeSwingBiasPreset();
+        final double sum = weights.touchCountWeight + weights.touchesExtremeWeight + weights.outsideCountWeight
+                + weights.averageDeviationWeight + weights.anchorRecencyWeight;
+
+        assertThat(sum).isEqualTo(1.0d);
+
+    }
+
+    @Test
+    public void shouldHaveDefaultScoringWeightsEqualToDefaultWeights() {
+        final AbstractTrendLineIndicator.ScoringWeights defaultWeights = AbstractTrendLineIndicator.ScoringWeights
+                .defaultWeights();
+        final AbstractTrendLineIndicator.ScoringWeights defaultScoringWeights = AbstractTrendLineIndicator.ScoringWeights
+                .defaultScoringWeights();
+
+        assertThat(defaultScoringWeights.touchCountWeight).isEqualTo(defaultWeights.touchCountWeight);
+        assertThat(defaultScoringWeights.touchesExtremeWeight).isEqualTo(defaultWeights.touchesExtremeWeight);
+        assertThat(defaultScoringWeights.outsideCountWeight).isEqualTo(defaultWeights.outsideCountWeight);
+        assertThat(defaultScoringWeights.averageDeviationWeight).isEqualTo(defaultWeights.averageDeviationWeight);
+        assertThat(defaultScoringWeights.anchorRecencyWeight).isEqualTo(defaultWeights.anchorRecencyWeight);
+    }
+
+    @Test
+    public void shouldUseDefaultWeightsPresetWithIndicator() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.defaultWeights();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+    }
+
+    @Test
+    public void shouldUseTouchCountBiasPresetWithIndicator() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.touchCountBiasPreset();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+    }
+
+    @Test
+    public void shouldUseExtremeSwingBiasPresetWithIndicator() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.extremeSwingBiasPreset();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+    }
+
+    @Test
+    public void shouldHaveBuilderDefaultsSummingToOne() {
+        final AbstractTrendLineIndicator.ScoringWeights weights = AbstractTrendLineIndicator.ScoringWeights.builder()
+                .build();
+        final double sum = weights.touchCountWeight + weights.touchesExtremeWeight + weights.outsideCountWeight
+                + weights.averageDeviationWeight + weights.anchorRecencyWeight;
+
+        assertThat(sum).isEqualTo(1.0d);
+    }
+
+    @Test
+    public void shouldInstantiateSupportIndicatorWithDefaultWeightsPreset() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.defaultWeights();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateSupportIndicatorWithTouchCountBiasPreset() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.touchCountBiasPreset();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateSupportIndicatorWithExtremeSwingBiasPreset() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.extremeSwingBiasPreset();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateResistanceIndicatorWithDefaultWeightsPreset() {
+        final var series = seriesFromHighs(10, 12, 11, 12, 11, 12, 9);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.defaultWeights();
+        final var indicator = new TrendLineResistanceIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateResistanceIndicatorWithTouchCountBiasPreset() {
+        final var series = seriesFromHighs(10, 12, 11, 12, 11, 12, 9);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.touchCountBiasPreset();
+        final var indicator = new TrendLineResistanceIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateResistanceIndicatorWithExtremeSwingBiasPreset() {
+        final var series = seriesFromHighs(10, 12, 11, 12, 11, 12, 9);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.extremeSwingBiasPreset();
+        final var indicator = new TrendLineResistanceIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    @Test
+    public void shouldInstantiateSupportIndicatorWithDefaultScoringWeightsPreset() {
+        final var series = seriesFromLows(10, 8, 9, 8, 9, 8, 11);
+        final var weights = AbstractTrendLineIndicator.ScoringWeights.defaultScoringWeights();
+        final var indicator = new TrendLineSupportIndicator(series, 1, Integer.MAX_VALUE, weights);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            final Num value = indicator.getValue(i);
+            assertThat(value).isNotNull();
+        }
+
+        assertThat(indicator.getScoringWeights()).isNotNull();
+        final var segment = indicator.getCurrentSegment();
+        assertThat(segment).isNotNull();
+    }
+
+    private BarSeries seriesFromHighs(double... highs) {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        for (double high : highs) {
+            final var low = Math.max(0d, high - 2d);
+            series.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).add();
+        }
+        return series;
     }
 
     private static final class StaticSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
