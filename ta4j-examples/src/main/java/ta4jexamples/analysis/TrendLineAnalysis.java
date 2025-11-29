@@ -29,9 +29,14 @@ import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.loaders.CsvBarsLoader;
@@ -68,70 +73,69 @@ public class TrendLineAnalysis {
         int surroundingBars = 5;
 
         // Create support trendline indicator
-        TrendLineSupportIndicator defaultFractalSupportTrendLine = new TrendLineSupportIndicator(series,
-                surroundingBars, trendLineLookback);
-        TrendLineSupportIndicator preferTouchPointFractalSupportTrendLine = new TrendLineSupportIndicator(series,
-                surroundingBars, trendLineLookback, TrendLineSupportIndicator.ScoringWeights.touchCountBiasPreset());
-        TrendLineSupportIndicator preferExtremePointFractalSupportTrendLine = new TrendLineSupportIndicator(series,
+        TrendLineSupportIndicator supportLine = new TrendLineSupportIndicator(series, surroundingBars,
+                trendLineLookback);
+        TrendLineSupportIndicator supportLineWithTouchCountBias = new TrendLineSupportIndicator(series, surroundingBars,
+                trendLineLookback, TrendLineSupportIndicator.ScoringWeights.touchCountBiasPreset());
+        TrendLineSupportIndicator supportLineWithExtremeSwingBias = new TrendLineSupportIndicator(series,
                 surroundingBars, trendLineLookback, TrendLineSupportIndicator.ScoringWeights.extremeSwingBiasPreset());
 
         // Create resistance trendline indicator
-        TrendLineResistanceIndicator defaultFractalResistanceTrendLine = new TrendLineResistanceIndicator(series,
-                surroundingBars, trendLineLookback);
-        TrendLineResistanceIndicator preferTouchPointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
-                series, surroundingBars, trendLineLookback,
-                TrendLineResistanceIndicator.ScoringWeights.touchCountBiasPreset());
-        TrendLineResistanceIndicator preferExtremePointFractalResistanceTrendLine = new TrendLineResistanceIndicator(
-                series, surroundingBars, trendLineLookback,
+        TrendLineResistanceIndicator resistanceLine = new TrendLineResistanceIndicator(series, surroundingBars,
+                trendLineLookback);
+        TrendLineResistanceIndicator resistanceLineWithTouchCountBias = new TrendLineResistanceIndicator(series,
+                surroundingBars, trendLineLookback, TrendLineResistanceIndicator.ScoringWeights.touchCountBiasPreset());
+        TrendLineResistanceIndicator resistanceLineWithExtremeSwingBias = new TrendLineResistanceIndicator(series,
+                surroundingBars, trendLineLookback,
                 TrendLineResistanceIndicator.ScoringWeights.extremeSwingBiasPreset());
 
         // Build and display chart using ChartWorkflow
-        ChartWorkflow fractalChartWorkflow = new ChartWorkflow();
-        ChartPlan fractalPlan = fractalChartWorkflow.builder()
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        ChartPlan chartPlan = chartWorkflow.builder()
                 .withTitle("Fractal Support and Resistance Trendlines")
                 .withSeries(series)
-                .withIndicatorOverlay(defaultFractalSupportTrendLine)
+                .withIndicatorOverlay(supportLine)
                 .withLineColor(Color.GREEN)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Support (default)")
-                .withIndicatorOverlay(preferTouchPointFractalSupportTrendLine)
+                .withIndicatorOverlay(supportLineWithTouchCountBias)
                 .withLineColor(Color.BLUE)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Support (touchCountBiasPreset)")
-                .withIndicatorOverlay(preferExtremePointFractalSupportTrendLine)
+                .withIndicatorOverlay(supportLineWithExtremeSwingBias)
                 .withLineColor(Color.MAGENTA)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Support (extremeSwingBiasPreset)")
-                .withIndicatorOverlay(defaultFractalResistanceTrendLine)
+                .withIndicatorOverlay(resistanceLine)
                 .withLineColor(Color.RED)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Resistance (default)")
-                .withIndicatorOverlay(preferTouchPointFractalResistanceTrendLine)
+                .withIndicatorOverlay(resistanceLineWithTouchCountBias)
                 .withLineColor(Color.CYAN)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Resistance (touchCountBiasPreset)")
-                .withIndicatorOverlay(preferExtremePointFractalResistanceTrendLine)
+                .withIndicatorOverlay(resistanceLineWithExtremeSwingBias)
                 .withLineColor(Color.ORANGE)
                 .withLineWidth(2.0f)
                 .withOpacity(0.5f)
                 .withLabel("Resistance (extremeSwingBiasPreset)")
                 .toPlan();
 
-        fractalChartWorkflow.display(fractalPlan);
-        fractalChartWorkflow.save(fractalPlan, "temp/charts", "fractal-support-resistance-trendlines");
+        chartWorkflow.display(chartPlan);
+        chartWorkflow.save(chartPlan, "temp/charts", "support-resistance-trendlines");
 
-        logSegment("Support (default)", defaultFractalSupportTrendLine.getCurrentSegment());
-        logSegment("Support (preferTouchPoint)", preferTouchPointFractalSupportTrendLine.getCurrentSegment());
-        logSegment("Support (preferExtremePoint)", preferExtremePointFractalSupportTrendLine.getCurrentSegment());
+        logSegment("Support (default)", supportLine.getCurrentSegment());
+        logSegment("Support (preferTouchPoint)", supportLineWithTouchCountBias.getCurrentSegment());
+        logSegment("Support (preferExtremePoint)", supportLineWithExtremeSwingBias.getCurrentSegment());
 
-        logSegment("Resistance (default)", defaultFractalResistanceTrendLine.getCurrentSegment());
-        logSegment("Resistance (preferTouchPoint)", preferTouchPointFractalResistanceTrendLine.getCurrentSegment());
-        logSegment("Resistance (preferExtremePoint)", preferExtremePointFractalResistanceTrendLine.getCurrentSegment());
+        logSegment("Resistance (default)", resistanceLine.getCurrentSegment());
+        logSegment("Resistance (preferTouchPoint)", resistanceLineWithTouchCountBias.getCurrentSegment());
+        logSegment("Resistance (preferExtremePoint)", resistanceLineWithExtremeSwingBias.getCurrentSegment());
 
     }
 

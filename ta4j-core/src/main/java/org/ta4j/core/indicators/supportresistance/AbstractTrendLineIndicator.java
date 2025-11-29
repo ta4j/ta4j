@@ -153,16 +153,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
-        final List<Integer> windowSwings = windowedSwings(windowStart, endIndex,
-                swingIndicator.getSwingPointIndexesUpTo(endIndex));
-        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != endIndex
-                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
-        if (geometryStale) {
-            invalidateFrom(windowStart);
-            cachedGeometries = buildGeometries(windowStart, endIndex, windowSwings);
-            cachedWindowSwings = windowSwings;
-            cachedSegment = null;
-        }
+        ensureGeometries(windowStart, endIndex);
         ensureCandidate(windowStart, endIndex);
         return super.getValue(index);
     }
@@ -188,6 +179,20 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             cachedRemovedBars = removedBars;
             cachedEndIndex = endIndex;
         }
+    }
+
+    private void ensureGeometries(int windowStart, int windowEnd) {
+        final List<Integer> windowSwings = windowedSwings(windowStart, windowEnd,
+                swingIndicator.getSwingPointIndexesUpTo(windowEnd));
+        final boolean geometryStale = cachedGeometries.isEmpty() || cachedEndIndex != windowEnd
+                || cachedWindowStart != windowStart || !cachedWindowSwings.equals(windowSwings);
+        if (!geometryStale) {
+            return;
+        }
+        invalidateFrom(windowStart);
+        cachedGeometries = buildGeometries(windowStart, windowEnd, windowSwings);
+        cachedWindowSwings = windowSwings;
+        cachedSegment = null;
     }
 
     private void ensureCandidate(int windowStart, int windowEnd) {
@@ -627,6 +632,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         final int beginIndex = getBarSeries().getBeginIndex();
         final int endIndex = getBarSeries().getEndIndex();
         final int windowStart = Math.max(beginIndex, endIndex - barCount + 1);
+        ensureGeometries(windowStart, endIndex);
         ensureCandidate(windowStart, endIndex);
         if (cachedSegment == null) {
             return null;
@@ -647,7 +653,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         parameters.put("anchorRecencyWeight", scoringWeights.anchorRecencyWeight);
         parameters.put("maxSwingPointsForTrendline", maxSwingPointsForTrendline);
         parameters.put("maxCandidatePairs", maxCandidatePairs);
-        parameters.put("toleranceMode", toleranceSettings.mode.ordinal());
+        parameters.put("toleranceMode", toleranceSettings.mode.name());
         parameters.put("toleranceValue", toleranceSettings.value);
         parameters.put("toleranceMinimum", toleranceSettings.minimumAbsolute);
         final ComponentDescriptor swingDescriptor = swingIndicator.toDescriptor();
@@ -777,6 +783,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         private ToleranceSettings(Mode mode, double value, double minimumAbsolute) {
             this.mode = mode;
+            validateValue(mode, value);
+            validateMinimum(minimumAbsolute);
             this.value = value;
             this.minimumAbsolute = Math.max(0d, minimumAbsolute);
         }
@@ -832,6 +840,24 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
         public static ToleranceSettings from(Mode mode, double value, double minimumAbsolute) {
             return new ToleranceSettings(mode, value, minimumAbsolute);
+        }
+
+        private void validateValue(Mode mode, double candidateValue) {
+            if (Double.isNaN(candidateValue) || Double.isInfinite(candidateValue)) {
+                throw new IllegalArgumentException("Tolerance value must be finite");
+            }
+            if (candidateValue < 0d) {
+                throw new IllegalArgumentException("Tolerance value must be non-negative");
+            }
+            if (mode == Mode.PERCENTAGE && candidateValue > 1d) {
+                throw new IllegalArgumentException("Percentage tolerance must be between 0.0 and 1.0");
+            }
+        }
+
+        private void validateMinimum(double candidateMinimum) {
+            if (Double.isNaN(candidateMinimum) || Double.isInfinite(candidateMinimum)) {
+                throw new IllegalArgumentException("Minimum absolute tolerance must be finite");
+            }
         }
 
         private Num toleranceFor(Num swingRange, NumFactory numFactory) {
@@ -905,7 +931,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     public static final class ScoringWeights {
         /**
          * Weight for the fraction of swing points that touch the trend line. Higher
-         * values favor trend lines that pass through more swing points. Default: 0.30
+         * values favor trend lines that pass through more swing points. Default: 0.40
          * (40%).
          */
         public final double touchCountWeight;
@@ -1064,7 +1090,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         }
 
         private void validateFraction(double value, String label) {
-            if (Double.isNaN(value) || value < 0.0d || value > 1.0d) {
+            if (Double.isNaN(value) || Double.isInfinite(value) || value < 0.0d || value > 1.0d) {
                 throw new IllegalArgumentException(String
                         .format("%s must be between 0.0 and 1.0 (fractional percentage). Got %.6f", label, value));
             }

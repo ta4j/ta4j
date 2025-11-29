@@ -69,9 +69,8 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
         assertThat(descriptor.getParameters()).containsEntry("maxCandidatePairs",
                 AbstractTrendLineIndicator.DEFAULT_MAX_CANDIDATE_PAIRS);
 
+        assertThat(descriptor.getParameters()).containsEntry("toleranceMode", tolerance.mode.name());
         try {
-            assertThat(Integer.parseInt(descriptor.getParameters().get("toleranceMode").toString()))
-                    .isEqualTo(tolerance.mode.ordinal());
             assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceValue").toString()))
                     .isEqualTo(tolerance.value);
             assertThat(Double.parseDouble(descriptor.getParameters().get("toleranceMinimum").toString()))
@@ -106,9 +105,43 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void shouldReturnSegmentWhenQueriedBeforeGetValue() {
+        final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
+        final var series = builder.build();
+        final double[] lows = { 9d, 7d, 11d, 6d };
+        for (double low : lows) {
+            final double high = low + 1d;
+            series.barBuilder().openPrice(low).closePrice(low).highPrice(high).lowPrice(low).add();
+        }
+        final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(1, 3));
+        final var indicator = new TrendLineSupportIndicator(swingIndicator, 10, 0.40d, 0.15d, 0.15d, 0.15d, 0.15d);
+
+        final AbstractTrendLineIndicator.TrendLineSegment segment = indicator.getCurrentSegment();
+
+        assertThat(segment).isNotNull();
+        assertThat(segment.firstIndex).isEqualTo(1);
+        assertThat(segment.secondIndex).isEqualTo(3);
+    }
+
+    @Test
     public void shouldClampNegativeToleranceMinimum() {
         final ToleranceSettings tolerance = ToleranceSettings.from(Mode.ABSOLUTE, 1.5d, -10d);
         assertThat(tolerance.minimumAbsolute).isZero();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectInfiniteScoringWeight() {
+        AbstractTrendLineIndicator.ScoringWeights.of(Double.POSITIVE_INFINITY, 0.2d, 0.2d, 0.1d, 0.1d);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectNegativeToleranceValue() {
+        ToleranceSettings.percentage(-0.01d, 0.0d);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldRejectInfiniteToleranceValue() {
+        ToleranceSettings.absolute(Double.POSITIVE_INFINITY);
     }
 
     private static final class StaticSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {

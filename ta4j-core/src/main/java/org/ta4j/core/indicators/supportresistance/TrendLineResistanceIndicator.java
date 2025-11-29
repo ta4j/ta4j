@@ -250,37 +250,6 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
     }
 
     /**
-     * Deserialization-friendly constructor with numeric tolerance parameters to
-     * simplify serialization.
-     *
-     * @param swingHighIndicator         the swing-high indicator to use
-     * @param barCount                   number of bars to look back when selecting
-     *                                   swing points
-     * @param touchCountWeight           weight for swing point touch count
-     * @param touchesExtremeWeight       weight for extreme point inclusion
-     * @param outsideCountWeight         weight for minimizing outside swings
-     * @param averageDeviationWeight     weight for minimizing average deviation
-     * @param anchorRecencyWeight        weight for anchor point recency
-     * @param toleranceValue             tolerance value
-     * @param toleranceMinimum           minimum absolute tolerance
-     * @param toleranceMode              tolerance mode as ordinal (0=PERCENTAGE,
-     *                                   1=ABSOLUTE, 2=TICK_SIZE)
-     * @param maxSwingPointsForTrendline maximum number of swing points to consider
-     * @param maxCandidatePairs          maximum number of candidate pairs to
-     *                                   evaluate
-     * @since 0.20
-     */
-    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, double touchCountWeight,
-            double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
-            double anchorRecencyWeight, double toleranceValue, double toleranceMinimum, int toleranceMode,
-            int maxSwingPointsForTrendline, int maxCandidatePairs) {
-        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
-                outsideCountWeight, averageDeviationWeight, anchorRecencyWeight, ToleranceSettings
-                        .from(ToleranceSettings.Mode.values()[toleranceMode], toleranceValue, toleranceMinimum),
-                maxSwingPointsForTrendline, maxCandidatePairs);
-    }
-
-    /**
      * Builds a resistance trend line from a swing-high indicator implementation.
      *
      * @param recentSwingHighIndicator the swing-high indicator to use
