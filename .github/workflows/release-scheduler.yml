@@ -447,19 +447,16 @@ jobs:
           fi
 
           # Normalize base version (allow major.minor or major.minor.patch)
+          base_norm="$base"
           if [[ "$base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch=0
+            base_norm="${base}.0"
           elif [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch="${BASH_REMATCH[3]}"
           else
             echo "POM version '$current' (base '$base') is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
             exit 1
           fi
 
+          bump_base="$base"
           # Prevent regressions relative to last default-branch tag
           if [ "$last" != "none" ] && echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
             last_norm=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1.\2\3/')
@@ -470,12 +467,27 @@ jobs:
             fi
 
             if [ -n "$last_norm" ]; then
-              highest=$(printf '%s\n' "$last_norm" "$base" | sort -V | tail -n1)
-              if [ "$highest" != "$base" ]; then
+              highest=$(printf '%s\n' "$last_norm" "$base_norm" | sort -V | tail -n1)
+              if [ "$highest" != "$base_norm" ]; then
                 echo "POM base version '$base' is behind the last default-branch tag '$last_norm'; refusing to compute a lower release." >&2
                 exit 1
               fi
+              bump_base="$last_norm"
             fi
+          fi
+
+          # Use the selected bump base (prefer last tag when present) for incrementing
+          if [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch=0
+          elif [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+          else
+            echo "Bump base '$bump_base' is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
+            exit 1
           fi
 
           case "$bump" in
@@ -486,13 +498,19 @@ jobs:
           esac
 
           new="${major}.${minor}.${patch}"
-
-          if [ "$(printf '%s\n' "$base" "$new" | sort -V | head -n1)" != "$base" ]; then
-            echo "Computed version '$new' would be lower than pom.xml base '$base'." >&2
-            exit 1
+          new_norm="$new"
+          if echo "$new_norm" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+            new_norm="${new_norm}.0"
           fi
 
-          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1; then
+          # Ensure we never release a version lower than the POM base
+          if [ "$(printf '%s\n' "$new_norm" "$base_norm" | sort -V | tail -n1)" != "$new_norm" ]; then
+            echo "Computed version '$new' would be lower than pom.xml base '$base'; raising to pom base." >&2
+            new="$base"
+            new_norm="$base_norm"
+          fi
+
+          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1 || { [ "$new" != "$new_norm" ] && (git rev-parse "refs/tags/$new_norm" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new_norm" >/dev/null 2>&1); }; then
             echo "Computed tag $new (or v$new) already exists. Aborting." >&2
             exit 1
           fi
