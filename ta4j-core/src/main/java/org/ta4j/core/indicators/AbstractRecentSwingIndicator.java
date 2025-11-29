@@ -62,8 +62,9 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         super(priceIndicator);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.unstableBars = Math.max(0, unstableBars);
-        this.swingPoints = new SwingPointTracker(this::detectLatestSwingIndex,
-                Objects.requireNonNull(priceIndicator.getBarSeries(), "priceIndicator.getBarSeries() cannot be null"));
+        final BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
+                "priceIndicator.getBarSeries() cannot be null");
+        this.swingPoints = new SwingPointTracker(this::detectLatestSwingIndex, series);
     }
 
     @Override
@@ -107,7 +108,8 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         if (swingIndex < beginIndex) {
             return NaN;
         }
-        return priceIndicator.getValue(swingIndex);
+        final Num swingValue = priceIndicator.getValue(swingIndex);
+        return Num.isNaNOrNull(swingValue) ? NaN : swingValue;
     }
 
     /**
@@ -115,12 +117,28 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
      * using data up to the given index.
      *
      * @param index the current evaluation index
-     * @return the latest confirmed swing index or {@code -1} if none can be
-     *         confirmed
+     * @return the latest confirmed swing index (monotonic, never exceeding the
+     *         current {@code index}) or {@code -1} if no swing can be confirmed
+     *         yet. Implementations should not move backwards once a swing is
+     *         confirmed for a given window; use {@link #purgeOnNegativeDetection()}
+     *         when a subclass needs to invalidate stale swings.
      */
     protected abstract int detectLatestSwingIndex(int index);
 
-    private static final class SwingPointTracker {
+    /**
+     * Whether a negative swing detection ({@code -1}) should clear previously
+     * confirmed swings. Subclasses that invalidate stale swings (for example, when
+     * a plateau grows beyond an equality allowance) can override to return
+     * {@code true}. Default is {@code false}, so negative detections simply skip
+     * adding a swing.
+     *
+     * @return {@code true} if negative detections should purge recorded swings
+     */
+    protected boolean purgeOnNegativeDetection() {
+        return false;
+    }
+
+    private final class SwingPointTracker {
         private final IntFunction<Integer> swingIndexDetector;
         private final BarSeries series;
         private final List<Integer> swingPointIndexes = new ArrayList<>();
@@ -173,16 +191,22 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             for (int currentIndex = Math.max(beginIndex,
                     lastScannedIndex + 1); currentIndex <= targetIndex; currentIndex++) {
                 final int swingIndex = swingIndexDetector.apply(currentIndex);
-                final int confirmedSwingIndex = swingIndex >= beginIndex && swingIndex <= currentIndex ? swingIndex
-                        : -1;
-
+                if (swingIndex < 0) {
+                    if (purgeOnNegativeDetection()) {
+                        swingPointIndexes.clear();
+                    }
+                    continue;
+                }
+                final boolean validSwing = swingIndex >= beginIndex && swingIndex <= currentIndex;
+                if (!validSwing) {
+                    continue;
+                }
                 while (!swingPointIndexes.isEmpty()
-                        && swingPointIndexes.get(swingPointIndexes.size() - 1) > confirmedSwingIndex) {
+                        && swingPointIndexes.get(swingPointIndexes.size() - 1) > swingIndex) {
                     swingPointIndexes.remove(swingPointIndexes.size() - 1);
                 }
-                if (confirmedSwingIndex >= 0 && (swingPointIndexes.isEmpty()
-                        || confirmedSwingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1))) {
-                    swingPointIndexes.add(confirmedSwingIndex);
+                if (swingPointIndexes.isEmpty() || swingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1)) {
+                    swingPointIndexes.add(swingIndex);
                 }
             }
             lastScannedIndex = targetIndex;

@@ -139,6 +139,11 @@ public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicato
         return indicator;
     }
 
+    @Override
+    protected boolean purgeOnNegativeDetection() {
+        return true;
+    }
+
     private boolean isSwingHigh(int candidateIndex, int maxAvailableIndex) {
         final Num candidateValue = indicator.getValue(candidateIndex);
         if (candidateValue.isNaN()) {

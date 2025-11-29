@@ -34,6 +34,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -176,6 +177,29 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator3.getSwingPointIndexesUpTo(4)).containsExactly(2);
     }
 
+    @Test
+    public void shouldReturnNaNWhenSwingPriceIsNaN() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5);
+        final int[] latestSwingIndexes = { -1, 1, 1, 3, 3 };
+        final var nanPriceIndicator = new NaNPriceIndicator(series, new ClosePriceIndicator(series), 1);
+        final var indicator = new FixedSwingIndicator(nanPriceIndicator, latestSwingIndexes);
+
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(NaN);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(1, 3);
+    }
+
+    @Test
+    public void shouldRetainSwingsWhenDetectorReportsNegativeWithoutPurge() {
+        final var series = seriesFromCloses(1, 2, 3, 4, 5, 6);
+        // Swings at 2 then 4; detector returns -1 at index 4 but should not clear
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, -1, 4 };
+        final var indicator = new FixedSwingIndicator(new ClosePriceIndicator(series), latestSwingIndexes);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(2, 4);
+    }
+
     private BarSeries seriesFromCloses(double... closes) {
         final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : closes) {
@@ -190,7 +214,12 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
 
         private FixedSwingIndicator(Indicator<Num> priceIndicator, int[] latestSwingIndexes) {
             super(priceIndicator, 0);
-            this.latestSwingIndexes = Arrays.stream(latestSwingIndexes).boxed().toList();
+            this.latestSwingIndexes = new ArrayList<>(Arrays.stream(latestSwingIndexes).boxed().toList());
+        }
+
+        private void setLatestSwingIndexes(int[] latestSwingIndexes) {
+            this.latestSwingIndexes.clear();
+            this.latestSwingIndexes.addAll(Arrays.stream(latestSwingIndexes).boxed().toList());
         }
 
         @Override
@@ -202,6 +231,31 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
                 return latestSwingIndexes.get(latestSwingIndexes.size() - 1);
             }
             return latestSwingIndexes.get(index);
+        }
+    }
+
+    private static final class NaNPriceIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> delegate;
+        private final int nanIndex;
+
+        private NaNPriceIndicator(BarSeries series, Indicator<Num> delegate, int nanIndex) {
+            super(series);
+            this.delegate = delegate;
+            this.nanIndex = nanIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == nanIndex) {
+                return NaN;
+            }
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 }
