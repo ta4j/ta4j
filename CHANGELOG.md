@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Breaking
-- **`DifferencePercentageIndicator` deprecated**: `DifferencePercentageIndicator` has been deprecated in favor of `PercentageChangeIndicator`, which now provides all the same functionality plus additional features. **Action required**: Migrate to `PercentageChangeIndicator` using the migration examples in the deprecation javadoc.
+
 
 ### Added
 - **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.
@@ -12,7 +12,7 @@
     - **Swing point visualization**: `SwingPointMarkerIndicator` highlights confirmed swing points on charts without drawing connecting lines, useful for visualizing where pivots occur. Works with any swing detection algorithm (fractal-based, ZigZag, or custom implementations).
 
 
-## 0.21.0 (2025-11-29)
+## 0.21.0 (2025-11-29) - Skipped 0.20.0 due to a double version incrementing bug in the release scheduler workflow
 
 ### Changed
 - **Unified return representation system**: Say goodbye to inconsistent return formats across your analysis! Return-based criteria now use a unified `ReturnRepresentation` system that lets you choose how returns are displayed—whether you prefer multiplicative (1.12 for +12%), decimal (0.12), percentage (12.0), or logarithmic formats. Set it once globally via `ReturnRepresentationPolicy` or customize per-criterion. No more mental math converting between formats—Ta4j handles it all automatically. Legacy `addBase` constructors are deprecated in favor of the more expressive `ReturnRepresentation` enum.
