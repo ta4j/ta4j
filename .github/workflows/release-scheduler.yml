@@ -37,6 +37,7 @@ jobs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
+      reason: ${{ steps.parsed.outputs.reason }}
       dryRun: ${{ steps.run_meta.outputs.dryRun }}
     steps:
       # -----------------------
@@ -54,11 +55,27 @@ jobs:
         id: lasttag
         run: |
           default_branch="${{ github.event.repository.default_branch }}"
+          target_ref="origin/${default_branch}"
           git fetch origin "$default_branch" --tags
 
-          last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$default_branch" 2>/dev/null || true)
+          # Prefer tags reachable from the default branch (origin/<default_branch>), with and without first-parent
+          last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$target_ref" 2>/dev/null || true)
           if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$default_branch" 2>/dev/null || true)
+            last=$(git describe --tags --abbrev=0 --match '[0-9]*' "$target_ref" 2>/dev/null || true)
+          fi
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
+          fi
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
+          fi
+
+          # Fallback: describe from HEAD if the default branch ref isn't available locally
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' 2>/dev/null || true)
+          fi
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --match '[0-9]*' 2>/dev/null || true)
           fi
 
           if [ -z "$last" ]; then
@@ -121,10 +138,10 @@ jobs:
             raw_log=$(git log "$LAST_TAG"..HEAD --no-merges --pretty=format:"%s")
           fi
 
-          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to limit chars
+          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate to first 15000 chars to keep AI payload bounded
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-15000)
+          # truncate to 2000 chars to stay within model token limits
+          sanitized=$(printf '%s' "$sanitized" | cut -c1-2000)
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -132,7 +149,7 @@ jobs:
             count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
           fi
 
-          echo "audit:diff_lines=$count sanitized=true truncated=15000"
+          echo "audit:diff_lines=$count sanitized=true truncated=2000"
           diff_b64=$(printf '%s' "$sanitized" | base64 -w0)
           echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
           echo "lines=$count" >> $GITHUB_OUTPUT
@@ -165,8 +182,8 @@ jobs:
             inSection {print}
           ' CHANGELOG.md)
 
-          # truncate to keep payload bounded
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-15000)
+          # truncate to keep payload bounded and token friendly
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-6000)
 
           changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -261,7 +278,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Only when breaking API changes in core APIs (public documented interfaces).\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\n\nIf diff empty or changelog-only should_release=false.\nNEVER major without explicit breaking change evidence.\n\nVersion awareness: Consider the current version when determining the bump type.\nIf the current version is pre-1.0.0 (e.g., 0.x.y), the project is in beta/unstable phase.\nBreaking changes in pre-1.0.0 versions are more acceptable and may only warrant a MINOR bump rather than MAJOR.\n"
+            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf diff empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -273,23 +290,22 @@ jobs:
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
             --arg last_tag "$last_tag" \
-            --arg model "openai/gpt-4o" \
+            --arg model "openai/gpt-4.1-nano" \
             --arg temp "0" \
             '{
               model: $model,
               temperature: ($temp | tonumber),
               messages: [
-                { role: "system", content: "You are an expert in Semantic Versioning. STRICT JSON ONLY." },
+                { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
-                    "Current version (from pom.xml): " + $current_version + "\n" +
-                    "Last default-branch tag: " + $last_tag + "\n\n" +
-                    "=== DIFF (truncated, sanitized) ===\n" + $diff + "\n\n" +
-                    "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
-                    "SemVer Rules:\n" + $semver_rules + "\n" +
-                    "Return ONLY JSON:\n" +
-                    "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\" }"
+                    "Decide release? bump: patch|minor|major.\n" +
+                    "Current: " + $current_version + "\n" +
+                    "Last tag: " + $last_tag + "\n" +
+                    "Rules:\n" + $semver_rules + "\n" +
+                    "Diff: omitted (token budget)\n" +
+                    "Changelog (truncated):\n" + $changelog + "\n" +
+                    "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
                 }
               ]
@@ -310,6 +326,9 @@ jobs:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
           set -uo pipefail
+          echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
+          echo "audit:diff_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
+          echo "audit:changelog_truncated_chars=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
@@ -349,10 +368,13 @@ jobs:
           RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
           ATTEMPTS: 3
         run: |
+          err_msg=$(jq -r '.error.message // empty' response.json 2>/dev/null || true)
+          err_msg=${err_msg:-"AI call failed (http ${RESPONSE_STATUS})"}
           echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS" >&2
           echo "response (truncated to 500 chars):"
           head -c 500 response.json || true
-          fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$RESPONSE_STATUS"')"}'
+          fallback=$(jq -n --arg msg "$err_msg" --arg status "$RESPONSE_STATUS" \
+            '{should_release:false,bump:"patch",warning:$msg,reason:$msg}')
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -397,10 +419,13 @@ jobs:
 
           if [ "$model_token_present" != "true" ]; then
             echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
-            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing"}' > ai.json
+            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
             parsed_ok=true
           else
             raw_content='${{ steps.ai.outputs.content }}'
+            if [ -z "$raw_content" ]; then
+              raw_content='${{ steps.ai_failure.outputs.content }}'
+            fi
 
             if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
               parsed_ok=true
@@ -413,21 +438,35 @@ jobs:
 
             if ! $parsed_ok; then
               echo "AI response not valid JSON. Defaulting to no release." >&2
-              echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON"}' > ai.json
+              err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
+              if [ -n "$err_hint" ]; then
+                reason_msg="AI response was not valid JSON: ${err_hint}"
+              else
+                reason_msg="AI response was not valid JSON"
+              fi
+              printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
             fi
           fi
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
           bump=$(jq -r '.bump // "patch"' ai.json)
           warning=$(jq -r '.warning // ""' ai.json)
+          reason=$(jq -r '.reason // ""' ai.json)
 
           echo "should_release=$should" >> $GITHUB_OUTPUT
           echo "bump=$bump" >> $GITHUB_OUTPUT
           echo "warning=$warning" >> $GITHUB_OUTPUT
+          echo "reason=$reason" >> $GITHUB_OUTPUT
 
       - name: Stop if AI says no release
         if: steps.parsed.outputs.should_release == 'false'
-        run: echo "No release recommended."
+        env:
+          REASON: ${{ steps.parsed.outputs.reason }}
+        run: |
+          echo "No release recommended."
+          if [ -n "${REASON:-}" ]; then
+            echo "Reason: ${REASON}"
+          fi
 
       # -----------------------
       # Version Computation
@@ -447,19 +486,16 @@ jobs:
           fi
 
           # Normalize base version (allow major.minor or major.minor.patch)
+          base_norm="$base"
           if [[ "$base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch=0
+            base_norm="${base}.0"
           elif [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch="${BASH_REMATCH[3]}"
           else
             echo "POM version '$current' (base '$base') is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
             exit 1
           fi
 
+          bump_base="$base"
           # Prevent regressions relative to last default-branch tag
           if [ "$last" != "none" ] && echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
             last_norm=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1.\2\3/')
@@ -470,12 +506,27 @@ jobs:
             fi
 
             if [ -n "$last_norm" ]; then
-              highest=$(printf '%s\n' "$last_norm" "$base" | sort -V | tail -n1)
-              if [ "$highest" != "$base" ]; then
+              highest=$(printf '%s\n' "$last_norm" "$base_norm" | sort -V | tail -n1)
+              if [ "$highest" != "$base_norm" ]; then
                 echo "POM base version '$base' is behind the last default-branch tag '$last_norm'; refusing to compute a lower release." >&2
                 exit 1
               fi
+              bump_base="$last_norm"
             fi
+          fi
+
+          # Use the selected bump base (prefer last tag when present) for incrementing
+          if [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch=0
+          elif [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+          else
+            echo "Bump base '$bump_base' is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
+            exit 1
           fi
 
           case "$bump" in
@@ -486,13 +537,19 @@ jobs:
           esac
 
           new="${major}.${minor}.${patch}"
-
-          if [ "$(printf '%s\n' "$base" "$new" | sort -V | head -n1)" != "$base" ]; then
-            echo "Computed version '$new' would be lower than pom.xml base '$base'." >&2
-            exit 1
+          new_norm="$new"
+          if echo "$new_norm" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+            new_norm="${new_norm}.0"
           fi
 
-          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1; then
+          # Ensure we never release a version lower than the POM base
+          if [ "$(printf '%s\n' "$new_norm" "$base_norm" | sort -V | tail -n1)" != "$new_norm" ]; then
+            echo "Computed version '$new' would be lower than pom.xml base '$base'; raising to pom base." >&2
+            new="$base"
+            new_norm="$base_norm"
+          fi
+
+          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1 || { [ "$new" != "$new_norm" ] && (git rev-parse "refs/tags/$new_norm" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new_norm" >/dev/null 2>&1); }; then
             echo "Computed tag $new (or v$new) already exists. Aborting." >&2
             exit 1
           fi
@@ -513,6 +570,7 @@ jobs:
           TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
+          REASON: ${{ steps.parsed.outputs.reason }}
           VERSION: ${{ steps.version.outputs.version }}
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
           POM_BASE: ${{ steps.pom_version.outputs.base }}
@@ -525,6 +583,7 @@ jobs:
           echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
+          echo "decision:reason=${REASON:-}"
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_default_branch_tag=${LAST_TAG:-}"
@@ -560,6 +619,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
+            if (shouldRelease !== "true") {
+              console.log("audit:skip_dispatch reason=should_release_false");
+              return;
+            }
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
@@ -590,6 +654,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
+            if (shouldRelease !== "true") {
+              console.log("audit:skip_dispatch reason=should_release_false");
+              return;
+            }
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
