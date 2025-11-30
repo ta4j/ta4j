@@ -296,8 +296,18 @@ public class BitStampCsvTradesFileBarSeriesDataSource extends AbstractFileBarSer
                 // if the trade happened during the bar
                 if (bar.inPeriod(tradeTimeStamp)) {
                     // add the trade to the bar
-                    Num tradePrice = series.numFactory().numOf(Double.parseDouble(tradeLine[1]));
-                    Num tradeVolume = series.numFactory().numOf(Double.parseDouble(tradeLine[2]));
+                    Num tradePrice;
+                    Num tradeVolume;
+                    try {
+                        tradePrice = series.numFactory().numOf(Double.parseDouble(tradeLine[1]));
+                        tradeVolume = series.numFactory().numOf(Double.parseDouble(tradeLine[2]));
+                    } catch (NumberFormatException nfe) {
+                        LOG.warn(
+                                "Invalid trade price or volume format in CSV line, skipping trade: price={}, volume={}",
+                                tradeLine.length > 1 ? tradeLine[1] : "missing",
+                                tradeLine.length > 2 ? tradeLine[2] : "missing", nfe);
+                        continue;
+                    }
                     bar.addTrade(tradeVolume, tradePrice);
                 } else {
                     // the trade happened after the end of the bar
