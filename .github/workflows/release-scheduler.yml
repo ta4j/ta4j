@@ -619,6 +619,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
+            if (shouldRelease !== "true") {
+              console.log("audit:skip_dispatch reason=should_release_false");
+              return;
+            }
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
@@ -649,6 +654,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
+            if (shouldRelease !== "true") {
+              console.log("audit:skip_dispatch reason=should_release_false");
+              return;
+            }
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
