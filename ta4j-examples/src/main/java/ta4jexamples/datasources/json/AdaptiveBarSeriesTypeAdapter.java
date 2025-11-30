@@ -177,9 +177,18 @@ public class AdaptiveBarSeriesTypeAdapter extends TypeAdapter<BarSeries> {
                 volume = candleObj.get("volume").getAsString();
             }
 
-            barList.add(new CoinbaseBar(candleObj.get("start").getAsString(), candleObj.get("open").getAsString(),
-                    candleObj.get("high").getAsString(), candleObj.get("low").getAsString(),
-                    candleObj.get("close").getAsString(), volume));
+            // Validate timestamp format before creating CoinbaseBar
+            String startStr = candleObj.get("start").getAsString();
+            try {
+                Long.parseLong(startStr);
+            } catch (NumberFormatException nfe) {
+                LOG.warn("Invalid timestamp format in Coinbase data, skipping candle: {}", startStr, nfe);
+                continue;
+            }
+
+            barList.add(
+                    new CoinbaseBar(startStr, candleObj.get("open").getAsString(), candleObj.get("high").getAsString(),
+                            candleObj.get("low").getAsString(), candleObj.get("close").getAsString(), volume));
         }
 
         // Sort by timestamp (ascending order)

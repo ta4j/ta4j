@@ -285,7 +285,14 @@ public class BitStampCsvTradesFileBarSeriesDataSource extends AbstractFileBarSer
             do {
                 // get a trade
                 String[] tradeLine = iterator.next();
-                Instant tradeTimeStamp = Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000);
+                Instant tradeTimeStamp;
+                try {
+                    tradeTimeStamp = Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000);
+                } catch (NumberFormatException nfe) {
+                    LOG.warn("Invalid trade timestamp format in CSV line, skipping trade: {}",
+                            tradeLine.length > 0 ? tradeLine[0] : "empty line", nfe);
+                    continue;
+                }
                 // if the trade happened during the bar
                 if (bar.inPeriod(tradeTimeStamp)) {
                     // add the trade to the bar
