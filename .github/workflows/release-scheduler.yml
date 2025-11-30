@@ -124,8 +124,8 @@ jobs:
 
           # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate to first 6000 chars to stay within model token limits
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-6000)
+          # truncate to first 3000 chars to stay within model token limits
+          sanitized=$(printf '%s' "$sanitized" | cut -c1-3000)
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -167,7 +167,7 @@ jobs:
           ' CHANGELOG.md)
 
           # truncate to keep payload bounded and token friendly
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-6000)
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-3000)
 
           changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -280,16 +280,16 @@ jobs:
               model: $model,
               temperature: ($temp | tonumber),
               messages: [
-                { role: "system", content: "You are an expert in Semantic Versioning. STRICT JSON ONLY." },
+                { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "Decide if we should release and choose bump: patch|minor|major.\n" +
-                    "Current version (pom): " + $current_version + "\n" +
-                    "Last default-branch tag: " + $last_tag + "\n" +
-                    "SemVer rules:\n" + $semver_rules + "\n" +
-                    "Diff (truncated, sanitized):\n" + $diff + "\n" +
-                    "Unreleased changelog (truncated):\n" + $changelog + "\n" +
-                    "Return ONLY JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
+                    "Decide release? bump: patch|minor|major.\n" +
+                    "Current: " + $current_version + "\n" +
+                    "Last tag: " + $last_tag + "\n" +
+                    "Rules:\n" + $semver_rules + "\n" +
+                    "Diff (truncated):\n" + $diff + "\n" +
+                    "Changelog (truncated):\n" + $changelog + "\n" +
+                    "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
                 }
               ]
@@ -404,6 +404,9 @@ jobs:
             parsed_ok=true
           else
             raw_content='${{ steps.ai.outputs.content }}'
+            if [ -z "$raw_content" ]; then
+              raw_content='${{ steps.ai_failure.outputs.content }}'
+            fi
 
             if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
               parsed_ok=true
