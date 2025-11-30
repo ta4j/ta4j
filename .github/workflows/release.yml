@@ -463,13 +463,6 @@ jobs:
         run: |
           git tag -a $RELEASE_VERSION -m "Release $RELEASE_VERSION"
 
-      - name: Push release tag
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-        run: |
-          git push origin "refs/tags/${RELEASE_VERSION}"
-
       - name: Ensure branch is still fast-forwardable before deploy
         if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
@@ -516,6 +509,14 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B -Pproduction-release deploy
+
+      - name: Push release tag
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+        run: |
+          # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
+          git push origin "refs/tags/${RELEASE_VERSION}"
 
       # -----------------------
       # Apply Next Snapshot Version
