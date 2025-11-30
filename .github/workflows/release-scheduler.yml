@@ -310,6 +310,9 @@ jobs:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
           set -uo pipefail
+          echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
+          echo "audit:diff_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
+          echo "audit:changelog_truncated_chars=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
