@@ -124,8 +124,8 @@ jobs:
 
           # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate aggressively to stay within model token limits
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-2000)
+          # Diff omitted to stay within token limits
+          sanitized=""
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -133,7 +133,7 @@ jobs:
             count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
           fi
 
-          echo "audit:diff_lines=$count sanitized=true truncated=15000"
+          echo "audit:diff_lines=$count sanitized=true truncated=0"
           diff_b64=$(printf '%s' "$sanitized" | base64 -w0)
           echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
           echo "lines=$count" >> $GITHUB_OUTPUT
@@ -287,7 +287,7 @@ jobs:
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
-                    "Diff (truncated):\n" + $diff + "\n" +
+                    "Diff: omitted (token budget)\n" +
                     "Changelog (truncated):\n" + $changelog + "\n" +
                     "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
