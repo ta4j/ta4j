@@ -122,10 +122,10 @@ jobs:
             raw_log=$(git log "$LAST_TAG"..HEAD --no-merges --pretty=format:"%s")
           fi
 
-          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to limit chars
+          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate to first 15000 chars to keep AI payload bounded
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-15000)
+          # truncate to first 6000 chars to stay within model token limits
+          sanitized=$(printf '%s' "$sanitized" | cut -c1-6000)
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -166,8 +166,8 @@ jobs:
             inSection {print}
           ' CHANGELOG.md)
 
-          # truncate to keep payload bounded
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-15000)
+          # truncate to keep payload bounded and token friendly
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-6000)
 
           changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -262,7 +262,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Only when breaking API changes in core APIs (public documented interfaces).\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\n\nIf diff empty or changelog-only should_release=false.\nNEVER major without explicit breaking change evidence.\n\nVersion awareness: Consider the current version when determining the bump type.\nIf the current version is pre-1.0.0 (e.g., 0.x.y), the project is in beta/unstable phase.\nBreaking changes in pre-1.0.0 versions are more acceptable and may only warrant a MINOR bump rather than MAJOR.\n"
+            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf diff empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -283,14 +283,13 @@ jobs:
                 { role: "system", content: "You are an expert in Semantic Versioning. STRICT JSON ONLY." },
                 { role: "user", content:
                   (
-                    "You will determine whether to issue a release and which semantic version bump (patch, minor, major) is appropriate.\n\n" +
-                    "Current version (from pom.xml): " + $current_version + "\n" +
-                    "Last default-branch tag: " + $last_tag + "\n\n" +
-                    "=== DIFF (truncated, sanitized) ===\n" + $diff + "\n\n" +
-                    "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
-                    "SemVer Rules:\n" + $semver_rules + "\n" +
-                    "Return ONLY JSON:\n" +
-                    "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\", \"reason\": \"1-2 sentences explaining why\" }"
+                    "Decide if we should release and choose bump: patch|minor|major.\n" +
+                    "Current version (pom): " + $current_version + "\n" +
+                    "Last default-branch tag: " + $last_tag + "\n" +
+                    "SemVer rules:\n" + $semver_rules + "\n" +
+                    "Diff (truncated, sanitized):\n" + $diff + "\n" +
+                    "Unreleased changelog (truncated):\n" + $changelog + "\n" +
+                    "Return ONLY JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
                 }
               ]
@@ -350,10 +349,13 @@ jobs:
           RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
           ATTEMPTS: 3
         run: |
+          err_msg=$(jq -r '.error.message // empty' response.json 2>/dev/null || true)
+          err_msg=${err_msg:-"AI call failed (http ${RESPONSE_STATUS})"}
           echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS" >&2
           echo "response (truncated to 500 chars):"
           head -c 500 response.json || true
-          fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$RESPONSE_STATUS"')","reason":"AI request failed with status '"$RESPONSE_STATUS"'"}'
+          fallback=$(jq -n --arg msg "$err_msg" --arg status "$RESPONSE_STATUS" \
+            '{should_release:false,bump:"patch",warning:$msg,reason:$msg}')
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -414,7 +416,13 @@ jobs:
 
             if ! $parsed_ok; then
               echo "AI response not valid JSON. Defaulting to no release." >&2
-              echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"AI response was not valid JSON"}' > ai.json
+              err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
+              if [ -n "$err_hint" ]; then
+                reason_msg="AI response was not valid JSON: ${err_hint}"
+              else
+                reason_msg="AI response was not valid JSON"
+              fi
+              printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
             fi
           fi
 
