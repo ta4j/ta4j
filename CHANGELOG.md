@@ -1,6 +1,10 @@
 ## Unreleased
 
-- _No changes yet._
+- Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and
+  `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence
+- Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave
+  state and surface invalidations for swing-based strategies
+
 
 ## 0.21.0 (2025-11-29)
 
