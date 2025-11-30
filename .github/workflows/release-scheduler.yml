@@ -59,7 +59,13 @@ jobs:
 
           last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$default_branch" 2>/dev/null || true)
           if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --match '[0-9]*' "$default_branch" 2>/dev/null || true)
+          fi
+          if [ -z "$last" ]; then
             last=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$default_branch" 2>/dev/null || true)
+          fi
+          if [ -z "$last" ]; then
+            last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$default_branch" 2>/dev/null || true)
           fi
 
           if [ -z "$last" ]; then
