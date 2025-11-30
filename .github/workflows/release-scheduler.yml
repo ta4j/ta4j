@@ -124,8 +124,8 @@ jobs:
 
           # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
           sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate to first 3000 chars to stay within model token limits
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-3000)
+          # truncate to first 6000 chars to stay within model token limits
+          sanitized=$(printf '%s' "$sanitized" | cut -c1-6000)
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -167,7 +167,7 @@ jobs:
           ' CHANGELOG.md)
 
           # truncate to keep payload bounded and token friendly
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-3000)
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-6000)
 
           changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -274,7 +274,7 @@ jobs:
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
             --arg last_tag "$last_tag" \
-            --arg model "openai/gpt-4o" \
+            --arg model "openai/gpt-4.1-nano" \
             --arg temp "0" \
             '{
               model: $model,
