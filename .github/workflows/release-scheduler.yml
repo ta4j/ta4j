@@ -37,6 +37,7 @@ jobs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
+      reason: ${{ steps.parsed.outputs.reason }}
       dryRun: ${{ steps.run_meta.outputs.dryRun }}
     steps:
       # -----------------------
@@ -289,7 +290,7 @@ jobs:
                     "=== UNRELEASED CHANGELOG ===\n" + $changelog + "\n\n" +
                     "SemVer Rules:\n" + $semver_rules + "\n" +
                     "Return ONLY JSON:\n" +
-                    "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\" }"
+                    "{ \"should_release\": true|false, \"bump\": \"patch|minor|major\", \"reason\": \"1-2 sentences explaining why\" }"
                   )
                 }
               ]
@@ -352,7 +353,7 @@ jobs:
           echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS" >&2
           echo "response (truncated to 500 chars):"
           head -c 500 response.json || true
-          fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$RESPONSE_STATUS"')"}'
+          fallback='{"should_release":false,"bump":"patch","warning":"AI call failed (http '"$RESPONSE_STATUS"')","reason":"AI request failed with status '"$RESPONSE_STATUS"'"}'
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -397,7 +398,7 @@ jobs:
 
           if [ "$model_token_present" != "true" ]; then
             echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
-            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing"}' > ai.json
+            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
             parsed_ok=true
           else
             raw_content='${{ steps.ai.outputs.content }}'
@@ -413,21 +414,29 @@ jobs:
 
             if ! $parsed_ok; then
               echo "AI response not valid JSON. Defaulting to no release." >&2
-              echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON"}' > ai.json
+              echo '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"AI response was not valid JSON"}' > ai.json
             fi
           fi
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
           bump=$(jq -r '.bump // "patch"' ai.json)
           warning=$(jq -r '.warning // ""' ai.json)
+          reason=$(jq -r '.reason // ""' ai.json)
 
           echo "should_release=$should" >> $GITHUB_OUTPUT
           echo "bump=$bump" >> $GITHUB_OUTPUT
           echo "warning=$warning" >> $GITHUB_OUTPUT
+          echo "reason=$reason" >> $GITHUB_OUTPUT
 
       - name: Stop if AI says no release
         if: steps.parsed.outputs.should_release == 'false'
-        run: echo "No release recommended."
+        env:
+          REASON: ${{ steps.parsed.outputs.reason }}
+        run: |
+          echo "No release recommended."
+          if [ -n "${REASON:-}" ]; then
+            echo "Reason: ${REASON}"
+          fi
 
       # -----------------------
       # Version Computation
@@ -531,6 +540,7 @@ jobs:
           TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
+          REASON: ${{ steps.parsed.outputs.reason }}
           VERSION: ${{ steps.version.outputs.version }}
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
           POM_BASE: ${{ steps.pom_version.outputs.base }}
@@ -543,6 +553,7 @@ jobs:
           echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
+          echo "decision:reason=${REASON:-}"
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_default_branch_tag=${LAST_TAG:-}"
