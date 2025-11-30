@@ -1,8 +1,17 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
+  - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
+  - `CoinbaseBarSeriesDataSource`: Load historical crypto data from Coinbase's public API with automatic caching
+  - `CsvFileBarSeriesDataSource`: Load OHLCV data from CSV files with intelligent filename pattern matching (e.g., `AAPL-PT1D-20230102_20231231.csv`)
+  - `JsonFileBarSeriesDataSource`: Load Coinbase/Binance-style JSON bar data with flexible date filtering
+  - `BitStampCsvTradesFileBarSeriesDataSource`: Aggregate Bitstamp trade-level CSV data into bars on-the-fly
+  
+  All data sources support the same domain-driven API: `loadSeries(ticker, interval, start, end)`. No more remembering whether your CSV uses `_bars_from_` or `-PT1D-` in the filename, or which API endpoint returns what format. The interface handles the implementation details so you can focus on building strategies. File-based sources automatically search for matching files, while API-based sources fetch and cache data transparently. See the new `CoinbaseBacktest` and `YahooFinanceBacktest` examples for complete workflows.
 
-## 0.21.0 (2025-11-29)
+
+## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
 
 ### Changed
 - **Unified return representation system**: Say goodbye to inconsistent return formats across your analysis! Return-based criteria now use a unified `ReturnRepresentation` system that lets you choose how returns are displayed—whether you prefer multiplicative (1.12 for +12%), decimal (0.12), percentage (12.0), or logarithmic formats. Set it once globally via `ReturnRepresentationPolicy` or customize per-criterion. No more mental math converting between formats—Ta4j handles it all automatically. Legacy `addBase` constructors are deprecated in favor of the more expressive `ReturnRepresentation` enum.
@@ -24,14 +33,6 @@
 - **`DifferencePercentageIndicator` deprecated**: `DifferencePercentageIndicator` has been deprecated in favor of `PercentageChangeIndicator`, which now provides all the same functionality plus additional features. **Action required**: Migrate to `PercentageChangeIndicator` using the migration examples in the deprecation javadoc.
 
 ### Added
-- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
-  - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
-  - `CoinbaseBarSeriesDataSource`: Load historical crypto data from Coinbase's public API with automatic caching
-  - `CsvFileBarSeriesDataSource`: Load OHLCV data from CSV files with intelligent filename pattern matching (e.g., `AAPL-PT1D-20230102_20231231.csv`)
-  - `JsonFileBarSeriesDataSource`: Load Coinbase/Binance-style JSON bar data with flexible date filtering
-  - `BitStampCsvTradesFileBarSeriesDataSource`: Aggregate Bitstamp trade-level CSV data into bars on-the-fly
-  
-  All data sources support the same domain-driven API: `loadSeries(ticker, interval, start, end)`. No more remembering whether your CSV uses `_bars_from_` or `-PT1D-` in the filename, or which API endpoint returns what format. The interface handles the implementation details so you can focus on building strategies. File-based sources automatically search for matching files, while API-based sources fetch and cache data transparently. See the new `CoinbaseBacktest` and `YahooFinanceBacktest` examples for complete workflows.
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
 - Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window
 - Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
