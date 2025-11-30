@@ -3,7 +3,7 @@
 This document explains how the Ta4j release workflow works end-to-end, including
 developer responsibilities, changelog practices, how snapshots are published,
 and how new stable releases are produced and published to Maven Central.
-Automated release gating and scheduling lives in `.github/workflows/release-scheduler.yml`, which evaluates changes, calls GitHub Models, and dispatches the main release workflow when criteria are met (or when manually requested with `dryRun`).
+Automated release gating and scheduling lives in `.github/workflows/release-scheduler.yml`, which evaluates changes, calls GitHub Models (with a short explanation of the decision), and dispatches the main release workflow when criteria are met (or when manually requested with `dryRun`).
 
 The process is intentionally simple: GitHub Actions performs all version
 management, deployment, and tagging. Contributors only maintain documentation
@@ -47,19 +47,20 @@ Ta4j uses five coordinated components:
 
 2. **Release Scheduler (`release-scheduler.yml`)**  
    - Triggered on a 14-day cron or manual dispatch (`dryRun` supported).  
-   - Collects diff + Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump.  
+   - Collects diff + Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump with a 1–2 sentence rationale.  
    - Requires `GH_MODELS_TOKEN` (PAT authorized for GitHub Models). If missing, it short-circuits.  
-   - Computes the next tag (no leading `v`).  
-   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), and `dryRun`.  
-   - Emits a decision summary (gate, token, AI verdict, bump, version, dryRun).
+   - Computes the next tag (no leading `v`), basing the bump on the higher of the current POM base or the last default-branch tag to avoid double-bumping snapshots.  
+   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), the AI reasoning, and `dryRun`.  
+   - Emits a decision summary (gate, token, AI verdict, bump, version, reason, dryRun).
    - For major releases, requires manual approval via the `major-release` environment.
 
 3. **GitHub Actions Release Workflow (`release.yml`)**  
-   - Sets the release version in the POM.  
-   - Commits the version.  
+   - Sets the release version in the POM using the Maven Versions Plugin.  
+   - Commits the version and release notes.  
    - Creates a release tag (skipped on `dryRun=true`).  
-   - Builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
-   - Bumps the next snapshot version and commits/pushes it (skipped on `dryRun=true`).  
+   - Verifies the branch is still fast-forwardable, then builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
+   - Bumps to the next snapshot with the Maven Versions Plugin and commits it (skipped on `dryRun=true`).  
+   - Pushes only the tag (after a successful deploy) and opens a pull request (`release/<version>` → `master`) containing both the release commit and the next-snapshot bump. No direct push to `master` is performed.  
    - **Inputs**: `releaseVersion` (e.g., `0.20.0` or `0.20`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
    - **Version formats supported**: `major.minor` (e.g., `0.20`) or `major.minor.patch` (e.g., `0.20.0`)
 
@@ -67,7 +68,7 @@ Ta4j uses five coordinated components:
    - Automatically triggered when a release tag is pushed.
    - Reads `release/<version>.md` for release notes.
    - Builds all module artifacts (JARs, sources, javadoc).
-   - Creates a GitHub Release with artifacts attached.
+   - Creates a GitHub Release with artifacts attached, preserving the markdown formatting of `release/<version>.md` via `body_path`.
    - **Note**: This runs automatically after `release.yml` creates a tag.
 
 5. **Snapshot Workflow (`snapshot.yml`)**  
@@ -89,7 +90,6 @@ The following secrets are **mandatory** for the release workflows to function:
 | `MAVEN_CENTRAL_TOKEN_PASS` | `release.yml`, `snapshot.yml` | Maven Central authentication password (Sonatype token password) |
 | `GPG_PRIVATE_KEY` | `release.yml`, `snapshot.yml` | GPG private key (ASCII-armored) for signing artifacts before publishing to Maven Central |
 | `GPG_PASSPHRASE` | `release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
-| `GH_TA4J_REPO_TOKEN` | `release.yml` | GitHub Personal Access Token (PAT) with `repo` scope for pushing tags and commits during release |
 | `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token (PAT authorized for GitHub Models) for AI-powered semantic versioning decisions |
 
 ### Optional Repository Secrets
@@ -120,8 +120,7 @@ The `release.yml` workflow includes a verification step that checks for all requ
 1. **Maven Central Credentials**: Create a token in [Sonatype Central](https://central.sonatype.com/) with appropriate permissions for publishing to the `org.ta4j` group.
 2. **GPG Key**: Generate a GPG key pair and export the private key (ASCII-armored) for signing artifacts. The public key must be published to a keyserver.
 3. **GitHub Tokens**: Create Personal Access Tokens (PATs) with appropriate scopes:
-   - `GH_TA4J_REPO_TOKEN`: Requires `repo` scope for pushing commits and tags
-   - `GH_MODELS_TOKEN`: Requires authorization for GitHub Models API access
+   - `GH_MODELS_TOKEN`: Requires authorization for GitHub Models API access (used by the scheduler)
 
 ---
 
@@ -222,13 +221,14 @@ The `release.yml` workflow executes these steps in order:
 1. **Verification**: Checks for required secrets (fails if missing, warns in dry-run)
 2. **Version Detection**: Determines release and next snapshot versions
 3. **Release Notes**: Runs `prepare-release.sh` to ensure release notes are up to date
-4. **Version Bump**: Updates POM to release version (skipped in dry-run)
-5. **Commit & Tag**: Commits version change and creates release tag (skipped in dry-run)
+4. **Version Bump**: Updates POM to release version using the Maven Versions Plugin (skipped in dry-run)
+5. **Commit & Tag**: Commits version change (with release notes) and creates release tag (skipped in dry-run)
 6. **Safety Check**: Verifies branch hasn't advanced (prevents race conditions)
 7. **Build & Deploy**: Builds, signs, and deploys to Maven Central (skipped in dry-run)
-8. **Next Snapshot**: Bumps to next snapshot version and commits/pushes (skipped in dry-run)
+8. **Next Snapshot**: Bumps to next snapshot version with the Maven Versions Plugin and commits (skipped in dry-run)
+9. **Publish & PR**: Pushes the release tag only (after successful deploy) and opens a pull request `release/<version> -> master` containing the release commit and the next-snapshot bump (skipped in dry-run)
 
-**After the tag is created**, the `github-release.yml` workflow automatically:
+**After the tag is created and pushed**, the `github-release.yml` workflow automatically:
 - Creates a GitHub Release using `release/<version>.md` as the description
 - Attaches all built artifacts (JARs, sources, javadoc) to the release
 
@@ -299,6 +299,7 @@ git checkout master
 git pull
 # Check pom.xml - version should be the next snapshot (e.g., 0.21.0-SNAPSHOT)
 ```
+Also verify the release PR (`release/<version>`) is open and contains both the release commit and the next-snapshot bump; merge when ready.
 
 ---
 

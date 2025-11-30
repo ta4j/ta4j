@@ -98,17 +98,6 @@ jobs:
             echo "present=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check for GH_TA4J_REPO_TOKEN
-        id: check_gh_token
-        env:
-          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
-        run: |
-          if [ -z "${GH_TA4J_REPO_TOKEN:-}" ]; then
-            echo "present=false" >> $GITHUB_OUTPUT
-          else
-            echo "present=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Collect missing secrets
         id: collect_missing
         env:
@@ -117,7 +106,6 @@ jobs:
           MAVEN_PASS: ${{ steps.check_maven_pass.outputs.present }}
           GPG_KEY: ${{ steps.check_gpg_key.outputs.present }}
           GPG_PASS: ${{ steps.check_gpg_passphrase.outputs.present }}
-          GH_TOKEN: ${{ steps.check_gh_token.outputs.present }}
         run: |
           missing=()
           if [ "${MAVEN_USER:-false}" != "true" ]; then
@@ -131,9 +119,6 @@ jobs:
           fi
           if [ "${GPG_PASS:-false}" != "true" ]; then
             missing+=("GPG_PASSPHRASE")
-          fi
-          if [ "${GH_TOKEN:-false}" != "true" ]; then
-            missing+=("GH_TA4J_REPO_TOKEN")
           fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
@@ -168,7 +153,6 @@ jobs:
           echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
           echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
           echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
-          echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub Personal Access Token with repo permissions"
           echo ""
           echo "::error::Please configure these secrets in:"
           echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
@@ -526,6 +510,14 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B -Pproduction-release deploy
 
+      - name: Push release tag
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+        run: |
+          # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
+          git push origin "refs/tags/${RELEASE_VERSION}"
+
       # -----------------------
       # Apply Next Snapshot Version
       # -----------------------
@@ -546,13 +538,21 @@ jobs:
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
-      - name: Push Changes Using PAT
+      - name: Create release pull request
         if: steps.dry_run.outputs.dryRun != 'true'
-        env:
-          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
-        run: |
-          git remote set-url origin "https://x-access-token:${GH_TA4J_REPO_TOKEN}@github.com/${{ github.repository }}"
-          git push origin HEAD --follow-tags
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: release/${{ steps.versions.outputs.release }}
+          base: master
+          title: "Release ${{ steps.versions.outputs.release }}"
+          body: |
+            Automated release PR for ${{ steps.versions.outputs.release }}.
+
+            Contains:
+            - Set version to ${{ steps.versions.outputs.release }}
+            - Generated release notes: release/${{ steps.versions.outputs.release }}.md
+            - Bump to next snapshot: ${{ steps.versions.outputs.next }}
+          labels: release
 
       # -----------------------
       # Summary
