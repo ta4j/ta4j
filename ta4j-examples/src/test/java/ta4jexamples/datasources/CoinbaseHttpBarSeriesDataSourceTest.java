@@ -783,7 +783,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
         cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_HOUR-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT1H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -806,7 +806,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
 
         // Clean up
         cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-ONE_HOUR-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT1H-");
     }
 
     @Test
@@ -977,7 +977,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-FIVE_MINUTE-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT5M-");
 
         // Test that different intervals truncate timestamps correctly
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -1008,7 +1008,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-FIVE_MINUTE-");
+        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT5M-");
     }
 
     @Test

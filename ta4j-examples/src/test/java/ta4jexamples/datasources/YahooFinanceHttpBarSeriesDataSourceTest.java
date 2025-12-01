@@ -803,7 +803,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
         cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT1H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -828,7 +828,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
         // Clean up
         cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT1H-");
     }
 
     @Test
@@ -1006,7 +1006,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-5m-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT5M-");
 
         // Test that different intervals truncate timestamps correctly
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -1037,7 +1037,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-5m-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT5M-");
     }
 
     @Test
