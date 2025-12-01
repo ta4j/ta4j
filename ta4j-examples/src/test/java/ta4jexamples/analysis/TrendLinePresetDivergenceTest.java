@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 
-import ta4jexamples.loaders.CsvBarsLoader;
+import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -36,7 +36,7 @@ class TrendLinePresetDivergenceTest {
 
     @Test
     void supportPresetsProduceDistinctSegmentsForAppleSeries() {
-        final BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+        final BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
         assertFalse(series.isEmpty(), "Example bar series should not be empty");
 
         final int lookback = Math.min(series.getBarCount(), 200);

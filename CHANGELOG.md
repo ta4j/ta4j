@@ -1,7 +1,8 @@
 ## Unreleased
 
-### Breaking
 
+### Changed
+- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 
 ### Added
 - **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.
@@ -11,8 +12,17 @@
     - **Unified swing infrastructure**: All swing indicators share a common foundation (`AbstractRecentSwingIndicator` base class and `RecentSwingIndicator` interface) that provides consistent caching, automatic purging of stale swing points, and a unified API for accessing swing point indexes and values. Makes it straightforward to build custom swing detection algorithms or integrate with trendline tools—implement the interface and you get caching and lifecycle management automatically.
     - **Swing point visualization**: `SwingPointMarkerIndicator` highlights confirmed swing points on charts without drawing connecting lines, useful for visualizing where pivots occur. Works with any swing detection algorithm (fractal-based, ZigZag, or custom implementations).
 
+- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
+  - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
+  - `CoinbaseBarSeriesDataSource`: Load historical crypto data from Coinbase's public API with automatic caching
+  - `CsvFileBarSeriesDataSource`: Load OHLCV data from CSV files with intelligent filename pattern matching (e.g., `AAPL-PT1D-20230102_20231231.csv`)
+  - `JsonFileBarSeriesDataSource`: Load Coinbase/Binance-style JSON bar data with flexible date filtering
+  - `BitStampCsvTradesFileBarSeriesDataSource`: Aggregate Bitstamp trade-level CSV data into bars on-the-fly
+  
+  All data sources support the same domain-driven API: `loadSeries(ticker, interval, start, end)`. No more remembering whether your CSV uses `_bars_from_` or `-PT1D-` in the filename, or which API endpoint returns what format. The interface handles the implementation details so you can focus on building strategies. File-based sources automatically search for matching files, while API-based sources fetch and cache data transparently. See the new `CoinbaseBacktest` and `YahooFinanceBacktest` examples for complete workflows.
 
-## 0.21.0 (2025-11-29) - Skipped 0.20.0 due to a double version incrementing bug in the release scheduler workflow
+
+## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
 
 ### Changed
 - **Unified return representation system**: Say goodbye to inconsistent return formats across your analysis! Return-based criteria now use a unified `ReturnRepresentation` system that lets you choose how returns are displayed—whether you prefer multiplicative (1.12 for +12%), decimal (0.12), percentage (12.0), or logarithmic formats. Set it once globally via `ReturnRepresentationPolicy` or customize per-criterion. No more mental math converting between formats—Ta4j handles it all automatically. Legacy `addBase` constructors are deprecated in favor of the more expressive `ReturnRepresentation` enum.
@@ -27,6 +37,7 @@
   All ratio criteria default to `ReturnRepresentation.DECIMAL` (the conventional format for ratios), but you can override per-criterion or globally. Perfect for dashboards, reports, or when you need to match external data formats. See each criterion's javadoc for detailed examples.
 
 - **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.
+
 
 ### Added
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage

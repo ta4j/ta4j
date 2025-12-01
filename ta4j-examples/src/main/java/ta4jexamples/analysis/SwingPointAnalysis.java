@@ -36,9 +36,9 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
+import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvBarsLoader;
 
 /**
  * This class demonstrates swing point identification and visualization using
@@ -60,7 +60,7 @@ public class SwingPointAnalysis {
      */
     public static void main(String[] args) {
         // Load bar series from CSV file
-        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+        BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
 
         Objects.requireNonNull(series, "Bar series was null");
         if (series.isEmpty()) {

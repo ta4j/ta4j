@@ -45,9 +45,9 @@ import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.num.Num;
 
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
-import ta4jexamples.loaders.CsvBarsLoader;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
  * Validates that the default capacity limits for trendline indicators are
@@ -141,10 +141,11 @@ class TrendLineDefaultCapsTest {
         // Load diverse market datasets covering different asset types and timeframes
         // Load datasets safely, skipping any that fail to load
         final List<Dataset> datasets = new ArrayList<>();
-        addDatasetIfAvailable(datasets, "appleinc_bars_from_20130101_usd.csv",
-                () -> CsvBarsLoader.loadSeriesFromFile("appleinc_bars_from_20130101_usd.csv"));
-        addDatasetIfAvailable(datasets, "bitstamp_trades_from_20131125_usd.csv",
-                () -> CsvTradesLoader.loadBitstampSeries());
+        addDatasetIfAvailable(datasets, "AAPL-PT1D-20130102_20131231.csv",
+                () -> CsvFileBarSeriesDataSource.loadSeriesFromFile("AAPL-PT1D-20130102_20131231.csv"));
+        addDatasetIfAvailable(datasets, "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv",
+                () -> BitStampCsvTradesFileBarSeriesDataSource
+                        .loadBitstampSeries("Bitstamp-BTC-USD-PT5M-20131125_20131201.csv"));
         addDatasetIfAvailable(datasets, "Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json",
                 () -> loadJsonSeries("Binance-ETH-USD-PT5M-2023-3-13_2023-3-15.json"));
         addDatasetIfAvailable(datasets, "Coinbase-ETH-USD-PT1D-2024-11-06_2025-10-21.json",
@@ -358,6 +359,6 @@ class TrendLineDefaultCapsTest {
      */
     private BarSeries loadJsonSeries(String resourceName) {
         final InputStream stream = getClass().getClassLoader().getResourceAsStream(resourceName);
-        return AdaptiveJsonBarsSerializer.loadSeries(stream);
+        return JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
     }
 }

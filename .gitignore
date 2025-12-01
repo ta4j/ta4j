@@ -40,7 +40,11 @@ out/
 *.rar
 
 # temp files #
+temp/
 ta4j-examples/indicators.csv
+
+# local TODO notes (detailed architecture docs live in ta4j-wiki/architecture/)
+todo/
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/

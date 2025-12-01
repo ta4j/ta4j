@@ -34,7 +34,7 @@ import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvBarsLoader;
+import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 /**
  * This class demonstrates the use of support and resistance trendline
@@ -56,7 +56,7 @@ public class TrendLineAnalysis {
      */
     public static void main(String[] args) {
         // Load bar series from CSV file
-        BarSeries series = CsvBarsLoader.loadSeriesFromFile();
+        BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
 
         Objects.requireNonNull(series, "Bar series was null");
         if (series.isEmpty()) {

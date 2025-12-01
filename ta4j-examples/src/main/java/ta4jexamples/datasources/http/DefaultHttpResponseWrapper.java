@@ -21,22 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples;
+package ta4jexamples.datasources.http;
 
-import org.junit.Test;
-import ta4jexamples.charting.display.SwingChartDisplayer;
+import java.net.http.HttpResponse;
 
-public class QuickstartTest {
+/**
+ * Default implementation of {@link HttpResponseWrapper} that delegates to a
+ * {@link HttpResponse}.
+ *
+ * @param <T> the response body type
+ */
+public class DefaultHttpResponseWrapper<T> implements HttpResponseWrapper<T> {
 
-    @Test
-    public void test() {
-        // Disable chart display during tests to prevent windows from popping up
-        // (Quickstart doesn't display charts, but set it anyway for consistency)
-        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
-        try {
-            Quickstart.main(null);
-        } finally {
-            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+    private final HttpResponse<T> httpResponse;
+
+    /**
+     * Creates a new wrapper around the specified HttpResponse.
+     *
+     * @param httpResponse the HttpResponse to wrap
+     */
+    public DefaultHttpResponseWrapper(HttpResponse<T> httpResponse) {
+        if (httpResponse == null) {
+            throw new IllegalArgumentException("HttpResponse cannot be null");
         }
+        this.httpResponse = httpResponse;
+    }
+
+    @Override
+    public int statusCode() {
+        return httpResponse.statusCode();
+    }
+
+    @Override
+    public T body() {
+        return httpResponse.body();
     }
 }

@@ -4,19 +4,19 @@
 
 ![Ta4j main chart](https://raw.githubusercontent.com/ta4j/ta4j-wiki/master/img/ta4j_main_chart.png)
 
-Build, test, and deploy trading bots in Java. With more than 200 indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
+Build, test, and deploy trading bots in Java. With more than 190 (and counting) indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
 
 ---
 
 ## Table of Contents
 
-- [Features at a glance](#features-at-a-glance)
-- [What can you build?](#what-can-you-build)
-- [Why Java developers choose Ta4j](#why-java-developers-choose-ta4j)
+- [Why Ta4j?](#why-ta4j)
 - [Install in seconds](#install-in-seconds)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
-- [Evaluate performance with metrics](#evaluate-performance-with-metrics)
+- [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
+- [Features at a glance](#features-at-a-glance)
+- [Evaluate performance with metrics](#evaluate-performance-with-metrics)
 - [From backtest to live trading](#from-backtest-to-live-trading)
 - [Real-world examples](#real-world-examples)
 - [Performance](#performance)
@@ -26,20 +26,11 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 
 ---
 
-## Features at a glance
+## Why Ta4j?
 
-- **200+ technical indicators** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more
-- **Composable strategy API** - Build complex trading rules using fluent Java patterns
-- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
-- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
-- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
-- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
-- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
-- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
+**Build, test, and deploy trading bots in Java**—without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
 
----
-
-## What can you build?
+### What can you build?
 
 - **Backtest trading strategies**: Test "what if" scenarios on historical data before risking real money
 - **Paper trading bots**: Run strategies live against market data without placing real orders
@@ -47,13 +38,11 @@ Build, test, and deploy trading bots in Java. With more than 200 indicators, rea
 - **Automated trading systems**: Deploy production bots that execute trades based on your strategies
 - **Market analysis dashboards**: Build visualizations and reports for your trading research
 
----
-
-## Why Java developers choose Ta4j
+### Why Java developers choose Ta4j
 
 - **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
-- **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 130+ more ready to plug together.
+- **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns—no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **Production-ready**: Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
@@ -82,7 +71,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.21.0</version>
+  <version>0.22.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -102,15 +91,51 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.21.0</version>
+  <version>0.22.0-SNAPSHOT</version>
 </dependency>
 ```
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
+## Try it now
+
+**Option 1: Run the Quickstart example** (2-3 minutes)
+
+```bash
+# Clone the repository
+git clone https://github.com/ta4j/ta4j.git
+cd ta4j
+
+# Build the project first
+mvn clean install -DskipTests
+
+# Run the Quickstart example (Quickstart is configured as the default)
+mvn -pl ta4j-examples exec:java
+```
+
+**Alternative:** To run a different example class:
+```bash
+# On Linux/Mac/Git Bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+
+# On Windows CMD (use quotes)
+mvn -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
+```
+
+This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart—all in one go!
+
+**Option 2: Copy the code into your project** (requires `ta4j-core` and `ta4j-examples` dependencies)
+
+See the [Quick start: Your first strategy](#quick-start-your-first-strategy) section below for a complete, runnable example you can paste into your IDE.
+
 ## Quick start: Your first strategy
 
 Load price data, plug in indicators, and describe when to enter/exit. The API reads like the trading notes you already keep.
+
+**💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
+```bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+```
 
 **Key concepts:**
 - **Indicators**: Calculate values from price data (e.g., moving averages, RSI, MACD)
@@ -118,16 +143,18 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 - **Strategies**: Combine entry and exit rules into a complete trading system
 - **BarSeries**: Your price data (OHLCV bars) that everything operates on
 
+**Note:** The example below uses `BitStampCsvTradesFileBarSeriesDataSource` from `ta4j-examples` for convenience. See the [Sourcing market data](#sourcing-market-data) section below for more options.
+
 ```java
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.*;
 import org.ta4j.core.backtest.BarSeriesManager;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;  // Requires ta4j-examples dependency
 
 // Load historical price data (or use your own data source)
-BarSeries series = CsvTradesLoader.loadBitstampSeries();
+BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
 // Create indicators: calculate moving averages from close prices
 ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -152,6 +179,67 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+## Sourcing market data
+
+**New to trading and not sure where to get historical price data?** You're not alone! Ta4j makes it easy to get started with real market data.
+
+### Quick solution: Yahoo Finance (no API key required)
+
+The easiest way to get started is using the built-in `YahooFinanceBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API—no registration or API key needed.
+
+```java
+import ta4jexamples.datasources.YahooFinanceBarSeriesDataSource;
+
+// Enable response caching to avoid hitting API limits during development
+YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true);
+
+// Load data by desired bar count (e.g., 2 years of daily candles)
+BarSeries series = dataSource.loadSeriesInstance("AAPL", 
+    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
+
+// Or load by date range
+BarSeries series = dataSource.loadSeriesInstance("AAPL",
+    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1,
+    Instant.parse("2023-01-01T00:00:00Z"),
+    Instant.parse("2023-12-31T23:59:59Z"));
+```
+
+**Supported assets:**
+- **Stocks**: `"AAPL"`, `"MSFT"`, `"GOOGL"`, `"TSLA"`, etc.
+- **ETFs**: `"SPY"`, `"QQQ"`, `"VTI"`, etc.
+- **Cryptocurrencies**: `"BTC-USD"`, `"ETH-USD"`, `"SOL-USD"`, etc.
+
+**Supported intervals:**
+- Intraday: `MINUTE_1`, `MINUTE_5`, `MINUTE_15`, `MINUTE_30`, `HOUR_1`, `HOUR_4`
+- Daily/weekly/monthly: `DAY_1`, `WEEK_1`, `MONTH_1`
+
+**💡 Tip:** Enable caching (`new YahooFinanceBarSeriesDataSource(true)`) to cache API responses locally. This speeds up development and reduces API calls. Cached data is automatically reused for the same requests.
+
+**See it in action:** Run the complete example with:
+```bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
+```
+
+This example demonstrates loading data from Yahoo Finance, building an advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), running a backtest, and visualizing results.
+
+### Other data sources
+
+Ta4j works with any OHLCV (Open, High, Low, Close, Volume) data. The `ta4j-examples` module includes examples for several data sources:
+
+- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch live data from Yahoo Finance API (stocks, ETFs, crypto)
+- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV data from CSV files
+- **[BitStampCsvTradesFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)** - Load trade data from Bitstamp CSV and aggregate into bars
+- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Load Coinbase/Binance OHLCV data from json files
+
+**Create your own data source:** Simply implement a method that returns a `BarSeries`. You can load data from:
+- CSV files
+- REST APIs (your broker, exchange, or data provider)
+- Databases (SQL, NoSQL)
+- WebSocket streams (for live data)
+- Any other source you prefer
+
+See the [Data Loading Examples](#real-world-examples) section for more details.
 
 ## Evaluate performance with metrics
 
@@ -182,7 +270,9 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
-Want to backtest hundreds or even thousands of strategies to find the top performers?
+### Backtest hundreds or even thousands of strategies
+
+Want to find the top performers? Generate strategies with varying parameters and compare them:
 
 ```java
 // Generate strategies with varying parameters
@@ -204,18 +294,21 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory(); // logs progress with memory stats
 
-// Get top 10 strategies sorted by net profit, then by expectancy (for ties)
-// You can sort by any AnalysisCriterion - mix and match to find strategies that meet your goals
+// Get top 10 strategies sorted by net profit, then by RoMaD (for ties)
+// You can sort by any combination of AnalysisCriterion - mix and match to find strategies that meet your goals
+AnalysisCriterion returnOverMaxDradownCriterion = new ReturnOverMaxDrawdownCriterion();
+AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+
 List<TradingStatement> topStrategies = result.getTopStrategies(10,
-    new NetProfitCriterion(),    // primary sort: highest net profit first
-    new ExpectancyCriterion());  // secondary sort: highest expectancy for ties
+    netProfitCriterion,    // primary sort: highest net profit first
+    returnOverMaxDradownCriterion);  // secondary sort: highest RoMaD for ties
 
 // Review the winners
 topStrategies.forEach(statement -> {
-    System.out.printf("Strategy: %s, Net Profit: %.2f, Expectancy: %.2f%n",
+    System.out.printf("Strategy: %s, Net Profit: %.2f, Return over Max Drawdown: %.2f%n",
         statement.getStrategy().getName(),
-        statement.getCriterionScore(new NetProfitCriterion()).orElse(series.numOf(0)),
-        statement.getCriterionScore(new ExpectancyCriterion()).orElse(series.numOf(0)));
+        statement.getCriterionScore(netProfitCriterion).orElse(series.numOf(0)),
+        statement.getCriterionScore(returnOverMaxDradownCriterion).orElse(series.numOf(0)));
 });
 ```
 
@@ -230,15 +323,15 @@ Basic strategy visualization with indicator overlays:
 <!-- START_SNIPPET: ema-crossover -->
 ```java
 // Generate simplified chart - just price, indicators, and signals (no subchart)
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("EMA Crossover Strategy")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
-                .withIndicatorOverlay(slowEma)
-                .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
-                .toChart();
-        chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("EMA Crossover Strategy")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
+        .withIndicatorOverlay(slowEma)
+        .withTradingRecordOverlay(record) // Mark entry/exit points with arrows
+        .toChart();
+chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/charts"); // Save as image
 ```
 <!-- END_SNIPPET: ema-crossover -->
 
@@ -250,23 +343,23 @@ The chart above shows candlestick price data with EMA lines overlaid and buy/sel
 <!-- START_SNIPPET: rsi-strategy -->
 ```java
 // Create indicators
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
-        // above 70 (overbought)
-        Rule entry = new CrossedDownIndicatorRule(rsi, 30);
-        Rule exit = new CrossedUpIndicatorRule(rsi, 70);
-        Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// RSI strategy: buy when RSI crosses below 30 (oversold), sell when RSI crosses
+// above 70 (overbought)
+Rule entry = new CrossedDownIndicatorRule(rsi, 30);
+Rule exit = new CrossedUpIndicatorRule(rsi, 70);
+Strategy strategy = new BaseStrategy("RSI Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("RSI Strategy with Subchart")
-                .withSeries(series) // Price bars (candlesticks)
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(rsi) // RSI indicator in separate subchart panel
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("RSI Strategy with Subchart")
+        .withSeries(series) // Price bars (candlesticks)
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(rsi) // RSI indicator in separate subchart panel
+        .toChart();
 ```
 <!-- END_SNIPPET: rsi-strategy -->
 
@@ -276,25 +369,25 @@ The chart above shows candlestick price data with EMA lines overlaid and buy/sel
 <!-- START_SNIPPET: strategy-performance -->
 ```java
 // Create indicators: multiple moving averages
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator sma20 = new SMAIndicator(close, 20);
-        EMAIndicator ema12 = new EMAIndicator(close, 12);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma20 = new SMAIndicator(close, 20);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
 
-        // Strategy: buy when EMA crosses above SMA, sell when EMA crosses below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma20);
-        Rule exit = new CrossedDownIndicatorRule(ema12, sma20);
-        Strategy strategy = new BaseStrategy("EMA/SMA Crossover", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// Strategy: buy when EMA crosses above SMA, sell when EMA crosses below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma20);
+Rule exit = new CrossedDownIndicatorRule(ema12, sma20);
+Strategy strategy = new BaseStrategy("EMA/SMA Crossover", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("Strategy Performance Analysis")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(sma20) // Overlay SMA on price chart
-                .withIndicatorOverlay(ema12) // Overlay EMA on price chart
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(new MaximumDrawdownCriterion(), record) // Performance metric in subchart
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Strategy Performance Analysis")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(sma20) // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12) // Overlay EMA on price chart
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(new MaximumDrawdownCriterion(), record) // Performance metric in subchart
+        .toChart();
 ```
 <!-- END_SNIPPET: strategy-performance -->
 
@@ -306,30 +399,30 @@ This chart shows price action with indicator overlays, trading signals, and a pe
 <!-- START_SNIPPET: advanced-strategy -->
 ```java
 // Create indicators
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator sma50 = new SMAIndicator(close, 50);
-        EMAIndicator ema12 = new EMAIndicator(close, 12);
-        MACDIndicator macd = new MACDIndicator(close, 12, 26);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+SMAIndicator sma50 = new SMAIndicator(close, 50);
+EMAIndicator ema12 = new EMAIndicator(close, 12);
+MACDIndicator macd = new MACDIndicator(close, 12, 26);
+RSIIndicator rsi = new RSIIndicator(close, 14);
 
-        // Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
-        // below SMA
-        Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
-        Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
-        Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
-        TradingRecord record = new BarSeriesManager(series).run(strategy);
+// Strategy: buy when EMA crosses above SMA and RSI > 50, sell when EMA crosses
+// below SMA
+Rule entry = new CrossedUpIndicatorRule(ema12, sma50).and(new OverIndicatorRule(rsi, 50));
+Rule exit = new CrossedDownIndicatorRule(ema12, sma50);
+Strategy strategy = new BaseStrategy("Advanced Multi-Indicator Strategy", entry, exit);
+TradingRecord record = new BarSeriesManager(series).run(strategy);
 
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        JFreeChart chart = chartWorkflow.builder()
-                .withTitle("Advanced Multi-Indicator Strategy")
-                .withSeries(series) // Price bars (candlesticks)
-                .withIndicatorOverlay(sma50) // Overlay SMA on price chart
-                .withIndicatorOverlay(ema12) // Overlay EMA on price chart
-                .withTradingRecordOverlay(record) // Mark entry/exit points
-                .withSubChart(macd) // MACD indicator in subchart
-                .withSubChart(rsi) // RSI indicator in subchart
-                .withSubChart(new NetProfitLossCriterion(), record) // Net profit/loss performance metric
-                .toChart();
+ChartWorkflow chartWorkflow = new ChartWorkflow();
+JFreeChart chart = chartWorkflow.builder()
+        .withTitle("Advanced Multi-Indicator Strategy")
+        .withSeries(series) // Price bars (candlesticks)
+        .withIndicatorOverlay(sma50) // Overlay SMA on price chart
+        .withIndicatorOverlay(ema12) // Overlay EMA on price chart
+        .withTradingRecordOverlay(record) // Mark entry/exit points
+        .withSubChart(macd) // MACD indicator in subchart
+        .withSubChart(rsi) // RSI indicator in subchart
+        .withSubChart(new NetProfitLossCriterion(), record) // Net profit/loss performance metric
+        .toChart();
 ```
 <!-- END_SNIPPET: advanced-strategy -->
 
@@ -346,40 +439,40 @@ Serialize indicators, rules, and strategies to JSON for persistence, sharing, or
 <!-- START_SNIPPET: serialize-indicator -->
 ```java
 // Serialize an indicator (RSI) to JSON
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        RSIIndicator rsi = new RSIIndicator(close, 14);
-        String rsiJson = rsi.toJson();
-        LOG.info("Output: {}", rsiJson);
-        // Output:
-        // {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+String rsiJson = rsi.toJson();
+LOG.info("Output: {}", rsiJson);
+// Output:
+// {"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}
 ```
 <!-- END_SNIPPET: serialize-indicator -->
 
 <!-- START_SNIPPET: serialize-rule -->
 ```java
 // Serialize a rule (AndRule) to JSON
-        Rule rule1 = new OverIndicatorRule(rsi, 50);
-        Rule rule2 = new UnderIndicatorRule(rsi, 80);
-        Rule andRule = new AndRule(rule1, rule2);
-        String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
-        LOG.info("Output: {}", ruleJson);
-        // Output:
-        // {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
+Rule rule1 = new OverIndicatorRule(rsi, 50);
+Rule rule2 = new UnderIndicatorRule(rsi, 80);
+Rule andRule = new AndRule(rule1, rule2);
+String ruleJson = ComponentSerialization.toJson(RuleSerialization.describe(andRule));
+LOG.info("Output: {}", ruleJson);
+// Output:
+// {"type":"AndRule","label":"AndRule","components":[{"type":"OverIndicatorRule","label":"OverIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":50.0}},{"type":"UnderIndicatorRule","label":"UnderIndicatorRule","components":[{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}],"parameters":{"threshold":80.0}}]}
 ```
 <!-- END_SNIPPET: serialize-rule -->
 
 <!-- START_SNIPPET: serialize-strategy -->
 ```java
 // Serialize a strategy (EMA Crossover) to JSON
-        EMAIndicator fastEma = new EMAIndicator(close, 12);
-        EMAIndicator slowEma = new EMAIndicator(close, 26);
-        Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
-        Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
-        Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
-        String strategyJson = strategy.toJson();
-        LOG.info("Output: {}", strategyJson);
-        // Output: {"type":"BaseStrategy","label":"EMA
-        // Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
+EMAIndicator fastEma = new EMAIndicator(close, 12);
+EMAIndicator slowEma = new EMAIndicator(close, 26);
+Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
+Rule exit = new CrossedDownIndicatorRule(fastEma, slowEma);
+Strategy strategy = new BaseStrategy("EMA Crossover", entry, exit);
+String strategyJson = strategy.toJson();
+LOG.info("Output: {}", strategyJson);
+// Output: {"type":"BaseStrategy","label":"EMA
+// Crossover","parameters":{"unstableBars":0},"rules":[{"type":"CrossedUpIndicatorRule","label":"entry","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]},{"type":"CrossedDownIndicatorRule","label":"exit","components":[{"type":"EMAIndicator","parameters":{"barCount":12},"components":[{"type":"ClosePriceIndicator"}]},{"type":"EMAIndicator","parameters":{"barCount":26},"components":[{"type":"ClosePriceIndicator"}]}]}]}
 ```
 <!-- END_SNIPPET: serialize-strategy -->
 
@@ -389,6 +482,17 @@ Restore from JSON:
 Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
+
+## Features at a glance
+
+- **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
+- **Composable strategy API** - Build complex trading rules using fluent Java patterns
+- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
+- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
+- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
+- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
+- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
+- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
 
 ## From backtest to live trading
 
@@ -442,9 +546,11 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
 
 ### Data Loading Examples
-- **[CsvTradesLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvTradesLoader.java)** - Load historical data from CSV files
-- **[CsvBarsLoader](ta4j-examples/src/main/java/ta4jexamples/loaders/CsvBarsLoader.java)** - Load OHLCV bar data from CSV
-- **[AdaptiveJsonBarsSerializer](ta4j-examples/src/main/java/ta4jexamples/loaders/AdaptiveJsonBarsSerializer.java)** - Parse JSON data from Coinbase/Binance APIs
+- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch historical OHLCV data from Yahoo Finance API (stocks, ETFs, crypto). Includes response caching to reduce API calls. See the [Sourcing market data](#sourcing-market-data) section above for a quick start guide.
+- **[YahooFinanceBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/YahooFinanceBacktest.java)** - Complete example demonstrating Yahoo Finance data loading, advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), backtesting, and visualization
+- **[BitStampCsvTradesFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)** - Load historical trade data from Bitstamp CSV files and aggregate into OHLCV bars
+- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV bar data from CSV
+- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Parse JSON data from Coinbase/Binance APIs
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis

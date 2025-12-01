@@ -41,7 +41,7 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 import ta4jexamples.strategies.GlobalExtremaStrategy;
 import ta4jexamples.strategies.MovingMomentumStrategy;
@@ -171,7 +171,7 @@ public class WalkForward {
 
     public static void main(String[] args) {
         // Splitting the series into slices
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         List<BarSeries> subseries = splitSeries(series, Duration.ofHours(6), Duration.ofDays(7));
 
         // Building the map of strategies

@@ -28,7 +28,6 @@ import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.indicators.NetMomentumIndicator;
@@ -38,7 +37,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import java.awt.Color;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.AdaptiveJsonBarsSerializer;
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,12 +54,12 @@ public class NetMomentumStrategy {
     private static final double DEFAULT_DECAY_FACTOR = 1;
 
     public static void main(String[] args) {
-        String jsonOhlcResourceFile = "Coinbase-ETHUSD-Daily-2016-2025.json";
+        String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
 
         BarSeries series = null;
         try (InputStream resourceStream = NetMomentumStrategy.class.getClassLoader()
                 .getResourceAsStream(jsonOhlcResourceFile)) {
-            series = AdaptiveJsonBarsSerializer.loadSeries(resourceStream);
+            series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(resourceStream);
         } catch (IOException ex) {
             LOG.error("IOException while loading resource: {} - {}", jsonOhlcResourceFile, ex.getMessage());
         }

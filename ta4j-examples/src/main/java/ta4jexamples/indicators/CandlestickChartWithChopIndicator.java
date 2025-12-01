@@ -54,7 +54,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
  * This class builds a traditional candlestick chart.
@@ -223,7 +223,7 @@ public class CandlestickChartWithChopIndicator {
     }
 
     public static void main(String[] args) {
-        series = CsvTradesLoader.loadBitstampSeries();
+        series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
         /*
          * Create the OHLC dataset from the data series
          */
