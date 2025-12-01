@@ -571,6 +571,9 @@ public final class IndicatorSerialization {
             }
         }
         Number coerced = coerceNumber(value);
+        if (coerced == null) {
+            return null;
+        }
         if (targetType == int.class || targetType == Integer.class) {
             return coerced.intValue();
         }
@@ -630,7 +633,11 @@ public final class IndicatorSerialization {
         if (value instanceof Number number) {
             return number;
         }
-        return new BigDecimal(value.toString());
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private static Boolean convertBooleanValue(Object value) {

@@ -49,7 +49,8 @@
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
 - Follow the formatting conventions already present in the repository (use four-space indentation, one statement per line, and favour immutability patterns wherever possible).
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
-- Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length (“reverse Christmas tree”: longer lines above shorter ones).
+- Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length ("reverse Christmas tree": longer lines above shorter ones).
+- **Always use loggers instead of System.out/System.err.** Use `org.apache.logging.log4j.LogManager` and `org.apache.logging.log4j.Logger`. Create a static logger: `private static final Logger LOG = LogManager.getLogger(ClassName.class);`. Use parameterized logging: `LOG.error("Message: {} - {}", param1, param2);` instead of string concatenation.
 
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.

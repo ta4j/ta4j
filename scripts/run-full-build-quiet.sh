@@ -66,6 +66,41 @@ cd "$REPO_ROOT"
 
 LOG_DIR="$REPO_ROOT/.agents/logs"
 mkdir -p "$LOG_DIR"
+
+# Clean up old full build logs, keeping only the last 10
+cleanup_old_logs() {
+    local log_dir="$1"
+    local keep_count=10
+    if [[ ! -d "$log_dir" ]]; then
+        return 0
+    fi
+    
+    # Find all full-build-*.log files and sort by filename (which contains timestamp)
+    # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log
+    # Sorting alphabetically gives chronological order (newest last)
+    local files
+    files=$(find "$log_dir" -maxdepth 1 -type f -name "full-build-*.log" 2>/dev/null | sort || true)
+    if [[ -z "$files" ]]; then
+        return 0
+    fi
+
+    # Delete everything except the newest keep_count files; use POSIX-safe tail/awk
+    local file_count
+    file_count=$(printf '%s\n' "$files" | grep -c . || true)
+    local delete_count=$((file_count - keep_count))
+    if ((delete_count > 0)); then
+        local files_to_delete
+        files_to_delete=$(printf '%s\n' "$files" | head -n "$delete_count")
+        while IFS= read -r file; do
+            if [[ -n "$file" && -f "$file" ]]; then
+                rm -f "$file"
+            fi
+        done <<< "$files_to_delete"
+    fi
+}
+
+cleanup_old_logs "$LOG_DIR"
+
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$LOG_DIR/full-build-${TIMESTAMP}.log"
 LOG_FILE_FOR_PYTHON="$(to_host_path "$LOG_FILE")"

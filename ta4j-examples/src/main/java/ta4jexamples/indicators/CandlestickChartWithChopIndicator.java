@@ -205,6 +205,8 @@ public class CandlestickChartWithChopIndicator {
         frame.pack();
         UIUtils.centerFrameOnScreen(frame);
         frame.setVisible(true);
+        frame.setAlwaysOnTop(false);
+        frame.setAutoRequestFocus(false);
 
         // CHOP oscillator upper/lower threshold guidelines
         XYLineAnnotation lineAnnotation = new XYLineAnnotation(

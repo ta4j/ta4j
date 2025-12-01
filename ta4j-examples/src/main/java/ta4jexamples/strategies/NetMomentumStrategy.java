@@ -35,6 +35,7 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import java.awt.Color;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
@@ -92,7 +93,19 @@ public class NetMomentumStrategy {
                 .withTradingRecordOverlay(tradingRecord)
                 .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
                 .withSubChart(rsiIndicator)
+                .withHorizontalMarker(50)
+                .withLineColor(Color.GRAY)
+                .withOpacity(0.3f)
+                .withHorizontalMarker(70)
+                .withLineColor(Color.RED)
+                .withOpacity(0.3f)
+                .withHorizontalMarker(30)
+                .withLineColor(Color.GREEN)
+                .withOpacity(0.3f)
                 .withSubChart(rsiM)
+                .withHorizontalMarker(0)
+                .withLineColor(Color.GRAY)
+                .withOpacity(0.3f)
                 .toChart();
         chartWorkflow.displayChart(chart);
         chartWorkflow.saveChartImage(chart, series, "net-momentum-strategy", "temp/charts");

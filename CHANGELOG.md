@@ -1,10 +1,19 @@
 ## Unreleased
 
 
+### Removed
+- Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
+
 ### Changed
 - **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 
 ### Added
+- **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.
+    - **Automated trendline indicators**: `TrendLineSupportIndicator` and `TrendLineResistanceIndicator` project support and resistance lines by connecting confirmed swing points. The indicators select the best trendline from a configurable lookback window using a scoring system based on swing point touches, proximity to current price, and recency. Historical values are automatically backfilled so trendlines stay straight and anchored on actual pivot points (not confirmation bars), avoiding the visual artifacts common in other implementations. Works with any price indicator (high/low/open/close/VWAP) and handles plateau detection, NaN values, and irregular time gaps—trendlines remain straight even across weekends and holidays. Supports both dynamic recalculation (updates on each bar) and static mode (freeze the first established line and project forward).
+    - **ZigZag pattern detection**: Added ZigZag indicator suite (`ZigZagStateIndicator`, `ZigZagPivotHighIndicator`, `ZigZagPivotLowIndicator`, `RecentZigZagSwingHighIndicator`, `RecentZigZagSwingLowIndicator`) that filters out insignificant price movements to reveal underlying trend structure. Unlike window-based swing indicators that require fixed lookback periods, ZigZag adapts dynamically using percentage or absolute price thresholds, making it particularly useful in volatile markets where fixed windows can miss significant moves. Pivot signals fire immediately when reversals are confirmed (no confirmation bar delay), and you can track support/resistance levels dynamically for mean-reversion strategies. Supports both fixed thresholds (e.g., 2% price movement) and dynamic thresholds based on indicators like ATR for volatility-adaptive detection.
+    - **Fractal-based swing detection**: `RecentFractalSwingHighIndicator` and `RecentFractalSwingLowIndicator` implement Bill Williams' fractal approach, identifying swing points by requiring a specified number of surrounding bars to be strictly higher or lower. Includes plateau-aware logic to handle flat tops and bottoms, making it robust for real-world market data. Good choice if you prefer the classic fractal methodology or need consistent swing detection across different market conditions.
+    - **Unified swing infrastructure**: All swing indicators share a common foundation (`AbstractRecentSwingIndicator` base class and `RecentSwingIndicator` interface) that provides consistent caching, automatic purging of stale swing points, and a unified API for accessing swing point indexes and values. Makes it straightforward to build custom swing detection algorithms or integrate with trendline tools—implement the interface and you get caching and lifecycle management automatically.
+    - **Swing point visualization**: `SwingPointMarkerIndicator` highlights confirmed swing points on charts without drawing connecting lines, useful for visualizing where pivots occur. Works with any swing detection algorithm (fractal-based, ZigZag, or custom implementations).
 
 - **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
   - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
@@ -27,15 +36,11 @@
   - `InPositionPercentageCriterion`: Time in market (e.g., 0.5 = 50% of time)
   - `CommissionsImpactPercentageCriterion`: Trading cost impact (e.g., 0.05 = 5% impact)
   - `AbstractProfitLossRatioCriterion` (and subclasses): Profit-to-loss ratio (e.g., 2.0 = profit is 2x loss)
-  
+
   All ratio criteria default to `ReturnRepresentation.DECIMAL` (the conventional format for ratios), but you can override per-criterion or globally. Perfect for dashboards, reports, or when you need to match external data formats. See each criterion's javadoc for detailed examples.
-- **Improved return representation tooling**: Added factory-level exponential support to avoid premature double conversions, expanded representation parsing to accept flexible names, and aligned VaR/ES/average-return empty-record behaviour across representations.
-- **High-precision DecimalNum exponentials**: `DecimalNumFactory#exp` now evaluates exponentials using the configured `MathContext` instead of delegating to {@code Math.exp}, preventing accidental loss of precision for high-precision numeric workflows.
+
 - **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.
 
-### Breaking
-- **EMA indicators now return NaN during unstable period**: `EMAIndicator`, `MMAIndicator`, and all indicators extending `AbstractEMAIndicator` now return `NaN` for indices within the unstable period (indices < `beginIndex + getCountOfUnstableBars()`). Previously, these indicators would return calculated values during the unstable period. **Action required**: Update any code that accesses EMA indicator values during the unstable period to handle `NaN` values appropriately, or wait until after the unstable period before reading values.
-- **`DifferencePercentageIndicator` deprecated**: `DifferencePercentageIndicator` has been deprecated in favor of `PercentageChangeIndicator`, which now provides all the same functionality plus additional features. **Action required**: Migrate to `PercentageChangeIndicator` using the migration examples in the deprecation javadoc.
 
 ### Added
 - Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
@@ -44,6 +49,13 @@
 - Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
 - Added `StochasticIndicator` as a generic stochastic calculation indicator, extracted from `SchaffTrendCycleIndicator` for reuse
 - **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
+
+### Changed
+- **EMA indicators now return NaN during unstable period**: `EMAIndicator`, `MMAIndicator`, and all indicators extending `AbstractEMAIndicator` now return `NaN` for indices within the unstable period (indices < `beginIndex + getCountOfUnstableBars()`). Previously, these indicators would return calculated values during the unstable period. **Action required**: Update any code that accesses EMA indicator values during the unstable period to handle `NaN` values appropriately, or wait until after the unstable period before reading values.
+- **Pivot point indicators refactored for maintainability**: Refactored `PivotPointIndicator` and `DeMarkPivotPointIndicator` to extend a new `AbstractPivotPointIndicator` base class, eliminating code duplication and centralizing period calculation logic. The refactoring improves maintainability and makes it easier to add new pivot point variants in the future. All existing functionality remains unchanged—this is purely an internal improvement that makes the codebase cleaner and more extensible.
+
+### Fixed
+- **Pivot point indicators boundary condition**: Fixed `AbstractPivotPointIndicator.getBarsOfPreviousPeriod()` to correctly include the bar at `beginIndex` when it belongs to the previous period. Previously, `DeMarkPivotPointIndicator` used `>` (strictly greater than) which excluded the bar at `beginIndex`, causing incorrect pivot calculations when the first bar in the series was part of the previous period. The fix ensures all bars from the previous period are included, which is especially important for `DeMarkPivotPointIndicator` as it uses the open price from the earliest bar in the previous period. Both `PivotPointIndicator` and `DeMarkPivotPointIndicator` now correctly include all bars from the previous period in their calculations.
 
 ## 0.19 (released November 19, 2025)
 
