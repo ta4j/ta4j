@@ -78,7 +78,8 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
      * Helper method to clean up cache files matching a pattern. This ensures tests
      * start with a clean cache state.
      *
-     * @param pattern the filename pattern to match (e.g., "YahooFinance-AAPL-1d-")
+     * @param pattern the filename pattern to match (e.g.,
+     *                "YahooFinance-AAPL-PT24H-")
      */
     private void cleanupCacheFiles(String pattern) {
         Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
@@ -732,7 +733,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheHitForSameRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files for this test
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -763,14 +764,14 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up cache files created by this test
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
     }
 
     @Test
     public void testCacheMissForDifferentTicker() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "MSFT-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "MSFT-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -794,14 +795,14 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
-        cleanupCacheFiles(getCachePrefix() + "MSFT-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "MSFT-PT24H-");
     }
 
     @Test
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
         cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -826,14 +827,14 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
         cleanupCacheFiles(getCachePrefix() + "AAPL-1h-");
     }
 
     @Test
     public void testCacheHitWithTruncatedTimestamps() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
 
         // Test that cache hits work when timestamps are truncated to the same cache key
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -864,13 +865,13 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
     }
 
     @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -895,7 +896,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
     }
 
     @Test
@@ -925,7 +926,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheHitForHistoricalData() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
 
         // Historical data (end date in the past) should be cached indefinitely
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -952,7 +953,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
     }
 
     @Test
@@ -960,7 +961,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Use a unique notes identifier to avoid cache collisions with other tests
         String uniqueNotes = String.valueOf(System.currentTimeMillis());
         String ticker = "TEST-BARCOUNT";
-        cleanupCacheFiles(getCachePrefix() + ticker + "-1d-");
+        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -987,7 +988,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + ticker + "-1d-");
+        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
     }
 
     @Test
@@ -1043,7 +1044,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     public void testCacheWithFailedRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files - important to ensure no cached success
         // response
-        cleanupCacheFiles(getCachePrefix() + "AAPL-1d-");
+        cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
 
         // Test that failed requests don't write to cache
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -1184,7 +1185,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-PT24H-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1215,7 +1216,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Verify cache file was created in custom directory
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         boolean cacheFileExists = Files.list(customCachePath)
-                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"));
+                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-PT24H-"));
         assertTrue(cacheFileExists, "Cache file should be created in custom directory");
 
         // Second request - should use cache (verify only one API call was made)
@@ -1254,7 +1255,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-PT24H-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1285,7 +1286,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Verify cache file was created
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         long fileCountBefore = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-PT24H-"))
                 .count();
         assertTrue(fileCountBefore > 0, "Cache file should exist");
 
@@ -1295,7 +1296,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
         // Verify cache files are gone
         long fileCountAfter = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-1d-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "AAPL-PT24H-"))
                 .count();
         assertEquals(0, fileCountAfter, "All cache files should be deleted");
 

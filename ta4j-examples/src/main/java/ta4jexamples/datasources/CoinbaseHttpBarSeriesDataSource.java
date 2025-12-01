@@ -623,8 +623,7 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
      */
     private Path getCacheFilePath(String productId, CoinbaseInterval interval, Instant startDateTime,
             Instant endDateTime, String notes) {
-        return getCacheFilePath(productId, interval.getApiValue(), startDateTime, endDateTime, interval.getDuration(),
-                notes);
+        return getCacheFilePath(productId, startDateTime, endDateTime, interval.getDuration(), notes);
     }
 
     /**

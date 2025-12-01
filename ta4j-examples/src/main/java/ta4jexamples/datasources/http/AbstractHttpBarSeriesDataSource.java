@@ -250,25 +250,26 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
     /**
      * Generates the cache file path for a given request.
      *
-     * @param symbol           the symbol (ticker, product ID, etc.)
-     * @param intervalApiValue the API value string for the interval (e.g., "1d",
-     *                         "ONE_DAY")
-     * @param startDateTime    the start date/time (will be truncated)
-     * @param endDateTime      the end date/time (will be truncated)
-     * @param interval         the interval duration (for truncation)
-     * @param notes            optional notes section to append to filename (can be
-     *                         null or empty)
+     * @param symbol        the symbol (ticker, product ID, etc.)
+     * @param startDateTime the start date/time (will be truncated)
+     * @param endDateTime   the end date/time (will be truncated)
+     * @param interval      the interval duration (used for truncation and filename)
+     * @param notes         optional notes section to append to filename (can be
+     *                      null or empty)
      * @return the cache file path
      */
-    protected Path getCacheFilePath(String symbol, String intervalApiValue, Instant startDateTime, Instant endDateTime,
-            Duration interval, String notes) {
+    protected Path getCacheFilePath(String symbol, Instant startDateTime, Instant endDateTime, Duration interval,
+            String notes) {
         Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
         Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
 
         String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
         String notesSuffix = (notes != null && !notes.trim().isEmpty()) ? "_" + notes.trim() : "";
+        // Use Duration.toString() for standardized format (e.g., "PT24H" for 1 day,
+        // "PT1H" for 1 hour)
+        String durationString = interval.toString();
         String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix,
-                symbol.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), intervalApiValue, truncatedStart.getEpochSecond(),
+                symbol.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), durationString, truncatedStart.getEpochSecond(),
                 truncatedEnd.getEpochSecond(), notesSuffix);
 
         return Paths.get(responseCacheDir, filename);

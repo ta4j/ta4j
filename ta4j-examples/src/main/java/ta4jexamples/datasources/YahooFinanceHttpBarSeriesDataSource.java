@@ -774,12 +774,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
      */
     private Path getCacheFilePath(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime, String notes) {
-        // Use Yahoo Finance-specific truncation for week/month boundaries
-        Instant truncatedStart = truncateTimestampForCache(startDateTime, interval);
-        Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
-
-        return getCacheFilePath(ticker, interval.getApiValue(), truncatedStart, truncatedEnd, interval.getDuration(),
-                notes);
+        return getCacheFilePath(ticker, startDateTime, endDateTime, interval.getDuration(), notes);
     }
 
     /**
