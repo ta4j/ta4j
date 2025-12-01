@@ -21,21 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.datasources.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
-import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 import java.io.*;
 
 /**
  * @deprecated // TODO: Remove in 0.20
  *             <p>
- *             Use {@link AdaptiveJsonBarsSerializer} instead.
+ *             Use {@link JsonFileBarSeriesDataSource} instead.
  *             </p>
  */
 @Deprecated(since = "0.19")
@@ -96,7 +95,7 @@ public class JsonBarsSerializer {
      *
      * @deprecated
      *             <p>
-     *             Use {@link AdaptiveJsonBarsSerializer#loadSeries(String)}
+     *             Use {@link JsonFileBarSeriesDataSource#loadSeries(String)}
      *             instead.
      *
      * @param inputStream the input stream containing JSON data to be parsed into a

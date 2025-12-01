@@ -42,7 +42,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
  * Moving momentum strategy.
@@ -95,7 +95,7 @@ public class MovingMomentumStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
@@ -129,6 +129,6 @@ public class MovingMomentumStrategy {
                 .withSubChart(stochasticOscillK)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "moving-momentum-strategy", "temp/charts");
     }
 }

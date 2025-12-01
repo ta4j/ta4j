@@ -21,14 +21,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.loaders;
+package ta4jexamples.datasources.http;
 
-import org.junit.Test;
+import java.io.IOException;
+import java.net.http.HttpRequest;
 
-public class CsvBarsLoaderTest {
+/**
+ * Wrapper around {@link java.net.http.HttpClient} to enable easier testing via
+ * mocking.
+ * <p>
+ * This wrapper provides a simple interface for HTTP operations that can be
+ * easily mocked in unit tests, avoiding the need to mock the final
+ * {@link java.net.http.HttpClient} class directly.
+ */
+public interface HttpClientWrapper {
 
-    @Test
-    public void test() {
-        CsvBarsLoader.main(null);
-    }
+    /**
+     * Sends the given request using this client, blocking if necessary to get the
+     * response.
+     *
+     * @param <T>     the response body type
+     * @param request the request
+     * @param handler the response body handler
+     * @return the response wrapper
+     * @throws IOException          if an I/O error occurs when sending or receiving
+     * @throws InterruptedException if the operation is interrupted
+     */
+    <T> HttpResponseWrapper<T> send(HttpRequest request, java.net.http.HttpResponse.BodyHandler<T> handler)
+            throws IOException, InterruptedException;
 }

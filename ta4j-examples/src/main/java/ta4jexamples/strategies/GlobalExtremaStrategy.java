@@ -41,7 +41,7 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
  * Strategies which compares current price to global extrema over a week.
@@ -88,7 +88,7 @@ public class GlobalExtremaStrategy {
     public static void main(final String[] args) {
 
         // Getting the bar series
-        final var series = CsvTradesLoader.loadBitstampSeries();
+        final var series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         final var strategy = buildStrategy(series);
@@ -122,6 +122,6 @@ public class GlobalExtremaStrategy {
                 .withAnalysisCriterionOverlay(new NetProfitCriterion(), tradingRecord)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "global-extrema-strategy", "temp/charts");
     }
 }
