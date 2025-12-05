@@ -319,7 +319,8 @@ public class CachedBufferTest {
         assertEquals(Integer.valueOf(1300), buffer.get(13));
         assertEquals(Integer.valueOf(1400), buffer.get(14));
 
-        // Now store at index 8 (before firstCachedIndex). This should clear the buffer and restart since slot mapping would be broken
+        // Now store at index 8 (before firstCachedIndex). This should clear the buffer
+        // and restart since slot mapping would be broken
         buffer.put(8, 800);
 
         // The value at index 8 should be retrievable
