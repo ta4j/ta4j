@@ -46,6 +46,9 @@ public abstract class AbstractRule implements Rule {
     /** Cached default name to avoid repeated JSON serialization */
     private transient volatile String cachedDefaultName;
 
+    /** Cached descriptor derived from the current name */
+    private transient volatile ComponentDescriptor cachedDescriptor;
+
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
      * set, otherwise falls back to the class name.
@@ -74,6 +77,7 @@ public abstract class AbstractRule implements Rule {
         if (this.name == null) {
             cachedDefaultName = null;
         }
+        cachedDescriptor = null;
     }
 
     @Override
@@ -135,5 +139,48 @@ public abstract class AbstractRule implements Rule {
             }
         }
         return ComponentSerialization.toJson(builder.build());
+    }
+
+    /**
+     * Builds a JSON object containing the type plus child rule descriptors without
+     * re-parsing already cached rule names.
+     *
+     * @param type     rule type label
+     * @param children child rules
+     * @return JSON string
+     */
+    protected String createCompositeName(String type, Rule... children) {
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
+        if (children != null && children.length > 0) {
+            for (Rule child : children) {
+                builder.addComponent(toDescriptor(child));
+            }
+        }
+        return ComponentSerialization.toJson(builder.build());
+    }
+
+    private ComponentDescriptor getComponentDescriptor() {
+        ComponentDescriptor descriptor = cachedDescriptor;
+        if (descriptor == null) {
+            synchronized (this) {
+                descriptor = cachedDescriptor;
+                if (descriptor == null) {
+                    descriptor = ComponentSerialization.parse(getName());
+                    cachedDescriptor = descriptor;
+                }
+            }
+        }
+        return descriptor;
+    }
+
+    private ComponentDescriptor toDescriptor(Rule rule) {
+        if (rule == null) {
+            return null;
+        }
+        if (rule instanceof AbstractRule abstractRule) {
+            return abstractRule.getComponentDescriptor();
+        }
+        // Fall back to parsing the name for third-party Rule implementations
+        return ComponentSerialization.parse(rule.getName());
     }
 }
