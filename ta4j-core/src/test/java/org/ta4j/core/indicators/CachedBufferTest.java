@@ -105,7 +105,6 @@ public class CachedBufferTest {
 
         // Continue advancing to 10+ to test full wraparound
         for (int i = 6; i <= 12; i++) {
-            int idx = i;
             buffer.getOrCompute(i, x -> {
                 computations.incrementAndGet();
                 return x * 10;
