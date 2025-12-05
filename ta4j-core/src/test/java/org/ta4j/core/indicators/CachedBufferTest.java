@@ -319,17 +319,12 @@ public class CachedBufferTest {
         assertEquals(Integer.valueOf(1300), buffer.get(13));
         assertEquals(Integer.valueOf(1400), buffer.get(14));
 
-        // Now store at index 8 (before firstCachedIndex)
-        // This should clear the buffer and restart since slot mapping would be broken
+        // Now store at index 8 (before firstCachedIndex). This should clear the buffer and restart since slot mapping would be broken
         buffer.put(8, 800);
 
-        // After storing at index 8, the buffer state should be consistent
         // The value at index 8 should be retrievable
         assertEquals(Integer.valueOf(800), buffer.get(8));
 
-        // The buffer should have been cleared and restarted, so old values are gone
-        // OR the buffer should have been properly rebuilt
-        // Either way, we should not get stale/wrong values
         Integer val10 = buffer.get(10);
         Integer val11 = buffer.get(11);
 
@@ -357,24 +352,19 @@ public class CachedBufferTest {
         assertEquals(5, buffer.getFirstCachedIndex());
         assertEquals(7, buffer.getHighestResultIndex());
 
-        // Now try to store at index 2 (before firstCachedIndex)
-        // newSize = 7 - 2 + 1 = 6 > maximumCapacity (3)
         // This triggers the problematic code path
         buffer.put(2, 200);
 
         // The value at index 2 should be retrievable
         assertEquals(Integer.valueOf(200), buffer.get(2));
 
-        // Check that we don't get garbage values for indices in the supposed range
         // After the operation, firstCachedIndex should be 2
         assertEquals(2, buffer.getFirstCachedIndex());
 
-        // highestResultIndex should be adjusted based on eviction
         // The buffer can only hold 3 values, so indices would be 2, 3, 4 at most
         assertTrue("highestResultIndex should be reasonable",
                 buffer.getHighestResultIndex() >= 2 && buffer.getHighestResultIndex() <= 4);
 
-        // Most importantly, we should not get stale values at invalid slots
         // Test that values outside the valid range return null
         if (buffer.getHighestResultIndex() < 5) {
             assertNull("Index 5 should not be cached after eviction", buffer.get(5));
@@ -405,34 +395,16 @@ public class CachedBufferTest {
         assertEquals(Integer.valueOf(777), buffer.get(7));
 
         // Now store at index 3 (before firstCachedIndex=5)
-        // After this, firstCachedIndex becomes 3, highestResultIndex becomes 5
-        // New slot mapping would be: index 3 -> slot 0, index 4 -> slot 1, index 5 ->
-        // slot 2
-        // BUT the old data is still in old slots!
-        // - slot 0 has value 555 (was for old index 5)
-        // - slot 1 has value 666 (was for old index 6)
-        // - slot 2 has value 777 (was for old index 7)
-        // With new mapping:
-        // - get(3) reads slot 0, should return 333, but we're overwriting it
-        // - get(4) reads slot 1, should return null, but returns 666 (stale!)
-        // - get(5) reads slot 2, should return 555 (if preserved) or null, but returns
-        // 777 (stale!)
         buffer.put(3, 333);
 
         // The value we just stored should be correct (slot 0 was overwritten)
         assertEquals("Value at index 3 should be what we stored", Integer.valueOf(333), buffer.get(3));
 
-        // BUG CHECK: Index 4 was NEVER stored, so it MUST be null
-        // But due to the bug, slot 1 still has 666 from old index 6
         Integer val4 = buffer.get(4);
         assertNull("Index 4 was never stored, must be null (not stale value from old index 6)", val4);
 
-        // BUG CHECK: After eviction, if index 5 is still in range, it should have value
-        // 555
-        // But due to the bug, slot 2 has 777 from old index 7
         if (buffer.isInRange(5)) {
             Integer val5 = buffer.get(5);
-            // Either null (was evicted) or 555 (original value), but NOT 777
             if (val5 != null) {
                 assertEquals("Index 5 should have its original value 555, not stale 777", Integer.valueOf(555), val5);
             }
