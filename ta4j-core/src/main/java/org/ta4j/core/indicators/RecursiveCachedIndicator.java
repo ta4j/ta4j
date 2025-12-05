@@ -36,19 +36,19 @@ import java.util.Map;
  * Recursive indicators should extend this class.
  *
  * <p>
- * This class is only here to avoid (OK, to postpone) the StackOverflowError
- * that may be thrown on the first getValue(int) call of a recursive indicator.
- * Concretely when an index value is asked if the last cached value is too
- * old/far, the computation of all the values between the last cached and the
- * asked one is executed iteratively.
+ * This class prevents StackOverflowError that may be thrown on the first
+ * getValue(int) call of a recursive indicator. When an index value is asked and
+ * the last cached value is too old/far, the computation of all the values
+ * between the last cached and the asked one is executed iteratively using the
+ * {@link CachedBuffer#prefillUntil} method.
  */
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed.
      * <p>
-     * TODO: Should be variable (depending on the sub-indicators used in this
-     * indicator, e.g. Indicator#getUnstableBars()).
+     * This threshold determines when to switch from recursive to iterative
+     * prefilling to avoid stack overflow.
      */
     private static final int RECURSION_THRESHOLD = 100;
 
@@ -77,7 +77,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     @Override
-    public synchronized T getValue(int index) {
+    public T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
             final int seriesEndIndex = series.getEndIndex();
@@ -97,6 +97,17 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         return super.getValue(index);
     }
 
+    /**
+     * Iteratively prefills missing values to avoid stack overflow.
+     *
+     * <p>
+     * Uses the {@link CachedBuffer#prefillUntil} method to compute values
+     * iteratively under a single write lock, avoiding the overhead of re-entering
+     * locks and series lookups for each index.
+     *
+     * @param startIndex  the index to start filling from
+     * @param targetIndex the target index (exclusive)
+     */
     private void prefillMissingValues(int startIndex, int targetIndex) {
         Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator = PREFILL_DEPTH.get();
         Integer depth = depthByIndicator.get(this);
@@ -106,9 +117,15 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
         depthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
         try {
-            for (int prevIdx = startIndex; prevIdx < targetIndex; prevIdx++) {
-                super.getValue(prevIdx);
-            }
+            // Use the cache's prefillUntil to compute values iteratively
+            // under a single write lock
+            getCache().prefillUntil(startIndex, targetIndex, i -> {
+                T value = calculate(i);
+                if (i > highestResultIndex) {
+                    highestResultIndex = i;
+                }
+                return value;
+            });
         } finally {
             int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
             if (updatedDepth <= 0) {

@@ -78,6 +78,9 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
                     .endTime(testStartTime.minus(Duration.ofMinutes(maxBars - i)))
                     .closePrice(data.get(i))
                     .openPrice(0)
+                    .volume(0)
+                    .amount(0)
+                    .trades(0)
                     .add();
         }
     }

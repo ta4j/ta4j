@@ -40,7 +40,9 @@ import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -322,6 +324,101 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertThat(indicator.getCalculationCount()).isEqualTo(1);
     }
 
+    @Test
+    public void evictionWithSmallMaximumBarCountAndWrapAround() {
+        // Test the O(1) eviction with a small maximumBarCount (3) and >10 bars
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .build();
+        barSeries.setMaximumBarCount(3);
+
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+
+        int startIndex = barSeries.getBeginIndex();
+        int endIndex = barSeries.getEndIndex();
+        for (int i = startIndex; i <= endIndex; i++) {
+            Num value = indicator.getValue(i);
+            assertNumEquals(i, value);
+        }
+
+        // Each cached index should be computed exactly once
+        assertEquals(endIndex - startIndex + 1, indicator.getCalculationCount());
+
+        // Reset counter to verify cache hits
+        indicator.resetCalculationCount();
+
+        // Access the remaining cached values (10, 11, 12) - should be cache hits
+        for (int i = startIndex; i <= endIndex; i++) {
+            assertNumEquals(i, indicator.getValue(i));
+        }
+
+        // No new calculations should have occurred for cached values
+        assertEquals(0, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void lastBarCacheReusesValueWhenUnchanged() {
+        // Create a series with mutable last bar
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // First access to last bar should compute
+        Num firstValue = indicator.getValue(endIndex);
+        assertNumEquals(endIndex, firstValue);
+        assertEquals(1, indicator.getCalculationCount());
+
+        // Repeated access without bar mutation should reuse cached value
+        Num secondValue = indicator.getValue(endIndex);
+        assertNumEquals(endIndex, secondValue);
+        assertEquals(1, indicator.getCalculationCount()); // No new computation
+    }
+
+    @Test
+    public void lastBarCacheInvalidatesOnMutation() {
+        // Create a series with mutable last bar
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+
+        // Use an indicator that returns the close price to verify mutation detection
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 2);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // First access: SMA of (2, 3) = 2.5
+        Num firstValue = sma.getValue(endIndex);
+        assertNumEquals(2.5, firstValue);
+
+        // Mutate the last bar
+        barSeries.getLastBar().addTrade(numOf(1), numOf(10)); // Close price changes to 10
+
+        // Second access should detect mutation and recompute
+        // SMA of (2, 10) = 6.0
+        Num secondValue = sma.getValue(endIndex);
+        assertNumEquals(6.0, secondValue);
+    }
+
+    @Test
+    public void recursiveCalculateDoesNotDeadlock() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        SelfReferencingIndicator indicator = new SelfReferencingIndicator(barSeries);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(4));
+            Num result = future.get(2, TimeUnit.SECONDS);
+            assertNumEquals(5, result);
+            assertEquals(5, indicator.getCalculationCount());
+        } catch (TimeoutException e) {
+            fail("getValue should not deadlock for recursive indicators");
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private final class CountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
@@ -343,6 +440,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private int getCalculationCount() {
             return calculations.get();
+        }
+
+        private void resetCalculationCount() {
+            calculations.set(0);
         }
     }
 
@@ -367,6 +468,33 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getCalculationCount() {
             return calculationCount;
+        }
+    }
+
+    private final class SelfReferencingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculationCount = new AtomicInteger();
+
+        private SelfReferencingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount.incrementAndGet();
+            if (index == 0) {
+                return numFactory.numOf(1);
+            }
+            return getValue(index - 1).plus(numFactory.numOf(1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getCalculationCount() {
+            return calculationCount.get();
         }
     }
 
