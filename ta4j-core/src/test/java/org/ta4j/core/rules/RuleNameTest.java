@@ -24,10 +24,13 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class RuleNameTest {
 
@@ -142,6 +145,35 @@ public class RuleNameTest {
         rule.setName(null);
         assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
         assertEquals(2, rule.getCreateDefaultNameCalls());
+    }
+
+    @Test
+    public void defaultNameComputationIsSynchronized() throws InterruptedException {
+        CountingRule rule = new CountingRule();
+        int threads = 32;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        Runnable task = () -> {
+            try {
+                start.await();
+                rule.getName();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                done.countDown();
+            }
+        };
+        for (int i = 0; i < threads; i++) {
+            Thread t = new Thread(task, "rule-name-sync-" + i);
+            t.start();
+        }
+        start.countDown();
+        boolean finished = done.await(10, TimeUnit.SECONDS);
+        assertTrue("Threads did not finish in time", finished);
+        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals("Default name should be built exactly once even under contention", 1,
+                rule.getCreateDefaultNameCalls());
     }
 
     private static final class CountingRule extends AbstractRule {

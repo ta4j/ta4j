@@ -83,8 +83,13 @@ public abstract class AbstractRule implements Rule {
         }
         String result = cachedDefaultName;
         if (result == null) {
-            result = createDefaultName();
-            cachedDefaultName = result;
+            synchronized (this) {
+                result = cachedDefaultName;
+                if (result == null) {
+                    result = createDefaultName();
+                    cachedDefaultName = result;
+                }
+            }
         }
         return result;
     }
