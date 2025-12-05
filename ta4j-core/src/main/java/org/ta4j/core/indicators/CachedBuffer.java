@@ -43,7 +43,7 @@ import java.util.function.IntFunction;
  * safely call getValue() from within calculate() without deadlocking.
  *
  * @param <T> the type of cached values
- * 
+ *
  * @since 0.22.0
  */
 class CachedBuffer<T> {
