@@ -23,35 +23,58 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.bollinger.BollingerBandFacade;
-import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator;
-import org.ta4j.core.indicators.keltner.KeltnerChannelMiddleIndicator;
-import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Mobius Squeeze Pro Indicator.
+ * Mobius/TTM Squeeze Pro momentum indicator (LazyBear/TradingView parity).
  *
- * This indicator combines Bollinger Bands and Keltner Channels to identify
- * potential market squeezes. A squeeze occurs when volatility decreases and the
- * Bollinger Bands move inside the Keltner Channels.
+ * <p>
+ * The "Pro" variant exposes three compression levels, measured by how tightly
+ * the Bollinger Bands fit inside progressively wider Keltner Channels:
+ * <ul>
+ * <li>HIGH: Bollinger Bands fully inside KC using {@code kcHigh}</li>
+ * <li>MID: Bollinger Bands fully inside KC using {@code kcMid}</li>
+ * <li>LOW: Bollinger Bands fully inside KC using {@code kcLow}</li>
+ * <li>NONE: no squeeze</li>
+ * </ul>
+ * The indicator value itself is the squeeze momentum histogram from the
+ * original LazyBear implementation: a linear regression of the detrended close
+ * price ({@code close - SMA(close)}) over {@code barCount}. Compression state
+ * can be queried via {@link #getSqueezeLevel(int)} or the convenience
+ * {@link #isInSqueeze(int)}.
  *
- * The indicator returns true when a squeeze is detected, which can signal a
- * potential breakout or significant price move.
+ * <p>
+ * To mirror TradingView defaults this implementation uses SMA-based Bollinger
+ * Bands and a simple moving average of True Range for the Keltner channel width
+ * (not Wilder's ATR smoothing).
  */
-public class SqueezeProIndicator extends CachedIndicator<Boolean> {
+public class SqueezeProIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> keltnerChannelUpperBandHigh;
-    private final Indicator<Num> keltnerChannelLowerBandHigh;
-    private final Indicator<Num> keltnerChannelUpperBandLow;
-    private final Indicator<Num> keltnerChannelLowerBandLow;
-    private final Indicator<Num> keltnerChannelUpperBandMid;
-    private final Indicator<Num> keltnerChannelLowerBandMid;
+    public enum SqueezeLevel {
+        NONE, LOW, MID, HIGH
+    }
 
-    private final Indicator<Num> bollingerBandUpperLine;
-    private final Indicator<Num> bollingerBandLowerLine;
+    private final Indicator<Num> closePrice;
+    private final Indicator<Num> priceSma;
+    private final Indicator<Num> priceStdDev;
+    private final Indicator<Num> trueRangeSma;
+    private final Indicator<Num> detrendedPrice;
+    private final Indicator<Num> momentum;
+
+    private final Num bollingerBandK;
+    private final Num keltnerShiftFactorHigh;
+    private final Num keltnerShiftFactorMid;
+    private final Num keltnerShiftFactorLow;
 
     private final int barCount;
 
@@ -79,67 +102,117 @@ public class SqueezeProIndicator extends CachedIndicator<Boolean> {
             double keltnerShiftFactorMid, double keltnerShiftFactorLow) {
         super(series);
 
-        BollingerBandFacade bollingerBand = new BollingerBandFacade(series, barCount, bollingerBandK);
-        this.bollingerBandUpperLine = bollingerBand.upper();
-        this.bollingerBandLowerLine = bollingerBand.lower();
-
-        KeltnerChannelMiddleIndicator keltnerChannelMidLine = new KeltnerChannelMiddleIndicator(series, barCount);
-        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
-
-        this.keltnerChannelUpperBandLow = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorLow);
-        this.keltnerChannelLowerBandLow = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorLow);
-        this.keltnerChannelUpperBandMid = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorMid);
-        this.keltnerChannelLowerBandMid = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorMid);
-        this.keltnerChannelUpperBandHigh = new KeltnerChannelUpperIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorHigh);
-        this.keltnerChannelLowerBandHigh = new KeltnerChannelLowerIndicator(keltnerChannelMidLine, averageTrueRange,
-                keltnerShiftFactorHigh);
-
+        this.bollingerBandK = series.numFactory().numOf(bollingerBandK);
+        this.keltnerShiftFactorHigh = series.numFactory().numOf(keltnerShiftFactorHigh);
+        this.keltnerShiftFactorMid = series.numFactory().numOf(keltnerShiftFactorMid);
+        this.keltnerShiftFactorLow = series.numFactory().numOf(keltnerShiftFactorLow);
+        this.closePrice = new ClosePriceIndicator(series);
+        this.priceSma = new SMAIndicator(closePrice, barCount);
+        this.priceStdDev = new StandardDeviationIndicator(closePrice, barCount);
+        this.trueRangeSma = new SMAIndicator(new TRIndicator(series), barCount);
+        this.detrendedPrice = NumericIndicator.of(closePrice).minus(priceSma);
+        this.momentum = new SimpleLinearRegressionIndicator(detrendedPrice, barCount);
         this.barCount = barCount;
     }
 
     /**
-     * Calculates the Mobius Squeeze Pro indicator value for a specific index.
+     * Calculates the Squeeze Pro histogram value for a specific index.
      *
      * @param index the index
-     * @return true if a squeeze is detected, false otherwise
+     * @return squeeze momentum histogram value, or NaN during the unstable period
      */
     @Override
-    protected Boolean calculate(int index) {
+    protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
-            return false;
+            return NaN;
         }
 
-        Num bbLower = bollingerBandLowerLine.getValue(index);
-        Num bbUpper = bollingerBandUpperLine.getValue(index);
+        Num value = momentum.getValue(index);
+        Num bbLower = bollingerBandLowerLine(index);
+        Num bbUpper = bollingerBandUpperLine(index);
+        if (isNaN(value) || isNaN(bbLower) || isNaN(bbUpper)) {
+            return NaN;
+        }
 
-        return isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandLow, keltnerChannelUpperBandLow, index)
-                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandMid, keltnerChannelUpperBandMid, index)
-                || isSqueezeCondition(bbLower, bbUpper, keltnerChannelLowerBandHigh, keltnerChannelUpperBandHigh,
-                        index);
+        return value;
     }
 
     /**
-     * Checks if the squeeze condition is met for a given set of indicators.
+     * Returns the squeeze level at the given index.
      *
-     * @param bbLower Bollinger Band lower value
-     * @param bbUpper Bollinger Band upper value
-     * @param kcLower Keltner Channel lower indicator
-     * @param kcUpper Keltner Channel upper indicator
-     * @param index   the index to check
-     * @return true if the squeeze condition is met, false otherwise
+     * @param index the index to check
+     * @return squeeze level, or {@link SqueezeLevel#NONE} if no compression is
+     *         detected
      */
-    private boolean isSqueezeCondition(Num bbLower, Num bbUpper, Indicator<Num> kcLower, Indicator<Num> kcUpper,
-            int index) {
-        return bbLower.isGreaterThan(kcLower.getValue(index)) && bbUpper.isLessThan(kcUpper.getValue(index));
+    public SqueezeLevel getSqueezeLevel(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return SqueezeLevel.NONE;
+        }
+        Num bbLower = bollingerBandLowerLine(index);
+        Num bbUpper = bollingerBandUpperLine(index);
+        if (isNaN(bbLower) || isNaN(bbUpper)) {
+            return SqueezeLevel.NONE;
+        }
+
+        if (isSqueezeCondition(bbLower, bbUpper, keltnerShiftFactorHigh, index)) {
+            return SqueezeLevel.HIGH;
+        }
+        if (isSqueezeCondition(bbLower, bbUpper, keltnerShiftFactorMid, index)) {
+            return SqueezeLevel.MID;
+        }
+        if (isSqueezeCondition(bbLower, bbUpper, keltnerShiftFactorLow, index)) {
+            return SqueezeLevel.LOW;
+        }
+        return SqueezeLevel.NONE;
+    }
+
+    /**
+     * Returns whether the Bollinger Bands are inside any of the configured Keltner
+     * channels at the given index.
+     *
+     * @param index the index to check
+     * @return true when any squeeze level is active
+     */
+    public boolean isInSqueeze(int index) {
+        return getSqueezeLevel(index) != SqueezeLevel.NONE;
+    }
+
+    private Num bollingerBandUpperLine(int index) {
+        Num basis = priceSma.getValue(index);
+        Num stdDev = priceStdDev.getValue(index);
+        if (isNaN(basis) || isNaN(stdDev)) {
+            return NaN;
+        }
+        return basis.plus(stdDev.multipliedBy(bollingerBandK));
+    }
+
+    private Num bollingerBandLowerLine(int index) {
+        Num basis = priceSma.getValue(index);
+        Num stdDev = priceStdDev.getValue(index);
+        if (isNaN(basis) || isNaN(stdDev)) {
+            return NaN;
+        }
+        return basis.minus(stdDev.multipliedBy(bollingerBandK));
+    }
+
+    private boolean isSqueezeCondition(Num bbLower, Num bbUpper, Num keltnerShiftFactor, int index) {
+        Num basis = priceSma.getValue(index);
+        Num atrWidth = trueRangeSma.getValue(index);
+        if (isNaN(basis) || isNaN(atrWidth)) {
+            return false;
+        }
+        Num upperKeltner = basis.plus(atrWidth.multipliedBy(keltnerShiftFactor));
+        Num lowerKeltner = basis.minus(atrWidth.multipliedBy(keltnerShiftFactor));
+
+        return bbLower.isGreaterThan(lowerKeltner) && bbUpper.isLessThan(upperKeltner);
+    }
+
+    private boolean isNaN(Num value) {
+        return value.isNaN() || Double.isNaN(value.doubleValue());
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return barCount;
     }
 }
