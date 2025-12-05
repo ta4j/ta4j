@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.concurrent.locks.StampedLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 
 /**
@@ -51,7 +51,7 @@ class CachedBuffer<T> {
     /** Maximum reasonable capacity to prevent excessive memory usage. */
     private static final int MAX_CAPACITY = Integer.MAX_VALUE / 2;
 
-    private final StampedLock lock = new StampedLock();
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     /** The ring buffer storing cached values; null means "not computed". */
     private Object[] buffer;
@@ -92,28 +92,29 @@ class CachedBuffer<T> {
      * @return the cached or computed value
      */
     T getOrCompute(int index, IntFunction<T> calculator) {
-        // Try optimistic read first (no blocking for cache hits)
-        long stamp = lock.tryOptimisticRead();
-        T result = tryRead(index, stamp);
-        if (result != null && lock.validate(stamp)) {
+        // Fast-path: read lock for cache hits
+        lock.readLock().lock();
+        T result;
+        try {
+            result = readAt(index);
+        } finally {
+            lock.readLock().unlock();
+        }
+        if (result != null) {
             return result;
         }
 
-        // Optimistic read failed or value not cached; acquire write lock
-        stamp = lock.writeLock();
+        // Miss: compute under write lock (reentrant for recursive indicators)
+        lock.writeLock().lock();
         try {
-            // Double-check after acquiring write lock
             result = readAt(index);
-            if (result != null) {
-                return result;
+            if (result == null) {
+                result = calculator.apply(index);
+                store(index, result);
             }
-
-            // Not cached; compute and store
-            result = calculator.apply(index);
-            store(index, result);
             return result;
         } finally {
-            lock.unlockWrite(stamp);
+            lock.writeLock().unlock();
         }
     }
 
@@ -124,19 +125,14 @@ class CachedBuffer<T> {
      * @return the cached value, or null if not cached
      */
     T get(int index) {
-        long stamp = lock.tryOptimisticRead();
-        T result = tryRead(index, stamp);
-        if (lock.validate(stamp)) {
-            return result;
-        }
-
-        // Optimistic read failed; acquire read lock
-        stamp = lock.readLock();
+        lock.readLock().lock();
+        T result;
         try {
-            return readAt(index);
+            result = readAt(index);
         } finally {
-            lock.unlockRead(stamp);
+            lock.readLock().unlock();
         }
+        return result;
     }
 
     /**
@@ -146,11 +142,11 @@ class CachedBuffer<T> {
      * @param value the value to store
      */
     void put(int index, T value) {
-        long stamp = lock.writeLock();
+        lock.writeLock().lock();
         try {
             store(index, value);
         } finally {
-            lock.unlockWrite(stamp);
+            lock.writeLock().unlock();
         }
     }
 
@@ -168,7 +164,7 @@ class CachedBuffer<T> {
      * @param calculator  function to compute values
      */
     void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator) {
-        long stamp = lock.writeLock();
+        lock.writeLock().lock();
         try {
             int fillStart = Math.max(startIndex, highestResultIndex + 1);
             for (int i = fillStart; i < targetIndex; i++) {
@@ -176,7 +172,7 @@ class CachedBuffer<T> {
                 store(i, value);
             }
         } finally {
-            lock.unlockWrite(stamp);
+            lock.writeLock().unlock();
         }
     }
 
@@ -184,11 +180,11 @@ class CachedBuffer<T> {
      * Clears all cached values.
      */
     void clear() {
-        long stamp = lock.writeLock();
+        lock.writeLock().lock();
         try {
             clearInternal();
         } finally {
-            lock.unlockWrite(stamp);
+            lock.writeLock().unlock();
         }
     }
 
@@ -198,7 +194,7 @@ class CachedBuffer<T> {
      * @param index the first index to invalidate; if negative, clears all
      */
     void invalidateFrom(int index) {
-        long stamp = lock.writeLock();
+        lock.writeLock().lock();
         try {
             if (firstCachedIndex < 0 || index > highestResultIndex) {
                 return;
@@ -215,7 +211,7 @@ class CachedBuffer<T> {
             }
             highestResultIndex = index - 1;
         } finally {
-            lock.unlockWrite(stamp);
+            lock.writeLock().unlock();
         }
     }
 
@@ -223,16 +219,11 @@ class CachedBuffer<T> {
      * @return the highest cached series index, or -1 if empty
      */
     int getHighestResultIndex() {
-        long stamp = lock.tryOptimisticRead();
-        int result = highestResultIndex;
-        if (lock.validate(stamp)) {
-            return result;
-        }
-        stamp = lock.readLock();
+        lock.readLock().lock();
         try {
             return highestResultIndex;
         } finally {
-            lock.unlockRead(stamp);
+            lock.readLock().unlock();
         }
     }
 
@@ -240,16 +231,11 @@ class CachedBuffer<T> {
      * @return the first cached series index, or -1 if empty
      */
     int getFirstCachedIndex() {
-        long stamp = lock.tryOptimisticRead();
-        int result = firstCachedIndex;
-        if (lock.validate(stamp)) {
-            return result;
-        }
-        stamp = lock.readLock();
+        lock.readLock().lock();
         try {
             return firstCachedIndex;
         } finally {
-            lock.unlockRead(stamp);
+            lock.readLock().unlock();
         }
     }
 
@@ -264,15 +250,6 @@ class CachedBuffer<T> {
     }
 
     // --- Internal methods (must be called under appropriate lock) ---
-
-    @SuppressWarnings("unchecked")
-    private T tryRead(int index, long stamp) {
-        if (!isInRange(index)) {
-            return null;
-        }
-        int slot = indexToSlot(index);
-        return (T) buffer[slot];
-    }
 
     @SuppressWarnings("unchecked")
     private T readAt(int index) {

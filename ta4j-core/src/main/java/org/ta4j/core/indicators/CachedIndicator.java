@@ -112,8 +112,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
                         getClass().getSimpleName(), index, removedBarsCount);
             }
-            // Return the result for the first available bar
-            result = getOrComputeAndCache(removedBarsCount);
+            // Map to the current window to avoid deep recursion on pruned history
+            int mappedIndex = Math.max(index - removedBarsCount, 0);
+            result = getOrComputeAndCache(mappedIndex);
         } else if (index == endIndex) {
             // Last bar: use mutation-aware caching
             result = getLastBarValue(index, series);

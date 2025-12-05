@@ -40,7 +40,9 @@ import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -332,24 +334,23 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         CountingIndicator indicator = new CountingIndicator(barSeries);
 
-        // Access values sequentially to trigger eviction
-        for (int i = 0; i <= 12; i++) {
+        int startIndex = barSeries.getBeginIndex();
+        int endIndex = barSeries.getEndIndex();
+        for (int i = startIndex; i <= endIndex; i++) {
             Num value = indicator.getValue(i);
             assertNumEquals(i, value);
         }
 
-        // Each index should be computed exactly once (no recomputation after eviction)
-        // Note: indices before removedBarsCount may have different behavior
-        int removedBarsCount = barSeries.getRemovedBarsCount();
-        assertEquals(10, removedBarsCount);
+        // Each cached index should be computed exactly once
+        assertEquals(endIndex - startIndex + 1, indicator.getCalculationCount());
 
         // Reset counter to verify cache hits
         indicator.resetCalculationCount();
 
         // Access the remaining cached values (10, 11, 12) - should be cache hits
-        assertNumEquals(10, indicator.getValue(10));
-        assertNumEquals(11, indicator.getValue(11));
-        assertNumEquals(12, indicator.getValue(12));
+        for (int i = startIndex; i <= endIndex; i++) {
+            assertNumEquals(i, indicator.getValue(i));
+        }
 
         // No new calculations should have occurred for cached values
         assertEquals(0, indicator.getCalculationCount());
@@ -396,6 +397,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // SMA of (2, 10) = 6.0
         Num secondValue = sma.getValue(endIndex);
         assertNumEquals(6.0, secondValue);
+    }
+
+    @Test
+    public void recursiveCalculateDoesNotDeadlock() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        SelfReferencingIndicator indicator = new SelfReferencingIndicator(barSeries);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(4));
+            Num result = future.get(2, TimeUnit.SECONDS);
+            assertNumEquals(5, result);
+            assertEquals(5, indicator.getCalculationCount());
+        } catch (TimeoutException e) {
+            fail("getValue should not deadlock for recursive indicators");
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private final class CountingIndicator extends CachedIndicator<Num> {
@@ -447,6 +468,33 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getCalculationCount() {
             return calculationCount;
+        }
+    }
+
+    private final class SelfReferencingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculationCount = new AtomicInteger();
+
+        private SelfReferencingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount.incrementAndGet();
+            if (index == 0) {
+                return numFactory.numOf(1);
+            }
+            return getValue(index - 1).plus(numFactory.numOf(1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getCalculationCount() {
+            return calculationCount.get();
         }
     }
 
