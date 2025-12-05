@@ -69,7 +69,6 @@ public class CachedBufferTest {
 
         // Fill indices 0, 1, 2
         for (int i = 0; i < 3; i++) {
-            int idx = i;
             buffer.getOrCompute(i, x -> {
                 computations.incrementAndGet();
                 return x * 10;
@@ -81,7 +80,6 @@ public class CachedBufferTest {
 
         // Add indices 3, 4, 5 - should evict 0, 1, 2
         for (int i = 3; i < 6; i++) {
-            int idx = i;
             buffer.getOrCompute(i, x -> {
                 computations.incrementAndGet();
                 return x * 10;
