@@ -289,7 +289,8 @@ class CachedBuffer<T> {
             firstCachedIndex = index;
             highestResultIndex = index;
             ensureCapacity(1);
-            buffer[0] = value;
+            int slot = indexToSlot(index);
+            buffer[slot] = value;
             return;
         }
 
@@ -299,9 +300,9 @@ class CachedBuffer<T> {
             int newSize = highestResultIndex - firstCachedIndex + 1 + gap;
 
             if (bounded && newSize > maximumCapacity) {
-                // Need to evict oldest entries (O(1) by advancing firstCachedIndex)
+                // Need to evict oldest entries
                 int evictCount = newSize - maximumCapacity;
-                // Clear evicted slots (optional, helps GC)
+                // Clear evicted slots and advance firstCachedIndex
                 for (int i = 0; i < evictCount && firstCachedIndex + i <= highestResultIndex; i++) {
                     int slot = indexToSlot(firstCachedIndex + i);
                     buffer[slot] = null;
@@ -322,13 +323,20 @@ class CachedBuffer<T> {
             buffer[slot] = value;
 
         } else {
-            // Index is before firstCachedIndex; need to expand backward
-            int backfillCount = firstCachedIndex - index;
+            // Index is before firstCachedIndex; need to expand backward.
+            // For bounded buffers, we must evict from the high end to make room.
+            // For unbounded buffers, we grow if needed.
             int newSize = highestResultIndex - index + 1;
 
             if (bounded && newSize > maximumCapacity) {
-                // Can't backfill that far; just store at index and evict old end
+                // Cannot fit entire range; evict from high end
                 int evictCount = newSize - maximumCapacity;
+                // Clear evicted slots at high end
+                for (int i = 0; i < evictCount; i++) {
+                    int evictIndex = highestResultIndex - i;
+                    int slot = indexToSlot(evictIndex);
+                    buffer[slot] = null;
+                }
                 highestResultIndex -= evictCount;
             }
 
@@ -352,11 +360,11 @@ class CachedBuffer<T> {
         int newCapacity = Math.min(Math.max(capacity * 2, requiredSize), maximumCapacity);
         Object[] newBuffer = new Object[newCapacity];
 
-        // Copy existing values to new buffer
+        // Copy existing values to new buffer using absolute slot mapping
         if (firstCachedIndex >= 0) {
             for (int i = firstCachedIndex; i <= highestResultIndex; i++) {
                 int oldSlot = indexToSlot(i);
-                int newSlot = (i - firstCachedIndex) % newCapacity;
+                int newSlot = i % newCapacity;
                 newBuffer[newSlot] = buffer[oldSlot];
             }
         }
@@ -365,8 +373,12 @@ class CachedBuffer<T> {
         capacity = newCapacity;
     }
 
+    /**
+     * Maps a series index to a buffer slot using absolute indexing. This ensures
+     * slot mapping is stable regardless of eviction.
+     */
     private int indexToSlot(int index) {
-        return (index - firstCachedIndex) % capacity;
+        return index % capacity;
     }
 
     private void clearInternal() {
