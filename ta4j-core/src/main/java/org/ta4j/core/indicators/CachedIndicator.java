@@ -112,9 +112,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
                         getClass().getSimpleName(), index, removedBarsCount);
             }
-            // Map to the current window to avoid deep recursion on pruned history
-            int mappedIndex = Math.max(index - removedBarsCount, 0);
-            result = getOrComputeAndCache(mappedIndex);
+            // Map to the current window to avoid deep recursion on pruned history.
+            // All pruned indices map to beginIndex (which equals removedBarsCount)
+            // to prevent recursive indicators from traversing removed history.
+            int beginIndex = series.getBeginIndex();
+            result = getOrComputeAndCache(beginIndex);
         } else if (index == endIndex) {
             // Last bar: use mutation-aware caching
             result = getLastBarValue(index, series);

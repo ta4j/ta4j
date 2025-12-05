@@ -37,9 +37,10 @@ import java.util.function.IntFunction;
  * oldest entries are evicted in O(1) time by advancing the head pointer.
  *
  * <p>
- * Thread-safety is achieved via a {@link StampedLock}: cache hits use
- * optimistic reads (no blocking), while misses and invalidation acquire write
- * locks.
+ * Thread-safety is achieved via a {@link ReentrantReadWriteLock}: cache hits
+ * use read locks (allowing concurrent reads), while misses and invalidation
+ * acquire write locks. The reentrant nature allows recursive indicators to
+ * safely call getValue() from within calculate() without deadlocking.
  *
  * @param <T> the type of cached values
  */
