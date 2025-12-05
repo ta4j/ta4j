@@ -52,7 +52,7 @@ class CachedBuffer<T> {
     private static final int DEFAULT_UNBOUNDED_CAPACITY = 512;
 
     /** Maximum reasonable capacity to prevent excessive memory usage. */
-    private static final int MAX_CAPACITY = Integer.MAX_VALUE / 2;
+    private static final int MAX_CAPACITY = 1_000_000;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
