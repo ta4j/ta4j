@@ -26,6 +26,7 @@
 
 ### Fixed
 - **Rule name serialization contention**: Cached generated default rule names so repeated `Rule#getName()` calls no longer trigger JSON serialization, eliminating the hot lock that appeared when many strategies ran in parallel.
+- **Rule name visibility**: Made rule names volatile and added regression coverage so custom names set on one thread are always visible on others, preventing fallback to expensive default-name serialization under concurrency.
 
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow

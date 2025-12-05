@@ -41,7 +41,7 @@ public abstract class AbstractRule implements Rule {
     private final String className = getClass().getSimpleName();
 
     /** Configurable display name */
-    private String name;
+    private volatile String name;
 
     /** Cached default name to avoid repeated JSON serialization */
     private transient volatile String cachedDefaultName;

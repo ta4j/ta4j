@@ -31,6 +31,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RuleNameTest {
 
@@ -174,6 +175,45 @@ public class RuleNameTest {
         assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
         assertEquals("Default name should be built exactly once even under contention", 1,
                 rule.getCreateDefaultNameCalls());
+    }
+
+    @Test
+    public void customNameVisibleAcrossThreadsWithoutExplicitSync() throws Exception {
+        CountingRule rule = new CountingRule();
+        String customName = "CustomName-" + System.nanoTime();
+        CountDownLatch readerDone = new CountDownLatch(1);
+        AtomicInteger seenCustom = new AtomicInteger(0);
+
+        Thread reader = new Thread(() -> {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (System.nanoTime() < deadline) {
+                if (customName.equals(rule.getName())) {
+                    seenCustom.incrementAndGet();
+                    break;
+                }
+                Thread.yield();
+            }
+            readerDone.countDown();
+        }, "custom-name-reader");
+
+        reader.start();
+        // Writer thread sets the custom name after a short delay to avoid any implicit
+        // happens-before with reader start.
+        Thread writer = new Thread(() -> {
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            rule.setName(customName);
+        }, "custom-name-writer");
+        writer.start();
+
+        writer.join(1000);
+        readerDone.await(3, TimeUnit.SECONDS);
+
+        assertTrue("Custom name should become visible to reader thread", seenCustom.get() > 0);
+        assertEquals(customName, rule.getName());
     }
 
     private static final class CountingRule extends AbstractRule {
