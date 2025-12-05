@@ -27,6 +27,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 
 public class RuleNameTest {
 
@@ -124,5 +125,42 @@ public class RuleNameTest {
         assertEquals(
                 "{\"type\":\"OrRule\",\"components\":[{\"type\":\"AndRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]},{\"type\":\"NotRule\",\"components\":[{\"label\":\"Exit\"}]}]}",
                 outerOr.getName());
+    }
+
+    @Test
+    public void defaultNameIsCachedUntilReset() {
+        CountingRule rule = new CountingRule();
+
+        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals(1, rule.getCreateDefaultNameCalls());
+
+        rule.setName("Custom");
+        assertEquals("Custom", rule.getName());
+        assertEquals(1, rule.getCreateDefaultNameCalls());
+
+        rule.setName(null);
+        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals(2, rule.getCreateDefaultNameCalls());
+    }
+
+    private static final class CountingRule extends AbstractRule {
+
+        private int createDefaultNameCalls;
+
+        @Override
+        protected String createDefaultName() {
+            createDefaultNameCalls++;
+            return super.createDefaultName();
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        int getCreateDefaultNameCalls() {
+            return createDefaultNameCalls;
+        }
     }
 }

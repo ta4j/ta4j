@@ -15,7 +15,7 @@
     - **Unified swing infrastructure**: All swing indicators share a common foundation (`AbstractRecentSwingIndicator` base class and `RecentSwingIndicator` interface) that provides consistent caching, automatic purging of stale swing points, and a unified API for accessing swing point indexes and values. Makes it straightforward to build custom swing detection algorithms or integrate with trendline tools—implement the interface and you get caching and lifecycle management automatically.
     - **Swing point visualization**: `SwingPointMarkerIndicator` highlights confirmed swing points on charts without drawing connecting lines, useful for visualizing where pivots occur. Works with any swing detection algorithm (fractal-based, ZigZag, or custom implementations).
 
-- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
+- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation-your strategy code stays exactly the same. Implementations include:
   - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
   - `CoinbaseBarSeriesDataSource`: Load historical crypto data from Coinbase's public API with automatic caching
   - `CsvFileBarSeriesDataSource`: Load OHLCV data from CSV files with intelligent filename pattern matching (e.g., `AAPL-PT1D-20230102_20231231.csv`)
@@ -23,6 +23,9 @@
   - `BitStampCsvTradesFileBarSeriesDataSource`: Aggregate Bitstamp trade-level CSV data into bars on-the-fly
   
   All data sources support the same domain-driven API: `loadSeries(ticker, interval, start, end)`. No more remembering whether your CSV uses `_bars_from_` or `-PT1D-` in the filename, or which API endpoint returns what format. The interface handles the implementation details so you can focus on building strategies. File-based sources automatically search for matching files, while API-based sources fetch and cache data transparently. See the new `CoinbaseBacktest` and `YahooFinanceBacktest` examples for complete workflows.
+
+### Fixed
+- **Rule name serialization contention**: Cached generated default rule names so repeated `Rule#getName()` calls no longer trigger JSON serialization, eliminating the hot lock that appeared when many strategies ran in parallel.
 
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow

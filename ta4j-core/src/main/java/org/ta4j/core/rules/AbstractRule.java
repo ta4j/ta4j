@@ -43,6 +43,9 @@ public abstract class AbstractRule implements Rule {
     /** Configurable display name */
     private String name;
 
+    /** Cached default name to avoid repeated JSON serialization */
+    private transient volatile String cachedDefaultName;
+
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
      * set, otherwise falls back to the class name.
@@ -68,11 +71,22 @@ public abstract class AbstractRule implements Rule {
     @Override
     public void setName(String name) {
         this.name = name == null || name.isBlank() ? null : name;
+        if (this.name == null) {
+            cachedDefaultName = null;
+        }
     }
 
     @Override
     public String getName() {
-        return name != null ? name : createDefaultName();
+        if (name != null) {
+            return name;
+        }
+        String result = cachedDefaultName;
+        if (result == null) {
+            result = createDefaultName();
+            cachedDefaultName = result;
+        }
+        return result;
     }
 
     @Override
