@@ -27,9 +27,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.ZLEMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
@@ -60,6 +64,129 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
 
         LegacyReentrantIndicator legacy = new LegacyReentrantIndicator(series, TARGET_INDEX);
         assertThrows(StackOverflowError.class, () -> legacy.getValue(TARGET_INDEX));
+    }
+
+    @Test
+    public void largeGapRequestDoesNotCauseStackOverflow() {
+        // Create a series with 500 bars
+        double[] data = new double[500];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i + 1;
+        }
+        BarSeries largeSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+
+        // ZLEMA is a recursive indicator
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(largeSeries), 20);
+
+        // Request value at the end - should use iterative prefill
+        try {
+            Num value = zlema.getValue(499);
+            assertNotNull(value);
+        } catch (StackOverflowError e) {
+            fail("Recursive indicator should not cause stack overflow with large gap");
+        }
+    }
+
+    @Test
+    public void iterativePrefillComputesValuesCorrectly() {
+        // Create a simple recursive indicator that adds previous value
+        double[] data = new double[300];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = 1; // All values are 1
+        }
+        BarSeries testSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+
+        SumIndicator sumIndicator = new SumIndicator(testSeries);
+
+        // Request value at index 200 - should trigger iterative prefill
+        Num value = sumIndicator.getValue(200);
+
+        // Each value should be index + 1 (since sum starts at 1)
+        assertEquals(numFactory.numOf(201), value);
+
+        // Verify intermediate values were computed correctly
+        assertEquals(numFactory.numOf(1), sumIndicator.getValue(0));
+        assertEquals(numFactory.numOf(101), sumIndicator.getValue(100));
+        assertEquals(numFactory.numOf(151), sumIndicator.getValue(150));
+    }
+
+    @Test
+    public void prefillOnlyComputesOncePerIndex() {
+        double[] data = new double[300];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i;
+        }
+        BarSeries testSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+
+        CountingRecursiveIndicator indicator = new CountingRecursiveIndicator(testSeries);
+
+        // First request triggers prefill
+        indicator.getValue(250);
+
+        // Get the computation count
+        int firstCount = indicator.getComputationCount();
+
+        // Subsequent requests should use cache
+        indicator.getValue(100);
+        indicator.getValue(150);
+        indicator.getValue(200);
+        indicator.getValue(250);
+
+        // No additional computations should occur
+        assertEquals(firstCount, indicator.getComputationCount());
+    }
+
+    /**
+     * Simple recursive indicator that sums from 0 to index.
+     */
+    private final class SumIndicator extends RecursiveCachedIndicator<Num> {
+
+        private SumIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 0) {
+                return numFactory.numOf(1);
+            }
+            return getValue(index - 1).plus(numFactory.numOf(1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Recursive indicator that counts how many times calculate() is called.
+     */
+    private final class CountingRecursiveIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final AtomicInteger computations = new AtomicInteger(0);
+
+        private CountingRecursiveIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            computations.incrementAndGet();
+            if (index == 0) {
+                return numFactory.numOf(0);
+            }
+            return getValue(index - 1).plus(numFactory.numOf(1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getComputationCount() {
+            return computations.get();
+        }
     }
 
     private final class ReentrantIndicator extends RecursiveCachedIndicator<Num> {
