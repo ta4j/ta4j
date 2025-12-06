@@ -26,92 +26,38 @@ package org.ta4j.core.indicators.supertrend;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class SuperTrendIndicatorTest {
+public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private BarSeries data;
-    private NumFactory numFactory = DoubleNumFactory.getInstance();
-
-    @Before
-    public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-
-        data.barBuilder().openPrice(23.17).closePrice(21.48).highPrice(23.39).lowPrice(21.35).add();
-        data.barBuilder().openPrice(21.25).closePrice(19.94).highPrice(21.29).lowPrice(20.07).add();
-        data.barBuilder().openPrice(20.08).closePrice(21.97).highPrice(24.30).lowPrice(20.01).add();
-        data.barBuilder().openPrice(22.17).closePrice(20.87).highPrice(22.64).lowPrice(20.78).add();
-        data.barBuilder().openPrice(21.67).closePrice(21.65).highPrice(22.80).lowPrice(21.59).add();
-        data.barBuilder().openPrice(21.47).closePrice(22.14).highPrice(22.26).lowPrice(20.96).add();
-        data.barBuilder().openPrice(22.25).closePrice(21.44).highPrice(22.31).lowPrice(21.36).add();
-        data.barBuilder().openPrice(21.83).closePrice(21.67).highPrice(22.40).lowPrice(21.59).add();
-        data.barBuilder().openPrice(23.09).closePrice(22.90).highPrice(23.76).lowPrice(22.73).add();
-        data.barBuilder().openPrice(22.93).closePrice(22.01).highPrice(23.27).lowPrice(21.94).add();
-        data.barBuilder().openPrice(19.89).closePrice(19.20).highPrice(20.47).lowPrice(18.91).add();
-        data.barBuilder().openPrice(21.56).closePrice(18.83).highPrice(21.80).lowPrice(18.83).add();
-        data.barBuilder().openPrice(19.00).closePrice(18.35).highPrice(19.41).lowPrice(18.01).add();
-        data.barBuilder().openPrice(19.89).closePrice(6.36).highPrice(20.22).lowPrice(6.21).add();
-        data.barBuilder().openPrice(19.28).closePrice(10.34).highPrice(20.58).lowPrice(10.11).add();
-        // this mock bar exemplify an edge case, the close price is the same as the
-        // previous Super Trend value
-        data.barBuilder().openPrice(19.28).closePrice(22.78938583966133).highPrice(23.58).lowPrice(10.11).add();
-        data.barBuilder().openPrice(19.28).closePrice(10.34).highPrice(20.58).lowPrice(10.11).add();
-        data.barBuilder().openPrice(10.34).closePrice(9.83).highPrice(12.80).lowPrice(8.83).add();
-        data.barBuilder().openPrice(11.83).closePrice(7.35).highPrice(11.41).lowPrice(5.01).add();
+    public SuperTrendIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
-    public void testSuperTrendIndicator() {
-        var superTrendIndicator = new SuperTrendIndicator(data);
+    public void superTrendRecoversWhenUpperBandStartsAsNaN() {
+        BarSeries series = buildSeries();
+        SuperTrendIndicator indicator = new SuperTrendIndicator(series, 2, 1d);
 
-        // SuperTrend uses ATRIndicator with barCount=10, so ATR returns NaN for indices
-        // 0-9
-        // This causes the bands to be NaN, which affects SuperTrend calculation
-        // During unstable period (indices 0-9), SuperTrend returns 0 because the
-        // conditions
-        // in calculate() don't match when bands are NaN, so value remains zero
-        for (int i = 0; i < 10; i++) {
-            // SuperTrend returns 0 for index 0, and 0 for other indices in unstable period
-            // because bands are NaN and conditions don't match
-            Num value = superTrendIndicator.getValue(i);
-            assertThat(value.isZero()).isTrue();
-        }
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
 
-        // After unstable period, values should be valid (not NaN)
-        // Note: SuperTrendIndicator may still return zero for a few indices after
-        // unstable period
-        // because the logic depends on previousValue matching bands, and if previous
-        // values are zero
-        // from unstable period, conditions may not match. Eventually values should
-        // become non-zero.
-        Num value14 = superTrendIndicator.getValue(14);
-        assertThat(value14.isNaN()).isFalse();
-        // Value may be zero if conditions don't match, but should not be NaN
+        assertNumEquals(11.5, indicator.getValue(2));
+        assertNumEquals(12.5, indicator.getValue(3));
     }
 
-    @Test
-    public void regressionTestOnZeroSuperTrendValueWhenClosePriceIsEqualToPreviousSuperTrendValue() {
-        // bug: https://github.com/ta4j/ta4j/issues/1120
-        var superTrendIndicator = new SuperTrendIndicator(data);
-
-        // After unstable period (index 10+), values should be valid (not NaN)
-        // Note: SuperTrendIndicator may still return zero for indices after unstable
-        // period
-        // because the logic depends on previousValue matching bands. If previous values
-        // are zero
-        // from unstable period, conditions may not match initially. Eventually values
-        // should become non-zero.
-        // The key is that values should not be NaN.
-        assertThat(superTrendIndicator.getValue(14).isNaN()).isFalse();
-        assertThat(superTrendIndicator.getValue(15).isNaN()).isFalse();
-        assertThat(superTrendIndicator.getValue(16).isNaN()).isFalse();
-        assertThat(superTrendIndicator.getValue(17).isNaN()).isFalse();
-        assertThat(superTrendIndicator.getValue(18).isNaN()).isFalse();
+    private BarSeries buildSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();
+        series.barBuilder().openPrice(12).closePrice(13).highPrice(14).lowPrice(11).add();
+        series.barBuilder().openPrice(14).closePrice(15).highPrice(16).lowPrice(13).add();
+        series.barBuilder().openPrice(16).closePrice(16).highPrice(18).lowPrice(14).add();
+        return series;
     }
 }

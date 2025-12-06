@@ -67,12 +67,18 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
     protected Num calculate(int index) {
         Num currentBasic = medianPriceIndicator.getValue(index)
                 .plus(multiplier.multipliedBy(atrIndicator.getValue(index)));
+        if (Num.isNaNOrNull(currentBasic)) {
+            return currentBasic;
+        }
         if (index == 0) {
             return currentBasic;
         }
 
         Bar bar = getBarSeries().getBar(index - 1);
         Num previousValue = this.getValue(index - 1);
+        if (Num.isNaNOrNull(previousValue)) {
+            return currentBasic;
+        }
 
         return currentBasic.isLessThan(previousValue) || bar.getClosePrice().isGreaterThan(previousValue) ? currentBasic
                 : previousValue;
@@ -80,6 +86,6 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return atrIndicator.getCountOfUnstableBars();
     }
 }

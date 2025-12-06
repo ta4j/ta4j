@@ -96,7 +96,8 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(superTrendUpperBandIndicator.getCountOfUnstableBars(),
+                superTrendLowerBandIndicator.getCountOfUnstableBars());
     }
 
     /** @return the {@link #superTrendLowerBandIndicator} */

@@ -9,6 +9,7 @@
 
 ### Fixed
 - Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
+- Fixed **SuperTrendUpperBandIndicator** NaN contamination by recovering once ATR leaves its unstable window and aligning unstable-bar counts across SuperTrend components so values stabilize after ATR warms up.
 
 ### Added
 - **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.

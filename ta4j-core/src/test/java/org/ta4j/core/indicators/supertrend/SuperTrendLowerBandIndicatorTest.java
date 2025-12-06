@@ -26,64 +26,40 @@ package org.ta4j.core.indicators.supertrend;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class SuperTrendLowerBandIndicatorTest {
+public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private BarSeries data;
-    private NumFactory numFactory = DoubleNumFactory.getInstance();
-
-    @Before
-    public void setUp() {
-        data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        data.barBuilder().openPrice(23.17).closePrice(21.48).highPrice(23.39).lowPrice(21.35).add();
-        data.barBuilder().openPrice(21.25).closePrice(19.94).highPrice(21.29).lowPrice(20.07).add();
-        data.barBuilder().openPrice(20.08).closePrice(21.97).highPrice(24.30).lowPrice(20.01).add();
-        data.barBuilder().openPrice(22.17).closePrice(20.87).highPrice(22.64).lowPrice(20.78).add();
-        data.barBuilder().openPrice(21.67).closePrice(21.65).highPrice(22.80).lowPrice(21.59).add();
-        data.barBuilder().openPrice(21.47).closePrice(22.14).highPrice(22.26).lowPrice(20.96).add();
-        data.barBuilder().openPrice(22.25).closePrice(21.44).highPrice(22.31).lowPrice(21.36).add();
-        data.barBuilder().openPrice(21.83).closePrice(21.67).highPrice(22.40).lowPrice(21.59).add();
-        data.barBuilder().openPrice(23.09).closePrice(22.90).highPrice(23.76).lowPrice(22.73).add();
-        data.barBuilder().openPrice(22.93).closePrice(22.01).highPrice(23.27).lowPrice(21.94).add();
-        data.barBuilder().openPrice(19.89).closePrice(19.20).highPrice(20.47).lowPrice(18.91).add();
-        data.barBuilder().openPrice(21.56).closePrice(18.83).highPrice(21.80).lowPrice(18.83).add();
-        data.barBuilder().openPrice(19.00).closePrice(18.35).highPrice(19.41).lowPrice(18.01).add();
-        data.barBuilder().openPrice(19.89).closePrice(6.36).highPrice(20.22).lowPrice(6.21).add();
-        data.barBuilder().openPrice(19.28).closePrice(10.34).highPrice(20.58).lowPrice(10.11).add();
+    public SuperTrendLowerBandIndicatorTest(NumFactory numFactory) {
+        super(numFactory);
     }
 
     @Test
-    public void testSuperTrendLowerBandIndicator() {
-        var superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(data);
+    public void respectsAtrUnstablePeriodAndRecovers() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
 
-        // SuperTrendLowerBand uses ATRIndicator with barCount=10, so ATR returns NaN
-        // for indices 0-9
-        // Index 0 returns zero directly (from calculate method)
-        // For indices 1-9, ATR returns NaN, so currentBasic is NaN, and the recursive
-        // logic
-        // may return previousValue (which could be zero from index 0) or NaN
-        // The exact behavior depends on the recursive logic, but values during unstable
-        // period
-        // will be zero or NaN
-        assertThat(superTrendLowerBandIndicator.getValue(0).isZero()).isTrue();
-        // Indices 1-9 may be zero (from previousValue) or NaN (from currentBasic)
-        for (int i = 1; i < 10; i++) {
-            Num value = superTrendLowerBandIndicator.getValue(i);
-            assertThat(value.isZero() || Num.isNaNOrNull(value)).isTrue();
-        }
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
 
-        // After unstable period, check that we can get values (they may still be
-        // NaN/zero due to recursive logic,
-        // but the indicator should not crash)
-        var value = superTrendLowerBandIndicator.getValue(14);
-        // Value may be NaN or valid, but should not crash
-        assertThat(value != null).isTrue();
+        assertNumEquals(11.5, indicator.getValue(2));
+        assertNumEquals(12.5, indicator.getValue(3));
+    }
+
+    private BarSeries buildSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();
+        series.barBuilder().openPrice(12).closePrice(13).highPrice(14).lowPrice(11).add();
+        series.barBuilder().openPrice(14).closePrice(15).highPrice(16).lowPrice(13).add();
+        series.barBuilder().openPrice(16).closePrice(16).highPrice(18).lowPrice(14).add();
+        return series;
     }
 }
