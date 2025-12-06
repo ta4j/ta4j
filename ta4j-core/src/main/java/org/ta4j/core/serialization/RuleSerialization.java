@@ -157,60 +157,27 @@ public final class RuleSerialization {
 
         ComponentDescriptor descriptor = builder.build();
 
-        // Check if the rule has a custom name set via setName()
-        // The rule's getName() returns either:
-        // 1. A custom name (set via setName()) - which could be any string
-        // 2. The default name - which is a JSON representation (either type-only or
-        // with components)
-        String currentName = rule.getName();
-
-        // Try to determine if currentName is the default name
-        // Default names are JSON strings that start with "{"
-        boolean hasCustomName = true;
-        if (currentName != null && currentName.trim().startsWith("{")) {
-            // Current name looks like JSON - try to parse it
-            try {
-                ComponentDescriptor currentDescriptor = ComponentSerialization.parse(currentName);
-                if (currentDescriptor != null) {
-                    // Successfully parsed - check if it matches our descriptor structure
-                    // For default names, the type should match
-                    String currentType = currentDescriptor.getType();
-                    String descriptorType = descriptor.getType();
-                    if (currentType != null && currentType.equals(descriptorType)) {
-                        // Types match - this is likely the default name
-                        // Check if it's a type-only name (no components/parameters except __customName)
-                        boolean isTypeOnly = currentDescriptor.getComponents().isEmpty()
-                                && (currentDescriptor.getParameters().isEmpty() || currentDescriptor.getParameters()
-                                        .keySet()
-                                        .stream()
-                                        .allMatch(k -> k.startsWith("__")));
-                        if (isTypeOnly) {
-                            // Type-only default name - this is the default, not a custom name
-                            hasCustomName = false;
-                        } else {
-                            // Has components/parameters - compare more carefully
-                            // Remove __customName from both for comparison
-                            hasCustomName = !descriptorsEqualIgnoringLabel(currentDescriptor, descriptor);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Parsing failed - treat as custom name
+        boolean hasCustomName = false;
+        String customName = null;
+        if (rule instanceof org.ta4j.core.rules.AbstractRule abstractRule) {
+            hasCustomName = abstractRule.hasCustomName();
+            if (hasCustomName) {
+                customName = abstractRule.getName();
+            }
+        } else {
+            String currentName = rule.getName();
+            if (currentName != null && !currentName.isBlank() && !currentName.equals(rule.getClass().getSimpleName())) {
                 hasCustomName = true;
+                customName = currentName;
             }
         }
-        // If currentName doesn't start with "{", it's definitely a custom name
 
-        if (hasCustomName) {
-            // Rule has a custom name - preserve it
-            // Store it in __customName parameter so it's preserved even when applyLabel()
-            // is called
+        if (hasCustomName && customName != null) {
             Map<String, Object> params = new LinkedHashMap<>(descriptor.getParameters());
-            params.put("__customName", currentName);
+            params.put("__customName", customName);
             builder.withParameters(params);
-            // Also set as label for top-level rules (if label not already set)
             if (descriptor.getLabel() == null) {
-                builder.withLabel(currentName);
+                builder.withLabel(customName);
             }
             descriptor = builder.build();
         }
