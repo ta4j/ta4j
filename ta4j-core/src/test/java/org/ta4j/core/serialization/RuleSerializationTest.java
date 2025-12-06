@@ -725,7 +725,7 @@ public class RuleSerializationTest {
         assertThat(descriptor.getLabel()).isEqualTo("my-custom-rule");
         assertThat(descriptor.getParameters()).containsEntry("__customName", "my-custom-rule");
 
-        String json = composite.toJson(series);
+        String json = composite.toJson();
         Rule restored = Rule.fromJson(series, json);
         assertThat(restored.getName()).isEqualTo("my-custom-rule");
         assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");

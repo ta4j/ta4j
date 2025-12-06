@@ -126,20 +126,20 @@ public class RuleNameTest {
     }
 
     @Test
-    public void defaultNameIsCachedUntilReset() {
+    public void defaultNameIsRecomputedWhenNeeded() {
         CountingRule rule = new CountingRule();
 
         assertEquals("CountingRule", rule.getName());
         assertEquals("CountingRule", rule.getName());
-        assertEquals(1, rule.getCreateDefaultNameCalls());
+        assertEquals(2, rule.getCreateDefaultNameCalls());
 
         rule.setName("Custom");
         assertEquals("Custom", rule.getName());
-        assertEquals(1, rule.getCreateDefaultNameCalls());
+        assertEquals(2, rule.getCreateDefaultNameCalls());
 
         rule.setName(null);
         assertEquals("CountingRule", rule.getName());
-        assertEquals(2, rule.getCreateDefaultNameCalls());
+        assertEquals(3, rule.getCreateDefaultNameCalls());
     }
 
     @Test
@@ -167,7 +167,7 @@ public class RuleNameTest {
         boolean finished = done.await(10, TimeUnit.SECONDS);
         assertTrue("Threads did not finish in time", finished);
         assertEquals("CountingRule", rule.getName());
-        assertEquals("Default name should be built exactly once even under contention", 1,
+        assertEquals("Default name should be built once per call under contention plus final read", threads + 1,
                 rule.getCreateDefaultNameCalls());
     }
 

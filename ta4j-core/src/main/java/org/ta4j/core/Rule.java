@@ -43,7 +43,7 @@ public interface Rule {
      * @return JSON representation
      * @since 0.22
      */
-    default String toJson(BarSeries series) {
+    default String toJson() {
         ComponentDescriptor descriptor = RuleSerialization.describe(this);
         return ComponentSerialization.toJson(descriptor);
     }

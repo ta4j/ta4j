@@ -26,8 +26,6 @@ package org.ta4j.core.rules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
-import org.ta4j.core.serialization.ComponentDescriptor;
-import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -42,9 +40,6 @@ public abstract class AbstractRule implements Rule {
 
     /** Configurable display name */
     private volatile String name;
-
-    /** Cached default name to avoid repeated work */
-    private transient volatile String cachedDefaultName;
 
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
@@ -71,27 +66,11 @@ public abstract class AbstractRule implements Rule {
     @Override
     public void setName(String name) {
         this.name = name == null || name.isBlank() ? null : name;
-        if (this.name == null) {
-            cachedDefaultName = null;
-        }
     }
 
     @Override
     public String getName() {
-        if (name != null) {
-            return name;
-        }
-        String result = cachedDefaultName;
-        if (result == null) {
-            synchronized (this) {
-                result = cachedDefaultName;
-                if (result == null) {
-                    result = createDefaultName();
-                    cachedDefaultName = result;
-                }
-            }
-        }
-        return result;
+        return name != null ? name : createDefaultName();
     }
 
     /**
@@ -114,39 +93,6 @@ public abstract class AbstractRule implements Rule {
      */
     protected String createDefaultName() {
         return className;
-    }
-
-    /**
-     * Builds a JSON object containing only the rule type field.
-     *
-     * @param type rule type label
-     * @return JSON string
-     */
-    protected String createTypeOnlyName(String type) {
-        return ComponentSerialization.toJson(ComponentDescriptor.typeOnly(type));
-    }
-
-    /**
-     * Builds a JSON object containing the type plus an optional array of child rule
-     * names.
-     *
-     * @param type       rule type label
-     * @param childNames child rule display names
-     * @return JSON string
-     */
-    protected String createCompositeName(String type, String... childNames) {
-        StringBuilder builder = new StringBuilder(type);
-        if (childNames != null && childNames.length > 0) {
-            builder.append('(');
-            for (int i = 0; i < childNames.length; i++) {
-                if (i > 0) {
-                    builder.append(',');
-                }
-                builder.append(childNames[i]);
-            }
-            builder.append(')');
-        }
-        return builder.toString();
     }
 
     /**
