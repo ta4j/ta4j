@@ -39,8 +39,8 @@ public class RuleNameTest {
     public void defaultNameFallsBackToClassSimpleName() {
         Rule rule = new FixedRule(1);
 
-        assertEquals("{\"type\":\"FixedRule\"}", rule.getName());
-        assertEquals("{\"type\":\"FixedRule\"}", rule.toString());
+        assertEquals("FixedRule", rule.getName());
+        assertEquals("FixedRule", rule.toString());
     }
 
     @Test
@@ -52,10 +52,10 @@ public class RuleNameTest {
         assertEquals("My Custom Rule", rule.toString());
 
         rule.setName(null);
-        assertEquals("{\"type\":\"FixedRule\"}", rule.getName());
+        assertEquals("FixedRule", rule.getName());
 
         rule.setName("   ");
-        assertEquals("{\"type\":\"FixedRule\"}", rule.getName());
+        assertEquals("FixedRule", rule.getName());
     }
 
     @Test
@@ -66,19 +66,16 @@ public class RuleNameTest {
         exitRule.setName("Exit");
 
         Rule andRule = new AndRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"AndRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
-                andRule.getName());
+        assertEquals("AndRule(Entry,Exit)", andRule.getName());
 
         Rule orRule = new OrRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"OrRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
-                orRule.getName());
+        assertEquals("OrRule(Entry,Exit)", orRule.getName());
 
         Rule xorRule = new XorRule(entryRule, exitRule);
-        assertEquals("{\"type\":\"XorRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
-                xorRule.getName());
+        assertEquals("XorRule(Entry,Exit)", xorRule.getName());
 
         Rule notRule = new NotRule(entryRule);
-        assertEquals("{\"type\":\"NotRule\",\"components\":[{\"label\":\"Entry\"}]}", notRule.getName());
+        assertEquals("NotRule(Entry)", notRule.getName());
     }
 
     @Test
@@ -93,9 +90,8 @@ public class RuleNameTest {
         String originalExitName = exitRule.getName();
         String originalCompositeName = andRule.getName();
 
-        // Verify initial state: composite has generated JSON name
-        assertEquals("{\"type\":\"AndRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]}",
-                originalCompositeName);
+        // Verify initial state: composite has generated simple name
+        assertEquals("AndRule(Entry,Exit)", originalCompositeName);
 
         // Set custom name on composite
         andRule.setName("My Custom Composite Rule");
@@ -126,17 +122,15 @@ public class RuleNameTest {
 
         Rule outerOr = new OrRule(innerAnd, notExit);
 
-        assertEquals(
-                "{\"type\":\"OrRule\",\"components\":[{\"type\":\"AndRule\",\"components\":[{\"label\":\"Entry\"},{\"label\":\"Exit\"}]},{\"type\":\"NotRule\",\"components\":[{\"label\":\"Exit\"}]}]}",
-                outerOr.getName());
+        assertEquals("OrRule(AndRule(Entry,Exit),NotRule(Exit))", outerOr.getName());
     }
 
     @Test
     public void defaultNameIsCachedUntilReset() {
         CountingRule rule = new CountingRule();
 
-        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
-        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals("CountingRule", rule.getName());
+        assertEquals("CountingRule", rule.getName());
         assertEquals(1, rule.getCreateDefaultNameCalls());
 
         rule.setName("Custom");
@@ -144,7 +138,7 @@ public class RuleNameTest {
         assertEquals(1, rule.getCreateDefaultNameCalls());
 
         rule.setName(null);
-        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals("CountingRule", rule.getName());
         assertEquals(2, rule.getCreateDefaultNameCalls());
     }
 
@@ -172,7 +166,7 @@ public class RuleNameTest {
         start.countDown();
         boolean finished = done.await(10, TimeUnit.SECONDS);
         assertTrue("Threads did not finish in time", finished);
-        assertEquals("{\"type\":\"CountingRule\"}", rule.getName());
+        assertEquals("CountingRule", rule.getName());
         assertEquals("Default name should be built exactly once even under contention", 1,
                 rule.getCreateDefaultNameCalls());
     }

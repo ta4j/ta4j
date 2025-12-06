@@ -43,11 +43,8 @@ public abstract class AbstractRule implements Rule {
     /** Configurable display name */
     private volatile String name;
 
-    /** Cached default name to avoid repeated JSON serialization */
+    /** Cached default name to avoid repeated work */
     private transient volatile String cachedDefaultName;
-
-    /** Cached descriptor derived from the current name */
-    private transient volatile ComponentDescriptor cachedDescriptor;
 
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
@@ -77,7 +74,6 @@ public abstract class AbstractRule implements Rule {
         if (this.name == null) {
             cachedDefaultName = null;
         }
-        cachedDescriptor = null;
     }
 
     @Override
@@ -98,6 +94,13 @@ public abstract class AbstractRule implements Rule {
         return result;
     }
 
+    /**
+     * @return true if a custom name was assigned via {@link #setName(String)}
+     */
+    public boolean hasCustomName() {
+        return name != null;
+    }
+
     @Override
     public String toString() {
         return getName();
@@ -110,7 +113,7 @@ public abstract class AbstractRule implements Rule {
      * @return JSON payload describing the rule
      */
     protected String createDefaultName() {
-        return createTypeOnlyName(className);
+        return className;
     }
 
     /**
@@ -132,13 +135,18 @@ public abstract class AbstractRule implements Rule {
      * @return JSON string
      */
     protected String createCompositeName(String type, String... childNames) {
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
+        StringBuilder builder = new StringBuilder(type);
         if (childNames != null && childNames.length > 0) {
-            for (String child : childNames) {
-                builder.addComponent(ComponentSerialization.parse(child));
+            builder.append('(');
+            for (int i = 0; i < childNames.length; i++) {
+                if (i > 0) {
+                    builder.append(',');
+                }
+                builder.append(childNames[i]);
             }
+            builder.append(')');
         }
-        return ComponentSerialization.toJson(builder.build());
+        return builder.toString();
     }
 
     /**
@@ -150,37 +158,21 @@ public abstract class AbstractRule implements Rule {
      * @return JSON string
      */
     protected String createCompositeName(String type, Rule... children) {
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(type);
+        StringBuilder builder = new StringBuilder(type);
         if (children != null && children.length > 0) {
-            for (Rule child : children) {
-                builder.addComponent(toDescriptor(child));
-            }
-        }
-        return ComponentSerialization.toJson(builder.build());
-    }
-
-    private ComponentDescriptor getComponentDescriptor() {
-        ComponentDescriptor descriptor = cachedDescriptor;
-        if (descriptor == null) {
-            synchronized (this) {
-                descriptor = cachedDescriptor;
-                if (descriptor == null) {
-                    descriptor = ComponentSerialization.parse(getName());
-                    cachedDescriptor = descriptor;
+            builder.append('(');
+            for (int i = 0; i < children.length; i++) {
+                if (i > 0) {
+                    builder.append(',');
+                }
+                if (children[i] == null) {
+                    builder.append("null");
+                } else {
+                    builder.append(children[i].getName());
                 }
             }
+            builder.append(')');
         }
-        return descriptor;
-    }
-
-    private ComponentDescriptor toDescriptor(Rule rule) {
-        if (rule == null) {
-            return null;
-        }
-        if (rule instanceof AbstractRule abstractRule) {
-            return abstractRule.getComponentDescriptor();
-        }
-        // Fall back to parsing the name for third-party Rule implementations
-        return ComponentSerialization.parse(rule.getName());
+        return builder.toString();
     }
 }
