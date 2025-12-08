@@ -135,9 +135,8 @@ public final class ComponentDescriptor {
      * @return component descriptors (indicators/rules used by this component),
      *         never {@code null}. Entries themselves may be {@code null} when the
      *         caller intentionally inserts placeholders (for example,
-     *         {@link org.ta4j.core.rules.AbstractRule#createCompositeName(String, String...)}
-     *         keeps {@code null} slots so child names preserve their original
-     *         positions).
+     *         org.ta4j.core.rules.AbstractRule composite naming helpers keeps
+     *         {@code null} slots so child names preserve their original positions).
      */
     public List<ComponentDescriptor> getComponents() {
         return components;
@@ -248,9 +247,8 @@ public final class ComponentDescriptor {
          * <p>
          * Passing {@code null} intentionally creates a placeholder entry that is
          * serialized as {@code null} by {@link ComponentSerialization}. This is used by
-         * rule name helpers (e.g.,
-         * {@link org.ta4j.core.rules.AbstractRule#createCompositeName(String, String...)})
-         * to retain positional information when a child rule's display name is
+         * rule name helpers (e.g., org.ta4j.core.rules.AbstractRule composite naming
+         * helpers) to retain positional information when a child rule's display name is
          * unavailable.
          *
          * @param component component descriptor (or {@code null} placeholder)
