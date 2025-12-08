@@ -27,12 +27,39 @@ import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.XorRule;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
+import org.ta4j.core.serialization.RuleSerialization;
 
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
  * strategy}. A trading rule can consist of a combination of other rules.
  */
 public interface Rule {
+
+    /**
+     * Serializes this rule to JSON.
+     *
+     * @return JSON representation
+     * @since 0.22
+     */
+    default String toJson() {
+        ComponentDescriptor descriptor = RuleSerialization.describe(this);
+        return ComponentSerialization.toJson(descriptor);
+    }
+
+    /**
+     * Builds a rule from JSON.
+     *
+     * @param series bar series context
+     * @param json   payload
+     * @return reconstructed rule
+     * @since 0.22
+     */
+    static Rule fromJson(BarSeries series, String json) {
+        ComponentDescriptor descriptor = ComponentSerialization.parse(json);
+        return RuleSerialization.fromDescriptor(series, descriptor);
+    }
 
     /**
      * @param rule another trading rule
@@ -103,8 +130,7 @@ public interface Rule {
     /**
      * Returns the configured name for this rule.
      *
-     * @return a descriptive name or, by default, the same value as
-     *         {@link Object#toString()}
+     * @return a descriptive name or a lightweight default
      * @since 0.19
      */
     default String getName() {
