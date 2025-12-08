@@ -712,6 +712,25 @@ public class RuleSerializationTest {
                 .isEqualTo(descriptor.getParameters().get("__ruleArray_rules"));
     }
 
+    @Test
+    public void customNamesAreSerializedOutOfBandAndRestored() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        FixedRule left = new FixedRule(1);
+        left.setName("left-label");
+        FixedRule right = new FixedRule(2);
+        Rule composite = new AndRule(left, right);
+        composite.setName("my-custom-rule");
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(composite);
+        assertThat(descriptor.getLabel()).isEqualTo("my-custom-rule");
+        assertThat(descriptor.getParameters()).containsEntry("__customName", "my-custom-rule");
+
+        String json = composite.toJson();
+        Rule restored = Rule.fromJson(series, json);
+        assertThat(restored.getName()).isEqualTo("my-custom-rule");
+        assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");
+    }
+
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {
     }
 }

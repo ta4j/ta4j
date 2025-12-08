@@ -47,7 +47,7 @@ public class XorRule extends AbstractRule {
     public XorRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;
         this.rule2 = rule2;
-        setName(createCompositeName(getClass().getSimpleName(), rule1.getName(), rule2.getName()));
+        setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
     }
 
     @Override
