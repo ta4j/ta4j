@@ -212,11 +212,11 @@ public class RuleNameTest {
 
     private static final class CountingRule extends AbstractRule {
 
-        private int createDefaultNameCalls;
+        private final AtomicInteger createDefaultNameCalls = new AtomicInteger();
 
         @Override
         protected String createDefaultName() {
-            createDefaultNameCalls++;
+            createDefaultNameCalls.incrementAndGet();
             return super.createDefaultName();
         }
 
@@ -226,7 +226,7 @@ public class RuleNameTest {
         }
 
         int getCreateDefaultNameCalls() {
-            return createDefaultNameCalls;
+            return createDefaultNameCalls.get();
         }
     }
 }

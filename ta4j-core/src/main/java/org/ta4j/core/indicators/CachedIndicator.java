@@ -152,7 +152,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * The last bar (endIndex) is special because it may be mutated (e.g., via
      * {@link Bar#addTrade(Num, Num)} or {@link Bar#addPrice(Num)}). This method
      * caches the result but invalidates it if the bar has been modified since the
-     * last computation.
+     * last computation. TODO: Note that we assume only tradeCount and closePrice
+     * can change, if bars are modified to mutate other properties, this method will
+     * not invalidate the cache.
      *
      * @param index  the series index (should be endIndex)
      * @param series the bar series

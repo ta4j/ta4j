@@ -54,9 +54,25 @@ class CachedBuffer<T> {
     /** Maximum reasonable capacity to prevent excessive memory usage. */
     private static final int MAX_CAPACITY = 1_000_000;
 
+    /**
+     * Sentinel object used to represent "not computed" in the cache. This allows
+     * null values to be cached correctly, as null is a legitimate return value for
+     * some indicators.
+     */
+    private static final Object NOT_COMPUTED = new Object();
+
+    /**
+     * Sentinel object used to represent a cached null value. This distinguishes
+     * "not computed" from "computed and is null".
+     */
+    private static final Object NULL_VALUE = new Object();
+
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-    /** The ring buffer storing cached values; null means "not computed". */
+    /**
+     * The ring buffer storing cached values. Uses {@link #NOT_COMPUTED} to
+     * represent "not computed", allowing null values to be cached correctly.
+     */
     private Object[] buffer;
 
     /** Current allocated capacity of the buffer. */
@@ -97,24 +113,35 @@ class CachedBuffer<T> {
     T getOrCompute(int index, IntFunction<T> calculator) {
         // Fast-path: read lock for cache hits
         lock.readLock().lock();
-        T result;
+        Object cached;
         try {
-            result = readAt(index);
+            cached = readAtUnlocked(index);
         } finally {
             lock.readLock().unlock();
         }
-        if (result != null) {
+        if (cached != NOT_COMPUTED) {
+            if (cached == NULL_VALUE) {
+                return null;
+            }
+            @SuppressWarnings("unchecked")
+            T result = (T) cached;
             return result;
         }
 
         // Miss: compute under write lock (reentrant for recursive indicators)
         lock.writeLock().lock();
         try {
-            result = readAt(index);
-            if (result == null) {
-                result = calculator.apply(index);
+            cached = readAtUnlocked(index);
+            if (cached == NOT_COMPUTED) {
+                T result = calculator.apply(index);
                 store(index, result);
+                return result;
             }
+            if (cached == NULL_VALUE) {
+                return null;
+            }
+            @SuppressWarnings("unchecked")
+            T result = (T) cached;
             return result;
         } finally {
             lock.writeLock().unlock();
@@ -129,12 +156,20 @@ class CachedBuffer<T> {
      */
     T get(int index) {
         lock.readLock().lock();
-        T result;
+        Object cached;
         try {
-            result = readAt(index);
+            cached = readAtUnlocked(index);
         } finally {
             lock.readLock().unlock();
         }
+        if (cached == NOT_COMPUTED) {
+            return null;
+        }
+        if (cached == NULL_VALUE) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        T result = (T) cached;
         return result;
     }
 
@@ -210,7 +245,7 @@ class CachedBuffer<T> {
             // Clear slots from index to highestResultIndex
             for (int i = index; i <= highestResultIndex; i++) {
                 int slot = indexToSlot(i);
-                buffer[slot] = null;
+                buffer[slot] = NOT_COMPUTED;
             }
             highestResultIndex = index - 1;
         } finally {
@@ -245,32 +280,68 @@ class CachedBuffer<T> {
     /**
      * Checks if an index is within the currently cached range.
      *
+     * <p>
+     * This method acquires a read lock internally. For internal use when a lock is
+     * already held, use {@link #isInRangeUnlocked(int)} instead.
+     *
      * @param index the series index
-     * @return true if the index is cached (may still be null if not computed)
+     * @return true if the index is within the cached range (may still be not
+     *         computed)
      */
     boolean isInRange(int index) {
-        return firstCachedIndex >= 0 && index >= firstCachedIndex && index <= highestResultIndex;
+        lock.readLock().lock();
+        try {
+            return isInRangeUnlocked(index);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     // --- Internal methods (must be called under appropriate lock) ---
 
-    @SuppressWarnings("unchecked")
-    private T readAt(int index) {
-        if (!isInRange(index)) {
-            return null;
+    /**
+     * Checks if an index is within the currently cached range without acquiring a
+     * lock. Callers must hold either the read lock or write lock before calling
+     * this method.
+     *
+     * @param index the series index
+     * @return true if the index is within the cached range (may still be not
+     *         computed)
+     */
+    private boolean isInRangeUnlocked(int index) {
+        return firstCachedIndex >= 0 && index >= firstCachedIndex && index <= highestResultIndex;
+    }
+
+    /**
+     * Reads a value from the cache without acquiring a lock. Returns
+     * {@link #NOT_COMPUTED} if the index is not in range or not computed.
+     *
+     * @param index the series index
+     * @return the cached value, NULL_VALUE if cached null, or NOT_COMPUTED if not
+     *         computed
+     */
+    private Object readAtUnlocked(int index) {
+        if (!isInRangeUnlocked(index)) {
+            return NOT_COMPUTED;
         }
         int slot = indexToSlot(index);
-        return (T) buffer[slot];
+        Object value = buffer[slot];
+        if (value == null || value == NOT_COMPUTED) {
+            return NOT_COMPUTED;
+        }
+        return value;
     }
 
     private void store(int index, T value) {
+        // Wrap null values in NULL_VALUE sentinel to distinguish from "not computed"
+        Object valueToStore = (value == null) ? NULL_VALUE : value;
         if (firstCachedIndex < 0) {
             // First value being cached
             firstCachedIndex = index;
             highestResultIndex = index;
             ensureCapacity(1);
             int slot = indexToSlot(index);
-            buffer[slot] = value;
+            buffer[slot] = valueToStore;
             return;
         }
 
@@ -285,7 +356,7 @@ class CachedBuffer<T> {
                 // Clear evicted slots and advance firstCachedIndex
                 for (int i = 0; i < evictCount && firstCachedIndex + i <= highestResultIndex; i++) {
                     int slot = indexToSlot(firstCachedIndex + i);
-                    buffer[slot] = null;
+                    buffer[slot] = NOT_COMPUTED;
                 }
                 firstCachedIndex += evictCount;
             } else if (!bounded && newSize > capacity) {
@@ -295,12 +366,12 @@ class CachedBuffer<T> {
 
             highestResultIndex = index;
             int slot = indexToSlot(index);
-            buffer[slot] = value;
+            buffer[slot] = valueToStore;
 
         } else if (index >= firstCachedIndex) {
             // Within existing range; just update
             int slot = indexToSlot(index);
-            buffer[slot] = value;
+            buffer[slot] = valueToStore;
 
         } else {
             // Index is before firstCachedIndex; need to expand backward.
@@ -324,7 +395,7 @@ class CachedBuffer<T> {
             rebuildBufferForRange(index, highestResultIndex);
             firstCachedIndex = index;
             int slot = indexToSlot(index);
-            buffer[slot] = value;
+            buffer[slot] = valueToStore;
         }
     }
 
@@ -380,7 +451,7 @@ class CachedBuffer<T> {
 
     private void clearInternal() {
         for (int i = 0; i < capacity; i++) {
-            buffer[i] = null;
+            buffer[i] = NOT_COMPUTED;
         }
         firstCachedIndex = -1;
         highestResultIndex = -1;

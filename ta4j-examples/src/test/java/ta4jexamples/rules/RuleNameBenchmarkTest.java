@@ -53,8 +53,9 @@ import java.util.function.Supplier;
  * (current default)</li>
  * <li>Lazily setting/getting AndRule's name in getName() (i.e. don't set name
  * in constructor)</li>
- * <li>Eagerly setting AndRule's name in constructor and then calling getName()
- * (shows JIT elimination potential)</li>
+ * <li>Eagerly setting AndRule's name in constructor without calling getName()
+ * (shows JIT dead-code elimination potential)</li>
+ * </ul>
  *
  * @since 0.22.0
  */
@@ -90,8 +91,8 @@ public class RuleNameBenchmarkTest {
                     statsByScenario);
             runScenario("Lazy setName() + getName()", threads, rulesPerThread, this::buildLazyRule, true, batch,
                     statsByScenario);
-            runScenario("Eager setName() + No getName()", threads, rulesPerThread, this::buildEagerRule, false, batch,
-                    statsByScenario);
+            runScenario("Eager setName() + No getName()", threads, rulesPerThread, this::buildEagerRuleNoChildNames,
+                    false, batch, statsByScenario);
         }
 
         LOG.info("=== Rule construction throughput summary (threads={}, batches={}, rulesPerThread={}) ===", threads,
@@ -172,6 +173,12 @@ public class RuleNameBenchmarkTest {
         return new LazyAndRule(left, right);
     }
 
+    private Rule buildEagerRuleNoChildNames() {
+        Rule left = new FixedRule(1);
+        Rule right = new FixedRule(2);
+        return new NoNameLeakAndRule(left, right);
+    }
+
     /**
      * Lazy variant of AndRule that defers name construction to getName().
      */
@@ -196,6 +203,40 @@ public class RuleNameBenchmarkTest {
         protected String createDefaultName() {
             setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
             return getName();
+        }
+    }
+
+    /**
+     * Eager variant that avoids calling getName() on children when building the
+     * composite name. This keeps the "No getName()" benchmark path free of name
+     * resolution side effects while still exercising eager constructor naming.
+     */
+    private static final class NoNameLeakAndRule extends AbstractRule {
+
+        private final Rule rule1;
+        private final Rule rule2;
+
+        NoNameLeakAndRule(Rule rule1, Rule rule2) {
+            this.rule1 = rule1;
+            this.rule2 = rule2;
+            setName(buildName());
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
+            traceIsSatisfied(index, satisfied);
+            return satisfied;
+        }
+
+        private String buildName() {
+            StringBuilder builder = new StringBuilder(getClass().getSimpleName());
+            builder.append('(');
+            builder.append(rule1 == null ? "null" : rule1.getClass().getSimpleName());
+            builder.append(',');
+            builder.append(rule2 == null ? "null" : rule2.getClass().getSimpleName());
+            builder.append(')');
+            return builder.toString();
         }
     }
 

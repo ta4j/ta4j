@@ -367,12 +367,9 @@ public class CachedBufferTest {
         // Any retained overlapping values must be correct, not stale
         Integer val3 = buffer.get(3);
         Integer val4 = buffer.get(4);
-        if (val3 != null) {
-            assertEquals(Integer.valueOf(300), val3);
-        }
-        if (val4 != null) {
-            assertEquals(Integer.valueOf(400), val4);
-        }
+        // Indices 3 and 4 were never stored, so they must be null
+        assertNull("Index 3 was never stored, should be null", val3);
+        assertNull("Index 4 was never stored, should be null", val4);
     }
 
     @Test
@@ -407,5 +404,34 @@ public class CachedBufferTest {
                 assertEquals("Index 5 should have its original value 555, not stale 777", Integer.valueOf(555), val5);
             }
         }
+    }
+
+    @Test
+    public void testNullValueCaching() {
+        // Test that null values are cached correctly and not recomputed
+        CachedBuffer<String> buffer = new CachedBuffer<>(10);
+        AtomicInteger computations = new AtomicInteger(0);
+
+        // First call: compute null value
+        String result1 = buffer.getOrCompute(5, i -> {
+            computations.incrementAndGet();
+            return null; // Legitimate null return value
+        });
+
+        assertNull("First call should return null", result1);
+        assertEquals("Should have computed once", 1, computations.get());
+
+        // Second call: should use cached null, not recompute
+        String result2 = buffer.getOrCompute(5, i -> {
+            computations.incrementAndGet();
+            return null;
+        });
+
+        assertNull("Second call should return cached null", result2);
+        assertEquals("Should not recompute - null is cached", 1, computations.get());
+
+        // Verify get() also returns cached null
+        String result3 = buffer.get(5);
+        assertNull("get() should return cached null", result3);
     }
 }
