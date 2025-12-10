@@ -136,6 +136,40 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         assertEquals(firstCount, indicator.getComputationCount());
     }
 
+    @Test
+    public void highestResultIndexSynchronizedAfterPrefill() {
+        // Create a series with a large gap to trigger prefill
+        double[] data = new double[300];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i;
+        }
+        BarSeries testSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+
+        TestRecursiveIndicator indicator = new TestRecursiveIndicator(testSeries);
+
+        // Initially both should be -1
+        assertEquals(-1, indicator.getHighestResultIndex());
+        assertEquals(-1, indicator.getCacheHighestResultIndex());
+
+        // Request value at index 200 - should trigger prefill (gap > 100)
+        indicator.getValue(200);
+
+        // After prefill, indicator's highestResultIndex should be synchronized with
+        // cache
+        int indicatorHighest = indicator.getHighestResultIndex();
+        int cacheHighest = indicator.getCacheHighestResultIndex();
+        assertEquals("highestResultIndex should be synchronized from cache after prefill", cacheHighest,
+                indicatorHighest);
+        assertTrue("highestResultIndex should be >= 200 after prefill", indicatorHighest >= 200);
+
+        // Request another value that requires prefill
+        indicator.getValue(250);
+
+        // Should still be synchronized
+        assertEquals("highestResultIndex should remain synchronized after second prefill",
+                indicator.getCacheHighestResultIndex(), indicator.getHighestResultIndex());
+    }
+
     /**
      * Simple recursive indicator that sums from 0 to index.
      */
@@ -186,6 +220,37 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
 
         int getComputationCount() {
             return computations.get();
+        }
+    }
+
+    /**
+     * Recursive indicator that exposes highestResultIndex for testing.
+     */
+    private final class TestRecursiveIndicator extends RecursiveCachedIndicator<Num> {
+
+        private TestRecursiveIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 0) {
+                return numFactory.numOf(0);
+            }
+            return getValue(index - 1).plus(numFactory.numOf(1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getHighestResultIndex() {
+            return highestResultIndex;
+        }
+
+        int getCacheHighestResultIndex() {
+            return getCache().getHighestResultIndex();
         }
     }
 

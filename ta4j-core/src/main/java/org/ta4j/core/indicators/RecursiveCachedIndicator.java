@@ -126,6 +126,9 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
                 }
                 return value;
             });
+            // Synchronize highestResultIndex from cache after prefillUntil completes
+            // to ensure consistency (cache is source of truth)
+            highestResultIndex = getCache().getHighestResultIndex();
         } finally {
             int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
             if (updatedDepth <= 0) {
