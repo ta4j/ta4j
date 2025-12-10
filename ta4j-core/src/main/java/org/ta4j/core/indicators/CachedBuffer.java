@@ -304,26 +304,24 @@ class CachedBuffer<T> {
 
         } else {
             // Index is before firstCachedIndex; need to expand backward.
-            // For bounded buffers, we must evict from the high end to make room.
-            // For unbounded buffers, we grow if needed.
+            // For bounded buffers, we rebuild the buffer to avoid slot corruption.
             int newSize = highestResultIndex - index + 1;
 
             if (bounded && newSize > maximumCapacity) {
                 // Cannot fit entire range; evict from high end
                 int evictCount = newSize - maximumCapacity;
-                // Clear evicted slots at high end
-                for (int i = 0; i < evictCount; i++) {
-                    int evictIndex = highestResultIndex - i;
-                    int slot = indexToSlot(evictIndex);
-                    buffer[slot] = null;
-                }
                 highestResultIndex -= evictCount;
+                newSize = maximumCapacity;
+                if (index > highestResultIndex) {
+                    index = highestResultIndex;
+                }
             }
 
             if (!bounded && newSize > capacity) {
                 growBuffer(newSize);
             }
 
+            rebuildBufferForRange(index, highestResultIndex);
             firstCachedIndex = index;
             int slot = indexToSlot(index);
             buffer[slot] = value;
@@ -359,6 +357,25 @@ class CachedBuffer<T> {
      */
     private int indexToSlot(int index) {
         return index % capacity;
+    }
+
+    /**
+     * Rebuilds the buffer for the specified inclusive range, preserving any
+     * existing cached values within the overlap and clearing others. Used when
+     * expanding backward in a bounded buffer to avoid stale slot mappings.
+     */
+    private void rebuildBufferForRange(int newFirstIndex, int newHighestIndex) {
+        Object[] newBuffer = new Object[capacity];
+        if (firstCachedIndex >= 0) {
+            int copyFrom = Math.max(newFirstIndex, firstCachedIndex);
+            int copyTo = Math.min(newHighestIndex, highestResultIndex);
+            for (int i = copyFrom; i <= copyTo; i++) {
+                int oldSlot = indexToSlot(i);
+                int newSlot = i % capacity;
+                newBuffer[newSlot] = buffer[oldSlot];
+            }
+        }
+        buffer = newBuffer;
     }
 
     private void clearInternal() {

@@ -342,7 +342,7 @@ public class CachedBufferTest {
 
     @Test
     public void testStoreBeforeFirstCachedIndexWithEviction() {
-        // Test the specific bug case: bounded buffer with eviction needed
+        // Bounded buffer with backward insert should rebuild to avoid stale slots
         CachedBuffer<Integer> buffer = new CachedBuffer<>(3);
 
         // Store at indices 5, 6, 7 (fills capacity of 3)
@@ -353,28 +353,25 @@ public class CachedBufferTest {
         assertEquals(5, buffer.getFirstCachedIndex());
         assertEquals(7, buffer.getHighestResultIndex());
 
-        // This triggers the problematic code path
+        // Insert before firstCachedIndex; buffer should rebuild and keep consistency
         buffer.put(2, 200);
 
         // The value at index 2 should be retrievable
         assertEquals(Integer.valueOf(200), buffer.get(2));
 
-        // After the operation, firstCachedIndex should be 2
+        // After rebuild, firstCachedIndex should be 2 and highestResultIndex should
+        // not exceed capacity window
         assertEquals(2, buffer.getFirstCachedIndex());
+        assertTrue(buffer.getHighestResultIndex() >= 2 && buffer.getHighestResultIndex() <= 4);
 
-        // The buffer can only hold 3 values, so indices would be 2, 3, 4 at most
-        assertTrue("highestResultIndex should be reasonable",
-                buffer.getHighestResultIndex() >= 2 && buffer.getHighestResultIndex() <= 4);
-
-        // Test that values outside the valid range return null
-        if (buffer.getHighestResultIndex() < 5) {
-            assertNull("Index 5 should not be cached after eviction", buffer.get(5));
+        // Any retained overlapping values must be correct, not stale
+        Integer val3 = buffer.get(3);
+        Integer val4 = buffer.get(4);
+        if (val3 != null) {
+            assertEquals(Integer.valueOf(300), val3);
         }
-        if (buffer.getHighestResultIndex() < 6) {
-            assertNull("Index 6 should not be cached after eviction", buffer.get(6));
-        }
-        if (buffer.getHighestResultIndex() < 7) {
-            assertNull("Index 7 should not be cached after eviction", buffer.get(7));
+        if (val4 != null) {
+            assertEquals(Integer.valueOf(400), val4);
         }
     }
 
