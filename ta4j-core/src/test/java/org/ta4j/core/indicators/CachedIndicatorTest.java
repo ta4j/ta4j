@@ -227,6 +227,46 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void lastBarCacheIsThreadSafeAcrossThreads() throws InterruptedException {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        int threads = 8;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        for (int i = 0; i < threads; i++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    indicator.getValue(endIndex);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        assertEquals("Only one calculation should be performed for the last bar despite concurrent access.", 1,
+                indicator.getCalculationCount());
+
+        // Mutate last bar to force invalidation and ensure a recomputation occurs
+        barSeries.getLastBar().addTrade(numOf(1), numOf(7));
+        indicator.getValue(endIndex);
+        assertEquals("Mutation should trigger recomputation of last-bar cache.", 2, indicator.getCalculationCount());
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);

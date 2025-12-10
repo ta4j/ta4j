@@ -55,6 +55,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected volatile int highestResultIndex = -1;
 
+    /** Lock protecting the last-bar cache check+compute sequence. */
+    private final Object lastBarLock = new Object();
+
     // Last-bar caching state
     private volatile Bar lastBarRef;
     private volatile long lastBarTradeCount;
@@ -158,29 +161,31 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value
      */
     private T getLastBarValue(int index, BarSeries series) {
-        Bar currentBar = series.getLastBar();
-        long currentTradeCount = currentBar.getTrades();
-        Num currentClosePrice = currentBar.getClosePrice();
+        synchronized (lastBarLock) {
+            Bar currentBar = series.getLastBar();
+            long currentTradeCount = currentBar.getTrades();
+            Num currentClosePrice = currentBar.getClosePrice();
 
-        // Check if we have a valid cached result for this bar
-        if (index == lastBarCachedIndex && currentBar == lastBarRef && currentTradeCount == lastBarTradeCount
-                && (currentClosePrice == lastBarClosePrice
-                        || (currentClosePrice != null && currentClosePrice.equals(lastBarClosePrice)))) {
-            // Bar hasn't changed; return cached result
-            return lastBarCachedResult;
+            // Check if we have a valid cached result for this bar
+            if (index == lastBarCachedIndex && currentBar == lastBarRef && currentTradeCount == lastBarTradeCount
+                    && (currentClosePrice == lastBarClosePrice
+                            || (currentClosePrice != null && currentClosePrice.equals(lastBarClosePrice)))) {
+                // Bar hasn't changed; return cached result
+                return lastBarCachedResult;
+            }
+
+            // Bar changed or no cached result; compute new value
+            T result = calculate(index);
+
+            // Update last-bar cache state
+            lastBarRef = currentBar;
+            lastBarTradeCount = currentTradeCount;
+            lastBarClosePrice = currentClosePrice;
+            lastBarCachedResult = result;
+            lastBarCachedIndex = index;
+
+            return result;
         }
-
-        // Bar changed or no cached result; compute new value
-        T result = calculate(index);
-
-        // Update last-bar cache state
-        lastBarRef = currentBar;
-        lastBarTradeCount = currentTradeCount;
-        lastBarClosePrice = currentClosePrice;
-        lastBarCachedResult = result;
-        lastBarCachedIndex = index;
-
-        return result;
     }
 
     /**
@@ -229,11 +234,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Clears the last-bar cache state.
      */
     private void clearLastBarCache() {
-        lastBarRef = null;
-        lastBarTradeCount = 0;
-        lastBarClosePrice = null;
-        lastBarCachedResult = null;
-        lastBarCachedIndex = -1;
+        synchronized (lastBarLock) {
+            lastBarRef = null;
+            lastBarTradeCount = 0;
+            lastBarClosePrice = null;
+            lastBarCachedResult = null;
+            lastBarCachedIndex = -1;
+        }
     }
 
     /**
