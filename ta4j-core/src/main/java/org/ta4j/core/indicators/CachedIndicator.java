@@ -184,6 +184,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             lastBarCachedResult = result;
             lastBarCachedIndex = index;
 
+            // Update highestResultIndex to maintain consistency with other code paths
+            // This ensures RecursiveCachedIndicator and other code that relies on
+            // highestResultIndex behaves correctly when the last bar is accessed first
+            highestResultIndex = index;
+
             return result;
         }
     }

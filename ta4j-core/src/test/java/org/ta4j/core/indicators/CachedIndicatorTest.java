@@ -296,6 +296,21 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void highestResultIndexUpdatedWhenLastBarAccessedFirst() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        TestIndicator indicator = new TestIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+        assertEquals(-1, indicator.getHighestResultIndex());
+
+        // Access last bar first - should update highestResultIndex
+        Num value = indicator.getValue(endIndex);
+        assertNumEquals(endIndex, value);
+        assertEquals("highestResultIndex should be updated when last bar is accessed first", endIndex,
+                indicator.getHighestResultIndex());
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);
@@ -602,6 +617,27 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getCalculationCount() {
             return calculationCount.get();
+        }
+    }
+
+    private final class TestIndicator extends CachedIndicator<Num> {
+
+        private TestIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return numFactory.numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getHighestResultIndex() {
+            return highestResultIndex;
         }
     }
 

@@ -170,6 +170,36 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
                 indicator.getCacheHighestResultIndex(), indicator.getHighestResultIndex());
     }
 
+    @Test
+    public void highestResultIndexUpdatedWhenLastBarAccessedFirst() {
+        // Create a series where accessing last bar first should update
+        // highestResultIndex
+        double[] data = new double[150];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i;
+        }
+        BarSeries testSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+
+        TestRecursiveIndicator indicator = new TestRecursiveIndicator(testSeries);
+
+        // Initially both should be -1
+        assertEquals(-1, indicator.getHighestResultIndex());
+        assertEquals(-1, indicator.getCacheHighestResultIndex());
+
+        int endIndex = testSeries.getEndIndex();
+
+        // Access last bar first - should update highestResultIndex
+        // This is the key fix: getLastBarValue() now updates highestResultIndex
+        Num value = indicator.getValue(endIndex);
+        assertNotNull(value);
+
+        // highestResultIndex should be updated to endIndex when last bar is accessed
+        // first
+        // This ensures RecursiveCachedIndicator prefilling logic works correctly
+        assertEquals("highestResultIndex should be updated when last bar is accessed first", endIndex,
+                indicator.getHighestResultIndex());
+    }
+
     /**
      * Simple recursive indicator that sums from 0 to index.
      */
