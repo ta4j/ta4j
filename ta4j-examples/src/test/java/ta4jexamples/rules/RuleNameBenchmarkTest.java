@@ -53,8 +53,10 @@ import java.util.function.Supplier;
  * (current default)</li>
  * <li>Lazily setting/getting AndRule's name in getName() (i.e. don't set name
  * in constructor)</li>
- * <li>Eagerly setting AndRule's name in constructor without calling getName()
- * (shows JIT dead-code elimination potential)</li>
+ * <li>Eagerly setting the name in constructor (using class names, not calling
+ * getName() on children) but never calling getName() - demonstrates that JIT
+ * may optimize away string construction overhead when the name is never
+ * accessed, though the volatile write itself cannot be eliminated</li>
  * </ul>
  *
  * @since 0.22.0
@@ -207,9 +209,17 @@ public class RuleNameBenchmarkTest {
     }
 
     /**
-     * Eager variant that avoids calling getName() on children when building the
-     * composite name. This keeps the "No getName()" benchmark path free of name
-     * resolution side effects while still exercising eager constructor naming.
+     * Eager variant that constructs the name in the constructor but avoids calling
+     * getName() on children (to prevent triggering their lazy name resolution).
+     * This demonstrates that even when setName() is called eagerly, if getName() is
+     * never invoked on the rule, the JIT compiler may be able to optimize away some
+     * of the string construction overhead, though the volatile write itself cannot
+     * be eliminated.
+     * <p>
+     * Note: The volatile write in setName() is an observable side effect that
+     * prevents complete dead-code elimination, but the string construction work
+     * (StringBuilder operations) may still be optimized if the result is never
+     * read.
      */
     private static final class NoNameLeakAndRule extends AbstractRule {
 
@@ -219,7 +229,11 @@ public class RuleNameBenchmarkTest {
         NoNameLeakAndRule(Rule rule1, Rule rule2) {
             this.rule1 = rule1;
             this.rule2 = rule2;
-            setName(buildName());
+            // Eagerly construct and set the name, but use class names instead of
+            // calling getName() on children to avoid triggering their lazy name resolution.
+            // This allows us to test if JIT can eliminate the string construction
+            // overhead when the name is never accessed.
+            setName(buildNameWithoutChildNames());
         }
 
         @Override
@@ -229,7 +243,7 @@ public class RuleNameBenchmarkTest {
             return satisfied;
         }
 
-        private String buildName() {
+        private String buildNameWithoutChildNames() {
             StringBuilder builder = new StringBuilder(getClass().getSimpleName());
             builder.append('(');
             builder.append(rule1 == null ? "null" : rule1.getClass().getSimpleName());
