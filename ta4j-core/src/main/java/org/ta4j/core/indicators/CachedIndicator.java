@@ -141,7 +141,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private T getOrComputeAndCache(int index) {
         T value = cache.getOrCompute(index, this::calculate);
-        highestResultIndex = cache.getHighestResultIndex();
+        // Take the maximum to maintain the invariant that highestResultIndex
+        // represents the highest index ever computed. The last bar uses separate
+        // caching (getLastBarValue), so cache.getHighestResultIndex() might not
+        // reflect the last bar access.
+        highestResultIndex = Math.max(highestResultIndex, cache.getHighestResultIndex());
         return value;
     }
 

@@ -311,6 +311,29 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void highestResultIndexNotDecreasedWhenEarlierIndexAccessedAfterLastBar() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        TestIndicator indicator = new TestIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // Access last bar first - sets highestResultIndex to endIndex
+        indicator.getValue(endIndex);
+        assertEquals("highestResultIndex should be set to endIndex", endIndex, indicator.getHighestResultIndex());
+
+        // Access an earlier index - should NOT decrease highestResultIndex
+        // The cache's highestResultIndex might be smaller, but we should take the max
+        int earlierIndex = 1;
+        indicator.getValue(earlierIndex);
+
+        // highestResultIndex should remain at endIndex (or higher), not decrease
+        assertTrue("highestResultIndex should not decrease when accessing earlier index after last bar",
+                indicator.getHighestResultIndex() >= endIndex);
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);
