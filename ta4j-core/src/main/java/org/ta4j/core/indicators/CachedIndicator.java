@@ -140,11 +140,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value
      */
     private T getOrComputeAndCache(int index) {
-        return cache.getOrCompute(index, i -> {
-            T computed = calculate(i);
-            updateHighestResultIndex(i);
-            return computed;
-        });
+        T value = cache.getOrCompute(index, this::calculate);
+        highestResultIndex = cache.getHighestResultIndex();
+        return value;
     }
 
     /**
@@ -185,17 +183,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             lastBarCachedIndex = index;
 
             return result;
-        }
-    }
-
-    /**
-     * Updates the highest result index if the given index is higher.
-     *
-     * @param index the computed index
-     */
-    private void updateHighestResultIndex(int index) {
-        if (index > highestResultIndex) {
-            highestResultIndex = index;
         }
     }
 

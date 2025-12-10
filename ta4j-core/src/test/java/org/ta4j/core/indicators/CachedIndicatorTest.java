@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -267,6 +268,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void highestResultIndexNotAdvancedWhenCalculationFails() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int failIndex = 1; // non-last index to avoid last-bar path
+        FailingIndicator indicator = new FailingIndicator(barSeries, failIndex);
+
+        assertEquals(-1, indicator.getHighestResultIndex());
+        assertEquals(-1, indicator.getCacheHighestResultIndex());
+
+        try {
+            indicator.getValue(failIndex);
+            fail("Expected calculation to throw on first attempt");
+        } catch (RuntimeException expected) {
+            // expected path
+        }
+
+        // highestResultIndex should not advance when calculation fails
+        assertEquals(-1, indicator.getHighestResultIndex());
+        assertEquals(-1, indicator.getCacheHighestResultIndex());
+        assertEquals(1, indicator.getCalculationCount());
+
+        // Next call should compute successfully and advance both trackers
+        assertNumEquals(failIndex, indicator.getValue(failIndex));
+        assertEquals(failIndex, indicator.getHighestResultIndex());
+        assertEquals(failIndex, indicator.getCacheHighestResultIndex());
+        assertEquals(2, indicator.getCalculationCount());
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);
@@ -484,6 +513,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private void resetCalculationCount() {
             calculations.set(0);
+        }
+    }
+
+    private final class FailingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+        private final AtomicBoolean failFirst = new AtomicBoolean(true);
+        private final int failIndex;
+
+        private FailingIndicator(BarSeries series, int failIndex) {
+            super(series);
+            this.failIndex = failIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            if (index == failIndex && failFirst.compareAndSet(true, false)) {
+                throw new RuntimeException("boom");
+            }
+            return numFactory.numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int getCalculationCount() {
+            return calculations.get();
+        }
+
+        private int getHighestResultIndex() {
+            return highestResultIndex;
+        }
+
+        private int getCacheHighestResultIndex() {
+            return getCache().getHighestResultIndex();
         }
     }
 
