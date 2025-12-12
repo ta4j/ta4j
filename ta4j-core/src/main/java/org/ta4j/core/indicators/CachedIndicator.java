@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -49,6 +53,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
 
+    private final IntFunction<T> calculator = this::calculate;
+    private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
+
+    private static final AtomicIntegerFieldUpdater<CachedIndicator> HIGHEST_RESULT_INDEX_UPDATER = AtomicIntegerFieldUpdater
+            .newUpdater(CachedIndicator.class, "highestResultIndex");
+
     /**
      * Should always be the index of the last (calculated) result in the cache.
      * Exposed for subclass access (e.g., RecursiveCachedIndicator).
@@ -59,6 +69,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final Object lastBarLock = new Object();
 
     // Last-bar caching state
+    private boolean lastBarComputationInProgress;
+    private int lastBarComputationIndex = -1;
+    private long lastBarCacheInvalidationCount;
     private volatile Bar lastBarRef;
     private volatile long lastBarTradeCount;
     private volatile Num lastBarClosePrice;
@@ -150,13 +163,21 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value
      */
     private T getOrComputeAndCache(int index) {
-        T value = cache.getOrCompute(index, this::calculate);
-        // Take the maximum to maintain the invariant that highestResultIndex
-        // represents the highest index ever computed. The last bar uses separate
-        // caching (getLastBarValue), so cache.getHighestResultIndex() might not
-        // reflect the last bar access.
-        highestResultIndex = Math.max(highestResultIndex, cache.getHighestResultIndex());
-        return value;
+        return cache.getOrCompute(index, calculator, computedIndexRecorder);
+    }
+
+    /**
+     * Updates {@link #highestResultIndex} to at least {@code index} without
+     * regressing under contention.
+     */
+    protected final void updateHighestResultIndex(int index) {
+        int current;
+        do {
+            current = highestResultIndex;
+            if (index <= current) {
+                return;
+            }
+        } while (!HIGHEST_RESULT_INDEX_UPDATER.compareAndSet(this, current, index));
     }
 
     /**
@@ -199,49 +220,118 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * The last bar (endIndex) is special because it may be mutated (e.g., via
      * {@link Bar#addTrade(Num, Num)} or {@link Bar#addPrice(Num)}). This method
      * caches the result but invalidates it if the bar has been modified since the
-     * last computation. TODO: Note that we assume only tradeCount and closePrice
-     * can change, if bars are modified to mutate other properties, this method will
-     * not invalidate the cache.
+     * last computation (tracked via trades count and close price). The computation
+     * is performed outside the lock to avoid lock-order deadlocks with the main
+     * cache.
      *
      * @param index  the series index (should be endIndex)
      * @param series the bar series
      * @return the indicator value
      */
     private T getLastBarValue(int index, BarSeries series) {
-        synchronized (lastBarLock) {
-            Bar currentBar = series.getLastBar();
-            long tradeCount1 = currentBar.getTrades();
-            Num closePrice1 = currentBar.getClosePrice();
-            long tradeCount2 = currentBar.getTrades();
-            Num closePrice2 = currentBar.getClosePrice();
+        Bar snapshotBar;
+        long snapshotTradeCount;
+        Num snapshotClosePrice;
+        long snapshotInvalidationCount;
 
-            boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
-            long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
-            Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+        boolean ownsComputation = false;
+        while (true) {
+            synchronized (lastBarLock) {
+                Bar currentBar = series.getLastBar();
+                long tradeCount1 = currentBar.getTrades();
+                Num closePrice1 = currentBar.getClosePrice();
+                long tradeCount2 = currentBar.getTrades();
+                Num closePrice2 = currentBar.getClosePrice();
 
-            // Check if we have a valid cached result for this bar
-            if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
-                    && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
-                // Bar hasn't changed; return cached result
-                return lastBarCachedResult;
+                boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
+                Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+
+                if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
+                        && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
+                    return lastBarCachedResult;
+                }
+
+                if (!lastBarComputationInProgress) {
+                    lastBarComputationInProgress = true;
+                    lastBarComputationIndex = index;
+                    ownsComputation = true;
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = lastBarCacheInvalidationCount;
+                    break;
+                }
+
+                if (cache.isWriteLockedByCurrentThread()) {
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+
+                try {
+                    lastBarLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
             }
+        }
 
-            // Bar changed or no cached result; compute new value
-            T result = calculate(index);
+        final T computed;
+        try {
+            computed = calculate(index);
+        } catch (RuntimeException | Error error) {
+            if (ownsComputation) {
+                synchronized (lastBarLock) {
+                    lastBarComputationInProgress = false;
+                    lastBarComputationIndex = -1;
+                    lastBarLock.notifyAll();
+                }
+            }
+            throw error;
+        }
 
-            // Update last-bar cache state
-            lastBarRef = currentBar;
-            lastBarTradeCount = currentTradeCount;
-            lastBarClosePrice = currentClosePrice;
-            lastBarCachedResult = result;
-            lastBarCachedIndex = index;
+        if (!ownsComputation) {
+            updateHighestResultIndex(index);
+            return computed;
+        }
 
-            // Update highestResultIndex to maintain consistency with other code paths
-            // This ensures RecursiveCachedIndicator and other code that relies on
-            // highestResultIndex behaves correctly when the last bar is accessed first
-            highestResultIndex = index;
+        synchronized (lastBarLock) {
+            try {
+                if (snapshotInvalidationCount == lastBarCacheInvalidationCount) {
+                    Bar currentBar = series.getLastBar();
+                    long tradeCount1 = currentBar.getTrades();
+                    Num closePrice1 = currentBar.getClosePrice();
+                    long tradeCount2 = currentBar.getTrades();
+                    Num closePrice2 = currentBar.getClosePrice();
 
-            return result;
+                    boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                    long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
+                    Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+
+                    if (stableRead && currentBar == snapshotBar && currentTradeCount == snapshotTradeCount
+                            && equalsNum(currentClosePrice, snapshotClosePrice)) {
+                        lastBarRef = snapshotBar;
+                        lastBarTradeCount = snapshotTradeCount;
+                        lastBarClosePrice = snapshotClosePrice;
+                        lastBarCachedResult = computed;
+                        lastBarCachedIndex = index;
+                        updateHighestResultIndex(index);
+                    }
+                }
+                return computed;
+            } finally {
+                lastBarComputationInProgress = false;
+                lastBarComputationIndex = -1;
+                lastBarLock.notifyAll();
+            }
         }
     }
 
@@ -253,41 +343,44 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * cached values are assumed stable.
      */
     protected void invalidateCache() {
-        synchronized (lastBarLock) {
-            clearLastBarCache();
-            clearFirstBarCache();
-            cache.clear();
-            highestResultIndex = -1;
-        }
+        clearLastBarCache();
+        clearFirstBarCache();
+        cache.clear();
+        highestResultIndex = -1;
     }
 
     /**
      * Clears cached values from the specified index (inclusive) to the end of the
      * cache. Values before the index remain cached.
      *
+     * <p>
+     * If an affected last-bar computation is in progress, its result will not be
+     * cached.
+     *
      * @param index the first index to invalidate; if negative, the entire cache is
      *              cleared
      */
     protected void invalidateFrom(int index) {
+        int lastBarIndex;
         synchronized (lastBarLock) {
-            // Determine and clear last-bar cache atomically relative to getLastBarValue().
-            int lastBarIndex = lastBarCachedIndex;
-            if (lastBarIndex >= index) {
-                clearLastBarCache();
+            lastBarIndex = lastBarCachedIndex;
+            if (lastBarIndex >= index || (lastBarComputationInProgress && lastBarComputationIndex >= index)) {
+                clearLastBarCacheLocked();
                 lastBarIndex = -1;
             }
-            if (index <= 0) {
-                clearFirstBarCache();
-            }
-
-            cache.invalidateFrom(index);
-            int cacheHighest = cache.getHighestResultIndex();
-
-            // Preserve last-bar cache knowledge when it is still valid. This avoids
-            // decreasing highestResultIndex when the primary cache does not contain the
-            // last-bar result.
-            highestResultIndex = Math.max(cacheHighest, lastBarIndex);
         }
+
+        if (index <= 0) {
+            clearFirstBarCache();
+        }
+
+        cache.invalidateFrom(index);
+        int cacheHighest = cache.getHighestResultIndex();
+
+        // Preserve last-bar cache knowledge when it is still valid. This avoids
+        // decreasing highestResultIndex when the primary cache does not contain the
+        // last-bar result.
+        highestResultIndex = Math.max(cacheHighest, lastBarIndex);
     }
 
     /**
@@ -295,12 +388,17 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private void clearLastBarCache() {
         synchronized (lastBarLock) {
-            lastBarRef = null;
-            lastBarTradeCount = 0;
-            lastBarClosePrice = null;
-            lastBarCachedResult = null;
-            lastBarCachedIndex = -1;
+            clearLastBarCacheLocked();
         }
+    }
+
+    private void clearLastBarCacheLocked() {
+        lastBarCacheInvalidationCount++;
+        lastBarRef = null;
+        lastBarTradeCount = 0;
+        lastBarClosePrice = null;
+        lastBarCachedResult = null;
+        lastBarCachedIndex = -1;
     }
 
     private void clearFirstBarCache() {

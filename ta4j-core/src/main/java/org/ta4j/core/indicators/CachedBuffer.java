@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
 /**
@@ -37,10 +38,11 @@ import java.util.function.IntFunction;
  * oldest entries are evicted in O(1) time by advancing the head pointer.
  *
  * <p>
- * Thread-safety is achieved via a {@link ReentrantReadWriteLock}: cache hits
- * use read locks (allowing concurrent reads), while misses and invalidation
- * acquire write locks. The reentrant nature allows recursive indicators to
- * safely call getValue() from within calculate() without deadlocking.
+ * Thread-safety is achieved via a {@link ReentrantReadWriteLock} combined with
+ * an optimistic, lock-free fast path for cache hits. Cache misses and
+ * invalidation acquire write locks. The reentrant nature allows recursive
+ * indicators to safely call getValue() from within calculate() without
+ * deadlocking.
  *
  * @param <T> the type of cached values
  *
@@ -67,7 +69,18 @@ class CachedBuffer<T> {
      */
     private static final Object NULL_VALUE = new Object();
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(false);
+
+    /**
+     * Stamp used for optimistic reads.
+     *
+     * <p>
+     * Writers (write-lock holders) flip this value from even-&gt;odd when they
+     * enter the outermost write-locked section, and from odd-&gt;even when leaving.
+     * Readers can speculatively read the cache without locking and validate the
+     * read by checking the stamp did not change.
+     */
+    private volatile long writeStamp;
 
     /**
      * The ring buffer storing cached values. Uses {@link #NOT_COMPUTED} to
@@ -111,9 +124,23 @@ class CachedBuffer<T> {
      * @return the cached or computed value
      */
     T getOrCompute(int index, IntFunction<T> calculator) {
+        return getOrCompute(index, calculator, null);
+    }
+
+    T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex) {
+        // Optimistic fast-path (lock-free) for cache hits.
+        Object cached = readAtOptimistic(index);
+        if (cached != NOT_COMPUTED) {
+            if (cached == NULL_VALUE) {
+                return null;
+            }
+            @SuppressWarnings("unchecked")
+            T result = (T) cached;
+            return result;
+        }
+
         // Fast-path: read lock for cache hits
         lock.readLock().lock();
-        Object cached;
         try {
             cached = readAtUnlocked(index);
         } finally {
@@ -130,11 +157,15 @@ class CachedBuffer<T> {
 
         // Miss: compute under write lock (reentrant for recursive indicators)
         lock.writeLock().lock();
+        onWriteLockAcquired();
         try {
             cached = readAtUnlocked(index);
             if (cached == NOT_COMPUTED) {
                 T result = calculator.apply(index);
                 store(index, result);
+                if (onComputedIndex != null) {
+                    onComputedIndex.accept(index);
+                }
                 return result;
             }
             if (cached == NULL_VALUE) {
@@ -144,6 +175,7 @@ class CachedBuffer<T> {
             T result = (T) cached;
             return result;
         } finally {
+            onWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -181,9 +213,11 @@ class CachedBuffer<T> {
      */
     void put(int index, T value) {
         lock.writeLock().lock();
+        onWriteLockAcquired();
         try {
             store(index, value);
         } finally {
+            onWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -203,6 +237,7 @@ class CachedBuffer<T> {
      */
     void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator) {
         lock.writeLock().lock();
+        onWriteLockAcquired();
         try {
             int fillStart = Math.max(startIndex, highestResultIndex + 1);
             for (int i = fillStart; i < targetIndex; i++) {
@@ -210,6 +245,7 @@ class CachedBuffer<T> {
                 store(i, value);
             }
         } finally {
+            onWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -219,9 +255,11 @@ class CachedBuffer<T> {
      */
     void clear() {
         lock.writeLock().lock();
+        onWriteLockAcquired();
         try {
             clearInternal();
         } finally {
+            onWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -233,6 +271,7 @@ class CachedBuffer<T> {
      */
     void invalidateFrom(int index) {
         lock.writeLock().lock();
+        onWriteLockAcquired();
         try {
             if (firstCachedIndex < 0 || index > highestResultIndex) {
                 return;
@@ -249,6 +288,7 @@ class CachedBuffer<T> {
             }
             highestResultIndex = index - 1;
         } finally {
+            onWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -275,6 +315,57 @@ class CachedBuffer<T> {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    boolean isWriteLockedByCurrentThread() {
+        return lock.isWriteLockedByCurrentThread();
+    }
+
+    private void onWriteLockAcquired() {
+        if (lock.getWriteHoldCount() == 1) {
+            writeStamp++;
+        }
+    }
+
+    private void onWriteLockReleased() {
+        if (lock.getWriteHoldCount() == 1) {
+            writeStamp++;
+        }
+    }
+
+    private Object readAtOptimistic(int index) {
+        if (index < 0) {
+            return NOT_COMPUTED;
+        }
+
+        long stamp1 = writeStamp;
+        if ((stamp1 & 1L) != 0L) {
+            return NOT_COMPUTED;
+        }
+
+        int localFirstCachedIndex = firstCachedIndex;
+        if (localFirstCachedIndex < 0) {
+            return NOT_COMPUTED;
+        }
+
+        int localHighestResultIndex = highestResultIndex;
+        if (index < localFirstCachedIndex || index > localHighestResultIndex) {
+            return NOT_COMPUTED;
+        }
+
+        Object[] localBuffer = buffer;
+        int slot = index % localBuffer.length;
+        Object value = localBuffer[slot];
+        if (value == null || value == NOT_COMPUTED) {
+            return NOT_COMPUTED;
+        }
+
+        long stamp2 = writeStamp;
+        if (stamp1 != stamp2 || (stamp2 & 1L) != 0L) {
+            return NOT_COMPUTED;
+        }
+
+        return value;
     }
 
     /**

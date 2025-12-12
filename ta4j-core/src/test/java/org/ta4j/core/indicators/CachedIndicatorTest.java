@@ -318,6 +318,66 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void lastBarCacheDoesNotGetStuckWhenCalculationFails() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+        FailingIndicator indicator = new FailingIndicator(barSeries, endIndex);
+
+        assertEquals(-1, indicator.getHighestResultIndex());
+
+        try {
+            indicator.getValue(endIndex);
+            fail("Expected calculation to throw on first attempt");
+        } catch (RuntimeException expected) {
+            // expected path
+        }
+
+        assertEquals(-1, indicator.getHighestResultIndex());
+        assertEquals(1, indicator.getCalculationCount());
+
+        assertNumEquals(endIndex, indicator.getValue(endIndex));
+        assertEquals(endIndex, indicator.getHighestResultIndex());
+        assertEquals(2, indicator.getCalculationCount());
+
+        indicator.getValue(endIndex);
+        assertEquals(2, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void invalidateFromCancelsInFlightLastBarComputation() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        BlockingLastBarIndicator indicator = new BlockingLastBarIndicator(barSeries, endIndex);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
+
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            indicator.invalidateFrom(endIndex);
+            indicator.allowLastBarCalculation.countDown();
+
+            future.get(30, TimeUnit.SECONDS);
+            assertEquals(1, indicator.getCalculationCount());
+
+            // The in-flight computation must not repopulate the last-bar cache after
+            // invalidation.
+            assertEquals(-1, indicator.getHighestResultIndex());
+
+            // Next read should recompute and then cache.
+            indicator.getValue(endIndex);
+            assertEquals(2, indicator.getCalculationCount());
+            assertEquals(endIndex, indicator.getHighestResultIndex());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
     public void highestResultIndexUpdatedWhenLastBarAccessedFirst() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         TestIndicator indicator = new TestIndicator(barSeries);
@@ -698,6 +758,47 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private int getCacheHighestResultIndex() {
             return getCache().getHighestResultIndex();
+        }
+    }
+
+    private final class BlockingLastBarIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+        private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
+        private final CountDownLatch allowLastBarCalculation = new CountDownLatch(1);
+        private final int endIndex;
+
+        private BlockingLastBarIndicator(BarSeries series, int endIndex) {
+            super(series);
+            this.endIndex = endIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            int count = calculations.incrementAndGet();
+            if (index == endIndex) {
+                lastBarCalculationStarted.countDown();
+                try {
+                    assertTrue("Last-bar calculation was not allowed to proceed in time",
+                            allowLastBarCalculation.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return numFactory.numOf(count);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int getCalculationCount() {
+            return calculations.get();
+        }
+
+        private int getHighestResultIndex() {
+            return highestResultIndex;
         }
     }
 
