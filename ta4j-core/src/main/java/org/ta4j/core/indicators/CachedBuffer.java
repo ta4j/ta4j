@@ -383,9 +383,8 @@ class CachedBuffer<T> {
                 int evictCount = newSize - maximumCapacity;
                 highestResultIndex -= evictCount;
                 newSize = maximumCapacity;
-                if (index > highestResultIndex) {
-                    index = highestResultIndex;
-                }
+                // Note: highestResultIndex is now index + maximumCapacity - 1,
+                // therefore it is guaranteed to be >= index.
             }
 
             if (!bounded && newSize > capacity) {

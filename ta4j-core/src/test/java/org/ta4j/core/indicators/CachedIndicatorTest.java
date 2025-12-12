@@ -377,6 +377,48 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void invalidateFromDoesNotClearLastBarCacheWhenNotAffected() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // Cache last bar
+        indicator.getValue(endIndex);
+        assertEquals(1, indicator.getCalculationCount());
+
+        // Invalidate beyond endIndex; last-bar cache should remain valid
+        indicator.invalidateFrom(endIndex + 1);
+
+        // No recomputation expected
+        indicator.getValue(endIndex);
+        assertEquals(1, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void invalidateFromClearsLastBarCacheWhenAffected() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // Cache last bar
+        indicator.getValue(endIndex);
+        assertEquals(1, indicator.getCalculationCount());
+
+        // Invalidate from endIndex; this must clear the last-bar cache
+        indicator.invalidateFrom(endIndex);
+
+        // Next read of the last bar must recompute
+        indicator.getValue(endIndex);
+        assertEquals(2, indicator.getCalculationCount());
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);

@@ -71,6 +71,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private volatile boolean firstBarHasCachedResult;
     private volatile T firstBarCachedResult;
 
+    private static boolean equalsNum(Num left, Num right) {
+        return left == right || (left != null && left.equals(right));
+    }
+
     /**
      * Constructor.
      *
@@ -206,13 +210,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private T getLastBarValue(int index, BarSeries series) {
         synchronized (lastBarLock) {
             Bar currentBar = series.getLastBar();
-            long currentTradeCount = currentBar.getTrades();
-            Num currentClosePrice = currentBar.getClosePrice();
+            long tradeCount1 = currentBar.getTrades();
+            Num closePrice1 = currentBar.getClosePrice();
+            long tradeCount2 = currentBar.getTrades();
+            Num closePrice2 = currentBar.getClosePrice();
+
+            boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+            long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
+            Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
 
             // Check if we have a valid cached result for this bar
-            if (index == lastBarCachedIndex && currentBar == lastBarRef && currentTradeCount == lastBarTradeCount
-                    && (currentClosePrice == lastBarClosePrice
-                            || (currentClosePrice != null && currentClosePrice.equals(lastBarClosePrice)))) {
+            if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
+                    && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
                 // Bar hasn't changed; return cached result
                 return lastBarCachedResult;
             }
@@ -244,10 +253,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * cached values are assumed stable.
      */
     protected void invalidateCache() {
-        cache.clear();
-        highestResultIndex = -1;
-        clearLastBarCache();
-        clearFirstBarCache();
+        synchronized (lastBarLock) {
+            clearLastBarCache();
+            clearFirstBarCache();
+            cache.clear();
+            highestResultIndex = -1;
+        }
     }
 
     /**
@@ -258,23 +269,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *              cleared
      */
     protected void invalidateFrom(int index) {
-        cache.invalidateFrom(index);
-        int cacheHighest = cache.getHighestResultIndex();
+        synchronized (lastBarLock) {
+            // Determine and clear last-bar cache atomically relative to getLastBarValue().
+            int lastBarIndex = lastBarCachedIndex;
+            if (lastBarIndex >= index) {
+                clearLastBarCache();
+                lastBarIndex = -1;
+            }
+            if (index <= 0) {
+                clearFirstBarCache();
+            }
 
-        // Also clear last-bar cache if affected
-        boolean lastBarCacheCleared = lastBarCachedIndex >= index;
-        if (lastBarCacheCleared) {
-            clearLastBarCache();
-        }
-        if (index <= 0) {
-            clearFirstBarCache();
-        }
+            cache.invalidateFrom(index);
+            int cacheHighest = cache.getHighestResultIndex();
 
-        // Preserve last-bar cache knowledge when it is still valid. This avoids
-        // decreasing highestResultIndex when the primary cache does not contain the
-        // last-bar result.
-        int lastBarIndex = lastBarCacheCleared ? -1 : lastBarCachedIndex;
-        highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+            // Preserve last-bar cache knowledge when it is still valid. This avoids
+            // decreasing highestResultIndex when the primary cache does not contain the
+            // last-bar result.
+            highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+        }
     }
 
     /**
