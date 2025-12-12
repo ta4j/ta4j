@@ -33,6 +33,11 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
@@ -200,6 +205,40 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
                 indicator.getHighestResultIndex());
     }
 
+    @Test
+    public void highestResultIndexDoesNotRegressWhenLastBarComputedDuringPrefill() throws Exception {
+        double[] data = new double[600];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i;
+        }
+        BarSeries testSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        int endIndex = testSeries.getEndIndex();
+
+        CountDownLatch prefillBlocked = new CountDownLatch(1);
+        CountDownLatch allowPrefillContinue = new CountDownLatch(1);
+        BlockingPrefillIndicator indicator = new BlockingPrefillIndicator(testSeries, 150, prefillBlocked,
+                allowPrefillContinue);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> prefillFuture = executor.submit(() -> indicator.getValue(200));
+            assertTrue("Prefill did not reach blocking point in time", prefillBlocked.await(30, TimeUnit.SECONDS));
+
+            indicator.forceHighestResultIndex(endIndex);
+            assertEquals(endIndex, indicator.getHighestResultIndex());
+
+            allowPrefillContinue.countDown();
+            prefillFuture.get(30, TimeUnit.SECONDS);
+        } finally {
+            allowPrefillContinue.countDown();
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+
+        assertEquals("highestResultIndex should not regress after last-bar access", endIndex,
+                indicator.getHighestResultIndex());
+    }
+
     /**
      * Simple recursive indicator that sums from 0 to index.
      */
@@ -281,6 +320,48 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
 
         int getCacheHighestResultIndex() {
             return getCache().getHighestResultIndex();
+        }
+    }
+
+    private final class BlockingPrefillIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final int blockIndex;
+        private final CountDownLatch prefillBlocked;
+        private final CountDownLatch allowPrefillContinue;
+
+        private BlockingPrefillIndicator(BarSeries series, int blockIndex, CountDownLatch prefillBlocked,
+                CountDownLatch allowPrefillContinue) {
+            super(series);
+            this.blockIndex = blockIndex;
+            this.prefillBlocked = prefillBlocked;
+            this.allowPrefillContinue = allowPrefillContinue;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == blockIndex) {
+                prefillBlocked.countDown();
+                try {
+                    assertTrue("Timed out waiting to allow prefill to continue",
+                            allowPrefillContinue.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return numFactory.numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getHighestResultIndex() {
+            return highestResultIndex;
+        }
+
+        void forceHighestResultIndex(int index) {
+            updateHighestResultIndex(index);
         }
     }
 

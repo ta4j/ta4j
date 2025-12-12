@@ -333,6 +333,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                         lastBarCachedIndex = index;
                         updateHighestResultIndex(index);
                     }
+                } else {
+                    // Cache was invalidated while this computation was in flight.
+                    // Return the computed value to the caller, but do not update any
+                    // cache state (including highestResultIndex) to avoid resurrecting
+                    // invalidated state.
                 }
                 return computed;
             } finally {

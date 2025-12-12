@@ -119,16 +119,11 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         try {
             // Use the cache's prefillUntil to compute values iteratively
             // under a single write lock
-            getCache().prefillUntil(startIndex, targetIndex, i -> {
-                T value = calculate(i);
-                if (i > highestResultIndex) {
-                    highestResultIndex = i;
-                }
-                return value;
-            });
-            // Synchronize highestResultIndex from cache after prefillUntil completes
-            // to ensure consistency (cache is source of truth)
-            highestResultIndex = getCache().getHighestResultIndex();
+            getCache().prefillUntil(startIndex, targetIndex, this::calculate);
+
+            // Ensure highestResultIndex reflects the cache without regressing if
+            // another thread advanced it further (e.g., last-bar caching).
+            updateHighestResultIndex(getCache().getHighestResultIndex());
         } finally {
             int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
             if (updatedDepth <= 0) {
