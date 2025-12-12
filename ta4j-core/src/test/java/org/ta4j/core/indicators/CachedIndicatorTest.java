@@ -166,6 +166,28 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void prunedIndexCacheInvalidatesWhenRemovedBarsCountChanges() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+
+        assertNumEquals(1, indicator.getValue(0));
+        assertEquals(1, indicator.getCalculationCount());
+
+        // Force removal of the first bar and thus change the "first available bar" for
+        // index 0.
+        barSeries.setMaximumBarCount(2);
+        assertEquals(1, barSeries.getRemovedBarsCount());
+
+        assertNumEquals(2, indicator.getValue(0));
+        assertEquals(2, indicator.getCalculationCount());
+
+        // Subsequent hits should reuse the pruned-index cache for the new
+        // removedBarsCount.
+        assertNumEquals(2, indicator.getValue(0));
+        assertEquals(2, indicator.getCalculationCount());
+    }
+
+    @Test
     public void recursiveCachedIndicatorOnMovingBarSeriesShouldNotCauseStackOverflow() {
         // Added to check issue #120: https://github.com/mdeverdelhan/ta4j/issues/120
         // See also: CachedIndicator#getValue(int index)
@@ -551,6 +573,30 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private void resetCalculationCount() {
             calculations.set(0);
+        }
+    }
+
+    private final class ClosePriceCountingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+
+        private ClosePriceCountingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int getCalculationCount() {
+            return calculations.get();
         }
     }
 

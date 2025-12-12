@@ -65,6 +65,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private volatile T lastBarCachedResult;
     private volatile int lastBarCachedIndex = -1;
 
+    // First-available-bar caching state (for indices < removedBarsCount)
+    private final Object firstBarLock = new Object();
+    private volatile int firstBarCachedRemovedBarsCount = -1;
+    private volatile boolean firstBarHasCachedResult;
+    private volatile T firstBarCachedResult;
+
     /**
      * Constructor.
      *
@@ -118,7 +124,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // Map all pruned indices to zero to avoid recursive backtracking into
             // removed history. calculate(0) for recursive indicators is the base case
             // and does not chase further into negative/removed indexes.
-            result = getOrComputeAndCache(0);
+            result = getFirstBarValue(series, removedBarsCount);
         } else if (index == endIndex) {
             // Last bar: use mutation-aware caching
             result = getLastBarValue(index, series);
@@ -147,6 +153,39 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         // reflect the last bar access.
         highestResultIndex = Math.max(highestResultIndex, cache.getHighestResultIndex());
         return value;
+    }
+
+    /**
+     * Gets the value for indices before the removed bars count.
+     *
+     * <p>
+     * Bars with indices &lt; {@code removedBarsCount} are no longer available in
+     * the series. The series maps such accesses to the first remaining bar. Caching
+     * this value must be aware of {@code removedBarsCount} changes; otherwise a
+     * cached value for index 0 may become stale when the series window advances.
+     */
+    private T getFirstBarValue(BarSeries series, int removedBarsCount) {
+        if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
+            return firstBarCachedResult;
+        }
+
+        // Compute outside the lock to avoid lock-order deadlocks with the cache lock.
+        T computed = calculate(0);
+
+        // If the series window advanced during computation, don't cache this value.
+        if (series.getRemovedBarsCount() != removedBarsCount) {
+            return computed;
+        }
+
+        synchronized (firstBarLock) {
+            if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
+                return firstBarCachedResult;
+            }
+            firstBarCachedRemovedBarsCount = removedBarsCount;
+            firstBarCachedResult = computed;
+            firstBarHasCachedResult = true;
+            return computed;
+        }
     }
 
     /**
@@ -208,6 +247,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         cache.clear();
         highestResultIndex = -1;
         clearLastBarCache();
+        clearFirstBarCache();
     }
 
     /**
@@ -226,6 +266,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (lastBarCachedIndex >= index) {
             clearLastBarCache();
         }
+        if (index <= 0) {
+            clearFirstBarCache();
+        }
     }
 
     /**
@@ -238,6 +281,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             lastBarClosePrice = null;
             lastBarCachedResult = null;
             lastBarCachedIndex = -1;
+        }
+    }
+
+    private void clearFirstBarCache() {
+        synchronized (firstBarLock) {
+            firstBarCachedRemovedBarsCount = -1;
+            firstBarHasCachedResult = false;
+            firstBarCachedResult = null;
         }
     }
 
