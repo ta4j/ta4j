@@ -36,6 +36,8 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -287,6 +289,56 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         barSeries.getLastBar().addTrade(numOf(1), numOf(7));
         indicator.getValue(endIndex);
         assertEquals("Mutation should trigger recomputation of last-bar cache.", 2, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void lastBarCacheInvalidatesWhenLastBarIsReplacedDuringRead() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        CountDownLatch tradesReadStarted = new CountDownLatch(1);
+        CountDownLatch allowTradesRead = new CountDownLatch(1);
+        BlockingTradesBar blockingBar = new BlockingTradesBar(barSeries.barBuilder()
+                .closePrice(1)
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .build(), tradesReadStarted, allowTradesRead);
+        barSeries.addBar(blockingBar);
+
+        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        assertNumEquals(1, indicator.getValue(endIndex));
+        assertEquals(1, indicator.getCalculationCount());
+
+        blockingBar.enableBlocking();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
+            assertTrue("Expected last-bar cache read to start in time", tradesReadStarted.await(30, TimeUnit.SECONDS));
+
+            barSeries.addBar(barSeries.barBuilder()
+                    .closePrice(2)
+                    .openPrice(2)
+                    .highPrice(2)
+                    .lowPrice(2)
+                    .volume(0)
+                    .amount(0)
+                    .trades(0)
+                    .build(), true);
+
+            allowTradesRead.countDown();
+
+            assertNumEquals(2, future.get(30, TimeUnit.SECONDS));
+            assertEquals(2, indicator.getCalculationCount());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
     }
 
     @Test
@@ -652,6 +704,32 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void lastBarCacheInvalidatesOnReplace() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        assertNumEquals(3, indicator.getValue(endIndex));
+        assertEquals(1, indicator.getCalculationCount());
+
+        assertNumEquals(3, indicator.getValue(endIndex));
+        assertEquals(1, indicator.getCalculationCount());
+
+        barSeries.addBar(barSeries.barBuilder()
+                .closePrice(10)
+                .openPrice(10)
+                .highPrice(10)
+                .lowPrice(10)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .build(), true);
+
+        assertNumEquals(10, indicator.getValue(endIndex));
+        assertEquals(2, indicator.getCalculationCount());
+    }
+
+    @Test
     public void recursiveCalculateDoesNotDeadlock() throws Exception {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d)
@@ -871,6 +949,94 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getHighestResultIndex() {
             return highestResultIndex;
+        }
+    }
+
+    private static final class BlockingTradesBar implements Bar {
+
+        private final AtomicBoolean blockingEnabled = new AtomicBoolean();
+        private final AtomicBoolean blocked = new AtomicBoolean();
+        private final Bar delegate;
+        private final CountDownLatch tradesReadStarted;
+        private final CountDownLatch allowTradesRead;
+
+        private BlockingTradesBar(Bar delegate, CountDownLatch tradesReadStarted, CountDownLatch allowTradesRead) {
+            this.delegate = delegate;
+            this.tradesReadStarted = tradesReadStarted;
+            this.allowTradesRead = allowTradesRead;
+        }
+
+        private void enableBlocking() {
+            blockingEnabled.set(true);
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return delegate.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return delegate.getBeginTime();
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return delegate.getEndTime();
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return delegate.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return delegate.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return delegate.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return delegate.getClosePrice();
+        }
+
+        @Override
+        public Num getVolume() {
+            return delegate.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return delegate.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            if (blockingEnabled.get() && blocked.compareAndSet(false, true)) {
+                tradesReadStarted.countDown();
+                try {
+                    assertTrue("Timed out waiting to allow getTrades to proceed",
+                            allowTradesRead.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return delegate.getTrades();
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            delegate.addTrade(tradeVolume, tradePrice);
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            delegate.addPrice(price);
         }
     }
 

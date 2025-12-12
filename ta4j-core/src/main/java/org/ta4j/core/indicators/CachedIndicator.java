@@ -218,7 +218,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * <p>
      * The last bar (endIndex) is special because it may be mutated (e.g., via
-     * {@link Bar#addTrade(Num, Num)} or {@link Bar#addPrice(Num)}). This method
+     * {@link Bar#addTrade(Num, Num)} or {@link Bar#addPrice(Num)}), or replaced via
+     * {@link BarSeries#addBar(Bar, boolean)} with {@code replace=true}. This method
      * caches the result but invalidates it if the bar has been modified since the
      * last computation (tracked via trades count and close price). The computation
      * is performed outside the lock to avoid lock-order deadlocks with the main
@@ -237,13 +238,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         boolean ownsComputation = false;
         while (true) {
             synchronized (lastBarLock) {
-                Bar currentBar = series.getLastBar();
-                long tradeCount1 = currentBar.getTrades();
-                Num closePrice1 = currentBar.getClosePrice();
-                long tradeCount2 = currentBar.getTrades();
-                Num closePrice2 = currentBar.getClosePrice();
+                Bar bar1 = series.getLastBar();
+                long tradeCount1 = bar1.getTrades();
+                Num closePrice1 = bar1.getClosePrice();
 
-                boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                Bar bar2 = series.getLastBar();
+                long tradeCount2 = bar2.getTrades();
+                Num closePrice2 = bar2.getClosePrice();
+
+                boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                Bar currentBar = stableRead ? bar1 : bar2;
                 long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
                 Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
 
@@ -306,13 +310,17 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         synchronized (lastBarLock) {
             try {
                 if (snapshotInvalidationCount == lastBarCacheInvalidationCount) {
-                    Bar currentBar = series.getLastBar();
-                    long tradeCount1 = currentBar.getTrades();
-                    Num closePrice1 = currentBar.getClosePrice();
-                    long tradeCount2 = currentBar.getTrades();
-                    Num closePrice2 = currentBar.getClosePrice();
+                    Bar bar1 = series.getLastBar();
+                    long tradeCount1 = bar1.getTrades();
+                    Num closePrice1 = bar1.getClosePrice();
 
-                    boolean stableRead = tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                    Bar bar2 = series.getLastBar();
+                    long tradeCount2 = bar2.getTrades();
+                    Num closePrice2 = bar2.getClosePrice();
+
+                    boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2
+                            && equalsNum(closePrice1, closePrice2);
+                    Bar currentBar = stableRead ? bar1 : bar2;
                     long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
                     Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
 
