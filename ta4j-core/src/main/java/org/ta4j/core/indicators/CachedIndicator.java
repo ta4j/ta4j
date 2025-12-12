@@ -259,16 +259,22 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected void invalidateFrom(int index) {
         cache.invalidateFrom(index);
-        int newHighest = cache.getHighestResultIndex();
-        highestResultIndex = newHighest;
+        int cacheHighest = cache.getHighestResultIndex();
 
         // Also clear last-bar cache if affected
-        if (lastBarCachedIndex >= index) {
+        boolean lastBarCacheCleared = lastBarCachedIndex >= index;
+        if (lastBarCacheCleared) {
             clearLastBarCache();
         }
         if (index <= 0) {
             clearFirstBarCache();
         }
+
+        // Preserve last-bar cache knowledge when it is still valid. This avoids
+        // decreasing highestResultIndex when the primary cache does not contain the
+        // last-bar result.
+        int lastBarIndex = lastBarCacheCleared ? -1 : lastBarCachedIndex;
+        highestResultIndex = Math.max(cacheHighest, lastBarIndex);
     }
 
     /**

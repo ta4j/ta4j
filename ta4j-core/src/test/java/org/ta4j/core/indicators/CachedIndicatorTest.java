@@ -356,6 +356,27 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void highestResultIndexNotDecreasedWhenInvalidateFromDoesNotAffectLastBarCache() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        TestIndicator indicator = new TestIndicator(barSeries);
+
+        int endIndex = barSeries.getEndIndex();
+
+        // Access last bar first - sets highestResultIndex via last-bar cache
+        indicator.getValue(endIndex);
+        assertEquals(endIndex, indicator.getHighestResultIndex());
+
+        // Invalidate from an index that does not affect the cached last-bar index.
+        indicator.invalidateFrom(endIndex + 1);
+
+        assertEquals(
+                "highestResultIndex should remain at least at the last-bar cached index when last-bar cache remains valid",
+                endIndex, indicator.getHighestResultIndex());
+    }
+
+    @Test
     public void invalidateCacheClearsAllValues() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         final var indicator = new CountingInvalidatableIndicator(series);
