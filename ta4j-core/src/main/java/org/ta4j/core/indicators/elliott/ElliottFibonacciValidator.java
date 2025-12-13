@@ -36,7 +36,6 @@ import org.ta4j.core.num.NumFactory;
  */
 public class ElliottFibonacciValidator {
 
-    private final NumFactory numFactory;
     private final Num tolerance;
 
     private final Num waveTwoMinRetracement;
@@ -70,7 +69,6 @@ public class ElliottFibonacciValidator {
      * @since 0.22.0
      */
     public ElliottFibonacciValidator(final NumFactory numFactory, final Num tolerance) {
-        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.tolerance = Objects.requireNonNull(tolerance, "tolerance");
         this.waveTwoMinRetracement = numFactory.numOf(0.382);
         this.waveTwoMaxRetracement = numFactory.numOf(0.786);

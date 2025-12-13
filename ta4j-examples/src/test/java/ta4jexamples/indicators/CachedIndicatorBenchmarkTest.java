@@ -89,13 +89,43 @@ public class CachedIndicatorBenchmarkTest {
     private static final int DEFAULT_LAST_BAR_SMA_PERIOD = 50;
 
     public static void main(String[] args) throws Exception {
-        int threads = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_THREADS;
-        int batches = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_BATCHES;
-        int evictionBars = args.length > 2 ? Integer.parseInt(args[2]) : DEFAULT_EVICTION_BAR_COUNT;
-        int cacheHitsPerThread = args.length > 3 ? Integer.parseInt(args[3]) : DEFAULT_CACHE_HIT_READS_PER_THREAD;
-        int lastBarReads = args.length > 4 ? Integer.parseInt(args[4]) : DEFAULT_LAST_BAR_READS;
-        int maximumBarCountHint = args.length > 5 ? Integer.parseInt(args[5]) : DEFAULT_MAXIMUM_BAR_COUNT_HINT;
-        int lastBarSmaPeriod = args.length > 6 ? Integer.parseInt(args[6]) : DEFAULT_LAST_BAR_SMA_PERIOD;
+        int threads = DEFAULT_THREADS;
+        int batches = DEFAULT_BATCHES;
+        int evictionBars = DEFAULT_EVICTION_BAR_COUNT;
+        int cacheHitsPerThread = DEFAULT_CACHE_HIT_READS_PER_THREAD;
+        int lastBarReads = DEFAULT_LAST_BAR_READS;
+        int maximumBarCountHint = DEFAULT_MAXIMUM_BAR_COUNT_HINT;
+        int lastBarSmaPeriod = DEFAULT_LAST_BAR_SMA_PERIOD;
+
+        try {
+            if (args.length > 0) {
+                threads = Integer.parseInt(args[0]);
+            }
+            if (args.length > 1) {
+                batches = Integer.parseInt(args[1]);
+            }
+            if (args.length > 2) {
+                evictionBars = Integer.parseInt(args[2]);
+            }
+            if (args.length > 3) {
+                cacheHitsPerThread = Integer.parseInt(args[3]);
+            }
+            if (args.length > 4) {
+                lastBarReads = Integer.parseInt(args[4]);
+            }
+            if (args.length > 5) {
+                maximumBarCountHint = Integer.parseInt(args[5]);
+            }
+            if (args.length > 6) {
+                lastBarSmaPeriod = Integer.parseInt(args[6]);
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Error: Invalid number format in command-line arguments.");
+            System.err.println(
+                    "Usage: CachedIndicatorBenchmarkTest [threads] [batches] [evictionBars] [cacheHitsPerThread] [lastBarReads] [maximumBarCountHint] [lastBarSmaPeriod]");
+            System.err.println("All arguments must be valid integers. Using default values.");
+            LOG.warn("Invalid number format in command-line arguments, using defaults", e);
+        }
 
         new CachedIndicatorBenchmarkTest().run(threads, batches, evictionBars, cacheHitsPerThread, lastBarReads,
                 maximumBarCountHint, lastBarSmaPeriod);
@@ -304,7 +334,13 @@ public class CachedIndicatorBenchmarkTest {
         if (value == null || value.isBlank()) {
             return defaultValue;
         }
-        return Integer.parseInt(value);
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            LOG.warn("Invalid integer value for system property '{}': '{}'. Using default value: {}", key, value,
+                    defaultValue, e);
+            return defaultValue;
+        }
     }
 
     private static final class ScenarioResult {

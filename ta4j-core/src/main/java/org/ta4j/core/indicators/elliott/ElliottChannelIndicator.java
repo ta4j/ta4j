@@ -50,7 +50,6 @@ import org.ta4j.core.num.NumFactory;
 public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
 
     private final ElliottSwingIndicator swingIndicator;
-    private final NumFactory numFactory;
 
     /**
      * Builds a channel indicator from the provided swing source.
@@ -61,7 +60,6 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
     public ElliottChannelIndicator(final ElliottSwingIndicator swingIndicator) {
         super(requireSeries(swingIndicator));
         this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-        this.numFactory = getBarSeries().numFactory();
     }
 
     private static BarSeries requireSeries(final ElliottSwingIndicator swingIndicator) {
@@ -92,7 +90,7 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
             return new ElliottChannel(NaN, NaN, NaN);
         }
 
-        final Num median = upperLine.value.plus(lowerLine.value).dividedBy(numFactory.two());
+        final Num median = upperLine.value.plus(lowerLine.value).dividedBy(getBarSeries().numFactory().two());
         return new ElliottChannel(upperLine.value, lowerLine.value, median);
     }
 
@@ -116,13 +114,13 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
         if (span == 0) {
             return PivotLine.invalid();
         }
-        final Num spanNum = numFactory.numOf(span);
+        final Num spanNum = getBarSeries().numFactory().numOf(span);
         if (spanNum.isZero()) {
             return PivotLine.invalid();
         }
         final Num slope = newer.toPrice().minus(older.toPrice()).dividedBy(spanNum);
         final int distance = index - newer.toIndex();
-        final Num projected = newer.toPrice().plus(slope.multipliedBy(numFactory.numOf(distance)));
+        final Num projected = newer.toPrice().plus(slope.multipliedBy(getBarSeries().numFactory().numOf(distance)));
         if (projected.isNaN()) {
             return PivotLine.invalid();
         }

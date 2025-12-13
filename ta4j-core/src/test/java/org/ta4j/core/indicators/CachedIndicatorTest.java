@@ -880,7 +880,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class CountingInvalidatableIndicator extends CachedIndicator<Num> {
+    private static final class CountingInvalidatableIndicator extends CachedIndicator<Num> {
 
         private int calculationCount = 0;
 
@@ -891,7 +891,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         protected Num calculate(int index) {
             calculationCount++;
-            return numFactory.numOf(calculationCount);
+            return getBarSeries().numFactory().numOf(calculationCount);
         }
 
         @Override

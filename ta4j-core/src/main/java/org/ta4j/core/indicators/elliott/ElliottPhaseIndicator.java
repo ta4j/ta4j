@@ -47,7 +47,6 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     private final ElliottSwingIndicator swingIndicator;
     private final ElliottFibonacciValidator fibonacciValidator;
-    private final NumFactory numFactory;
 
     private static final int IMPULSE_LENGTH = 5;
     private static final int CORRECTION_LENGTH = 3;
@@ -70,15 +69,10 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         super(Objects.requireNonNull(swingIndicator, "swingIndicator"));
         this.swingIndicator = swingIndicator;
         this.fibonacciValidator = Objects.requireNonNull(fibonacciValidator, "fibonacciValidator");
-        this.numFactory = requireFactory(swingIndicator);
     }
 
     private static NumFactory requireFactory(final ElliottSwingIndicator swingIndicator) {
-        final NumFactory factory = Objects.requireNonNull(swingIndicator, "swingIndicator").getBarSeries().numFactory();
-        if (factory == null) {
-            throw new IllegalArgumentException("Swing indicator must expose a backing series factory");
-        }
-        return factory;
+        return Objects.requireNonNull(swingIndicator, "swingIndicator").getBarSeries().numFactory();
     }
 
     @Override
@@ -173,7 +167,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     ElliottSwingMetadata metadata(final int index) {
         final List<ElliottSwing> swings = swingIndicator.getValue(index);
-        return ElliottSwingMetadata.of(swings, numFactory);
+        return ElliottSwingMetadata.of(swings, swingIndicator.getBarSeries().numFactory());
     }
 
     ImpulseAssessment assessImpulse(final ElliottSwingMetadata metadata) {

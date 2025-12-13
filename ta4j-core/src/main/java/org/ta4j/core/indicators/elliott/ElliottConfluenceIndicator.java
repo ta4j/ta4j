@@ -56,7 +56,6 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
     private final Num ratioTolerance;
     private final Num channelTolerance;
     private final Num minimumScore;
-    private final NumFactory numFactory;
 
     /**
      * Builds an indicator with default Fibonacci levels, 0.05 absolute tolerance
@@ -97,7 +96,6 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
         this.priceIndicator = requireNonNull(priceIndicator, "priceIndicator");
         this.ratioIndicator = requireNonNull(ratioIndicator, "ratioIndicator");
         this.channelIndicator = requireNonNull(channelIndicator, "channelIndicator");
-        this.numFactory = getBarSeries().numFactory();
         this.retracementLevels = toImmutableList(retracementLevels);
         this.extensionLevels = toImmutableList(extensionLevels);
         this.ratioTolerance = requireNonNull(ratioTolerance, "ratioTolerance");
@@ -115,9 +113,8 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
 
     private static List<Num> toList(final Indicator<Num> indicator, final double[] levels) {
         final List<Num> values = new ArrayList<>(levels.length);
-        final NumFactory factory = requireSeries(indicator).numFactory();
         for (double level : levels) {
-            values.add(factory.numOf(level));
+            values.add(indicator.getBarSeries().numFactory().numOf(level));
         }
         return values;
     }
@@ -150,7 +147,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
             score++;
         }
 
-        return numFactory.numOf(score);
+        return getBarSeries().numFactory().numOf(score);
     }
 
     private boolean matchesRatioLevel(final ElliottRatio ratio) {
