@@ -28,7 +28,7 @@ Build, test, and deploy trading bots in Java. With more than 190 (and counting) 
 
 ## Why Ta4j?
 
-**Build, test, and deploy trading bots in Java**—without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
+**Build, test, and deploy trading bots in Java** without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
 
 ### What can you build?
 
@@ -40,10 +40,10 @@ Build, test, and deploy trading bots in Java. With more than 190 (and counting) 
 
 ### Why Java developers choose Ta4j
 
-- **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
+- **Pure Java, zero friction**: Works anywhere Java 21+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
-- **Composable strategies**: Chain rules fluently using familiar Java patterns—no DSLs or configuration files required.
+- **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **Production-ready**: Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
@@ -122,7 +122,7 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 mvn -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
 ```
 
-This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart—all in one go!
+This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
 
 **Option 2: Copy the code into your project** (requires `ta4j-core` and `ta4j-examples` dependencies)
 
@@ -186,7 +186,7 @@ System.out.println("Number of positions: " + record.getPositionCount());
 
 ### Quick solution: Yahoo Finance (no API key required)
 
-The easiest way to get started is using the built-in `YahooFinanceBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API—no registration or API key needed.
+The easiest way to get started is using the built-in `YahooFinanceBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API - no registration or API key needed.
 
 ```java
 import ta4jexamples.datasources.YahooFinanceBarSeriesDataSource;
@@ -243,7 +243,7 @@ See the [Data Loading Examples](#real-world-examples) section for more details.
 
 ## Evaluate performance with metrics
 
-Turn ideas into numbers. Add trading costs for realism and measure what matters—returns, risk, drawdowns, and more.
+Turn ideas into numbers. Add trading costs for realism and measure what matters: returns, risk, drawdowns, and more.
 
 ```java
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
@@ -315,7 +315,7 @@ topStrategies.forEach(statement -> {
 
 ## Visualize and share strategies
 
-See your strategies in action. Ta4j includes charting helpers, but you're not locked in—serialize to JSON and use any visualization stack you prefer.
+See your strategies in action. Ta4j includes charting helpers, but you're not locked in - serialize to JSON and use any visualization stack you prefer.
 
 **Built-in Java charting** (using JFreeChart):
 
@@ -393,7 +393,7 @@ JFreeChart chart = chartWorkflow.builder()
 
 ![Strategy Performance Analysis](ta4j-examples/docs/img/strategy-performance-readme.jpg)
 
-This chart shows price action with indicator overlays, trading signals, and a performance subchart displaying maximum drawdown over time—helping you understand risk alongside returns.
+This chart shows price action with indicator overlays, trading signals, and a performance subchart displaying maximum drawdown over time - helping you understand risk alongside returns.
 
 **Advanced multi-indicator analysis** with multiple subcharts:
 <!-- START_SNIPPET: advanced-strategy -->
@@ -496,7 +496,7 @@ Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 
 ## From backtest to live trading
 
-The same strategies you backtest can run live. Ta4j's deterministic calculations make it safe to deploy—test thoroughly, then execute with confidence.
+The same strategies you backtest can run live. Ta4j's deterministic calculations make it safe to deploy & test thoroughly, then execute with confidence.
 
 ```java
 import org.ta4j.core.builder.BaseBarSeriesBuilder;
@@ -530,7 +530,7 @@ while (true) {
 
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
-- **Deterministic**: Same inputs always produce same outputs—critical for testing and debugging
+- **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
 ## Real-world examples
@@ -598,7 +598,7 @@ Get help, share ideas, and connect with other Ta4j users:
 
 **New to technical analysis?**
 - Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/) to learn core concepts
-- Explore the [`ta4j-examples`](ta4j-examples) module—each example is runnable and well-commented
+- Explore the [`ta4j-examples`](ta4j-examples) module - each example is runnable and well-commented
 - Try modifying the quick start example above: change indicator parameters, add new rules, or test different exit conditions
 
 **Ready to go deeper?**
