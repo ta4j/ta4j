@@ -47,6 +47,7 @@ class SwingChartDisplayerTest {
         // Clear any existing properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
     }
 
     @AfterEach
@@ -54,6 +55,7 @@ class SwingChartDisplayerTest {
         // Clean up properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
     }
 
     @Test
@@ -172,6 +174,23 @@ class SwingChartDisplayerTest {
     }
 
     @Test
+    void testDisplayRespectsDisableDisplayProperty() {
+        // Set property to disable display
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+
+            // Display should return immediately without showing a window
+            displayer.display(chart);
+
+            // If we get here without exception, the property worked
+            assertTrue(true, "Display should be disabled when property is set");
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
+    }
+
+    @Test
     void testDetermineDisplaySizeWithCustomScale() {
         System.setProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY, "0.8");
         Dimension size = displayer.determineDisplaySize();
@@ -280,4 +299,5 @@ class SwingChartDisplayerTest {
         // mocking,
         // but the method exists and is part of the ChartMouseListener interface
     }
+
 }

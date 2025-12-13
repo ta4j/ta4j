@@ -39,7 +39,7 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
  * ADX indicator based strategy
@@ -85,7 +85,7 @@ public class ADXStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
@@ -119,6 +119,6 @@ public class ADXStrategy {
                 .withSubChart(new GrossReturnCriterion(), tradingRecord)
                 .toChart();
         chartWorkflow.displayChart(chart);
-        chartWorkflow.saveChartImage(chart, series, "adx-strategy", "ta4j-examples/log/charts");
+        chartWorkflow.saveChartImage(chart, series, "adx-strategy", "temp/charts");
     }
 }

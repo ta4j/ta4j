@@ -27,37 +27,30 @@
 - All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
 - At the end of every development cycle (code materially impacted) capture the changes into the CHANGELOG.md under the appropriate section using existing style/format conventions. Avoid duplicates and consolidate Unreleased section items as needed.
+- **🚫 CRITICAL: Do not ignore build errors even if you think they were pre-existing.** Suppressing/ignoring/assuming or otherwise skipping over the errors is forbidden. **All errors that surface must be investigated and root cause resolved.** Surface to the user any fixes that require complex refactoring or design changes. **Never skip over a failing test without explicit approval from user.**
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
 
 ### Unit Testing Best Practices
 
+- **🚫 NEVER SKIP TESTS WITHOUT EXPLICIT USER APPROVAL.** This is a CRITICAL rule. If a test fails, you MUST:
+  1. Investigate the root cause
+  2. Fix the underlying issue, OR
+  3. Surface the problem to the user and ask for explicit approval before skipping
+  - **DO NOT** use `Assume.assumeNoException()`, `Assume.assumeTrue(false)`, `@Ignore`, or any other mechanism to skip failing tests
+  - **DO NOT** wrap test code in try-catch blocks that silently skip on exceptions
+  - **DO NOT** assume tests can be skipped because "serialization isn't supported" or similar reasons
+  - If you encounter a failing test, treat it as a bug that must be fixed, not something to skip
 - **Never use reflection to access private APIs in tests.** Always test through the nearest public API, even if it requires additional setup. If testing private methods is necessary, refactor the production code to support dependency injection and mocks, or extract the logic into a testable public method. Reflection-based tests are brittle, harder to maintain, and don't reflect real usage patterns.
-- **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties:
-  ```java
-  // Good
-  IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
-      someMethod();
-  });
-  assertThat(ex.getMessage()).contains("expected message");
-  
-  // Avoid
-  @Test(expected = IllegalArgumentException.class)
-  public void testMethod() { ... }
-  
-  // Avoid
-  try {
-      someMethod();
-      fail("Expected exception");
-  } catch (IllegalArgumentException e) { ... }
-  ```
+- **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties.
 - **Prefer dependency injection for testability.** When code is difficult to test, refactor to accept dependencies through constructors or methods rather than accessing them statically or creating them internally. This enables mocking and makes tests more focused and maintainable.
 
 ## Code Organization
 - Prefer descriptive Javadoc with references to authoritative sources (e.g., Investopedia) when adding new indicators or public APIs.
 - Follow the formatting conventions already present in the repository (use four-space indentation, one statement per line, and favour immutability patterns wherever possible).
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
-- Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length (“reverse Christmas tree”: longer lines above shorter ones).
+- Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length ("reverse Christmas tree": longer lines above shorter ones).
+- **Always use loggers instead of System.out/System.err.** Use `org.apache.logging.log4j.LogManager` and `org.apache.logging.log4j.Logger`. Create a static logger: `private static final Logger LOG = LogManager.getLogger(ClassName.class);`. Use parameterized logging: `LOG.error("Message: {} - {}", param1, param2);` instead of string concatenation.
 
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.

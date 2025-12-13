@@ -90,8 +90,9 @@ public final class IndicatorSerialization {
     private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
     private static final String PACKAGE_PATH = INDICATOR_PACKAGE.replace('.', '/');
     private static final ConcurrentMap<String, List<Class<?>>> INDICATOR_TYPES = new ConcurrentHashMap<>();
-    private static final Set<String> IGNORED_CHILD_INDICATORS = Set
-            .of("org.ta4j.core.indicators.helpers.RunningTotalIndicator");
+    private static final Set<String> IGNORED_CHILD_INDICATORS = Set.of();
+
+    private static final Set<String> IGNORED_CHILD_FIELDS = Set.of();
     private static final Object NO_PARAMETER_VALUE = new Object();
 
     private IndicatorSerialization() {
@@ -554,6 +555,11 @@ public final class IndicatorSerialization {
         if (targetType == String.class) {
             return value.toString();
         }
+        if (targetType.isEnum()) {
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
+            return Enum.valueOf(enumClass, value.toString());
+        }
         if (Num.class.isAssignableFrom(targetType)) {
             return series.numFactory().numOf(value.toString());
         }
@@ -565,6 +571,9 @@ public final class IndicatorSerialization {
             }
         }
         Number coerced = coerceNumber(value);
+        if (coerced == null) {
+            return null;
+        }
         if (targetType == int.class || targetType == Integer.class) {
             return coerced.intValue();
         }
@@ -624,7 +633,11 @@ public final class IndicatorSerialization {
         if (value instanceof Number number) {
             return number;
         }
-        return new BigDecimal(value.toString());
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private static Boolean convertBooleanValue(Object value) {
@@ -642,7 +655,9 @@ public final class IndicatorSerialization {
         for (FieldView field : collectFields(indicator)) {
             if (!field.isNumeric()) {
                 Object raw = field.value();
-                if (raw instanceof List<?> list && isNumericList(list)) {
+                if (raw instanceof Enum<?> enumValue) {
+                    parameters.put(field.label(), enumValue.name());
+                } else if (raw instanceof List<?> list && isNumericList(list)) {
                     parameters.put(field.label(), formatNumericList(list));
                 } else if (raw != null && raw.getClass().isArray() && isNumericArray(raw)) {
                     parameters.put(field.label(), formatNumericArray(raw));
@@ -671,7 +686,7 @@ public final class IndicatorSerialization {
             }
             Object value = field.value();
             if (value instanceof Indicator<?> child && child != indicator) {
-                if (!shouldIgnoreChild(child)) {
+                if (!shouldIgnoreChild(child) && !shouldIgnoreChildField(field.label(), indicator)) {
                     children.add(new ChildView(field.label(), child));
                 }
             } else if (value instanceof List<?> list) {
@@ -700,6 +715,11 @@ public final class IndicatorSerialization {
 
     private static boolean shouldIgnoreChild(Indicator<?> indicator) {
         return IGNORED_CHILD_INDICATORS.contains(indicator.getClass().getName());
+    }
+
+    private static boolean shouldIgnoreChildField(String fieldName, Indicator<?> parent) {
+        String fullName = parent.getClass().getName() + "$" + fieldName;
+        return IGNORED_CHILD_FIELDS.contains(fullName);
     }
 
     private static Object formatNumericValue(Object value) {

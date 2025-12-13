@@ -41,15 +41,6 @@ jobs:
       # ------------------------------------------------------------
       # Prepare Release Notes Body
       # ------------------------------------------------------------
-      - name: Read Release Notes
-        id: notes
-        run: |
-          CONTENT="$(cat ${{ steps.version.outputs.notes_file }})"
-          CONTENT="${CONTENT//'%'/'%25'}"
-          CONTENT="${CONTENT//$'\n'/'%0A'}"
-          CONTENT="${CONTENT//$'\r'/'%0D'}"
-          echo "body=$CONTENT" >> $GITHUB_OUTPUT
-
       # ------------------------------------------------------------
       # Build artifacts: core, examples, ALL modules
       # Produces:
@@ -73,7 +64,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          body: ${{ steps.notes.outputs.body }}
+          body_path: ${{ steps.version.outputs.notes_file }}
           files: |
             **/target/*.jar
             **/target/*-sources.jar

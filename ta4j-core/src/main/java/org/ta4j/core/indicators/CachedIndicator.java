@@ -184,4 +184,47 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
         }
     }
+
+    /**
+     * Clears all cached values for this indicator.
+     * <p>
+     * Intended for indicators whose outputs can change retroactively (e.g., rolling
+     * window recomputations). Regular indicators should not need to call this, as
+     * cached values are assumed stable.
+     */
+    protected synchronized void invalidateCache() {
+        results.clear();
+        highestResultIndex = -1;
+    }
+
+    /**
+     * Clears cached values from the specified index (inclusive) to the end of the
+     * cache. Values before the index remain cached.
+     *
+     * @param index the first index to invalidate; if negative, the entire cache is
+     *              cleared
+     */
+    protected synchronized void invalidateFrom(int index) {
+        if (results.isEmpty() || index > highestResultIndex) {
+            return;
+        }
+        if (index < 0) {
+            invalidateCache();
+            return;
+        }
+
+        final int firstCachedIndex = highestResultIndex - results.size() + 1;
+        if (index <= firstCachedIndex) {
+            invalidateCache();
+            return;
+        }
+
+        final int removeFrom = results.size() - (highestResultIndex - index + 1);
+        if (removeFrom <= 0) {
+            invalidateCache();
+            return;
+        }
+        results.subList(removeFrom, results.size()).clear();
+        highestResultIndex = firstCachedIndex + results.size() - 1;
+    }
 }

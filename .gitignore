@@ -7,6 +7,7 @@
 .agents/
 nb-configuration.xml
 nbactions.xml
+*.code-workspace
 *.iml
 .DS_Store
 log/
@@ -22,6 +23,9 @@ out/
 
 # Images
 *.jpg
+# Exception: allow documentation images in ta4j-examples
+!ta4j-examples/docs/img/*.jpg
+!ta4j-examples/docs/img/*.png
 
 # BlueJ files
 *.ctxt
@@ -36,7 +40,11 @@ out/
 *.rar
 
 # temp files #
+temp/
 ta4j-examples/indicators.csv
+
+# local TODO notes (detailed architecture docs live in ta4j-wiki/architecture/)
+todo/
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/

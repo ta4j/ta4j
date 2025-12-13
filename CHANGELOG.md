@@ -1,12 +1,71 @@
-Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
-
 ## Unreleased
 
-- Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and
-  `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence
-- Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave
-  state and surface invalidations for swing-based strategies
+### Removed
+- Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
 
+### Changed
+- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
+
+### Fixed
+- Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
+
+### Added
+- **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.
+    - **Automated trendline indicators**: `TrendLineSupportIndicator` and `TrendLineResistanceIndicator` project support and resistance lines by connecting confirmed swing points. The indicators select the best trendline from a configurable lookback window using a scoring system based on swing point touches, proximity to current price, and recency. Historical values are automatically backfilled so trendlines stay straight and anchored on actual pivot points (not confirmation bars), avoiding the visual artifacts common in other implementations. Works with any price indicator (high/low/open/close/VWAP) and handles plateau detection, NaN values, and irregular time gaps—trendlines remain straight even across weekends and holidays. Supports both dynamic recalculation (updates on each bar) and static mode (freeze the first established line and project forward).
+    - **ZigZag pattern detection**: Added ZigZag indicator suite (`ZigZagStateIndicator`, `ZigZagPivotHighIndicator`, `ZigZagPivotLowIndicator`, `RecentZigZagSwingHighIndicator`, `RecentZigZagSwingLowIndicator`) that filters out insignificant price movements to reveal underlying trend structure. Unlike window-based swing indicators that require fixed lookback periods, ZigZag adapts dynamically using percentage or absolute price thresholds, making it particularly useful in volatile markets where fixed windows can miss significant moves. Pivot signals fire immediately when reversals are confirmed (no confirmation bar delay), and you can track support/resistance levels dynamically for mean-reversion strategies. Supports both fixed thresholds (e.g., 2% price movement) and dynamic thresholds based on indicators like ATR for volatility-adaptive detection.
+    - **Fractal-based swing detection**: `RecentFractalSwingHighIndicator` and `RecentFractalSwingLowIndicator` implement Bill Williams' fractal approach, identifying swing points by requiring a specified number of surrounding bars to be strictly higher or lower. Includes plateau-aware logic to handle flat tops and bottoms, making it robust for real-world market data. Good choice if you prefer the classic fractal methodology or need consistent swing detection across different market conditions.
+    - **Unified swing infrastructure**: All swing indicators share a common foundation (`AbstractRecentSwingIndicator` base class and `RecentSwingIndicator` interface) that provides consistent caching, automatic purging of stale swing points, and a unified API for accessing swing point indexes and values. Makes it straightforward to build custom swing detection algorithms or integrate with trendline tools—implement the interface and you get caching and lifecycle management automatically.
+    - **Swing point visualization**: `SwingPointMarkerIndicator` highlights confirmed swing points on charts without drawing connecting lines, useful for visualizing where pivots occur. Works with any swing detection algorithm (fractal-based, ZigZag, or custom implementations).
+
+- **Unified data source interface for seamless market data loading**: Finally, a consistent way to load market data regardless of where it comes from! The new `BarSeriesDataSource` interface lets you work with trading domain concepts (ticker, interval, date range) instead of wrestling with file paths, API endpoints, or parsing logic. Want to switch from CSV files to Yahoo Finance API? Just swap the data source implementation—your strategy code stays exactly the same. Implementations include:
+  - `YahooFinanceBarSeriesDataSource`: Fetch live data from Yahoo Finance (stocks, ETFs, crypto) with optional response caching to speed up development and avoid API rate limits
+  - `CoinbaseBarSeriesDataSource`: Load historical crypto data from Coinbase's public API with automatic caching
+  - `CsvFileBarSeriesDataSource`: Load OHLCV data from CSV files with intelligent filename pattern matching (e.g., `AAPL-PT1D-20230102_20231231.csv`)
+  - `JsonFileBarSeriesDataSource`: Load Coinbase/Binance-style JSON bar data with flexible date filtering
+  - `BitStampCsvTradesFileBarSeriesDataSource`: Aggregate Bitstamp trade-level CSV data into bars on-the-fly
+  
+  All data sources support the same domain-driven API: `loadSeries(ticker, interval, start, end)`. No more remembering whether your CSV uses `_bars_from_` or `-PT1D-` in the filename, or which API endpoint returns what format. The interface handles the implementation details so you can focus on building strategies. File-based sources automatically search for matching files, while API-based sources fetch and cache data transparently. See the new `CoinbaseBacktest` and `YahooFinanceBacktest` examples for complete workflows.
+  
+- Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence
+- Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave state and surface invalidations for swing-based strategies
+
+### Fixed
+- **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.
+- **Explicit rule serialization APIs**: Added `Rule#toJson(BarSeries)`/`Rule#fromJson(BarSeries, String)` so serialization happens only when explicitly requested. Custom names are preserved via `__customName` metadata, independent of `getName()`.
+- **Rule name visibility**: Made rule names volatile and added regression coverage so custom names set on one thread are always visible on others, preventing fallback to expensive default-name serialization under concurrency.
+
+
+## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
+
+### Changed
+- **Unified return representation system**: Say goodbye to inconsistent return formats across your analysis! Return-based criteria now use a unified `ReturnRepresentation` system that lets you choose how returns are displayed—whether you prefer multiplicative (1.12 for +12%), decimal (0.12), percentage (12.0), or logarithmic formats. Set it once globally via `ReturnRepresentationPolicy` or customize per-criterion. No more mental math converting between formats—Ta4j handles it all automatically. Legacy `addBase` constructors are deprecated in favor of the more expressive `ReturnRepresentation` enum.
+- **Ratio criteria now speak your language**: All ratio-producing criteria now support `ReturnRepresentation`, so you can format outputs consistently across your entire analysis pipeline. Whether you're comparing strategies, measuring risk, or tracking performance metrics, everything uses the same format. Updated criteria include:
+  - `VersusEnterAndHoldCriterion`: Strategy vs. buy-and-hold comparison (e.g., 0.5 = 50% better, displayed as 0.5, 50.0, or 1.5 depending on your preference)
+  - `ReturnOverMaxDrawdownCriterion`: Reward-to-risk ratio (e.g., 2.0 = return is 2x drawdown)
+  - `PositionsRatioCriterion`: Win/loss percentage (e.g., 0.5 = 50% winning)
+  - `InPositionPercentageCriterion`: Time in market (e.g., 0.5 = 50% of time)
+  - `CommissionsImpactPercentageCriterion`: Trading cost impact (e.g., 0.05 = 5% impact)
+  - `AbstractProfitLossRatioCriterion` (and subclasses): Profit-to-loss ratio (e.g., 2.0 = profit is 2x loss)
+
+  All ratio criteria default to `ReturnRepresentation.DECIMAL` (the conventional format for ratios), but you can override per-criterion or globally. Perfect for dashboards, reports, or when you need to match external data formats. See each criterion's javadoc for detailed examples.
+
+- **Simplified Returns class implementation**: Removed unnecessary `formatOnAccess` complexity from `Returns` class, inlined trivial `formatReturn()` wrapper method, and improved documentation clarity. The class now has a cleaner separation of concerns with better cross-references between `Returns`, `ReturnRepresentation`, and `ReturnRepresentationPolicy`.
+
+
+### Added
+- Added `TrueStrengthIndexIndicator`, `SchaffTrendCycleIndicator`, and `ConnorsRSIIndicator` to expand oscillator coverage
+- Added `PercentRankIndicator` helper indicator to calculate the percentile rank of a value within a rolling window
+- Added `DifferenceIndicator` helper indicator to calculate the difference between current and previous indicator values
+- Added `StreakIndicator` helper indicator to track consecutive up or down movements in indicator values
+- Added `StochasticIndicator` as a generic stochastic calculation indicator, extracted from `SchaffTrendCycleIndicator` for reuse
+- **AI-powered semantic release scheduler**: Added automated GitHub workflow that uses AI to analyze changes, determine version bumps (patch/minor/major), and schedule releases every 14 days. Includes structured approval process for major version bumps and OIDC token-based authentication for AI model calls. Enhanced release workflows with improved error handling, tag checking, and logging.
+
+### Changed
+- **EMA indicators now return NaN during unstable period**: `EMAIndicator`, `MMAIndicator`, and all indicators extending `AbstractEMAIndicator` now return `NaN` for indices within the unstable period (indices < `beginIndex + getCountOfUnstableBars()`). Previously, these indicators would return calculated values during the unstable period. **Action required**: Update any code that accesses EMA indicator values during the unstable period to handle `NaN` values appropriately, or wait until after the unstable period before reading values.
+- **Pivot point indicators refactored for maintainability**: Refactored `PivotPointIndicator` and `DeMarkPivotPointIndicator` to extend a new `AbstractPivotPointIndicator` base class, eliminating code duplication and centralizing period calculation logic. The refactoring improves maintainability and makes it easier to add new pivot point variants in the future. All existing functionality remains unchanged—this is purely an internal improvement that makes the codebase cleaner and more extensible.
+
+### Fixed
+- **Pivot point indicators boundary condition**: Fixed `AbstractPivotPointIndicator.getBarsOfPreviousPeriod()` to correctly include the bar at `beginIndex` when it belongs to the previous period. Previously, `DeMarkPivotPointIndicator` used `>` (strictly greater than) which excluded the bar at `beginIndex`, causing incorrect pivot calculations when the first bar in the series was part of the previous period. The fix ensures all bars from the previous period are included, which is especially important for `DeMarkPivotPointIndicator` as it uses the open price from the earliest bar in the previous period. Both `PivotPointIndicator` and `DeMarkPivotPointIndicator` now correctly include all bars from the previous period in their calculations.
 
 ## 0.19 (released November 19, 2025)
 
@@ -40,6 +99,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Testing infrastructure**: Added tests for `DoubleNumFactory` and `DecimalNumFactory`, unit tests around indicator concurrency in preparation for future multithreading features, and `DecimalNumPrecisionPerformanceTest` to demonstrate precision vs performance trade-offs.
 
 ### Changed
+- **Robust NaN handling in EMA indicators**: Enhanced `AbstractEMAIndicator` (and thus `EMAIndicator` and `MMAIndicator`) with comprehensive NaN handling to prevent contamination of future values. When a NaN value is detected in the current input, the indicator returns `NaN` immediately. If a previous EMA value is `NaN`, the indicator gracefully recovers by resetting to the current input value, preventing NaN contamination of all future calculations. This aligns with project guidelines for robust NaN handling and improves data quality in composite indicators.
+- **Consolidated EMA implementations**: Removed duplicate `SmoothingIndicator` class and replaced all usages with `EMAIndicator`, eliminating code duplication and ensuring consistent behavior across all EMA-based calculations.
 - **Enhanced rule serialization with custom name preservation**: Improved `RuleSerialization` to preserve custom rule names set via `setName()` during serialization and deserialization. Custom names are now properly distinguished from default JSON-formatted names, enabling better strategy persistence and debugging workflows.
 - **Improved trace logging with rule names**: Enhanced trace logging in `AbstractRule` and `BaseStrategy` to use rule names (custom or default) in log output, making it easier to identify which rules are being evaluated during strategy execution.
 - **Unified logging backend**: Replaced Logback bindings with Log4j 2 `log4j-slf4j2-impl` so examples and tests share a single logging backend. Added Log4j 2 configurations for modules and tests. This simplifies logging configuration and ensures consistent behavior across all modules. Set unit test logging level to INFO and cleaned build output of all extraneous logging. 
@@ -56,6 +117,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Improved bar series builder**: `BaseBarSeriesBuilder` now automatically uses the `NumFactory` from given bars instead of the default one, ensuring consistent numeric types throughout bar series construction.
 
 ### Fixed
+- **NaN contamination in EMA calculations**: Fixed issue where NaN values in EMA indicator inputs would contaminate all future EMA values. The indicator now gracefully recovers from NaN inputs by resetting to the current value, preventing propagation of invalid data through the calculation chain.
 - **Kalman filter robustness**: Guarded `KalmanFilterIndicator` against NaN/Infinity measurements to keep the Kalman state consistent, preventing calculation errors when input data contains invalid values.
 - **Recursive indicator stack overflow**: Fixed recursion bug in `RecursiveCachedIndicator` that could lead to stack overflow in certain situations, improving reliability for complex indicator calculations.
 - **Cost tracking in enter-and-hold**: Fixed `EnterAndHoldCriterion` to properly keep track of transaction and hold costs, ensuring accurate performance comparisons.

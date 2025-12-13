@@ -213,6 +213,11 @@ public class NaN implements Num {
     }
 
     @Override
+    public Num exp() {
+        return this;
+    }
+
+    @Override
     public Num sqrt() {
         return this;
     }

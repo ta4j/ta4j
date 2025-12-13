@@ -27,61 +27,124 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.util.Optional;
 
 /**
  * Base class for return based criteria.
  * <p>
- * Handles calculation of the aggregated return across positions and the
- * optional inclusion of the base percentage.
+ * Handles calculation of the aggregated return across positions and the output
+ * {@link ReturnRepresentation representation}. Internally the criterion works
+ * with total returns (a neutral value of {@code 1.0}). The representation is
+ * applied before values are returned to callers.
  */
 public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
-     * If {@code true} the base percentage of {@code 1} (equivalent to 100%) is
-     * included in the returned value.
+     * Output representation used for this criterion.
      */
-    protected final boolean addBase;
+    protected final ReturnRepresentation returnRepresentation;
 
     /**
-     * Constructor with {@link #addBase} set to {@code true}.
+     * Constructor with {@link ReturnRepresentationPolicy#getDefaultRepresentation()
+     * global default representation}.
      */
     protected AbstractReturnCriterion() {
-        this(true);
+        this(ReturnRepresentationPolicy.getDefaultRepresentation());
     }
 
     /**
      * Constructor.
      *
      * @param addBase whether to include the base percentage
+     * @deprecated Use {@link #AbstractReturnCriterion(ReturnRepresentation)} to
+     *             express the desired return output. This constructor will be
+     *             removed in a future release.
      */
+    @Deprecated(since = "0.24.0")
     protected AbstractReturnCriterion(boolean addBase) {
-        this.addBase = addBase;
+        this(ReturnRepresentation.fromAddBase(addBase));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param returnRepresentation the return representation to use
+     */
+    protected AbstractReturnCriterion(ReturnRepresentation returnRepresentation) {
+        this.returnRepresentation = returnRepresentation;
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            return calculateReturn(series, position);
+            // Optimize single position calculation by avoiding unnecessary conversions
+            // Calculate total return once, then convert directly to target representation
+            var totalReturn = calculateReturn(series, position);
+            return convertTotalReturnToRepresentation(totalReturn);
         }
-        var numFactory = series.numFactory();
-        if (addBase) {
+        // Open position: return neutral value directly in target representation
+        return getNeutralValue(series.numFactory());
+    }
+
+    /**
+     * Converts a total return to the target representation format
+     *
+     * @param totalReturn the total return (1-based)
+     * @return the return in the target representation format
+     */
+    private Num convertTotalReturnToRepresentation(Num totalReturn) {
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            return totalReturn;
+        }
+        var numFactory = totalReturn.getNumFactory();
+        var one = numFactory.one();
+        var rateOfReturn = totalReturn.minus(one);
+
+        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
+            return rateOfReturn;
+        }
+        if (returnRepresentation == ReturnRepresentation.PERCENTAGE) {
+            return rateOfReturn.multipliedBy(numFactory.numOf(100));
+        }
+        if (returnRepresentation == ReturnRepresentation.LOG) {
+            return totalReturn.log();
+        }
+        // Fallback to conversion method
+        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
+    }
+
+    /**
+     * Returns the neutral value (no return) in the target representation format.
+     *
+     * @param numFactory the number factory
+     * @return the neutral value in the target representation
+     */
+    private Num getNeutralValue(NumFactory numFactory) {
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
             return numFactory.one();
         }
+        // DECIMAL, PERCENTAGE, and LOG all use 0.0 as neutral
         return numFactory.zero();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var one = series.numFactory().one();
-        var result = tradingRecord.getPositions()
+        var totalReturn = tradingRecord.getPositions()
                 .stream()
-                .map(p -> calculate(series, p))
+                .map(p -> calculateReturn(series, p))
                 .reduce(one, Num::multipliedBy);
-        if (addBase) {
-            return result;
-        }
-        return result.minus(one);
+        return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
     }
 
     @Override
@@ -94,7 +157,7 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
      *
      * @param series   the bar series
      * @param position the closed position
-     * @return the return of the position including the base
+     * @return the total return of the position (1-based)
      */
     protected abstract Num calculateReturn(BarSeries series, Position position);
 }

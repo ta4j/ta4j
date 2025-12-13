@@ -10,7 +10,10 @@
         <Logger name="ta4jexamples.charting" level="off" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Logger name="ta4jexamples.loaders" level="error" additivity="false">
+        <Logger name="ta4jexamples.datasources" level="off" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="ta4jexamples.analysis" level="info" additivity="true">
             <AppenderRef ref="Console"/>
         </Logger>
         <Root level="info">

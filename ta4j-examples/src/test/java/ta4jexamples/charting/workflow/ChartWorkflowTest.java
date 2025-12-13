@@ -54,6 +54,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.display.ChartDisplayer;
+import ta4jexamples.charting.storage.ChartStorage;
+import ta4jexamples.charting.storage.FileSystemChartStorage;
 
 /**
  * Integration tests for {@link ChartWorkflow}.
@@ -392,31 +397,39 @@ public class ChartWorkflowTest {
 
     @Test
     public void testGenerateAndDisplayTradingRecordChart() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        try {
-            chartWorkflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
-                    "Exception should be related to display functionality");
-        }
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        // Verify display was called exactly once
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
+        assertTrue(spyDisplayer.getLastChart().getTitle().getText().contains("Test Strategy"),
+                "Chart title should contain strategy name");
     }
 
     @Test
     public void testDisplayTradingRecordChartWithIndicators() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        try {
-            chartWorkflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
-        } catch (Exception e) {
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-        }
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice, sma);
+
+        // Verify display was called exactly once
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
+        assertTrue(spyDisplayer.getLastChart().getTitle().getText().contains("Test Strategy"),
+                "Chart title should contain strategy name");
     }
 
     @Test
@@ -426,15 +439,18 @@ public class ChartWorkflowTest {
 
     @Test
     public void testGenerateAndDisplayChartWithIndicators() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        try {
-            chartWorkflow.displayIndicatorChart(barSeries, closePrice);
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            assertTrue(e.getMessage().contains("headless") || e.getMessage().contains("display"),
-                    "Exception should be related to display functionality");
-        }
+        workflow.displayIndicatorChart(barSeries, closePrice);
+
+        // Verify display was called exactly once
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
     }
 
     // Chart title, empty record, single bar, time periods, and multiple analysis
@@ -551,107 +567,105 @@ public class ChartWorkflowTest {
 
     @Test
     public void testDisplayDualAxisChart() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        // This test just ensures the method doesn't throw an exception
-        // In a real test environment, we might mock the display functionality
-        try {
-            chartWorkflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-            // HeadlessException can have null message, which is also acceptable
-        }
+        workflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA");
+
+        // Verify display was called exactly once
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
     }
 
     @Test
     public void testDisplayDualAxisChartWithCustomTitles() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        try {
-            chartWorkflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA", "Custom Chart",
-                    "Custom Window");
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-            // HeadlessException can have null message, which is also acceptable
-        }
+        workflow.displayDualAxisChart(barSeries, closePrice, "Price (USD)", sma, "SMA", "Custom Chart",
+                "Custom Window");
+
+        // Verify display was called exactly once with the custom window title
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayWithTitleCallCount(), "Display with title should be called once");
+        assertEquals("Custom Window", spyDisplayer.getLastWindowTitle(), "Window title should match");
+        assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
     }
 
     @Test
     public void testDisplayChartWithWindowTitle() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
 
-        try {
-            chartWorkflow.displayChart(chart, "Custom Window Title");
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-            // HeadlessException can have null message, which is also acceptable
-        }
+        JFreeChart chart = workflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        workflow.displayChart(chart, "Custom Window Title");
+
+        // Verify display was called exactly once with the custom window title
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayWithTitleCallCount(), "Display with title should be called once");
+        assertEquals("Custom Window Title", spyDisplayer.getLastWindowTitle(), "Window title should match");
+        assertEquals(chart, spyDisplayer.getLastChart(), "Same chart instance should be passed to displayer");
     }
 
     @Test
     public void testDisplayChartWithNullWindowTitle() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
 
-        try {
-            chartWorkflow.displayChart(chart, null);
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-            // HeadlessException can have null message, which is also acceptable
-        }
+        JFreeChart chart = workflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        workflow.displayChart(chart, null);
+
+        // Verify display was called exactly once without title (null title triggers
+        // default behavior)
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertTrue(spyDisplayer.wasDisplayCalledWithoutTitle(), "Display without title should have been called");
+        assertEquals(chart, spyDisplayer.getLastChart(), "Same chart instance should be passed to displayer");
     }
 
     @Test
     public void testDisplayChartWithEmptyWindowTitle() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
 
-        try {
-            chartWorkflow.displayChart(chart, "");
-        } catch (Exception e) {
-            // In headless environments, this might throw an exception, which is expected
-            String message = e.getMessage();
-            if (message != null) {
-                assertTrue(message.contains("headless") || message.contains("display"),
-                        "Exception should be related to display functionality");
-            }
-            // HeadlessException can have null message, which is also acceptable
-        }
+        JFreeChart chart = workflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        workflow.displayChart(chart, "");
+
+        // Verify display was called exactly once without title (empty title triggers
+        // default behavior)
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called exactly once");
+        assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
+        assertTrue(spyDisplayer.wasDisplayCalledWithoutTitle(), "Display without title should have been called");
+        assertEquals(chart, spyDisplayer.getLastChart(), "Same chart instance should be passed to displayer");
     }
 
     @Test
     public void testChartLegendNotDuplicatedWhenReusingChartWorkflow() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        // Use dependency injection with spy to prevent actual chart display
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
         // Create a ChartWorkflow with save directory to enable save functionality
         Path tempDir = null;
         try {
             tempDir = Files.createTempDirectory("ChartWorkflow-test");
-            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
+            ChartWorkflow makerWithSave = new ChartWorkflow(factory, spyDisplayer, new FileSystemChartStorage(tempDir));
 
             // Create a chart
             JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
@@ -659,12 +673,11 @@ public class ChartWorkflowTest {
             // Count legend items before display
             int legendItemCountBefore = countLegendItems(chart);
 
-            // Display the chart (this might modify it)
-            try {
-                makerWithSave.displayChart(chart);
-            } catch (Exception e) {
-                // Headless environment - that's OK for this test
-            }
+            // Display the chart (this should not modify it since we're using a spy)
+            makerWithSave.displayChart(chart);
+
+            // Verify display was called
+            assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called once");
 
             // Count legend items after display
             int legendItemCountAfter = countLegendItems(chart);
@@ -1141,6 +1154,213 @@ public class ChartWorkflowTest {
                     }
                 });
             }
+        }
+    }
+
+    // ========== ChartPlan display with title tests ==========
+
+    @Test
+    public void testDisplayChartPlanUsesTitleFromPlan() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a title
+        String expectedTitle = "Test Chart Title";
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle(expectedTitle).toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify the window title was passed correctly
+        assertEquals(expectedTitle, mockDisplayer.getLastWindowTitle(),
+                "Window title should match the title from ChartPlan");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsNull() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan without a title (null)
+        ChartPlan plan = workflow.builder()
+                .withSeries(barSeries)
+                // No withTitle() call - title will be null
+                .toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (null window title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is null, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsEmpty() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with an empty title
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("").toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (empty title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is empty, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanUsesDefaultWhenTitleIsBlank() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a blank title (whitespace only)
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("   ").toPlan();
+
+        // Display the plan
+        workflow.display(plan);
+
+        // Verify default behavior (blank title means default is used)
+        assertNull(mockDisplayer.getLastWindowTitle(),
+                "Window title should be null when plan title is blank, triggering default behavior");
+        assertTrue(mockDisplayer.wasDisplayCalledWithoutTitle(),
+                "display(chart) should have been called (without window title parameter)");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartPlanWithExplicitWindowTitleOverridesPlanTitle() {
+        // Create a mock displayer that records the window title
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        // Create a chart plan with a title
+        ChartPlan plan = workflow.builder().withSeries(barSeries).withTitle("Plan Title").toPlan();
+
+        // Display the plan with an explicit window title (should override plan title)
+        String explicitTitle = "Explicit Window Title";
+        workflow.display(plan, explicitTitle);
+
+        // Verify the explicit window title was used, not the plan title
+        assertEquals(explicitTitle, mockDisplayer.getLastWindowTitle(),
+                "Explicit window title should override plan title");
+        assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
+    }
+
+    /**
+     * Spy implementation of ChartDisplayer that tracks all display calls for
+     * testing purposes. This prevents charts from actually being displayed during
+     * tests while allowing verification of display behavior.
+     */
+    private static class MockChartDisplayer implements ChartDisplayer {
+        private JFreeChart lastChart;
+        private String lastWindowTitle;
+        private boolean displayWithoutTitleCalled;
+        private int displayCallCount = 0;
+        private int displayWithTitleCallCount = 0;
+        private final java.util.List<DisplayCall> allCalls = new java.util.ArrayList<>();
+
+        /**
+         * Represents a single display call for tracking purposes.
+         */
+        private static class DisplayCall {
+            final JFreeChart chart;
+            final String windowTitle;
+            final boolean hadTitle;
+
+            DisplayCall(JFreeChart chart, String windowTitle, boolean hadTitle) {
+                this.chart = chart;
+                this.windowTitle = windowTitle;
+                this.hadTitle = hadTitle;
+            }
+        }
+
+        @Override
+        public void display(JFreeChart chart) {
+            this.lastChart = chart;
+            this.lastWindowTitle = null;
+            this.displayWithoutTitleCalled = true;
+            this.displayCallCount++;
+            this.allCalls.add(new DisplayCall(chart, null, false));
+        }
+
+        @Override
+        public void display(JFreeChart chart, String windowTitle) {
+            this.lastChart = chart;
+            this.lastWindowTitle = windowTitle;
+            this.displayWithoutTitleCalled = false;
+            this.displayWithTitleCallCount++;
+            this.allCalls.add(new DisplayCall(chart, windowTitle, true));
+        }
+
+        JFreeChart getLastChart() {
+            return lastChart;
+        }
+
+        String getLastWindowTitle() {
+            return lastWindowTitle;
+        }
+
+        boolean wasDisplayCalledWithoutTitle() {
+            return displayWithoutTitleCalled;
+        }
+
+        /**
+         * Returns the total number of display() calls (without title).
+         */
+        int getDisplayCallCount() {
+            return displayCallCount;
+        }
+
+        /**
+         * Returns the total number of display(chart, title) calls (with title).
+         */
+        int getDisplayWithTitleCallCount() {
+            return displayWithTitleCallCount;
+        }
+
+        /**
+         * Returns the total number of display calls (both variants).
+         */
+        int getTotalDisplayCallCount() {
+            return displayCallCount + displayWithTitleCallCount;
+        }
+
+        /**
+         * Returns all display calls made to this spy.
+         */
+        java.util.List<DisplayCall> getAllCalls() {
+            return new java.util.ArrayList<>(allCalls);
+        }
+
+        /**
+         * Resets all tracking state.
+         */
+        void reset() {
+            this.lastChart = null;
+            this.lastWindowTitle = null;
+            this.displayWithoutTitleCalled = false;
+            this.displayCallCount = 0;
+            this.displayWithTitleCallCount = 0;
+            this.allCalls.clear();
         }
     }
 
