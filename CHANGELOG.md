@@ -8,6 +8,7 @@
     - **Last-bar mutation caching**: Repeated calls to `getValue(endIndex)` on an unchanged in-progress bar now reuse the cached result. The cache automatically invalidates when the bar is mutated (via `addTrade()` or `addPrice()`) or replaced (via `addBar(..., true)`).
     - **Deadlock avoidance**: Fixed lock-order deadlock risk between last-bar caching and the main cache by ensuring last-bar computations and invalidation never run while holding locks needed by cache writes.
     - **Iterative prefill under single lock**: `RecursiveCachedIndicator` now uses `CachedBuffer.prefillUntil()` to compute gap values iteratively under one write lock, avoiding repeated lock re-entry and series lookups.
+- **ta4j-examples runners and regression coverage**: Added main-source runners (`CachedIndicatorBenchmark`, `RuleNameBenchmark`, `TrendLineAndSwingPointRegression`) and a robust regression test (`TrendLineAndSwingPointRegressionTest`) so full builds stay quiet while still validating trendlines/swing points and enabling chart generation via `main`.
 
 ### Removed
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
