@@ -32,6 +32,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * The upper band of the SuperTrend indicator.
+ *
+ * <p>
+ * NaN Handling Strategy:
+ * <ul>
+ * <li>During the unstable period (when ATR returns NaN), this indicator returns
+ * NaN to signal that the value is not yet reliable.</li>
+ * <li>When recovering from NaN (i.e., when previousValue is NaN but
+ * currentBasic is valid), the indicator returns currentBasic to allow graceful
+ * recovery without contaminating future values.</li>
+ * <li>This differs from {@link SuperTrendLowerBandIndicator}, which returns
+ * zero during the unstable period to maintain consistency with its initial
+ * value.</li>
+ * </ul>
+ *
+ * <p>
+ * The unstable period is determined by the underlying {@link ATRIndicator}'s
+ * {@link ATRIndicator#getCountOfUnstableBars()}.
  */
 public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
 

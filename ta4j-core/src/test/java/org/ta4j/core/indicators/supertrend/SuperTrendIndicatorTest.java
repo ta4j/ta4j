@@ -52,6 +52,91 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         assertNumEquals(12.5, indicator.getValue(3));
     }
 
+    @Test
+    public void handlesExtremeSmallMultiplier() {
+        BarSeries series = buildSeries();
+        SuperTrendIndicator indicator = new SuperTrendIndicator(series, 2, 0.01d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // After unstable period, should produce valid values
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isZero() || value2.isPositive()).isTrue();
+    }
+
+    @Test
+    public void handlesExtremeLargeMultiplier() {
+        BarSeries series = buildSeries();
+        SuperTrendIndicator indicator = new SuperTrendIndicator(series, 2, 100d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // After unstable period, should produce valid values
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+    }
+
+    @Test
+    public void maintainsZeroDuringUnstablePeriod() {
+        BarSeries series = buildSeries();
+        SuperTrendIndicator indicator = new SuperTrendIndicator(series, 3, 1d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(3);
+        // All unstable period values should be zero
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+        assertThat(indicator.getValue(2).isZero()).isTrue();
+
+        // After unstable period, should recover
+        Num value3 = indicator.getValue(3);
+        assertThat(Num.isNaNOrNull(value3)).isFalse();
+    }
+
+    @Test
+    public void recoversGracefullyAfterNaNPeriod() {
+        BarSeries series = buildSeries();
+        SuperTrendIndicator indicator = new SuperTrendIndicator(series, 2, 1d);
+
+        // Verify zero during unstable period
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // Verify recovery after unstable period
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isZero() || value2.isPositive()).isTrue();
+
+        // Verify continued stability
+        Num value3 = indicator.getValue(3);
+        assertThat(Num.isNaNOrNull(value3)).isFalse();
+        assertThat(value3.isZero() || value3.isPositive()).isTrue();
+    }
+
+    @Test
+    public void handlesDifferentBarCounts() {
+        BarSeries series = buildSeries();
+
+        // Test with barCount = 1 (minimal unstable period)
+        SuperTrendIndicator indicator1 = new SuperTrendIndicator(series, 1, 1d);
+        assertThat(indicator1.getCountOfUnstableBars()).isEqualTo(1);
+        assertThat(indicator1.getValue(0).isZero()).isTrue();
+        Num value1 = indicator1.getValue(1);
+        assertThat(Num.isNaNOrNull(value1)).isFalse();
+
+        // Test with barCount = 4 (longer unstable period)
+        SuperTrendIndicator indicator4 = new SuperTrendIndicator(series, 4, 1d);
+        assertThat(indicator4.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(indicator4.getValue(0).isZero()).isTrue();
+        assertThat(indicator4.getValue(1).isZero()).isTrue();
+        assertThat(indicator4.getValue(2).isZero()).isTrue();
+        assertThat(indicator4.getValue(3).isZero()).isTrue();
+    }
+
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();

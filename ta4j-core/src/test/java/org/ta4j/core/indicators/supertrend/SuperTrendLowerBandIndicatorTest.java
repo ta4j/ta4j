@@ -54,6 +54,76 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         assertNumEquals(12.5, indicator.getValue(3));
     }
 
+    @Test
+    public void handlesExtremeSmallMultiplier() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 0.01d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // With very small multiplier, band should be close to median price
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isPositive()).isTrue();
+    }
+
+    @Test
+    public void handlesExtremeLargeMultiplier() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 100d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // With very large multiplier, band should be much lower than median price
+        // (could even be negative, but should not be NaN)
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+    }
+
+    @Test
+    public void maintainsZeroDuringUnstablePeriod() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 3);
+        SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(3);
+        // All unstable period values should be zero
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+        assertThat(indicator.getValue(2).isZero()).isTrue();
+
+        // After unstable period, should recover
+        Num value3 = indicator.getValue(3);
+        assertThat(Num.isNaNOrNull(value3)).isFalse();
+    }
+
+    @Test
+    public void recoversGracefullyAfterNaNPeriod() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
+
+        // Verify zero during unstable period
+        assertThat(indicator.getValue(0).isZero()).isTrue();
+        assertThat(indicator.getValue(1).isZero()).isTrue();
+
+        // Verify recovery after unstable period
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isPositive()).isTrue();
+
+        // Verify continued stability
+        Num value3 = indicator.getValue(3);
+        assertThat(Num.isNaNOrNull(value3)).isFalse();
+        assertThat(value3.isPositive()).isTrue();
+    }
+
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();

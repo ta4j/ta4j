@@ -31,6 +31,27 @@ import org.ta4j.core.num.Num;
 
 /**
  * The SuperTrend indicator.
+ *
+ * <p>
+ * NaN Handling Strategy:
+ * <ul>
+ * <li>During the unstable period (when band indicators return NaN), this
+ * indicator returns zero. The NaN checks in comparisons ensure that invalid
+ * band values do not contaminate the calculation.</li>
+ * <li>After the unstable period, the indicator recovers gracefully and produces
+ * valid values based on the relationship between the close price and the
+ * upper/lower bands.</li>
+ * <li>The unstable period is the maximum of the unstable periods from both
+ * {@link #superTrendUpperBandIndicator} and
+ * {@link #superTrendLowerBandIndicator}, ensuring that all component indicators
+ * have stabilized before producing reliable values.</li>
+ * </ul>
+ *
+ * <p>
+ * The indicator switches between upper and lower bands based on whether the
+ * previous SuperTrend value was equal to the previous upper or lower band
+ * value, and compares the current close price against the current band values
+ * to determine the new SuperTrend value.
  */
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -75,18 +96,21 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         Num lowerBand = superTrendLowerBandIndicator.getValue(i);
         Num upperBand = superTrendUpperBandIndicator.getValue(i);
 
+        // If bands are NaN, comparisons will return false and value remains zero
+        // This is the expected behavior during unstable period
         if (previousValue.isEqual(superTrendUpperBandIndicator.getValue(i - 1))) {
-            if (closePrice.isLessThanOrEqual(upperBand)) {
+            if (!Num.isNaNOrNull(upperBand) && closePrice.isLessThanOrEqual(upperBand)) {
                 value = upperBand;
-            } else if (closePrice.isGreaterThan(upperBand)) {
+            } else if (!Num.isNaNOrNull(upperBand) && !Num.isNaNOrNull(lowerBand)
+                    && closePrice.isGreaterThan(upperBand)) {
                 value = lowerBand;
             }
         }
 
         if (previousValue.isEqual(superTrendLowerBandIndicator.getValue(i - 1))) {
-            if (closePrice.isGreaterThanOrEqual(lowerBand)) {
+            if (!Num.isNaNOrNull(lowerBand) && closePrice.isGreaterThanOrEqual(lowerBand)) {
                 value = lowerBand;
-            } else if (closePrice.isLessThan(lowerBand)) {
+            } else if (!Num.isNaNOrNull(lowerBand) && !Num.isNaNOrNull(upperBand) && closePrice.isLessThan(lowerBand)) {
                 value = upperBand;
             }
         }

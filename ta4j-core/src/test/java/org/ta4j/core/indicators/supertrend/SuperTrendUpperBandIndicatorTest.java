@@ -54,6 +54,59 @@ public class SuperTrendUpperBandIndicatorTest extends AbstractIndicatorTest<BarS
         assertNumEquals(17.5, indicator.getValue(3));
     }
 
+    @Test
+    public void handlesExtremeSmallMultiplier() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendUpperBandIndicator indicator = new SuperTrendUpperBandIndicator(series, atrIndicator, 0.01d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
+
+        // With very small multiplier, band should be close to median price
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isPositive()).isTrue();
+    }
+
+    @Test
+    public void handlesExtremeLargeMultiplier() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendUpperBandIndicator indicator = new SuperTrendUpperBandIndicator(series, atrIndicator, 100d);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
+
+        // With very large multiplier, band should be much higher than median price
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isPositive()).isTrue();
+    }
+
+    @Test
+    public void recoversGracefullyAfterNaNPeriod() {
+        BarSeries series = buildSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(series, 2);
+        SuperTrendUpperBandIndicator indicator = new SuperTrendUpperBandIndicator(series, atrIndicator, 1d);
+
+        // Verify NaN during unstable period
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
+
+        // Verify recovery after unstable period
+        Num value2 = indicator.getValue(2);
+        assertThat(Num.isNaNOrNull(value2)).isFalse();
+        assertThat(value2.isPositive()).isTrue();
+
+        // Verify continued stability
+        Num value3 = indicator.getValue(3);
+        assertThat(Num.isNaNOrNull(value3)).isFalse();
+        assertThat(value3.isPositive()).isTrue();
+    }
+
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();

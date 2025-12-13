@@ -32,6 +32,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * The lower band of the SuperTrend indicator.
+ *
+ * <p>
+ * NaN Handling Strategy:
+ * <ul>
+ * <li>During the unstable period (when ATR returns NaN), this indicator returns
+ * zero (via previousValue) to maintain consistency with its initial value at
+ * index 0.</li>
+ * <li>When recovering from NaN (i.e., when previousValue is NaN but
+ * currentBasic is valid), the indicator returns currentBasic to allow graceful
+ * recovery without contaminating future values.</li>
+ * <li>This differs from {@link SuperTrendUpperBandIndicator}, which returns NaN
+ * during the unstable period to signal that the value is not yet reliable.</li>
+ * </ul>
+ *
+ * <p>
+ * The unstable period is determined by the underlying {@link ATRIndicator}'s
+ * {@link ATRIndicator#getCountOfUnstableBars()}.
  */
 public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -73,6 +90,15 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
         Num previousValue = this.getValue(index - 1);
         Num currentBasic = medianPriceIndicator.getValue(index)
                 .minus(multiplier.multipliedBy(atrIndicator.getValue(index)));
+        // If currentBasic is NaN (during unstable period), return previousValue (zero)
+        // This maintains the zero behavior during unstable period
+        if (Num.isNaNOrNull(currentBasic)) {
+            return previousValue;
+        }
+        // If previousValue is NaN, recover by returning currentBasic
+        if (Num.isNaNOrNull(previousValue)) {
+            return currentBasic;
+        }
 
         return currentBasic.isGreaterThan(previousValue) || bar.getClosePrice().isLessThan(previousValue) ? currentBasic
                 : previousValue;
