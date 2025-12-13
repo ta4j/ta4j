@@ -34,21 +34,37 @@ import org.ta4j.core.num.Num;
  * The lower band of the SuperTrend indicator.
  *
  * <p>
- * NaN Handling Strategy:
- * <ul>
- * <li>During the unstable period (when ATR returns NaN), this indicator returns
- * zero (via previousValue) to maintain consistency with its initial value at
- * index 0.</li>
- * <li>When recovering from NaN (i.e., when previousValue is NaN but
- * currentBasic is valid), the indicator returns currentBasic to allow graceful
- * recovery without contaminating future values.</li>
- * <li>This differs from {@link SuperTrendUpperBandIndicator}, which returns NaN
- * during the unstable period to signal that the value is not yet reliable.</li>
- * </ul>
+ * The lower band acts as dynamic support during an uptrend. When price closes
+ * below this band, it signals a potential trend reversal to bearish.
+ *
+ * <h2>Formula</h2>
+ *
+ * <pre>
+ * Basic Lower Band = (High + Low) / 2 - (Multiplier × ATR)
+ *
+ * Final Lower Band:
+ *   - If Basic Lower Band &gt; Previous Lower Band OR Previous Close &lt; Previous Lower Band:
+ *       Lower Band = Basic Lower Band
+ *   - Otherwise:
+ *       Lower Band = Previous Lower Band (band only moves up, never down)
+ * </pre>
  *
  * <p>
- * The unstable period is determined by the underlying {@link ATRIndicator}'s
- * {@link ATRIndicator#getCountOfUnstableBars()}.
+ * The "ratcheting" behavior (band only moves up, never down during an uptrend)
+ * prevents the support level from falling when price pulls back, ensuring the
+ * band tightens as the uptrend progresses.
+ *
+ * <h2>NaN Handling</h2>
+ * <ul>
+ * <li>During the unstable period (when ATR returns NaN), this indicator returns
+ * zero to maintain consistency with its initial value at index 0.</li>
+ * <li>When recovering from NaN, the indicator returns the current basic value
+ * to allow graceful recovery.</li>
+ * </ul>
+ *
+ * @see SuperTrendIndicator
+ * @see SuperTrendUpperBandIndicator
+ * @see ATRIndicator
  */
 public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -69,11 +85,12 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
      * Constructor.
      *
      * @param barSeries    the bar series
-     * @param atrIndicator the {@link ATRIndicator}
-     * @param multiplier   the multiplier
+     * @param atrIndicator the {@link ATRIndicator} used to measure volatility
+     * @param multiplier   the ATR multiplier that determines band width. Higher
+     *                     values create wider bands (more conservative), lower
+     *                     values create narrower bands (more sensitive).
      */
-    public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
-            final Double multiplier) {
+    public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator, double multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);
