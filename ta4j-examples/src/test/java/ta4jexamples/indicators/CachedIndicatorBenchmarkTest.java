@@ -259,7 +259,7 @@ public class CachedIndicatorBenchmarkTest {
                 checksum += future.join();
             }
 
-            long operations = threads * readsPerThread;
+            long operations = ((long) threads) * readsPerThread;
             return new ScenarioResult(operations, durationNanos, checksum);
         } finally {
             pool.shutdown();
