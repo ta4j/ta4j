@@ -57,7 +57,7 @@ import org.ta4j.core.num.Num;
  * <h2>NaN Handling</h2>
  * <ul>
  * <li>During the unstable period (when ATR returns NaN), this indicator returns
- * zero to maintain consistency with its initial value at index 0.</li>
+ * NaN to signal that the value is not yet reliable.</li>
  * <li>When recovering from NaN, the indicator returns the current basic value
  * to allow graceful recovery.</li>
  * </ul>
@@ -99,19 +99,18 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
 
     @Override
     protected Num calculate(int index) {
+        Num currentBasic = medianPriceIndicator.getValue(index)
+                .minus(multiplier.multipliedBy(atrIndicator.getValue(index)));
+        // If currentBasic is NaN (during unstable period), return NaN
+        if (Num.isNaNOrNull(currentBasic)) {
+            return currentBasic;
+        }
         if (index == 0) {
-            return getBarSeries().numFactory().zero();
+            return currentBasic;
         }
 
         Bar bar = getBarSeries().getBar(index - 1);
         Num previousValue = this.getValue(index - 1);
-        Num currentBasic = medianPriceIndicator.getValue(index)
-                .minus(multiplier.multipliedBy(atrIndicator.getValue(index)));
-        // If currentBasic is NaN (during unstable period), return previousValue (zero)
-        // This maintains the zero behavior during unstable period
-        if (Num.isNaNOrNull(currentBasic)) {
-            return previousValue;
-        }
         // If previousValue is NaN, recover by returning currentBasic
         if (Num.isNaNOrNull(previousValue)) {
             return currentBasic;

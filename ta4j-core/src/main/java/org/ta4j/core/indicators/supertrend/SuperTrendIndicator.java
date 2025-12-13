@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.supertrend;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
@@ -88,7 +90,7 @@ import org.ta4j.core.num.Num;
  * <h2>NaN Handling</h2>
  * <ul>
  * <li>During the unstable period (when band indicators return NaN), this
- * indicator returns zero.</li>
+ * indicator returns NaN to signal that the value is not yet reliable.</li>
  * <li>After the unstable period, the indicator recovers gracefully and produces
  * valid values.</li>
  * <li>The unstable period equals the ATR bar count, ensuring the ATR has
@@ -139,37 +141,50 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int i) {
-        Num value = getBarSeries().numFactory().zero();
+        Num lowerBand = superTrendLowerBandIndicator.getValue(i);
+        Num upperBand = superTrendUpperBandIndicator.getValue(i);
+
+        // During unstable period when bands are NaN, return NaN
+        if (Num.isNaNOrNull(lowerBand) || Num.isNaNOrNull(upperBand)) {
+            return NaN;
+        }
+
         if (i == 0) {
-            return value;
+            // At index 0, start with lower band (assume uptrend)
+            return lowerBand;
         }
 
         Bar bar = getBarSeries().getBar(i);
         Num closePrice = bar.getClosePrice();
         Num previousValue = this.getValue(i - 1);
-        Num lowerBand = superTrendLowerBandIndicator.getValue(i);
-        Num upperBand = superTrendUpperBandIndicator.getValue(i);
 
-        // If bands are NaN, comparisons will return false and value remains zero
-        // This is the expected behavior during unstable period
-        if (previousValue.isEqual(superTrendUpperBandIndicator.getValue(i - 1))) {
-            if (!Num.isNaNOrNull(upperBand) && closePrice.isLessThanOrEqual(upperBand)) {
-                value = upperBand;
-            } else if (!Num.isNaNOrNull(upperBand) && !Num.isNaNOrNull(lowerBand)
-                    && closePrice.isGreaterThan(upperBand)) {
-                value = lowerBand;
+        // If previous value is NaN (recovering from unstable period), start fresh with
+        // lower band
+        if (Num.isNaNOrNull(previousValue)) {
+            return lowerBand;
+        }
+
+        Num previousUpperBand = superTrendUpperBandIndicator.getValue(i - 1);
+        Num previousLowerBand = superTrendLowerBandIndicator.getValue(i - 1);
+
+        if (!Num.isNaNOrNull(previousUpperBand) && previousValue.isEqual(previousUpperBand)) {
+            if (closePrice.isLessThanOrEqual(upperBand)) {
+                return upperBand;
+            } else {
+                return lowerBand;
             }
         }
 
-        if (previousValue.isEqual(superTrendLowerBandIndicator.getValue(i - 1))) {
-            if (!Num.isNaNOrNull(lowerBand) && closePrice.isGreaterThanOrEqual(lowerBand)) {
-                value = lowerBand;
-            } else if (!Num.isNaNOrNull(lowerBand) && !Num.isNaNOrNull(upperBand) && closePrice.isLessThan(lowerBand)) {
-                value = upperBand;
+        if (!Num.isNaNOrNull(previousLowerBand) && previousValue.isEqual(previousLowerBand)) {
+            if (closePrice.isGreaterThanOrEqual(lowerBand)) {
+                return lowerBand;
+            } else {
+                return upperBand;
             }
         }
 
-        return value;
+        // Fallback: use lower band
+        return lowerBand;
     }
 
     @Override
@@ -193,8 +208,8 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     public boolean isUpTrend(int index) {
         Num superTrendValue = getValue(index);
         Num lowerBandValue = superTrendLowerBandIndicator.getValue(index);
-        // During unstable period, superTrendValue is zero
-        if (superTrendValue.isZero() || Num.isNaNOrNull(lowerBandValue)) {
+        // During unstable period, superTrendValue is NaN
+        if (Num.isNaNOrNull(superTrendValue) || Num.isNaNOrNull(lowerBandValue)) {
             return false;
         }
         return superTrendValue.isEqual(lowerBandValue);
@@ -215,8 +230,8 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     public boolean isDownTrend(int index) {
         Num superTrendValue = getValue(index);
         Num upperBandValue = superTrendUpperBandIndicator.getValue(index);
-        // During unstable period, superTrendValue is zero
-        if (superTrendValue.isZero() || Num.isNaNOrNull(upperBandValue)) {
+        // During unstable period, superTrendValue is NaN
+        if (Num.isNaNOrNull(superTrendValue) || Num.isNaNOrNull(upperBandValue)) {
             return false;
         }
         return superTrendValue.isEqual(upperBandValue);

@@ -48,8 +48,8 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
-        assertThat(indicator.getValue(0).isZero()).isTrue();
-        assertThat(indicator.getValue(1).isZero()).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
 
         assertNumEquals(11.5, indicator.getValue(2));
         assertNumEquals(12.5, indicator.getValue(3));
@@ -75,8 +75,8 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 0.01d);
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
-        assertThat(indicator.getValue(0).isZero()).isTrue();
-        assertThat(indicator.getValue(1).isZero()).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
 
         // With very small multiplier, band should be close to median price
         Num value2 = indicator.getValue(2);
@@ -91,8 +91,8 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 100d);
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(atrIndicator.getCountOfUnstableBars());
-        assertThat(indicator.getValue(0).isZero()).isTrue();
-        assertThat(indicator.getValue(1).isZero()).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
 
         // With very large multiplier, band should be much lower than median price
         // (could even be negative, but should not be NaN)
@@ -101,16 +101,16 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
     }
 
     @Test
-    public void maintainsZeroDuringUnstablePeriod() {
+    public void returnsNaNDuringUnstablePeriod() {
         BarSeries series = buildSeries();
         ATRIndicator atrIndicator = new ATRIndicator(series, 3);
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(3);
-        // All unstable period values should be zero
-        assertThat(indicator.getValue(0).isZero()).isTrue();
-        assertThat(indicator.getValue(1).isZero()).isTrue();
-        assertThat(indicator.getValue(2).isZero()).isTrue();
+        // All unstable period values should be NaN
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(2))).isTrue();
 
         // After unstable period, should recover
         Num value3 = indicator.getValue(3);
@@ -123,9 +123,9 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         ATRIndicator atrIndicator = new ATRIndicator(series, 2);
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
 
-        // Verify zero during unstable period
-        assertThat(indicator.getValue(0).isZero()).isTrue();
-        assertThat(indicator.getValue(1).isZero()).isTrue();
+        // Verify NaN during unstable period
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isTrue();
 
         // Verify recovery after unstable period
         Num value2 = indicator.getValue(2);

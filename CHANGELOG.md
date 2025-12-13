@@ -10,6 +10,7 @@
 ### Fixed
 - Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
 - Fixed **SuperTrendUpperBandIndicator** NaN contamination by recovering once ATR leaves its unstable window and aligning unstable-bar counts across SuperTrend components so values stabilize after ATR warms up.
+- **Consistent NaN handling across all SuperTrend indicators**: `SuperTrendLowerBandIndicator` and `SuperTrendIndicator` now return NaN during the unstable period (when ATR values are not yet reliable), consistent with `SuperTrendUpperBandIndicator` and the project convention that indicators should return NaN during their unstable period. Previously, these indicators returned zero during the unstable period, which was inconsistent with other indicators and could lead to misleading calculations.
 
 ### Added
 - **SuperTrend indicator usability improvements**: Enhanced the SuperTrend indicator suite with intuitive helper methods and comprehensive documentation for traders:
