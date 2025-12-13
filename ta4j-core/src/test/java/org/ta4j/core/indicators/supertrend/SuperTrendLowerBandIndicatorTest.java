@@ -118,7 +118,7 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
     }
 
     @Test
-    public void recoversGracefullyAfterNaNPeriod() {
+    public void recoversGracefullyAfterUnstablePeriod() {
         BarSeries series = buildSeries();
         ATRIndicator atrIndicator = new ATRIndicator(series, 2);
         SuperTrendLowerBandIndicator indicator = new SuperTrendLowerBandIndicator(series, atrIndicator, 1d);
