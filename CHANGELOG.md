@@ -28,6 +28,7 @@
   
 - Added `ElliottRatioIndicator`, `ElliottChannelIndicator`, and `ElliottConfluenceIndicator` to analyze swing-based Fibonacci confluence
 - Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave state and surface invalidations for swing-based strategies
+- Added `ElliottSwingIndicator`, `ElliottSwingCompressor`, and `ElliottWaveCountIndicator` to generate, filter, and count Elliott swings from `RecentSwingIndicator` swing points (fractal or ZigZag)
 
 ### Fixed
 - **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.

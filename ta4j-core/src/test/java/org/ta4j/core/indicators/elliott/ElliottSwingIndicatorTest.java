@@ -26,6 +26,8 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
@@ -119,5 +121,21 @@ public class ElliottSwingIndicatorTest {
         assertThat(swings.get(1).fromIndex()).isEqualTo(4);
         assertThat(swings.get(1).toIndex()).isEqualTo(6);
         assertThat(swings.get(2).toIndex()).isEqualTo(8);
+    }
+
+    @Test
+    public void supportsZigZagSwingSources() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var price = new ClosePriceIndicator(series);
+        var stateIndicator = new ZigZagStateIndicator(price, 1);
+        var indicator = ElliottSwingIndicator.zigZag(stateIndicator, price, ElliottDegree.MINOR);
+
+        assertThat(indicator.getValue(series.getEndIndex())).hasSize(6);
+        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(1, 2, 3, 4, 5, 6, 7);
     }
 }

@@ -32,7 +32,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Calculates Fibonacci-style ratios between consecutive Elliott swings.
@@ -48,7 +47,6 @@ import org.ta4j.core.num.NumFactory;
 public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
 
     private final ElliottSwingIndicator swingIndicator;
-    private final NumFactory numFactory;
 
     /**
      * Creates a ratio indicator backed by the provided swing detector.
@@ -59,7 +57,6 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
     public ElliottRatioIndicator(final ElliottSwingIndicator swingIndicator) {
         super(requireSeries(swingIndicator));
         this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-        this.numFactory = getBarSeries().numFactory();
     }
 
     private static BarSeries requireSeries(final ElliottSwingIndicator swingIndicator) {
