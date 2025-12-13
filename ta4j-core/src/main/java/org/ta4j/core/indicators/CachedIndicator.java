@@ -23,12 +23,14 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
+
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import org.ta4j.core.num.Num;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -40,17 +42,51 @@ import java.util.List;
  * their values based on the values of other indicators. Such nested indicators
  * can call {@link #getValue(int)} multiple times without the need to
  * {@link #calculate(int)} again.
+ *
+ * <p>
+ * This implementation uses a ring buffer for O(1) eviction when
+ * {@code maximumBarCount} is set, and read-optimized locking for better
+ * concurrency on cache hits.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /** List of cached results. */
-    private final List<T> results;
+    /** The ring-buffer backed cache. */
+    private final CachedBuffer<T> cache;
+
+    private final IntFunction<T> calculator = this::calculate;
+    private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
+
+    private static final AtomicIntegerFieldUpdater<CachedIndicator> HIGHEST_RESULT_INDEX_UPDATER = AtomicIntegerFieldUpdater
+            .newUpdater(CachedIndicator.class, "highestResultIndex");
 
     /**
-     * Should always be the index of the last (calculated) result in
-     * {@link #results}.
+     * Should always be the index of the last (calculated) result in the cache.
+     * Exposed for subclass access (e.g., RecursiveCachedIndicator).
      */
-    protected int highestResultIndex = -1;
+    protected volatile int highestResultIndex = -1;
+
+    /** Lock protecting the last-bar cache check+compute sequence. */
+    private final Object lastBarLock = new Object();
+
+    // Last-bar caching state
+    private boolean lastBarComputationInProgress;
+    private int lastBarComputationIndex = -1;
+    private long lastBarCacheInvalidationCount;
+    private volatile Bar lastBarRef;
+    private volatile long lastBarTradeCount;
+    private volatile Num lastBarClosePrice;
+    private volatile T lastBarCachedResult;
+    private volatile int lastBarCachedIndex = -1;
+
+    // First-available-bar caching state (for indices < removedBarsCount)
+    private final Object firstBarLock = new Object();
+    private volatile int firstBarCachedRemovedBarsCount = -1;
+    private volatile boolean firstBarHasCachedResult;
+    private volatile T firstBarCachedResult;
+
+    private static boolean equalsNum(Num left, Num right) {
+        return left == right || (left != null && left.equals(right));
+    }
 
     /**
      * Constructor.
@@ -60,7 +96,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected CachedIndicator(BarSeries series) {
         super(series);
         int limit = series.getMaximumBarCount();
-        this.results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        this.cache = new CachedBuffer<>(limit);
     }
 
     /**
@@ -79,7 +115,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected abstract T calculate(int index);
 
     @Override
-    public synchronized T getValue(int index) {
+    public T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
@@ -92,10 +128,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             return result;
         }
 
-        // Series is not null
-
         final int removedBarsCount = series.getRemovedBarsCount();
-        final int maximumResultCount = series.getMaximumBarCount();
+        final int endIndex = series.getEndIndex();
 
         T result;
         if (index < removedBarsCount) {
@@ -104,39 +138,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
                         getClass().getSimpleName(), index, removedBarsCount);
             }
-            increaseLengthTo(removedBarsCount, maximumResultCount);
-            highestResultIndex = removedBarsCount;
-            result = results.getFirst();
-            if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
-                results.set(0, result);
-            }
+            // Map all pruned indices to zero to avoid recursive backtracking into
+            // removed history. calculate(0) for recursive indicators is the base case
+            // and does not chase further into negative/removed indexes.
+            result = getFirstBarValue(series, removedBarsCount);
+        } else if (index == endIndex) {
+            // Last bar: use mutation-aware caching
+            result = getLastBarValue(index, series);
         } else {
-            if (index == series.getEndIndex()) {
-                // Don't cache result if last bar
-                result = calculate(index);
-            } else {
-                increaseLengthTo(index, maximumResultCount);
-                if (index > highestResultIndex) {
-                    // Result not calculated yet
-                    highestResultIndex = index;
-                    result = calculate(index);
-                    results.set(results.size() - 1, result);
-                } else {
-                    // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                    result = results.get(resultInnerIndex);
-                    if (result == null) {
-                        result = calculate(index);
-                        results.set(resultInnerIndex, result);
-                    }
-                }
-            }
-
+            // Normal case: use the cache
+            result = getOrComputeAndCache(index);
         }
+
         if (log.isTraceEnabled()) {
             log.trace("{}({}): {}", this, index, result);
         }
@@ -144,43 +157,193 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Increases the size of the cached results buffer.
+     * Gets the cached value or computes and caches it.
      *
-     * @param index     the index to increase length to
-     * @param maxLength the maximum length of the results buffer
+     * @param index the series index
+     * @return the indicator value
      */
-    private void increaseLengthTo(int index, int maxLength) {
-        if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
-            if (newResultsCount == maxLength) {
-                results.clear();
-                results.addAll(Collections.nCopies(maxLength, null));
-            } else if (newResultsCount > 0) {
-                results.addAll(Collections.nCopies(newResultsCount, null));
-                removeExceedingResults(maxLength);
+    private T getOrComputeAndCache(int index) {
+        return cache.getOrCompute(index, calculator, computedIndexRecorder);
+    }
+
+    /**
+     * Updates {@link #highestResultIndex} to at least {@code index} without
+     * regressing under contention.
+     */
+    protected final void updateHighestResultIndex(int index) {
+        int current;
+        do {
+            current = highestResultIndex;
+            if (index <= current) {
+                return;
             }
-        } else {
-            // First use of cache
-            assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
+        } while (!HIGHEST_RESULT_INDEX_UPDATER.compareAndSet(this, current, index));
+    }
+
+    /**
+     * Gets the value for indices before the removed bars count.
+     *
+     * <p>
+     * Bars with indices &lt; {@code removedBarsCount} are no longer available in
+     * the series. The series maps such accesses to the first remaining bar. Caching
+     * this value must be aware of {@code removedBarsCount} changes; otherwise a
+     * cached value for index 0 may become stale when the series window advances.
+     */
+    private T getFirstBarValue(BarSeries series, int removedBarsCount) {
+        if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
+            return firstBarCachedResult;
+        }
+
+        // Compute outside the lock to avoid lock-order deadlocks with the cache lock.
+        T computed = calculate(0);
+
+        // If the series window advanced during computation, don't cache this value.
+        if (series.getRemovedBarsCount() != removedBarsCount) {
+            return computed;
+        }
+
+        synchronized (firstBarLock) {
+            if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
+                return firstBarCachedResult;
+            }
+            firstBarCachedRemovedBarsCount = removedBarsCount;
+            firstBarCachedResult = computed;
+            firstBarHasCachedResult = true;
+            return computed;
         }
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
-     * only the last maximumResultCount results)
+     * Gets the value for the last bar with mutation-aware caching.
      *
-     * @param maximumResultCount the number of results to keep
+     * <p>
+     * The last bar (endIndex) is special because it may be mutated (e.g., via
+     * {@link Bar#addTrade(Num, Num)} or {@link Bar#addPrice(Num)}), or replaced via
+     * {@link BarSeries#addBar(Bar, boolean)} with {@code replace=true}. This method
+     * caches the result but invalidates it if the bar has been modified since the
+     * last computation (tracked via trades count and close price). The computation
+     * is performed outside the lock to avoid lock-order deadlocks with the main
+     * cache.
+     *
+     * @param index  the series index (should be endIndex)
+     * @param series the bar series
+     * @return the indicator value
      */
-    private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
-        if (resultCount > maximumResultCount) {
-            // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
-            if (nbResultsToRemove == 1) {
-                results.removeFirst();
-            } else {
-                results.subList(0, nbResultsToRemove).clear();
+    private T getLastBarValue(int index, BarSeries series) {
+        Bar snapshotBar;
+        long snapshotTradeCount;
+        Num snapshotClosePrice;
+        long snapshotInvalidationCount;
+
+        boolean ownsComputation = false;
+        while (true) {
+            synchronized (lastBarLock) {
+                Bar bar1 = series.getLastBar();
+                long tradeCount1 = bar1.getTrades();
+                Num closePrice1 = bar1.getClosePrice();
+
+                Bar bar2 = series.getLastBar();
+                long tradeCount2 = bar2.getTrades();
+                Num closePrice2 = bar2.getClosePrice();
+
+                boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                Bar currentBar = stableRead ? bar1 : bar2;
+                long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
+                Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+
+                if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
+                        && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
+                    return lastBarCachedResult;
+                }
+
+                if (!lastBarComputationInProgress) {
+                    lastBarComputationInProgress = true;
+                    lastBarComputationIndex = index;
+                    ownsComputation = true;
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = lastBarCacheInvalidationCount;
+                    break;
+                }
+
+                if (cache.isWriteLockedByCurrentThread()) {
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+
+                try {
+                    lastBarLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+            }
+        }
+
+        final T computed;
+        try {
+            computed = calculate(index);
+        } catch (RuntimeException | Error error) {
+            if (ownsComputation) {
+                synchronized (lastBarLock) {
+                    lastBarComputationInProgress = false;
+                    lastBarComputationIndex = -1;
+                    lastBarLock.notifyAll();
+                }
+            }
+            throw error;
+        }
+
+        if (!ownsComputation) {
+            updateHighestResultIndex(index);
+            return computed;
+        }
+
+        synchronized (lastBarLock) {
+            try {
+                if (snapshotInvalidationCount == lastBarCacheInvalidationCount) {
+                    Bar bar1 = series.getLastBar();
+                    long tradeCount1 = bar1.getTrades();
+                    Num closePrice1 = bar1.getClosePrice();
+
+                    Bar bar2 = series.getLastBar();
+                    long tradeCount2 = bar2.getTrades();
+                    Num closePrice2 = bar2.getClosePrice();
+
+                    boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2
+                            && equalsNum(closePrice1, closePrice2);
+                    Bar currentBar = stableRead ? bar1 : bar2;
+                    long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
+                    Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+
+                    if (stableRead && currentBar == snapshotBar && currentTradeCount == snapshotTradeCount
+                            && equalsNum(currentClosePrice, snapshotClosePrice)) {
+                        lastBarRef = snapshotBar;
+                        lastBarTradeCount = snapshotTradeCount;
+                        lastBarClosePrice = snapshotClosePrice;
+                        lastBarCachedResult = computed;
+                        lastBarCachedIndex = index;
+                        updateHighestResultIndex(index);
+                    }
+                } else {
+                    // Cache was invalidated while this computation was in flight.
+                    // Return the computed value to the caller, but do not update any
+                    // cache state (including highestResultIndex) to avoid resurrecting
+                    // invalidated state.
+                }
+                return computed;
+            } finally {
+                lastBarComputationInProgress = false;
+                lastBarComputationIndex = -1;
+                lastBarLock.notifyAll();
             }
         }
     }
@@ -192,8 +355,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * window recomputations). Regular indicators should not need to call this, as
      * cached values are assumed stable.
      */
-    protected synchronized void invalidateCache() {
-        results.clear();
+    protected void invalidateCache() {
+        clearLastBarCache();
+        clearFirstBarCache();
+        cache.clear();
         highestResultIndex = -1;
     }
 
@@ -201,30 +366,70 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Clears cached values from the specified index (inclusive) to the end of the
      * cache. Values before the index remain cached.
      *
+     * <p>
+     * If an affected last-bar computation is in progress, its result will not be
+     * cached.
+     *
      * @param index the first index to invalidate; if negative, the entire cache is
      *              cleared
      */
-    protected synchronized void invalidateFrom(int index) {
-        if (results.isEmpty() || index > highestResultIndex) {
-            return;
-        }
-        if (index < 0) {
-            invalidateCache();
-            return;
-        }
-
-        final int firstCachedIndex = highestResultIndex - results.size() + 1;
-        if (index <= firstCachedIndex) {
-            invalidateCache();
-            return;
+    protected void invalidateFrom(int index) {
+        int lastBarIndex;
+        synchronized (lastBarLock) {
+            lastBarIndex = lastBarCachedIndex;
+            if (lastBarIndex >= index || (lastBarComputationInProgress && lastBarComputationIndex >= index)) {
+                clearLastBarCacheLocked();
+                lastBarIndex = -1;
+            }
         }
 
-        final int removeFrom = results.size() - (highestResultIndex - index + 1);
-        if (removeFrom <= 0) {
-            invalidateCache();
-            return;
+        if (index <= 0) {
+            clearFirstBarCache();
         }
-        results.subList(removeFrom, results.size()).clear();
-        highestResultIndex = firstCachedIndex + results.size() - 1;
+
+        cache.invalidateFrom(index);
+        int cacheHighest = cache.getHighestResultIndex();
+
+        // Preserve last-bar cache knowledge when it is still valid. This avoids
+        // decreasing highestResultIndex when the primary cache does not contain the
+        // last-bar result.
+        highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+    }
+
+    /**
+     * Clears the last-bar cache state.
+     */
+    private void clearLastBarCache() {
+        synchronized (lastBarLock) {
+            clearLastBarCacheLocked();
+        }
+    }
+
+    private void clearLastBarCacheLocked() {
+        lastBarCacheInvalidationCount++;
+        lastBarRef = null;
+        lastBarTradeCount = 0;
+        lastBarClosePrice = null;
+        lastBarCachedResult = null;
+        lastBarCachedIndex = -1;
+    }
+
+    private void clearFirstBarCache() {
+        synchronized (firstBarLock) {
+            firstBarCachedRemovedBarsCount = -1;
+            firstBarHasCachedResult = false;
+            firstBarCachedResult = null;
+        }
+    }
+
+    /**
+     * Returns the underlying cache buffer.
+     * <p>
+     * For internal use by subclasses (e.g., RecursiveCachedIndicator).
+     *
+     * @return the cache buffer
+     */
+    CachedBuffer<T> getCache() {
+        return cache;
     }
 }

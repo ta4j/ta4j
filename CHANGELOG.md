@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Changed
+- **CachedIndicator and RecursiveCachedIndicator performance improvements**: Major refactoring to improve indicator caching performance:
+    - **O(1) eviction**: Replaced ArrayList-based storage with a fixed-size ring buffer (`CachedBuffer`). When `maximumBarCount` is set, evicting old values now takes constant time instead of O(n) per-bar copies.
+    - **Read-optimized locking**: Migrated from `synchronized` blocks to a non-fair `ReentrantReadWriteLock` with an optimistic (lock-free) fast path for cache hits. Cache misses and invalidation remain write-locked, while read-heavy workloads scale without serializing threads.
+    - **Reduced allocation churn**: Eliminated `Collections.nCopies()` allocations in the common "advance by 1 bar" case. The ring buffer writes directly to slots without creating intermediate lists.
+    - **Last-bar mutation caching**: Repeated calls to `getValue(endIndex)` on an unchanged in-progress bar now reuse the cached result. The cache automatically invalidates when the bar is mutated (via `addTrade()` or `addPrice()`) or replaced (via `addBar(..., true)`).
+    - **Deadlock avoidance**: Fixed lock-order deadlock risk between last-bar caching and the main cache by ensuring last-bar computations and invalidation never run while holding locks needed by cache writes.
+    - **Iterative prefill under single lock**: `RecursiveCachedIndicator` now uses `CachedBuffer.prefillUntil()` to compute gap values iteratively under one write lock, avoiding repeated lock re-entry and series lookups.
 ### Removed
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
 
