@@ -31,7 +31,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Counts swings provided by an {@link ElliottSwingIndicator} instance.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
 
@@ -40,7 +40,7 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
 
     /**
      * @param swingIndicator indicator providing swing lists
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottWaveCountIndicator(final ElliottSwingIndicator swingIndicator) {
         this(swingIndicator, null);
@@ -49,7 +49,7 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
     /**
      * @param swingIndicator indicator providing swing lists
      * @param compressor     optional compressor to filter swings before counting
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottWaveCountIndicator(final ElliottSwingIndicator swingIndicator,
             final ElliottSwingCompressor compressor) {
@@ -71,7 +71,7 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
     /**
      * @param index bar index
      * @return immutable swing view used for counting
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> getSwings(final int index) {
         final List<ElliottSwing> swings = swingIndicator.getValue(index);

@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.elliott;
 /**
  * Enumerates the sequential phases of an Elliott wave structure.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public enum ElliottPhase {
 
@@ -51,7 +51,7 @@ public enum ElliottPhase {
 
     /**
      * @return {@code true} when the phase represents an impulsive leg (waves 1-5)
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isImpulse() {
         return impulseIndex() > 0;
@@ -59,7 +59,7 @@ public enum ElliottPhase {
 
     /**
      * @return {@code true} when the phase represents a corrective leg (waves A-C)
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isCorrective() {
         return correctiveIndex() > 0;
@@ -67,7 +67,7 @@ public enum ElliottPhase {
 
     /**
      * @return {@code true} when the phase completes its respective structure
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean completesStructure() {
         return this == WAVE5 || this == CORRECTIVE_C;
@@ -76,7 +76,7 @@ public enum ElliottPhase {
     /**
      * @return zero when the phase is not impulsive otherwise the 1-based impulse
      *         ordinal
-     * @since 0.19
+     * @since 0.22.0
      */
     public int impulseIndex() {
         return switch (this) {
@@ -92,7 +92,7 @@ public enum ElliottPhase {
     /**
      * @return zero when the phase is not corrective otherwise the 1-based
      *         corrective ordinal
-     * @since 0.19
+     * @since 0.22.0
      */
     public int correctiveIndex() {
         return switch (this) {

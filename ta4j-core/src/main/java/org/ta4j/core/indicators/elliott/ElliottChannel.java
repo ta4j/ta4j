@@ -32,13 +32,13 @@ import org.ta4j.core.num.NumFactory;
  * @param upper  expected resistance boundary
  * @param lower  expected support boundary
  * @param median arithmetic midline between upper and lower bounds
- * @since 0.19
+ * @since 0.22.0
  */
 public record ElliottChannel(Num upper, Num lower, Num median) {
 
     /**
      * @return {@code true} when both channel boundaries are valid numbers.
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isValid() {
         return upper != null && lower != null && !upper.isNaN() && !lower.isNaN();
@@ -52,7 +52,7 @@ public record ElliottChannel(Num upper, Num lower, Num median) {
      * @param tolerance optional symmetric tolerance around the boundaries
      * @return {@code true} if the price lies between {@code lower - tolerance} and
      *         {@code upper + tolerance}
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean contains(final Num price, final Num tolerance) {
         if (!isValid() || price == null || price.isNaN()) {

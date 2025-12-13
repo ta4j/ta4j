@@ -32,7 +32,7 @@ import org.ta4j.core.num.NumFactory;
  * Validates Elliott swing amplitudes against common Fibonacci retracement and
  * extension ranges.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottFibonacciValidator {
 
@@ -56,7 +56,7 @@ public class ElliottFibonacciValidator {
      * Builds a validator with the default {@code 0.05} tolerance.
      *
      * @param numFactory series factory used for all ratio math
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottFibonacciValidator(final NumFactory numFactory) {
         this(numFactory, numFactory.numOf(0.05));
@@ -67,7 +67,7 @@ public class ElliottFibonacciValidator {
      *
      * @param numFactory series factory used for all ratio math
      * @param tolerance  symmetric tolerance applied to each Fibonacci band
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottFibonacciValidator(final NumFactory numFactory, final Num tolerance) {
         this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
@@ -91,7 +91,7 @@ public class ElliottFibonacciValidator {
      * @param wave2 second impulse swing retracement
      * @return {@code true} when wave two retraces the first swing within the
      *         canonical Fibonacci band
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveTwoRetracementValid(final ElliottSwing wave1, final ElliottSwing wave2) {
         return ratioBetween(wave2.amplitude(), wave1.amplitude(), waveTwoMinRetracement, waveTwoMaxRetracement);
@@ -102,7 +102,7 @@ public class ElliottFibonacciValidator {
      * @param wave3 third impulse swing
      * @return {@code true} when wave three extends the first swing by at least one
      *         full unit and stays below common blow-off extremes
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveThreeExtensionValid(final ElliottSwing wave1, final ElliottSwing wave3) {
         return ratioBetween(wave3.amplitude(), wave1.amplitude(), waveThreeMinExtension, waveThreeMaxExtension);
@@ -112,7 +112,7 @@ public class ElliottFibonacciValidator {
      * @param wave3 third impulse swing
      * @param wave4 fourth impulse swing
      * @return {@code true} when wave four retraces the third swing within tolerance
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveFourRetracementValid(final ElliottSwing wave3, final ElliottSwing wave4) {
         return ratioBetween(wave4.amplitude(), wave3.amplitude(), waveFourMinRetracement, waveFourMaxRetracement);
@@ -123,7 +123,7 @@ public class ElliottFibonacciValidator {
      * @param wave5 final impulse swing
      * @return {@code true} when wave five projects a typical Fibonacci expansion of
      *         wave one
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveFiveProjectionValid(final ElliottSwing wave1, final ElliottSwing wave5) {
         return ratioBetween(wave5.amplitude(), wave1.amplitude(), waveFiveMinProjection, waveFiveMaxProjection);
@@ -133,7 +133,7 @@ public class ElliottFibonacciValidator {
      * @param waveA first corrective swing
      * @param waveB second corrective swing
      * @return {@code true} when wave B retraces wave A within the common range
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveBRetracementValid(final ElliottSwing waveA, final ElliottSwing waveB) {
         return ratioBetween(waveB.amplitude(), waveA.amplitude(), waveBMinRetracement, waveBMaxRetracement);
@@ -144,7 +144,7 @@ public class ElliottFibonacciValidator {
      * @param waveC third corrective swing
      * @return {@code true} when wave C extends beyond wave A by a common Fibonacci
      *         factor
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isWaveCExtensionValid(final ElliottSwing waveA, final ElliottSwing waveC) {
         return ratioBetween(waveC.amplitude(), waveA.amplitude(), waveCMinExtension, waveCMaxExtension);

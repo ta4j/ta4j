@@ -34,7 +34,7 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Immutable snapshot of swing statistics helpful for Elliott wave validation.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public final class ElliottSwingMetadata {
 
@@ -58,7 +58,7 @@ public final class ElliottSwingMetadata {
      *                   {@link ElliottSwingIndicator}
      * @param numFactory number factory backing the swings
      * @return immutable metadata view
-     * @since 0.19
+     * @since 0.22.0
      */
     public static ElliottSwingMetadata of(final List<ElliottSwing> swings, final NumFactory numFactory) {
         Objects.requireNonNull(numFactory, "numFactory");
@@ -94,7 +94,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return whether the snapshot contains finite prices for each swing
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isValid() {
         return valid;
@@ -102,7 +102,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return number of swings represented
-     * @since 0.19
+     * @since 0.22.0
      */
     public int size() {
         return swings.size();
@@ -110,7 +110,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return {@code true} when no swings are present
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isEmpty() {
         return swings.isEmpty();
@@ -118,7 +118,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return highest price touched by any swing or {@code zero()} when invalid
-     * @since 0.19
+     * @since 0.22.0
      */
     public Num highestPrice() {
         return highestPrice;
@@ -126,7 +126,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return lowest price touched by any swing or {@code zero()} when invalid
-     * @since 0.19
+     * @since 0.22.0
      */
     public Num lowestPrice() {
         return lowestPrice;
@@ -136,7 +136,7 @@ public final class ElliottSwingMetadata {
      * @param length requested prefix length
      * @return immutable leading portion of the swing list (trimmed to available
      *         size)
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> leading(final int length) {
         if (swings.isEmpty() || length <= 0) {
@@ -150,7 +150,7 @@ public final class ElliottSwingMetadata {
      * @param length requested suffix length
      * @return immutable trailing portion of the swing list (trimmed to available
      *         size)
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> trailing(final int length) {
         if (swings.isEmpty() || length <= 0) {
@@ -164,7 +164,7 @@ public final class ElliottSwingMetadata {
      * @param fromIndex inclusive starting index
      * @param toIndex   exclusive ending index
      * @return immutable sub-list bounded to the available range
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> subList(final int fromIndex, final int toIndex) {
         if (swings.isEmpty()) {
@@ -181,7 +181,7 @@ public final class ElliottSwingMetadata {
     /**
      * @param index index within the swing list
      * @return swing at the requested index
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottSwing swing(final int index) {
         return swings.get(index);
@@ -189,7 +189,7 @@ public final class ElliottSwingMetadata {
 
     /**
      * @return immutable copy of all swings
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> swings() {
         return swings;

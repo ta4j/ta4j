@@ -31,62 +31,83 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Detects Elliott swings (alternating pivots) using a symmetric
  * lookback/forward window.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
 
+    private final Indicator<Num> priceIndicator;
     private final int lookbackLength;
     private final int lookforwardLength;
     private final ElliottDegree degree;
 
     /**
-     * Builds a new indicator with identical lookback/forward lengths.
+     * Builds a new indicator with identical lookback/forward lengths using close
+     * prices.
      *
      * @param series source bar series
      * @param window number of bars to inspect before and after a pivot
      * @param degree swing degree metadata
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottSwingIndicator(final BarSeries series, final int window, final ElliottDegree degree) {
-        this(series, window, window, degree);
+        this(new ClosePriceIndicator(series), window, window, degree);
     }
 
     /**
-     * Builds a new indicator using dedicated lookback/forward lengths.
+     * Builds a new indicator using dedicated lookback/forward lengths and close
+     * prices.
      *
      * @param series            source bar series
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
      * @param degree            swing degree metadata
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottSwingIndicator(final BarSeries series, final int lookbackLength, final int lookforwardLength,
             final ElliottDegree degree) {
-        super(series);
-        if (lookbackLength < 1 || lookforwardLength < 1) {
-            throw new IllegalArgumentException("Window lengths must be positive");
-        }
-        this.lookbackLength = lookbackLength;
-        this.lookforwardLength = lookforwardLength;
-        this.degree = Objects.requireNonNull(degree, "degree");
+        this(new ClosePriceIndicator(series), lookbackLength, lookforwardLength, degree);
     }
 
     /**
-     * Convenience constructor using another indicator as data source.
+     * Builds a new indicator with identical lookback/forward lengths using the
+     * provided value source.
      *
-     * @param indicator indicator providing the price series
+     * @param indicator indicator providing the values to analyse
      * @param window    number of bars to inspect before and after a pivot
      * @param degree    swing degree metadata
-     * @since 0.19
+     * @since 0.22.0
      */
-    public ElliottSwingIndicator(final Indicator<?> indicator, final int window, final ElliottDegree degree) {
-        this(indicator.getBarSeries(), window, degree);
+    public ElliottSwingIndicator(final Indicator<Num> indicator, final int window, final ElliottDegree degree) {
+        this(indicator, window, window, degree);
+    }
+
+    /**
+     * Builds a new indicator using dedicated lookback/forward lengths and a custom
+     * value source.
+     *
+     * @param indicator         indicator providing the values to analyse
+     * @param lookbackLength    bars inspected before a pivot candidate
+     * @param lookforwardLength bars inspected after a pivot candidate
+     * @param degree            swing degree metadata
+     * @since 0.22.0
+     */
+    public ElliottSwingIndicator(final Indicator<Num> indicator, final int lookbackLength, final int lookforwardLength,
+            final ElliottDegree degree) {
+        super(indicator);
+        if (lookbackLength < 1 || lookforwardLength < 1) {
+            throw new IllegalArgumentException("Window lengths must be positive");
+        }
+        this.priceIndicator = Objects.requireNonNull(indicator, "indicator");
+        this.lookbackLength = lookbackLength;
+        this.lookforwardLength = lookforwardLength;
+        this.degree = Objects.requireNonNull(degree, "degree");
     }
 
     @Override
@@ -97,29 +118,23 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     @Override
     protected List<ElliottSwing> calculate(final int index) {
         final BarSeries series = getBarSeries();
-        if (series == null) {
-            return List.of();
-        }
-        if (index < series.getBeginIndex()) {
+        if (series == null || index < series.getBeginIndex()) {
             return List.of();
         }
 
         final int firstPivotIndex = Math.max(series.getBeginIndex() + lookbackLength, 0);
-        if (index < firstPivotIndex + lookforwardLength) {
+        if (index < firstPivotIndex) {
             return List.of();
         }
 
         final List<Pivot> pivots = new ArrayList<>();
-        for (int pivotIndex = firstPivotIndex; pivotIndex <= index - lookforwardLength; pivotIndex++) {
-            final Num pivotPrice = series.getBar(pivotIndex).getClosePrice();
+        for (int pivotIndex = firstPivotIndex; pivotIndex <= index; pivotIndex++) {
+            final Num pivotPrice = priceIndicator.getValue(pivotIndex);
             if (pivotPrice == null || pivotPrice.isNaN()) {
                 continue;
             }
-            if (!hasCompleteWindow(series, pivotIndex, index)) {
-                continue;
-            }
 
-            final PivotClassification classification = classifyPivot(series, pivotIndex, pivotPrice);
+            final PivotClassification classification = classifyPivot(pivotIndex, pivotPrice, index);
             if (classification == PivotClassification.NONE) {
                 continue;
             }
@@ -140,54 +155,96 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         return Collections.unmodifiableList(swings);
     }
 
-    private boolean hasCompleteWindow(final BarSeries series, final int pivotIndex, final int currentIndex) {
-        if (pivotIndex - lookbackLength < series.getBeginIndex()) {
-            return false;
+    private PivotClassification classifyPivot(final int pivotIndex, final Num pivotPrice, final int currentIndex) {
+        final int beginIndex = getBarSeries().getBeginIndex();
+        final int plateauStart = findPlateauStart(pivotIndex, beginIndex, pivotPrice);
+        if (plateauStart < 0) {
+            return PivotClassification.NONE;
         }
-        if (pivotIndex + lookforwardLength > currentIndex) {
-            return false;
+        final int plateauEnd = findPlateauEnd(pivotIndex, currentIndex, pivotPrice);
+        if (plateauEnd < 0) {
+            return PivotClassification.NONE;
+        }
+        if (plateauStart - lookbackLength < beginIndex) {
+            return PivotClassification.NONE;
+        }
+        if (plateauEnd + lookforwardLength > currentIndex) {
+            return PivotClassification.NONE;
+        }
+
+        if (isHigherThanNeighbours(plateauStart, plateauEnd, pivotPrice)) {
+            return PivotClassification.HIGH;
+        }
+        if (isLowerThanNeighbours(plateauStart, plateauEnd, pivotPrice)) {
+            return PivotClassification.LOW;
+        }
+        return PivotClassification.NONE;
+    }
+
+    private int findPlateauStart(final int pivotIndex, final int beginIndex, final Num pivotPrice) {
+        int start = pivotIndex;
+        final int windowStart = Math.max(beginIndex, pivotIndex - lookbackLength);
+        while (start > windowStart) {
+            final Num previous = priceIndicator.getValue(start - 1);
+            if (previous == null || previous.isNaN()) {
+                return -1;
+            }
+            if (!previous.isEqual(pivotPrice)) {
+                break;
+            }
+            start--;
+        }
+        return start;
+    }
+
+    private int findPlateauEnd(final int pivotIndex, final int currentIndex, final Num pivotPrice) {
+        int end = pivotIndex;
+        final int windowEnd = Math.min(currentIndex, pivotIndex + lookforwardLength);
+        while (end < windowEnd) {
+            final Num next = priceIndicator.getValue(end + 1);
+            if (next == null || next.isNaN()) {
+                return -1;
+            }
+            if (!next.isEqual(pivotPrice)) {
+                break;
+            }
+            end++;
+        }
+        return end;
+    }
+
+    private boolean isHigherThanNeighbours(final int plateauStart, final int plateauEnd, final Num pivotPrice) {
+        final int startLookback = plateauStart - lookbackLength;
+        for (int i = startLookback; i < plateauStart; i++) {
+            final Num value = priceIndicator.getValue(i);
+            if (value == null || value.isNaN() || value.isGreaterThanOrEqual(pivotPrice)) {
+                return false;
+            }
+        }
+        for (int i = plateauEnd + 1; i <= plateauEnd + lookforwardLength; i++) {
+            final Num value = priceIndicator.getValue(i);
+            if (value == null || value.isNaN() || value.isGreaterThanOrEqual(pivotPrice)) {
+                return false;
+            }
         }
         return true;
     }
 
-    private PivotClassification classifyPivot(final BarSeries series, final int pivotIndex, final Num pivotPrice) {
-        boolean higherThanAll = true;
-        boolean strictlyHigher = false;
-        boolean lowerThanAll = true;
-        boolean strictlyLower = false;
-
-        for (int i = pivotIndex - lookbackLength; i <= pivotIndex + lookforwardLength; i++) {
-            if (i == pivotIndex) {
-                continue;
-            }
-            final Num neighbour = series.getBar(i).getClosePrice();
-            if (neighbour == null || neighbour.isNaN()) {
-                return PivotClassification.NONE;
-            }
-            if (neighbour.isGreaterThan(pivotPrice)) {
-                higherThanAll = false;
-            }
-            if (pivotPrice.isGreaterThan(neighbour)) {
-                strictlyHigher = true;
-            }
-            if (neighbour.isLessThan(pivotPrice)) {
-                lowerThanAll = false;
-            }
-            if (pivotPrice.isLessThan(neighbour)) {
-                strictlyLower = true;
-            }
-            if (!higherThanAll && !lowerThanAll) {
-                break;
+    private boolean isLowerThanNeighbours(final int plateauStart, final int plateauEnd, final Num pivotPrice) {
+        final int startLookback = plateauStart - lookbackLength;
+        for (int i = startLookback; i < plateauStart; i++) {
+            final Num value = priceIndicator.getValue(i);
+            if (value == null || value.isNaN() || value.isLessThanOrEqual(pivotPrice)) {
+                return false;
             }
         }
-
-        if (higherThanAll && strictlyHigher) {
-            return PivotClassification.HIGH;
+        for (int i = plateauEnd + 1; i <= plateauEnd + lookforwardLength; i++) {
+            final Num value = priceIndicator.getValue(i);
+            if (value == null || value.isNaN() || value.isLessThanOrEqual(pivotPrice)) {
+                return false;
+            }
         }
-        if (lowerThanAll && strictlyLower) {
-            return PivotClassification.LOW;
-        }
-        return PivotClassification.NONE;
+        return true;
     }
 
     private void absorbPivot(final List<Pivot> pivots, final Pivot pivot) {

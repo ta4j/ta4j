@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 /**
  * Immutable representation of a single Elliott swing between two pivots.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPrice, ElliottDegree degree) {
 
@@ -46,7 +46,7 @@ public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPric
     /**
      * @return {@code true} if the swing is rising from the start pivot to the end
      *         pivot
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isRising() {
         return !toPrice.isLessThan(fromPrice);
@@ -54,7 +54,7 @@ public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPric
 
     /**
      * @return the absolute price displacement between both pivots
-     * @since 0.19
+     * @since 0.22.0
      */
     public Num amplitude() {
         return toPrice.minus(fromPrice).abs();
@@ -62,7 +62,7 @@ public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPric
 
     /**
      * @return number of bars covered by the swing
-     * @since 0.19
+     * @since 0.22.0
      */
     public int length() {
         return Math.abs(toIndex - fromIndex);

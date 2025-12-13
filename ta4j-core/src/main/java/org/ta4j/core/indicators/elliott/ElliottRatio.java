@@ -31,14 +31,14 @@ import org.ta4j.core.num.Num;
  * @param value measured ratio (absolute amplitude of the latest swing divided
  *              by the previous swing amplitude)
  * @param type  classification of the ratio (retracement or extension)
- * @since 0.19
+ * @since 0.22.0
  */
 public record ElliottRatio(Num value, RatioType type) {
 
     /**
      * Type of ratio relationship between consecutive swings.
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public enum RatioType {
         /**

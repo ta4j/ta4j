@@ -41,7 +41,7 @@ import org.ta4j.core.num.NumFactory;
  * Aggregates Fibonacci ratio and channel alignment checks into a confluence
  * score suitable for trading rules.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
 
@@ -65,7 +65,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
      * @param priceIndicator   price reference (typically close price)
      * @param ratioIndicator   ratio detector
      * @param channelIndicator channel detector
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottConfluenceIndicator(final Indicator<Num> priceIndicator, final ElliottRatioIndicator ratioIndicator,
             final ElliottChannelIndicator channelIndicator) {
@@ -87,7 +87,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
      * @param ratioTolerance    absolute tolerance around ratio targets
      * @param channelTolerance  absolute tolerance applied to channel containment
      * @param minimumScore      minimum confluence score considered a match
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottConfluenceIndicator(final Indicator<Num> priceIndicator, final ElliottRatioIndicator ratioIndicator,
             final ElliottChannelIndicator channelIndicator, final Collection<Num> retracementLevels,
@@ -178,7 +178,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
      * @param index bar index
      * @return {@code true} when the cached confluence score meets or exceeds the
      *         configured minimum score
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isConfluent(final int index) {
         final Num score = getValue(index);

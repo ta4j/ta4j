@@ -26,7 +26,7 @@ package org.ta4j.core.indicators.elliott;
 /**
  * Enumerates common Elliott wave degrees.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public enum ElliottDegree {
 

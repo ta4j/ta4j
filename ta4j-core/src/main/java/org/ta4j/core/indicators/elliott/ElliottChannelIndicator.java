@@ -45,7 +45,7 @@ import org.ta4j.core.num.NumFactory;
  * recalculating the projected channel on each bar using the latest two swing
  * highs and lows.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
 
@@ -56,7 +56,7 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
      * Builds a channel indicator from the provided swing source.
      *
      * @param swingIndicator source of alternating swings
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottChannelIndicator(final ElliottSwingIndicator swingIndicator) {
         super(requireSeries(swingIndicator));

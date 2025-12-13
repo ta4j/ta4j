@@ -43,7 +43,7 @@ import org.ta4j.core.num.NumFactory;
  * the ratio is treated as an extension; otherwise it is treated as a
  * retracement.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
 
@@ -54,7 +54,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
      * Creates a ratio indicator backed by the provided swing detector.
      *
      * @param swingIndicator source of alternating swings
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottRatioIndicator(final ElliottSwingIndicator swingIndicator) {
         super(requireSeries(swingIndicator));
@@ -111,7 +111,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
      * @param tolerance symmetric absolute tolerance around the level
      * @return {@code true} when the absolute ratio difference is smaller than or
      *         equal to {@code tolerance}
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isNearLevel(final int index, final Num target, final Num tolerance) {
         Objects.requireNonNull(target, "target");

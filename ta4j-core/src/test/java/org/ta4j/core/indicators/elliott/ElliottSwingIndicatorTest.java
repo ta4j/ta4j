@@ -26,6 +26,7 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 
@@ -78,5 +79,45 @@ public class ElliottSwingIndicatorTest {
         assertThat(swing.fromIndex()).isEqualTo(3);
         assertThat(swing.toIndex()).isEqualTo(4);
         assertThat(swing.amplitude()).isEqualByComparingTo(series.numFactory().numOf(6));
+    }
+
+    @Test
+    public void respectsSuppliedIndicatorValues() {
+        var series = new MockBarSeriesBuilder().build();
+        for (int i = 0; i < 6; i++) {
+            series.barBuilder().openPrice(0).highPrice(0).lowPrice(0).closePrice(0).volume(0).add();
+        }
+
+        var numFactory = series.numFactory();
+        var source = new FixedIndicator<>(series, numFactory.numOf(1), numFactory.numOf(3), numFactory.numOf(1),
+                numFactory.numOf(4), numFactory.numOf(1), numFactory.numOf(5));
+        var indicator = new ElliottSwingIndicator(source, 1, ElliottDegree.MINOR);
+
+        var swings = indicator.getValue(series.getEndIndex());
+
+        assertThat(swings).hasSize(3);
+        assertThat(swings.get(0).fromPrice()).isEqualByComparingTo(numFactory.numOf(3));
+        assertThat(swings.get(0).toPrice()).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(swings.get(2).toPrice()).isEqualByComparingTo(numFactory.numOf(1));
+        assertThat(swings).allMatch(s -> s.degree() == ElliottDegree.MINOR);
+    }
+
+    @Test
+    public void handlesPlateausSymmetrically() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 12, 9, 9, 13, 13, 8, 8, 14 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var indicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var swings = indicator.getValue(series.getEndIndex());
+
+        assertThat(swings).hasSize(3);
+        assertThat(swings.get(0).fromIndex()).isEqualTo(2);
+        assertThat(swings.get(0).toIndex()).isEqualTo(4);
+        assertThat(swings.get(1).fromIndex()).isEqualTo(4);
+        assertThat(swings.get(1).toIndex()).isEqualTo(6);
+        assertThat(swings.get(2).toIndex()).isEqualTo(8);
     }
 }

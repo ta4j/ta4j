@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * wave four overlapping wave one territory. Downstream consumers can reset
  * their state when this indicator returns {@code true}.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
 
@@ -45,7 +45,7 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
 
     /**
      * @param phaseIndicator phase indicator providing the current wave state
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottInvalidationIndicator(final ElliottPhaseIndicator phaseIndicator) {
         super(Objects.requireNonNull(phaseIndicator, "phaseIndicator"));

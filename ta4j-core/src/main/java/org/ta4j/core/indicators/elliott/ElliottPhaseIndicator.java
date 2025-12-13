@@ -41,7 +41,7 @@ import org.ta4j.core.num.NumFactory;
  * corrective segments so that trading rules can assert higher level structure
  * before acting.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase> {
 
@@ -51,7 +51,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     /**
      * @param swingIndicator swing source used for detecting Elliott phases
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottPhaseIndicator(final ElliottSwingIndicator swingIndicator) {
         this(swingIndicator, new ElliottFibonacciValidator(requireFactory(swingIndicator)));
@@ -60,7 +60,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     /**
      * @param swingIndicator     swing source used for detecting Elliott phases
      * @param fibonacciValidator validator responsible for Fibonacci conformance
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottPhaseIndicator(final ElliottSwingIndicator swingIndicator,
             final ElliottFibonacciValidator fibonacciValidator) {
@@ -114,7 +114,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     /**
      * @param index bar index
      * @return immutable impulse swings considered for the phase at {@code index}
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> impulseSwings(final int index) {
         final ElliottSwingMetadata metadata = metadata(index);
@@ -127,7 +127,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     /**
      * @param index bar index
      * @return immutable corrective swings considered for the phase at {@code index}
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<ElliottSwing> correctiveSwings(final int index) {
         final ElliottSwingMetadata metadata = metadata(index);
@@ -146,7 +146,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     /**
      * @param index bar index
      * @return {@code true} once five waves are confirmed
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isImpulseConfirmed(final int index) {
         final ElliottSwingMetadata metadata = metadata(index);
@@ -160,7 +160,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
      * @param index bar index
      * @return {@code true} once the corrective sequence satisfies A-B-C
      *         requirements
-     * @since 0.19
+     * @since 0.22.0
      */
     public boolean isCorrectiveConfirmed(final int index) {
         final ElliottSwingMetadata metadata = metadata(index);
@@ -178,7 +178,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     /**
      * @return underlying swing indicator used for phase detection
-     * @since 0.19
+     * @since 0.22.0
      */
     public ElliottSwingIndicator getSwingIndicator() {
         return swingIndicator;
