@@ -69,6 +69,7 @@ public class ElliottFibonacciValidator {
      * @since 0.22.0
      */
     public ElliottFibonacciValidator(final NumFactory numFactory, final Num tolerance) {
+        Objects.requireNonNull(numFactory, "numFactory");
         this.tolerance = Objects.requireNonNull(tolerance, "tolerance");
         this.waveTwoMinRetracement = numFactory.numOf(0.382);
         this.waveTwoMaxRetracement = numFactory.numOf(0.786);

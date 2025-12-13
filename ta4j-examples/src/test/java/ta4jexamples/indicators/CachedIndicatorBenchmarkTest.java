@@ -149,8 +149,8 @@ public class CachedIndicatorBenchmarkTest {
             int maximumBarCountHint, int lastBarSmaPeriod) throws Exception {
         LOG.info(
                 "Starting CachedIndicator benchmark: threads={}, batches={}, evictionBars={}, cacheHitsPerThread={}, lastBarReads={}, maxBarCountHint={}, lastBarSmaPeriod={}",
-                threads, batches, formatInt(evictionBars), formatInt(cacheHitsPerThread), formatInt(lastBarReads),
-                formatInt(maximumBarCountHint), formatInt(lastBarSmaPeriod));
+                threads, batches, formatLong(evictionBars), formatLong(cacheHitsPerThread), formatLong(lastBarReads),
+                formatLong(maximumBarCountHint), formatLong(lastBarSmaPeriod));
 
         var evictionSeries = buildSeries(evictionBars);
         var cacheHitSeries = buildSeries(Math.max(5_000, lastBarSmaPeriod + 2));
@@ -178,7 +178,7 @@ public class CachedIndicatorBenchmarkTest {
         stats.add(result);
 
         LOG.info("  duration={} ms, ops={}, throughput={} ops/s, checksum={}", formatMillis(result.durationNanos),
-                formatInt(result.operations), formatDouble(result.throughputOpsPerSecond), result.checksum);
+                formatLong(result.operations), formatDouble(result.throughputOpsPerSecond), result.checksum);
     }
 
     private void logSummary(Map<String, ScenarioStats> statsByScenario) {
@@ -259,7 +259,7 @@ public class CachedIndicatorBenchmarkTest {
                 checksum += future.join();
             }
 
-            int operations = threads * readsPerThread;
+            long operations = threads * readsPerThread;
             return new ScenarioResult(operations, durationNanos, checksum);
         } finally {
             pool.shutdown();
@@ -314,8 +314,8 @@ public class CachedIndicatorBenchmarkTest {
         }
     }
 
-    private static String formatInt(int value) {
-        return NumberFormat.getIntegerInstance(Locale.US).format(value);
+    private static String formatLong(long value) {
+        return NumberFormat.getNumberInstance(Locale.US).format(value);
     }
 
     private static String formatMillis(double nanos) {
@@ -345,12 +345,12 @@ public class CachedIndicatorBenchmarkTest {
 
     private static final class ScenarioResult {
 
-        private final int operations;
+        private final long operations;
         private final long durationNanos;
         private final long checksum;
         private final double throughputOpsPerSecond;
 
-        private ScenarioResult(int operations, long durationNanos, long checksum) {
+        private ScenarioResult(long operations, long durationNanos, long checksum) {
             this.operations = operations;
             this.durationNanos = durationNanos;
             this.checksum = checksum;
@@ -360,7 +360,7 @@ public class CachedIndicatorBenchmarkTest {
 
     private static final class ScenarioStats {
 
-        private int runs;
+        private long runs;
         private double totalDurationNanos;
         private double totalThroughputOpsPerSecond;
 

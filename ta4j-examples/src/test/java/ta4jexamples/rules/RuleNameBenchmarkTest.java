@@ -159,7 +159,10 @@ public class RuleNameBenchmarkTest {
             return total;
         } finally {
             pool.shutdown();
-            pool.awaitTermination(30, TimeUnit.SECONDS);
+            if (!pool.awaitTermination(30, TimeUnit.SECONDS)) {
+                LOG.warn("Thread pool did not terminate in time, forcing shutdown");
+                pool.shutdownNow();
+            }
         }
     }
 
@@ -203,8 +206,7 @@ public class RuleNameBenchmarkTest {
 
         @Override
         protected String createDefaultName() {
-            setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
-            return getName();
+            return createCompositeName(getClass().getSimpleName(), rule1, rule2);
         }
     }
 

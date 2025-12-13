@@ -25,12 +25,18 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 
 public class ElliottSwingIndicatorTest {
 
@@ -137,5 +143,93 @@ public class ElliottSwingIndicatorTest {
 
         assertThat(indicator.getValue(series.getEndIndex())).hasSize(6);
         assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(1, 2, 3, 4, 5, 6, 7);
+    }
+
+    @Test
+    public void selectsPivotWhenHighAndLowIndexesCoincideInitially() {
+        var series = new MockBarSeriesBuilder().build();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().openPrice(0).highPrice(0).lowPrice(0).closePrice(0).volume(0).add();
+        }
+
+        var factory = series.numFactory();
+        var highPrice = new FixedIndicator<>(series, factory.zero(), factory.zero(), factory.numOf(12), factory.zero(),
+                factory.zero());
+        var lowPrice = new FixedIndicator<>(series, factory.zero(), factory.zero(), factory.numOf(10), factory.zero(),
+                factory.numOf(8));
+
+        var swingHigh = new FixedRecentSwingIndicator(series, highPrice, List.of(2));
+        var swingLow = new FixedRecentSwingIndicator(series, lowPrice, List.of(2, 4));
+        var indicator = new ElliottSwingIndicator(swingHigh, swingLow, ElliottDegree.MINOR);
+
+        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(2, 4);
+
+        var swings = indicator.getValue(series.getEndIndex());
+        assertThat(swings).hasSize(1);
+        assertThat(swings.get(0).fromIndex()).isEqualTo(2);
+        assertThat(swings.get(0).toIndex()).isEqualTo(4);
+        assertThat(swings.get(0).fromPrice()).isEqualByComparingTo(factory.numOf(12));
+        assertThat(swings.get(0).toPrice()).isEqualByComparingTo(factory.numOf(8));
+    }
+
+    private static final class FixedRecentSwingIndicator implements RecentSwingIndicator {
+
+        private final BarSeries series;
+        private final Indicator<Num> priceIndicator;
+        private final List<Integer> swingIndexes;
+
+        private FixedRecentSwingIndicator(final BarSeries series, final Indicator<Num> priceIndicator,
+                final List<Integer> swingIndexes) {
+            this.series = series;
+            this.priceIndicator = priceIndicator;
+            this.swingIndexes = swingIndexes;
+        }
+
+        @Override
+        public int getLatestSwingIndex(final int index) {
+            int latest = -1;
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    latest = swingIndex;
+                } else {
+                    break;
+                }
+            }
+            return latest;
+        }
+
+        @Override
+        public List<Integer> getSwingPointIndexesUpTo(final int index) {
+            final var filtered = new java.util.ArrayList<Integer>(swingIndexes.size());
+            for (int swingIndex : swingIndexes) {
+                if (swingIndex <= index) {
+                    filtered.add(swingIndex);
+                } else {
+                    break;
+                }
+            }
+            return List.copyOf(filtered);
+        }
+
+        @Override
+        public Indicator<Num> getPriceIndicator() {
+            return priceIndicator;
+        }
+
+        @Override
+        public Num getValue(final int index) {
+            final int swingIndex = getLatestSwingIndex(index);
+            return swingIndex < 0 ? NaN.NaN : priceIndicator.getValue(swingIndex);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
     }
 }

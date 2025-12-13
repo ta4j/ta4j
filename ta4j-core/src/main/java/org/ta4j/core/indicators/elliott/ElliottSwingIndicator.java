@@ -304,13 +304,26 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
             final int lowIndex = lowPointer < lows.size() ? lows.get(lowPointer) : Integer.MAX_VALUE;
 
             if (highIndex == lowIndex) {
-                final PivotType chosen = pivots.isEmpty() ? null : pivots.get(pivots.size() - 1).type.opposite();
+                final Num highPrice = swingHighIndicator.getPriceIndicator().getValue(highIndex);
+                final Num lowPrice = swingLowIndicator.getPriceIndicator().getValue(lowIndex);
+
+                final PivotType chosen;
+                if (pivots.isEmpty()) {
+                    if (highPrice == null || highPrice.isNaN()) {
+                        chosen = PivotType.LOW;
+                    } else if (lowPrice == null || lowPrice.isNaN()) {
+                        chosen = PivotType.HIGH;
+                    } else {
+                        chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
+                    }
+                } else {
+                    chosen = pivots.get(pivots.size() - 1).type.opposite();
+                }
+
                 if (chosen == PivotType.HIGH) {
-                    absorbPivot(pivots, new Pivot(highIndex, swingHighIndicator.getPriceIndicator().getValue(highIndex),
-                            PivotType.HIGH));
-                } else if (chosen == PivotType.LOW) {
-                    absorbPivot(pivots, new Pivot(lowIndex, swingLowIndicator.getPriceIndicator().getValue(lowIndex),
-                            PivotType.LOW));
+                    absorbPivot(pivots, new Pivot(highIndex, highPrice, PivotType.HIGH));
+                } else {
+                    absorbPivot(pivots, new Pivot(lowIndex, lowPrice, PivotType.LOW));
                 }
                 highPointer++;
                 lowPointer++;
