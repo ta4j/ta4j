@@ -37,10 +37,16 @@ import org.ta4j.core.num.Num;
  * Calculates Fibonacci-style ratios between consecutive Elliott swings.
  *
  * <p>
- * Ratios are computed as the absolute amplitude of the latest swing divided by
- * the amplitude of the previous swing. If both swings share the same direction
- * the ratio is treated as an extension; otherwise it is treated as a
- * retracement.
+ * The indicator classifies the latest swing as either a retracement or an
+ * extension:
+ * <ul>
+ * <li><b>Retracement</b>: amplitude of the latest swing divided by the
+ * amplitude of the most recent prior swing with the opposite direction.</li>
+ * <li><b>Extension</b>: amplitude of the latest swing divided by the amplitude
+ * of the most recent prior swing with the same direction, but only when the
+ * latest swing makes a new extreme in that direction (higher high / lower
+ * low).</li>
+ * </ul>
  *
  * @since 0.22.0
  */
@@ -75,28 +81,72 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
         }
 
         final ElliottSwing latest = swings.get(swings.size() - 1);
-        final ElliottSwing previous = swings.get(swings.size() - 2);
-        final Num previousAmplitude = previous.amplitude();
         final Num latestAmplitude = latest.amplitude();
-
-        if (previousAmplitude == null || latestAmplitude == null) {
-            return new ElliottRatio(NaN, RatioType.NONE);
-        }
-        if (previousAmplitude.isNaN() || latestAmplitude.isNaN()) {
-            return new ElliottRatio(NaN, RatioType.NONE);
-        }
-        if (previousAmplitude.isZero()) {
+        if (latestAmplitude == null || latestAmplitude.isNaN()) {
             return new ElliottRatio(NaN, RatioType.NONE);
         }
 
-        final Num ratio = latestAmplitude.dividedBy(previousAmplitude);
-        final RatioType type = latest.isRising() == previous.isRising() ? RatioType.EXTENSION : RatioType.RETRACEMENT;
-        return new ElliottRatio(ratio, type);
+        final int searchStart = swings.size() - 2;
+        final int sameDirectionIndex = findMostRecentSwingIndex(swings, latest.isRising(), searchStart);
+        final int oppositeDirectionIndex = findMostRecentSwingIndex(swings, !latest.isRising(), searchStart);
+
+        if (sameDirectionIndex >= 0) {
+            final ElliottSwing reference = swings.get(sameDirectionIndex);
+            if (isExtensionExtreme(latest, reference) || oppositeDirectionIndex < 0) {
+                final ElliottRatio extension = ratio(latestAmplitude, reference, RatioType.EXTENSION);
+                if (extension.type() != RatioType.NONE) {
+                    return extension;
+                }
+            }
+        }
+
+        if (oppositeDirectionIndex >= 0) {
+            final ElliottSwing reference = swings.get(oppositeDirectionIndex);
+            return ratio(latestAmplitude, reference, RatioType.RETRACEMENT);
+        }
+
+        return new ElliottRatio(NaN, RatioType.NONE);
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return swingIndicator.getCountOfUnstableBars();
+    }
+
+    private ElliottRatio ratio(final Num numerator, final ElliottSwing denominatorSwing, final RatioType type) {
+        if (denominatorSwing == null) {
+            return new ElliottRatio(NaN, RatioType.NONE);
+        }
+        final Num denominator = denominatorSwing.amplitude();
+        if (denominator == null || denominator.isNaN() || denominator.isZero()) {
+            return new ElliottRatio(NaN, RatioType.NONE);
+        }
+        return new ElliottRatio(numerator.dividedBy(denominator), type);
+    }
+
+    private int findMostRecentSwingIndex(final List<ElliottSwing> swings, final boolean rising, final int startIndex) {
+        for (int i = startIndex; i >= 0; i--) {
+            final ElliottSwing swing = swings.get(i);
+            if (swing != null && swing.isRising() == rising) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isExtensionExtreme(final ElliottSwing latest, final ElliottSwing reference) {
+        if (latest == null || reference == null) {
+            return false;
+        }
+        if (latest.isRising() != reference.isRising()) {
+            return false;
+        }
+        final Num latestPrice = latest.toPrice();
+        final Num referencePrice = reference.toPrice();
+        if (latestPrice == null || referencePrice == null || latestPrice.isNaN() || referencePrice.isNaN()) {
+            return false;
+        }
+        return latest.isRising() ? latestPrice.isGreaterThan(referencePrice) : latestPrice.isLessThan(referencePrice);
     }
 
     /**

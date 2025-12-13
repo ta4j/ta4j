@@ -49,7 +49,7 @@ public class ElliottConfluenceIndicatorTest {
 
         var factory = series.numFactory();
         var retracements = List.of(factory.numOf(1.0));
-        var extensions = List.of(factory.numOf(1.618));
+        var extensions = List.of(factory.numOf(1.272));
         var ratioTolerance = factory.numOf(0.2);
         var channelTolerance = factory.numOf(0.5);
         var minimumScore = factory.numOf(2);
@@ -63,7 +63,7 @@ public class ElliottConfluenceIndicatorTest {
         assertThat(indicator.isConfluent(index)).isTrue();
 
         var ratio = ratioIndicator.getValue(index);
-        assertThat(ratio.type()).isEqualTo(RatioType.RETRACEMENT);
+        assertThat(ratio.type()).isEqualTo(RatioType.EXTENSION);
     }
 
     @Test

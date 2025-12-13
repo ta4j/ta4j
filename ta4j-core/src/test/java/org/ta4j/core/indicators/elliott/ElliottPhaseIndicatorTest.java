@@ -111,6 +111,33 @@ class ElliottPhaseIndicatorTest {
         assertThat(indicator.isImpulseConfirmed(5)).isTrue();
     }
 
+    @Test
+    void shouldResetAfterCompletedCorrection() {
+        var series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14).build();
+        var factory = series.numFactory();
+
+        var swings = impulseAndCorrectionSwings(factory);
+        var completed = swings.get(swings.size() - 1);
+
+        var wave1 = new ElliottSwing(24, 27, factory.numOf(108), factory.numOf(118), ElliottDegree.MINOR);
+        var wave2 = new ElliottSwing(27, 29, factory.numOf(118), factory.numOf(112), ElliottDegree.MINOR);
+        var wave3 = new ElliottSwing(29, 33, factory.numOf(112), factory.numOf(130), ElliottDegree.MINOR);
+
+        var next = new ArrayList<List<ElliottSwing>>();
+        next.addAll(swings);
+        next.add(List.copyOf(concat(completed, List.of(wave1))));
+        next.add(List.copyOf(concat(completed, List.of(wave1, wave2))));
+        next.add(List.copyOf(concat(completed, List.of(wave1, wave2, wave3))));
+
+        var swingIndicator = new StubSwingIndicator(series, next);
+        var indicator = new ElliottPhaseIndicator(swingIndicator);
+
+        assertThat(indicator.getValue(8)).isEqualTo(ElliottPhase.CORRECTIVE_C);
+        assertThat(indicator.getValue(9)).isEqualTo(ElliottPhase.WAVE1);
+        assertThat(indicator.getValue(10)).isEqualTo(ElliottPhase.WAVE2);
+        assertThat(indicator.getValue(11)).isEqualTo(ElliottPhase.WAVE3);
+    }
+
     static List<List<ElliottSwing>> impulseAndCorrectionSwings(final NumFactory factory) {
         var wave1 = new ElliottSwing(0, 3, factory.numOf(100), factory.numOf(110), ElliottDegree.MINOR);
         var wave2 = new ElliottSwing(3, 5, factory.numOf(110), factory.numOf(104), ElliottDegree.MINOR);
@@ -132,6 +159,13 @@ class ElliottPhaseIndicatorTest {
         swings.add(List.of(wave1, wave2, wave3, wave4, wave5, waveA, waveB));
         swings.add(List.of(wave1, wave2, wave3, wave4, wave5, waveA, waveB, waveC));
         return swings;
+    }
+
+    private static List<ElliottSwing> concat(final List<ElliottSwing> left, final List<ElliottSwing> right) {
+        var merged = new ArrayList<ElliottSwing>(left.size() + right.size());
+        merged.addAll(left);
+        merged.addAll(right);
+        return merged;
     }
 
     private static final class StubSwingIndicator extends ElliottSwingIndicator {

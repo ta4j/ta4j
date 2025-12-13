@@ -52,25 +52,37 @@ public class ElliottRatioIndicatorTest {
     @Test
     public void computesRetracementRatioFromSeries() {
         var series = new MockBarSeriesBuilder().build();
-        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        double[] closes = { 10, 12, 11, 13, 12, 14, 13 };
         for (double close : closes) {
             series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
         }
         var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
         var ratioIndicator = new ElliottRatioIndicator(swingIndicator);
 
-        var swings = swingIndicator.getValue(series.getEndIndex());
-        var latest = swings.get(swings.size() - 1);
-        var previous = swings.get(swings.size() - 2);
-        var expectedRatio = latest.amplitude().dividedBy(previous.amplitude());
-
-        var ratio = ratioIndicator.getValue(series.getEndIndex());
+        var ratio = ratioIndicator.getValue(5);
         assertThat(ratio.type()).isEqualTo(RatioType.RETRACEMENT);
-        assertThat(ratio.value()).isEqualByComparingTo(expectedRatio);
+        assertThat(ratio.value()).isEqualByComparingTo(series.numFactory().numOf(0.5));
 
         var tolerance = series.numFactory().numOf(0.2);
-        assertThat(ratioIndicator.isNearLevel(series.getEndIndex(), series.numFactory().numOf(1.0), tolerance))
-                .isTrue();
+        assertThat(ratioIndicator.isNearLevel(5, series.numFactory().numOf(0.5), tolerance)).isTrue();
+    }
+
+    @Test
+    public void computesExtensionRatioFromSeries() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 11, 13, 12, 14, 13 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+        var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var ratioIndicator = new ElliottRatioIndicator(swingIndicator);
+
+        var ratio = ratioIndicator.getValue(series.getEndIndex());
+        assertThat(ratio.type()).isEqualTo(RatioType.EXTENSION);
+        assertThat(ratio.value()).isEqualByComparingTo(series.numFactory().one());
+
+        var tolerance = series.numFactory().numOf(0.01);
+        assertThat(ratioIndicator.isNearLevel(series.getEndIndex(), series.numFactory().one(), tolerance)).isTrue();
     }
 
     @Test

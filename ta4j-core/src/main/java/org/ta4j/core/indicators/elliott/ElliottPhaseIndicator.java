@@ -49,6 +49,9 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     private final ElliottFibonacciValidator fibonacciValidator;
     private final NumFactory numFactory;
 
+    private static final int IMPULSE_LENGTH = 5;
+    private static final int CORRECTION_LENGTH = 3;
+
     /**
      * @param swingIndicator swing source used for detecting Elliott phases
      * @since 0.22.0
@@ -85,25 +88,16 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
             return ElliottPhase.NONE;
         }
 
-        final ImpulseAssessment impulse = assessImpulse(metadata);
+        final CycleAssessment cycle = assessCycle(metadata);
+        final ImpulseAssessment impulse = cycle.impulse;
         if (!impulse.phase.isImpulse()) {
             return ElliottPhase.NONE;
         }
 
-        if (impulse.phase != ElliottPhase.WAVE5) {
-            return impulse.phase;
+        if (cycle.correctivePhase.isCorrective()) {
+            return cycle.correctivePhase;
         }
-
-        if (metadata.size() <= impulse.startIndex + impulse.segment.size()) {
-            return ElliottPhase.WAVE5;
-        }
-
-        final ElliottPhase correctivePhase = evaluateCorrective(metadata,
-                metadata.subList(impulse.startIndex + impulse.segment.size(), metadata.size()), impulse.rising);
-        if (correctivePhase.isCorrective()) {
-            return correctivePhase;
-        }
-        return ElliottPhase.WAVE5;
+        return impulse.phase;
     }
 
     @Override
@@ -121,7 +115,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return List.of();
         }
-        return List.copyOf(assessImpulse(metadata).segment);
+        return List.copyOf(assessCycle(metadata).impulse.segment);
     }
 
     /**
@@ -134,13 +128,12 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return List.of();
         }
-        final ImpulseAssessment impulse = assessImpulse(metadata);
-        if (impulse.phase != ElliottPhase.WAVE5) {
+        final CycleAssessment cycle = assessCycle(metadata);
+        if (cycle.impulse.phase != ElliottPhase.WAVE5 || !cycle.correctivePhase.isCorrective()) {
             return List.of();
         }
-        final List<ElliottSwing> corrective = metadata.subList(impulse.startIndex + impulse.segment.size(),
-                metadata.size());
-        return List.copyOf(corrective);
+        final int length = cycle.correctivePhase.correctiveIndex();
+        return cycle.correction.subList(0, Math.min(length, cycle.correction.size()));
     }
 
     /**
@@ -153,7 +146,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return false;
         }
-        return assessImpulse(metadata).phase == ElliottPhase.WAVE5;
+        return assessCycle(metadata).impulse.phase == ElliottPhase.WAVE5;
     }
 
     /**
@@ -167,13 +160,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return false;
         }
-        final ImpulseAssessment impulse = assessImpulse(metadata);
-        if (impulse.phase != ElliottPhase.WAVE5) {
-            return false;
-        }
-        final ElliottPhase corrective = evaluateCorrective(metadata,
-                metadata.subList(impulse.startIndex + impulse.segment.size(), metadata.size()), impulse.rising);
-        return corrective == ElliottPhase.CORRECTIVE_C;
+        return assessCycle(metadata).correctivePhase == ElliottPhase.CORRECTIVE_C;
     }
 
     /**
@@ -190,25 +177,46 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     ImpulseAssessment assessImpulse(final ElliottSwingMetadata metadata) {
-        if (!metadata.isValid() || metadata.isEmpty()) {
-            return new ImpulseAssessment(ElliottPhase.NONE, List.of(), 0, true);
-        }
-        List<ElliottSwing> segment = metadata.leading(5);
-        ElliottPhase phase = evaluateImpulse(segment);
-        boolean rising = !segment.isEmpty() && segment.get(0).isRising();
+        return assessCycle(metadata).impulse;
+    }
+
+    private CycleAssessment assessCycle(final ElliottSwingMetadata metadata) {
         int startIndex = 0;
-
-        if (phase != ElliottPhase.WAVE5 && metadata.size() > 5) {
-            final List<ElliottSwing> trailing = metadata.trailing(5);
-            final ElliottPhase trailingPhase = evaluateImpulse(trailing);
-            if (compareImpulse(trailingPhase, phase) > 0) {
-                segment = trailing;
-                phase = trailingPhase;
-                rising = !segment.isEmpty() && segment.get(0).isRising();
-                startIndex = metadata.size() - segment.size();
+        while (true) {
+            final ImpulseAssessment impulse = assessImpulseAt(metadata, startIndex);
+            if (impulse.phase != ElliottPhase.WAVE5) {
+                return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
             }
-        }
 
+            final int correctionStart = startIndex + impulse.segment.size();
+            if (metadata.size() <= correctionStart) {
+                return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
+            }
+            final int correctionEnd = Math.min(correctionStart + CORRECTION_LENGTH, metadata.size());
+            final List<ElliottSwing> correction = metadata.subList(correctionStart, correctionEnd);
+            final ElliottPhase correctivePhase = evaluateCorrective(metadata, correction, impulse.rising);
+
+            if (correctivePhase == ElliottPhase.CORRECTIVE_C && metadata.size() > correctionEnd) {
+                startIndex = correctionEnd;
+                continue;
+            }
+
+            if (!correctivePhase.isCorrective()) {
+                return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
+            }
+
+            return new CycleAssessment(impulse, correction, correctivePhase);
+        }
+    }
+
+    private ImpulseAssessment assessImpulseAt(final ElliottSwingMetadata metadata, final int startIndex) {
+        if (!metadata.isValid() || metadata.isEmpty() || startIndex < 0 || startIndex >= metadata.size()) {
+            return new ImpulseAssessment(ElliottPhase.NONE, List.of(), startIndex, true);
+        }
+        final int endIndex = Math.min(startIndex + IMPULSE_LENGTH, metadata.size());
+        final List<ElliottSwing> segment = metadata.subList(startIndex, endIndex);
+        final ElliottPhase phase = evaluateImpulse(segment);
+        final boolean rising = !segment.isEmpty() && segment.get(0).isRising();
         return new ImpulseAssessment(phase, segment, startIndex, rising);
     }
 
@@ -420,8 +428,8 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         return from != null && to != null && !from.isNaN() && !to.isNaN() && !from.equals(NaN) && !to.equals(NaN);
     }
 
-    private int compareImpulse(final ElliottPhase left, final ElliottPhase right) {
-        return Integer.compare(left.impulseIndex(), right.impulseIndex());
+    private record CycleAssessment(ImpulseAssessment impulse, List<ElliottSwing> correction,
+            ElliottPhase correctivePhase) {
     }
 
     static final class ImpulseAssessment {
