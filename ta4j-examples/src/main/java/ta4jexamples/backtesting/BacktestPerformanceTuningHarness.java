@@ -65,20 +65,227 @@ import java.util.StringJoiner;
 import java.util.function.Consumer;
 
 /**
- * Performance harness + example for
- * {@link BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)}.
+ * Performance tuning harness for backtesting large numbers of strategies.
  * <p>
- * The harness helps tune several interrelated parameters on your hardware:
+ * This class provides a comprehensive tool for optimizing backtest performance
+ * by systematically testing different parameter combinations and identifying
+ * optimal settings for your hardware and dataset. It helps tune several
+ * interrelated performance parameters:
  * <ul>
- * <li>strategy count (how many strategies to evaluate)</li>
- * <li>bar series size (last-N bars)</li>
- * <li>maximum bar count hint (indicator cache window size via
- * {@link BarSeries#getMaximumBarCount()})</li>
- * <li>JVM heap size (optional: fork a child JVM per heap size)</li>
+ * <li><b>Strategy count:</b> How many strategies to evaluate in a single
+ * backtest run</li>
+ * <li><b>Bar series size:</b> Number of bars to use (last-N bars from the
+ * dataset)</li>
+ * <li><b>Maximum bar count hint:</b> Indicator cache window size via
+ * {@link BarSeries#getMaximumBarCount()} to control memory usage</li>
+ * <li><b>JVM heap size:</b> Optional: fork child JVMs with different heap sizes
+ * to find optimal memory configuration</li>
  * </ul>
  * <p>
- * The workload is a non-trivial NetMomentumIndicator-based strategy to make GC
- * and caching behavior visible.
+ * The harness uses a non-trivial NetMomentumIndicator-based strategy workload
+ * to make garbage collection (GC) and caching behavior visible. It
+ * automatically detects non-linear performance degradation (e.g., excessive GC
+ * overhead or slowdown beyond expected scaling) and recommends optimal
+ * parameter combinations.
+ * <p>
+ * <h2>Execution Modes</h2>
+ * <p>
+ * The harness supports three execution modes:
+ * <ol>
+ * <li><b>Run Once (default):</b> Execute a single backtest with specified
+ * parameters. Useful for quick performance checks or production runs with known
+ * optimal settings.</li>
+ * <li><b>Tune In-Process:</b> Run multiple backtests with varying parameters to
+ * find optimal settings. Tests different strategy counts, bar counts, and
+ * maximum bar count hints systematically.</li>
+ * <li><b>Tune Across Heaps:</b> Fork child JVMs with different heap sizes to
+ * test memory configuration impact. Each child JVM runs a full tuning
+ * cycle.</li>
+ * </ol>
+ * <p>
+ * <h2>Usage Examples</h2>
+ * <p>
+ * <h3>Example 1: Quick Performance Check</h3> Run a single backtest with 1000
+ * strategies on the last 2000 bars:
+ *
+ * <pre>{@code
+ * java BacktestPerformanceTuningHarness \
+ *   --strategies 1000 \
+ *   --barCount 2000 \
+ *   --executionMode full
+ * }</pre>
+ * <p>
+ * <h3>Example 2: Find Optimal Settings</h3> Run a tuning cycle to find optimal
+ * parameters for your hardware:
+ *
+ * <pre>{@code
+ * java BacktestPerformanceTuningHarness \
+ *   --tune \
+ *   --tuneStrategyStart 2000 \
+ *   --tuneStrategyStep 2000 \
+ *   --tuneStrategyMax 20000 \
+ *   --tuneBarCounts 500,1000,2000,full \
+ *   --tuneMaxBarCountHints 0,512,1024,2048 \
+ *   --executionMode topK \
+ *   --topK 20
+ * }</pre>
+ *
+ * This will test strategy counts from 2000 to 20000 (in steps of 2000) across
+ * different bar counts and maximum bar count hints, then recommend the best
+ * configuration.
+ * <p>
+ * <h3>Example 3: Test Different Heap Sizes</h3> Test performance across
+ * different JVM heap sizes:
+ *
+ * <pre>{@code
+ * java BacktestPerformanceTuningHarness \
+ *   --tuneHeaps 4g,8g,16g \
+ *   --tuneStrategyStart 5000 \
+ *   --tuneStrategyMax 50000 \
+ *   --executionMode topK \
+ *   --topK 20
+ * }</pre>
+ *
+ * This forks separate JVMs with 4GB, 8GB, and 16GB heaps, running a full tuning
+ * cycle in each.
+ * <p>
+ * <h3>Example 4: Production Run with Optimal Settings</h3> After tuning, use
+ * the recommended settings for a production run:
+ *
+ * <pre>{@code
+ * java BacktestPerformanceTuningHarness \
+ *   --strategies 10000 \
+ *   --barCount 2000 \
+ *   --maxBarCountHint 1024 \
+ *   --executionMode topK \
+ *   --topK 20 \
+ *   --progress
+ * }</pre>
+ *
+ * The {@code --progress} flag enables progress logging with memory usage
+ * information.
+ * <p>
+ * <h2>Performance Tuning Workflow</h2>
+ * <ol>
+ * <li><b>Initial Exploration:</b> Start with a broad tuning run to identify
+ * promising regions:
+ *
+ * <pre>{@code --tune --tuneStrategyStart 1000 --tuneStrategyStep 5000 --tuneStrategyMax 50000}</pre>
+ *
+ * </li>
+ * <li><b>Fine-Tuning:</b> Narrow down to the promising region with smaller
+ * steps:
+ *
+ * <pre>{@code --tune --tuneStrategyStart 8000 --tuneStrategyStep 1000 --tuneStrategyMax 15000}</pre>
+ *
+ * </li>
+ * <li><b>Memory Optimization:</b> Test different maximum bar count hints to
+ * balance memory and performance:
+ *
+ * <pre>{@code --tune --tuneMaxBarCountHints 0,256,512,1024,2048,4096}</pre>
+ *
+ * </li>
+ * <li><b>Heap Size Testing:</b> If memory is a concern, test different heap
+ * sizes:
+ *
+ * <pre>{@code --tuneHeaps 2g,4g,8g,16g}</pre>
+ *
+ * </li>
+ * </ol>
+ * <p>
+ * <h2>Understanding Results</h2>
+ * <p>
+ * The harness outputs several types of information:
+ * <ul>
+ * <li><b>HARNESS_RESULT:</b> JSON-formatted results for each run, including
+ * runtime statistics, GC overhead, heap usage, and work units (strategies ×
+ * bars)</li>
+ * <li><b>RECOMMENDED_SETTINGS:</b> Optimal parameter combinations based on
+ * linear performance behavior (before non-linear degradation is detected)</li>
+ * <li><b>Non-linear detection:</b> When performance degrades beyond expected
+ * scaling (excessive GC overhead or slowdown ratio), the harness flags this and
+ * recommends staying below that threshold</li>
+ * </ul>
+ * <p>
+ * <h2>Strategy Generation</h2>
+ * <p>
+ * The harness generates strategies using a grid search over
+ * NetMomentumIndicator parameters:
+ * <ul>
+ * <li>RSI bar count: 7 to 49 (increment: 7)</li>
+ * <li>Momentum timeframe: 100 to 400 (increment: 100)</li>
+ * <li>Oversold threshold: -2000 to 0 (increment: 250)</li>
+ * <li>Overbought threshold: 0 to 1500 (increment: 250)</li>
+ * <li>Decay factor: 0.9 to 1.0 (increment: 0.02)</li>
+ * </ul>
+ * This generates approximately 10,416 unique strategy combinations. When fewer
+ * strategies are requested, the harness samples from this grid. When more are
+ * requested, it repeats the grid with different repetition markers.
+ * <p>
+ * <h2>Command-Line Options</h2>
+ * <p>
+ * Run with {@code --help} to see all available options. Key options include:
+ * <ul>
+ * <li>{@code --dataset <file>}: OHLC data file (default:
+ * Coinbase-ETH-USD-PT1D-20160517_20251028.json)</li>
+ * <li>{@code --strategies <N>}: Number of strategies to test (default: full
+ * grid ~10,416)</li>
+ * <li>{@code --barCount <N>}: Number of bars to use (default: full series)</li>
+ * <li>{@code --maxBarCountHint <N>}: Maximum bar count hint for indicator
+ * caching (0 = disabled)</li>
+ * <li>{@code --executionMode full|topK}: Execution mode (default: full)</li>
+ * <li>{@code --topK <N>}: Number of top strategies to keep when using topK mode
+ * (default: 20)</li>
+ * <li>{@code --tune}: Enable tuning mode</li>
+ * <li>{@code --tuneStrategyStart <N>}: Starting strategy count for tuning
+ * (default: 2000)</li>
+ * <li>{@code --tuneStrategyStep <N>}: Strategy count increment for tuning
+ * (default: 2000)</li>
+ * <li>{@code --tuneStrategyMax <N>}: Maximum strategy count for tuning
+ * (default: 20000)</li>
+ * <li>{@code --tuneBarCounts <csv>}: Bar counts to test (default:
+ * 500,1000,2000,full)</li>
+ * <li>{@code --tuneMaxBarCountHints <csv>}: Maximum bar count hints to test
+ * (default: 0,512,1024,2048)</li>
+ * <li>{@code --nonlinearGcOverhead <0..1>}: GC overhead threshold for
+ * non-linear detection (default: 0.25)</li>
+ * <li>{@code --nonlinearSlowdownRatio <x>}: Slowdown ratio threshold for
+ * non-linear detection (default: 1.25)</li>
+ * <li>{@code --tuneHeaps <csv>}: Heap sizes to test (e.g., 4g,8g,16g)</li>
+ * <li>{@code --progress}: Enable progress logging with memory information</li>
+ * <li>{@code --gcBetweenRuns}: Force GC between tuning runs (default:
+ * true)</li>
+ * </ul>
+ * <p>
+ * <h2>Performance Notes</h2>
+ * <ul>
+ * <li>The default parameter ranges generate ~10,000+ strategies.
+ * BacktestExecutor automatically uses batch processing for large strategy
+ * counts (&gt;1000) to prevent memory exhaustion.</li>
+ * <li>If execution is too slow, consider:
+ * <ol>
+ * <li>Increasing increment values to reduce grid density</li>
+ * <li>Narrowing MIN/MAX ranges based on preliminary results</li>
+ * <li>Using coarser increments for initial exploration, then fine-tuning
+ * promising regions</li>
+ * </ol>
+ * </li>
+ * <li>The harness performs a warm-up run before tuning to stabilize JVM
+ * performance metrics.</li>
+ * <li>Non-linear behavior detection helps identify when increasing strategy
+ * count or bar count causes performance to degrade beyond expected linear
+ * scaling.</li>
+ * </ul>
+ * <p>
+ * <h2>See Also</h2>
+ * <ul>
+ * <li>{@link BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)}
+ * - Method for retrieving top-performing strategies</li>
+ * <li>{@link BacktestExecutor} - The underlying executor used for
+ * backtesting</li>
+ * <li>{@link BarSeries#getMaximumBarCount()} - Maximum bar count hint for
+ * indicator caching</li>
+ * </ul>
  */
 public class BacktestPerformanceTuningHarness {
 
@@ -127,6 +334,35 @@ public class BacktestPerformanceTuningHarness {
 
     static final Gson GSON = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter()).create();
 
+    /**
+     * Main entry point for the performance tuning harness.
+     * <p>
+     * Parses command-line arguments and executes the requested operation:
+     * <ul>
+     * <li>If {@code --help} is specified, prints usage information and exits</li>
+     * <li>If {@code --tuneHeaps} is specified, forks child JVMs with different heap
+     * sizes and runs tuning in each</li>
+     * <li>If {@code --tune} is specified, runs an in-process tuning cycle to find
+     * optimal parameters</li>
+     * <li>Otherwise, runs a single backtest with the specified parameters</li>
+     * </ul>
+     * <p>
+     * Example usage:
+     *
+     * <pre>{@code
+     * // Single run
+     * java BacktestPerformanceTuningHarness --strategies 1000 --barCount 2000
+     *
+     * // Tuning mode
+     * java BacktestPerformanceTuningHarness --tune --tuneStrategyMax 20000
+     *
+     * // Cross-heap tuning
+     * java BacktestPerformanceTuningHarness --tuneHeaps 4g,8g,16g
+     * }</pre>
+     *
+     * @param args Command-line arguments (see {@code --help} for full list)
+     * @throws Exception If an error occurs during execution
+     */
     public static void main(String[] args) throws Exception {
         HarnessCli cli = HarnessCli.parse(args);
         if (cli.help) {
@@ -172,6 +408,26 @@ public class BacktestPerformanceTuningHarness {
         Thread.yield();
     }
 
+    /**
+     * Executes a single backtest run with the specified configuration.
+     * <p>
+     * This method:
+     * <ol>
+     * <li>Slices the base series to the requested bar count</li>
+     * <li>Applies the maximum bar count hint if specified</li>
+     * <li>Creates the requested number of strategies</li>
+     * <li>Executes the backtest with progress monitoring</li>
+     * <li>Captures performance metrics (GC, heap, runtime statistics)</li>
+     * <li>Logs results in JSON format with the {@code HARNESS_RESULT:} prefix</li>
+     * </ol>
+     *
+     * @param baseSeries The base bar series to use
+     * @param config     Configuration for this run (strategy count, bar count,
+     *                   execution mode, etc.)
+     * @return A {@link RunOutcome} containing both the execution result and
+     *         performance metrics
+     * @throws NullPointerException If baseSeries or config is null
+     */
     private static RunOutcome runOnce(BarSeries baseSeries, RunOnceConfig config) {
         Objects.requireNonNull(baseSeries, "baseSeries must not be null");
         Objects.requireNonNull(config, "config must not be null");
@@ -313,6 +569,24 @@ public class BacktestPerformanceTuningHarness {
                 + "If you hit 'no non-linear detected', increase --tuneStrategyMax to probe further.");
     }
 
+    /**
+     * Selects the best recommendation from a list of variant tuning results.
+     * <p>
+     * The best recommendation is determined by:
+     * <ol>
+     * <li>Highest work units (strategies × bars) - indicates most work done
+     * efficiently</li>
+     * <li>Highest strategy count (tie-breaker)</li>
+     * <li>Highest bar count (tie-breaker)</li>
+     * <li>Highest effective maximum bar count hint (tie-breaker)</li>
+     * </ol>
+     * <p>
+     * Only results with a non-null {@code lastLinear} (indicating successful linear
+     * performance) are considered.
+     *
+     * @param results List of variant tuning results to evaluate
+     * @return The best recommendation, or null if no valid results are found
+     */
     static RunResult selectBestRecommendation(List<VariantTuningResult> results) {
         if (results == null || results.isEmpty()) {
             return null;
@@ -414,6 +688,35 @@ public class BacktestPerformanceTuningHarness {
         }
     }
 
+    /**
+     * Determines if performance has degraded non-linearly between two runs.
+     * <p>
+     * Non-linear behavior is detected when either:
+     * <ul>
+     * <li>GC overhead exceeds the threshold (default: 25% of total runtime)</li>
+     * <li>Normalized slowdown ratio exceeds the threshold (default: 1.25x)</li>
+     * </ul>
+     * <p>
+     * The normalized slowdown ratio is calculated as:
+     *
+     * <pre>{@code
+     * (runtimeRatio / workRatio)
+     * }</pre>
+     *
+     * where runtimeRatio is the ratio of runtimes and workRatio is the ratio of
+     * work units (strategies × bars). A value greater than 1.0 indicates that
+     * runtime increased faster than work, suggesting non-linear scaling.
+     * <p>
+     * This method is used during tuning to identify the point where increasing
+     * strategy count or bar count causes performance to degrade beyond expected
+     * linear scaling.
+     *
+     * @param previous   The previous run result (baseline)
+     * @param current    The current run result (to compare against baseline)
+     * @param thresholds The thresholds for detecting non-linear behavior
+     * @return true if non-linear behavior is detected, false otherwise
+     * @throws NullPointerException If any parameter is null
+     */
     static boolean isNonLinear(RunResult previous, RunResult current, Thresholds thresholds) {
         Objects.requireNonNull(previous, "previous must not be null");
         Objects.requireNonNull(current, "current must not be null");
@@ -449,6 +752,22 @@ public class BacktestPerformanceTuningHarness {
         return String.format(Locale.ROOT, "%.2f%%", value * 100d);
     }
 
+    /**
+     * Slices a bar series to contain only the last N bars.
+     * <p>
+     * If barCount is 0, negative, or greater than or equal to the available bars,
+     * the original series is returned unchanged. Otherwise, returns a sub-series
+     * containing the last barCount bars.
+     * <p>
+     * This is useful for testing performance with different dataset sizes without
+     * loading multiple files.
+     *
+     * @param series   The bar series to slice
+     * @param barCount The number of bars to keep (0 or negative = keep all)
+     * @return A sub-series containing the last barCount bars, or the original
+     *         series if no slicing is needed
+     * @throws NullPointerException If series is null
+     */
     static BarSeries sliceToLastBars(BarSeries series, int barCount) {
         Objects.requireNonNull(series, "series must not be null");
         if (barCount <= 0) {
@@ -465,6 +784,29 @@ public class BacktestPerformanceTuningHarness {
         return series.getSubSeries(startIndex, endExclusive);
     }
 
+    /**
+     * Applies a maximum bar count hint to a bar series for indicator caching
+     * optimization.
+     * <p>
+     * The maximum bar count hint controls the size of the indicator cache window.
+     * When set, indicators will only cache values for the most recent N bars,
+     * reducing memory usage for large datasets.
+     * <p>
+     * If maximumBarCountHint is 0 or negative, the original series is returned
+     * unchanged. If it matches the series' current maximum bar count, the original
+     * series is returned. Otherwise, returns a wrapper that overrides
+     * {@link BarSeries#getMaximumBarCount()}.
+     * <p>
+     * This is useful for testing the impact of indicator caching on performance and
+     * memory usage.
+     *
+     * @param series              The bar series to wrap
+     * @param maximumBarCountHint The maximum bar count hint (0 = disabled, use
+     *                            series default)
+     * @return A series with the maximum bar count hint applied, or the original
+     *         series if no change is needed
+     * @throws NullPointerException If series is null
+     */
     static BarSeries applyMaximumBarCountHint(BarSeries series, int maximumBarCountHint) {
         Objects.requireNonNull(series, "series must not be null");
         if (maximumBarCountHint <= 0) {
@@ -477,11 +819,38 @@ public class BacktestPerformanceTuningHarness {
     }
 
     /**
-     * Creates a variety of strategies using different moving average periods for
-     * testing.
+     * Creates a variety of strategies using NetMomentumIndicator with different
+     * parameter combinations for performance testing.
+     * <p>
+     * Generates strategies by systematically varying:
+     * <ul>
+     * <li>RSI bar count: 7 to 49 (increment: 7)</li>
+     * <li>Momentum timeframe: 100 to 400 (increment: 100)</li>
+     * <li>Oversold threshold: -2000 to 0 (increment: 250)</li>
+     * <li>Overbought threshold: 0 to 1500 (increment: 250)</li>
+     * <li>Decay factor: 0.9 to 1.0 (increment: 0.02)</li>
+     * </ul>
+     * <p>
+     * This generates approximately 10,416 unique strategy combinations. When fewer
+     * strategies are requested, the method samples from this grid. When more are
+     * requested, it repeats the grid with different repetition markers.
+     * <p>
+     * Strategies use:
+     * <ul>
+     * <li>Entry rule: CrossedUpIndicatorRule when NetMomentumIndicator crosses
+     * above oversold threshold</li>
+     * <li>Exit rule: CrossedDownIndicatorRule when NetMomentumIndicator crosses
+     * below overbought threshold</li>
+     * </ul>
      *
-     * @param series the bar series
-     * @return a list of strategies to test
+     * @param series                 The bar series to use for indicator
+     *                               calculations
+     * @param requestedStrategyCount The number of strategies to create. Use -1 for
+     *                               full grid, or a positive number to sample that
+     *                               many strategies
+     * @return A list of strategies to test
+     * @throws NullPointerException     If series is null
+     * @throws IllegalArgumentException If requestedStrategyCount is zero
      */
     static List<Strategy> createStrategies(BarSeries series, int requestedStrategyCount) {
         Objects.requireNonNull(series, "series cannot be null");
@@ -544,6 +913,40 @@ public class BacktestPerformanceTuningHarness {
         return strategies;
     }
 
+    /**
+     * Creates a single strategy using NetMomentumIndicator with the specified
+     * parameters.
+     * <p>
+     * The strategy uses:
+     * <ul>
+     * <li>RSI indicator with the specified bar count</li>
+     * <li>NetMomentumIndicator wrapping the RSI with the specified timeframe and
+     * decay factor</li>
+     * <li>Entry rule: Buy when NetMomentumIndicator crosses above the oversold
+     * threshold</li>
+     * <li>Exit rule: Sell when NetMomentumIndicator crosses below the overbought
+     * threshold</li>
+     * </ul>
+     * <p>
+     * The repetition parameter is used to create multiple strategies with the same
+     * parameters when more strategies are requested than the grid can provide. It's
+     * included in the strategy name for identification.
+     *
+     * @param series              The bar series to use for indicator calculations
+     * @param rsiBarCount         The number of bars to use for RSI calculation
+     *                            (must be positive)
+     * @param timeFrame           The timeframe for NetMomentumIndicator (must be
+     *                            positive)
+     * @param oversoldThreshold   The oversold threshold for entry signals
+     * @param overboughtThreshold The overbought threshold for exit signals
+     * @param decayFactor         The decay factor for NetMomentumIndicator
+     *                            (typically 0.9 to 1.0)
+     * @param repetition          The repetition number (0 for first occurrence,
+     *                            incremented for repeats)
+     * @return A new strategy with the specified parameters
+     * @throws NullPointerException     If series is null
+     * @throws IllegalArgumentException If rsiBarCount or timeFrame is not positive
+     */
     static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold,
             int overboughtThreshold, double decayFactor, int repetition) {
         Objects.requireNonNull(series, "series cannot be null");
@@ -621,6 +1024,20 @@ public class BacktestPerformanceTuningHarness {
         LOG.info(System.lineSeparator() + usage);
     }
 
+    /**
+     * Formats a byte count as a human-readable string with appropriate units.
+     * <p>
+     * Formats bytes using binary units (KiB, MiB, GiB, TiB) with 2 decimal places.
+     * Examples:
+     * <ul>
+     * <li>1023 bytes → "1023 B"</li>
+     * <li>1024 bytes → "1.00 KiB"</li>
+     * <li>1048576 bytes → "1.00 MiB"</li>
+     * </ul>
+     *
+     * @param bytes The number of bytes to format
+     * @return A formatted string with appropriate unit (B, KiB, MiB, GiB, or TiB)
+     */
     static String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
@@ -636,14 +1053,48 @@ public class BacktestPerformanceTuningHarness {
     }
 }
 
+/**
+ * Execution mode for backtest runs.
+ * <ul>
+ * <li>{@link #FULL_RESULT}: Execute all strategies and return full results for
+ * all strategies</li>
+ * <li>{@link #KEEP_TOP_K}: Execute all strategies but only keep results for the
+ * top K performers (more memory-efficient for large strategy counts)</li>
+ * </ul>
+ */
 enum ExecutionMode {
-    FULL_RESULT, KEEP_TOP_K
+    /** Execute all strategies and return full results. */
+    FULL_RESULT,
+    /** Execute all strategies but only keep top K results. */
+    KEEP_TOP_K
 }
 
+/**
+ * Configuration for a single backtest run.
+ *
+ * @param strategyCount       Number of strategies to test (-1 for full grid)
+ * @param barCount            Number of bars to use (0 or negative for full
+ *                            series)
+ * @param maximumBarCountHint Maximum bar count hint for indicator caching (0 to
+ *                            disable)
+ * @param executionMode       Execution mode (FULL_RESULT or KEEP_TOP_K)
+ * @param topK                Number of top strategies to keep when using
+ *                            KEEP_TOP_K mode
+ * @param progress            Whether to enable progress logging with memory
+ *                            information
+ */
 record RunOnceConfig(int strategyCount, int barCount, int maximumBarCountHint, ExecutionMode executionMode, int topK,
         boolean progress) {
 }
 
+/**
+ * Thresholds for detecting non-linear performance behavior.
+ *
+ * @param gcOverheadThreshold    GC overhead threshold (0.0 to 1.0, e.g., 0.25 =
+ *                               25% of runtime)
+ * @param slowdownRatioThreshold Normalized slowdown ratio threshold (e.g., 1.25
+ *                               = 25% slowdown)
+ */
 record Thresholds(double gcOverheadThreshold, double slowdownRatioThreshold) {
 
     String describe() {
@@ -707,6 +1158,27 @@ record BacktestRuntimeStats(Duration overallRuntime, Duration minStrategyRuntime
 record RunOutcome(BacktestExecutionResult result, RunResult runResult) {
 }
 
+/**
+ * Results from a single backtest run, including performance metrics.
+ *
+ * @param executionMode                The execution mode used
+ * @param strategyCount                Number of strategies tested
+ * @param barCount                     Actual number of bars used
+ * @param maximumBarCountHintRequested The maximum bar count hint that was
+ *                                     requested
+ * @param maximumBarCountHintEffective The effective maximum bar count hint
+ *                                     applied
+ * @param barCountRequested            The bar count that was requested (0 =
+ *                                     full series)
+ * @param strategyBuildDuration        Time taken to build all strategies
+ * @param runtimeStats                 Runtime statistics from the backtest
+ *                                     execution
+ * @param workUnits                    Total work units (strategies × bars)
+ * @param gcDelta                      GC statistics delta (after - before)
+ * @param heapBefore                   Heap snapshot before execution
+ * @param heapAfter                    Heap snapshot after execution
+ * @param numFactory                   The NumFactory class name used
+ */
 record RunResult(ExecutionMode executionMode, int strategyCount, int barCount, int maximumBarCountHintRequested,
         int maximumBarCountHintEffective, int barCountRequested, Duration strategyBuildDuration,
         BacktestRuntimeStats runtimeStats, long workUnits, GcSnapshot gcDelta, HeapSnapshot heapBefore,
@@ -765,6 +1237,19 @@ record GcSnapshot(long collections, Duration collectionTime) {
     }
 }
 
+/**
+ * A wrapper around a BarSeries that overrides the maximum bar count hint for
+ * indicator caching.
+ * <p>
+ * This wrapper is used during performance tuning to test the impact of
+ * different maximum bar count hints on performance and memory usage. It
+ * delegates all BarSeries operations to the underlying series but overrides
+ * {@link #getMaximumBarCount()} to return the specified hint.
+ * <p>
+ * The maximum bar count hint cannot be changed after construction
+ * (setMaximumBarCount throws UnsupportedOperationException) since this is a
+ * hint-only override for benchmarking purposes.
+ */
 final class MaxBarCountHintSeries implements BarSeries {
 
     private static final long serialVersionUID = 4398573823756330718L;
