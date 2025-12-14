@@ -25,6 +25,7 @@ package ta4jexamples.charting.annotation;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
 
     private final Map<Integer, BarLabel> labelsByIndex;
     private final List<BarLabel> labels;
+    private final List<BarLabel> unmodifiableLabels;
 
     public BarSeriesLabelIndicator(final BarSeries series, final List<BarLabel> labels) {
         super(Objects.requireNonNull(series, "series"));
@@ -72,6 +74,7 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(BarLabel::barIndex))
                 .toList();
+        this.unmodifiableLabels = Collections.unmodifiableList(this.labels);
         this.labelsByIndex = this.labels.stream()
                 .collect(Collectors.toUnmodifiableMap(BarLabel::barIndex, label -> label, (left, right) -> right));
     }
@@ -91,6 +94,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
      * @return ordered, immutable label list
      */
     public List<BarLabel> labels() {
-        return labels;
+        return unmodifiableLabels;
     }
 }
