@@ -57,6 +57,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -122,6 +123,7 @@ public class BacktestPerformanceTuningHarness {
     static final double DEFAULT_NONLINEAR_SLOWDOWN_RATIO = 1.25d;
 
     static final String HARNESS_RESULT_PREFIX = "HARNESS_RESULT: ";
+    static final String RECOMMENDED_SETTINGS_PREFIX = "RECOMMENDED_SETTINGS: ";
 
     static final Gson GSON = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter()).create();
 
@@ -237,6 +239,7 @@ public class BacktestPerformanceTuningHarness {
         LOG.info("Tuning plan: {}", plan.describe());
         LOG.info("Non-linear thresholds: {}", thresholds.describe());
 
+        List<VariantTuningResult> variantResults = new ArrayList<>(plan.variants().size());
         for (SeriesVariant variant : plan.variants()) {
             BarSeries series = variant.apply(baseSeries);
             series = applyMaximumBarCountHint(series, variant.maximumBarCountHint());
@@ -245,6 +248,7 @@ public class BacktestPerformanceTuningHarness {
 
             RunResult lastLinear = null;
             RunResult previous = null;
+            RunResult firstNonLinear = null;
             for (int strategyCount : plan.strategyCounts()) {
                 RunOnceConfig runConfig = new RunOnceConfig(strategyCount, variant.barCount(),
                         variant.maximumBarCountHint(), plan.executionMode(), plan.topK(), plan.progress());
@@ -252,6 +256,7 @@ public class BacktestPerformanceTuningHarness {
                 RunResult current = outcome.runResult();
 
                 if (previous != null && isNonLinear(previous, current, thresholds)) {
+                    firstNonLinear = current;
                     LOG.info("Non-linear behavior detected at strategies={} (previousLinearStrategies={})",
                             current.strategyCount(), lastLinear != null ? lastLinear.strategyCount() : null);
                     break;
@@ -270,7 +275,83 @@ public class BacktestPerformanceTuningHarness {
             } else {
                 LOG.info("Sweet spot (last linear run): {}", lastLinear.describeSweetSpot());
             }
+
+            variantResults.add(new VariantTuningResult(variant, lastLinear, firstNonLinear));
         }
+
+        logRecommendedSettings(cli, plan, thresholds, variantResults);
+    }
+
+    private static void logRecommendedSettings(HarnessCli cli, TunePlan plan, Thresholds thresholds,
+            List<VariantTuningResult> results) {
+        long heapMax = Runtime.getRuntime().maxMemory();
+        LOG.info("=== Recommended settings (heapMax={}, dataset={}) ===", formatBytes(heapMax), cli.ohlcResourceFile);
+        LOG.info("Non-linear definition: {}", thresholds.describe());
+
+        RunResult best = selectBestRecommendation(results);
+        if (best == null) {
+            LOG.info(RECOMMENDED_SETTINGS_PREFIX + "No recommendation available (no successful linear runs).");
+            return;
+        }
+
+        LOG.info(RECOMMENDED_SETTINGS_PREFIX + "BEST {}", best.describeSweetSpot());
+        LOG.info(RECOMMENDED_SETTINGS_PREFIX + "BEST CLI {}", buildRunOnceArgs(cli, plan, best));
+
+        for (VariantTuningResult result : results) {
+            if (result.lastLinear() == null) {
+                continue;
+            }
+            String label = result.variant().describeLabel();
+            String transition = result.firstNonLinear() == null ? "no non-linear detected up to max tested"
+                    : "non-linear at strategies=" + result.firstNonLinear().strategyCount();
+
+            LOG.info(RECOMMENDED_SETTINGS_PREFIX + "{} strategies<={} ({}) | {}", label,
+                    result.lastLinear().strategyCount(), transition, buildRunOnceArgs(cli, plan, result.lastLinear()));
+        }
+
+        LOG.info(RECOMMENDED_SETTINGS_PREFIX
+                + "If you hit 'no non-linear detected', increase --tuneStrategyMax to probe further.");
+    }
+
+    static RunResult selectBestRecommendation(List<VariantTuningResult> results) {
+        if (results == null || results.isEmpty()) {
+            return null;
+        }
+        return results.stream()
+                .map(VariantTuningResult::lastLinear)
+                .filter(Objects::nonNull)
+                .max(Comparator.comparingLong(RunResult::workUnits)
+                        .thenComparingInt(RunResult::strategyCount)
+                        .thenComparingInt(RunResult::barCount)
+                        .thenComparingInt(RunResult::maximumBarCountHintEffective))
+                .orElse(null);
+    }
+
+    private static String buildRunOnceArgs(HarnessCli cli, TunePlan plan, RunResult recommendation) {
+        StringJoiner args = new StringJoiner(" ");
+        args.add("--dataset");
+        args.add(cli.ohlcResourceFile);
+        args.add("--strategies");
+        args.add(Integer.toString(recommendation.strategyCount()));
+
+        if (recommendation.barCountRequested() > 0) {
+            args.add("--barCount");
+            args.add(Integer.toString(recommendation.barCountRequested()));
+        }
+        if (recommendation.maximumBarCountHintRequested() > 0) {
+            args.add("--maxBarCountHint");
+            args.add(Integer.toString(recommendation.maximumBarCountHintRequested()));
+        }
+
+        args.add("--executionMode");
+        args.add(plan.executionMode() == ExecutionMode.KEEP_TOP_K ? "topK" : "full");
+
+        if (plan.executionMode() == ExecutionMode.KEEP_TOP_K) {
+            args.add("--topK");
+            args.add(Integer.toString(plan.topK()));
+        }
+
+        return args.toString();
     }
 
     private static void runTuneAcrossHeaps(HarnessCli cli) throws Exception {
@@ -596,12 +677,21 @@ record SeriesVariant(int barCount, int maximumBarCountHint) {
         return BacktestPerformanceTuningHarness.sliceToLastBars(baseSeries, barCount);
     }
 
+    String describeLabel() {
+        return String.format(Locale.ROOT, "barCount=%s, maxBarCountHint=%s",
+                barCount <= 0 ? "full" : Integer.toString(barCount),
+                maximumBarCountHint <= 0 ? "default" : Integer.toString(maximumBarCountHint));
+    }
+
     String describe(BarSeries series) {
         return String.format(Locale.ROOT, "{barCount=%s, maxBarCountHint=%s, effectiveBars=%d}",
                 barCount <= 0 ? "full" : Integer.toString(barCount),
                 maximumBarCountHint <= 0 ? "default" : Integer.toString(maximumBarCountHint),
                 series.getEndIndex() - series.getBeginIndex() + 1);
     }
+}
+
+record VariantTuningResult(SeriesVariant variant, RunResult lastLinear, RunResult firstNonLinear) {
 }
 
 record BacktestRuntimeStats(Duration overallRuntime, Duration minStrategyRuntime, Duration maxStrategyRuntime,

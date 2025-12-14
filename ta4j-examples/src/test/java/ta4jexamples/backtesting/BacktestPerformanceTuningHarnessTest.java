@@ -127,6 +127,18 @@ class BacktestPerformanceTuningHarnessTest {
                 "Runs that slow down beyond the threshold should be flagged as non-linear");
     }
 
+    @Test
+    void selectBestRecommendationPrefersHighestWorkUnits() {
+        RunResult smaller = sampleRun(1_000L, Duration.ofSeconds(10), Duration.ofSeconds(1));
+        RunResult larger = sampleRun(5_000L, Duration.ofSeconds(20), Duration.ofSeconds(2));
+
+        List<VariantTuningResult> results = List.of(new VariantTuningResult(new SeriesVariant(500, 0), smaller, null),
+                new VariantTuningResult(new SeriesVariant(2000, 0), larger, null));
+
+        assertEquals(larger, BacktestPerformanceTuningHarness.selectBestRecommendation(results),
+                "Best recommendation should be the last linear run with highest work units");
+    }
+
     private RunResult sampleRun(long workUnits, Duration runtime, Duration gcTime) {
         BacktestRuntimeStats runtimeStats = new BacktestRuntimeStats(runtime, Duration.ZERO, Duration.ZERO,
                 Duration.ZERO, Duration.ZERO, "{}");
