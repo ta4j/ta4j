@@ -256,6 +256,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     return lastBarCachedResult;
                 }
 
+                // Check write lock BEFORE lastBarComputationInProgress to handle recursive
+                // calls from calculate() while holding the cache write lock. In this case,
+                // we must bypass caching to avoid advancing highestResultIndex while the
+                // main cache doesn't have the value stored.
+                if (cache.isWriteLockedByCurrentThread()) {
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+
                 if (!lastBarComputationInProgress) {
                     lastBarComputationInProgress = true;
                     lastBarComputationIndex = index;
@@ -264,14 +276,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
                     snapshotInvalidationCount = lastBarCacheInvalidationCount;
-                    break;
-                }
-
-                if (cache.isWriteLockedByCurrentThread()) {
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
-                    snapshotInvalidationCount = -1;
                     break;
                 }
 
@@ -303,7 +307,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         if (!ownsComputation) {
-            updateHighestResultIndex(index);
+            // snapshotInvalidationCount == -1 signals that caching should be skipped
+            // (e.g., recursive call while holding cache write lock, or thread
+            // interrupted). In these cases, do not update highestResultIndex to avoid
+            // creating a stale state where the index tracker is ahead of actual cached
+            // values.
+            if (snapshotInvalidationCount != -1) {
+                updateHighestResultIndex(index);
+            }
             return computed;
         }
 

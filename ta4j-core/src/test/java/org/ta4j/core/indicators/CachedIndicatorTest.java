@@ -777,6 +777,31 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
+    @Test
+    public void highestResultIndexNotAdvancedWhenLastBarAccessedRecursivelyWhileHoldingWriteLock() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        // Indicator that reads endIndex (last bar) from within calculate(endIndex-1)
+        // while holding the cache write lock
+        RecursiveLastBarAccessIndicator indicator = new RecursiveLastBarAccessIndicator(barSeries, endIndex);
+
+        // Access a non-last bar to trigger the recursive last-bar access
+        Num value = indicator.getValue(endIndex - 1);
+        assertNumEquals(endIndex - 1, value);
+
+        // The recursive last-bar access should NOT advance highestResultIndex because
+        // snapshotInvalidationCount is -1 when the write lock is already held.
+        // Only the outer calculation (endIndex - 1) should advance it.
+        assertEquals("highestResultIndex should only reflect the outer calculation, not the recursive last-bar access",
+                endIndex - 1, indicator.getHighestResultIndex());
+
+        // Accessing the last bar normally should now update highestResultIndex
+        indicator.getValue(endIndex);
+        assertEquals("highestResultIndex should be updated after normal last-bar access", endIndex,
+                indicator.getHighestResultIndex());
+    }
+
     private final static class CountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
@@ -1014,6 +1039,36 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         @Override
         protected Num calculate(int index) {
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getHighestResultIndex() {
+            return highestResultIndex;
+        }
+    }
+
+    private final static class RecursiveLastBarAccessIndicator extends CachedIndicator<Num> {
+
+        private final int endIndex;
+
+        private RecursiveLastBarAccessIndicator(BarSeries series, int endIndex) {
+            super(series);
+            this.endIndex = endIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == endIndex - 1) {
+                // While holding the cache write lock for (endIndex - 1), access the last bar.
+                // This triggers the code path where isWriteLockedByCurrentThread() returns
+                // true, causing snapshotInvalidationCount = -1.
+                getValue(endIndex);
+            }
             return getBarSeries().numFactory().numOf(index);
         }
 
