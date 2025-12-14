@@ -75,10 +75,21 @@ class CachedBuffer<T> {
      * Stamp used for optimistic reads.
      *
      * <p>
-     * Writers (write-lock holders) flip this value from even-&gt;odd when they
-     * enter the outermost write-locked section, and from odd-&gt;even when leaving.
-     * Readers can speculatively read the cache without locking and validate the
-     * read by checking the stamp did not change.
+     * This is a <em>sequence counter</em> (seqlock-style) used to validate
+     * lock-free cache hits. Writers flip it from even-&gt;odd when entering the
+     * <em>outermost</em> write-locked section and from odd-&gt;even when the
+     * protected state is stable again.
+     *
+     * <p>
+     * Important: the odd-&gt;even transition is performed <em>while still
+     * holding</em> the outermost write lock, immediately before {@code unlock()}.
+     * This ensures that every other writer that successfully acquires the write
+     * lock observes an even stamp on entry (preventing consecutive writers from
+     * ever running with an even stamp).
+     *
+     * <p>
+     * Readers speculatively read the cache without locking and validate the read by
+     * checking the stamp did not change.
      */
     private volatile long writeStamp;
 
@@ -175,7 +186,7 @@ class CachedBuffer<T> {
             T result = (T) cached;
             return result;
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -217,7 +228,7 @@ class CachedBuffer<T> {
         try {
             store(index, value);
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -245,7 +256,7 @@ class CachedBuffer<T> {
                 store(i, value);
             }
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -259,7 +270,7 @@ class CachedBuffer<T> {
         try {
             clearInternal();
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -288,7 +299,7 @@ class CachedBuffer<T> {
             }
             highestResultIndex = index - 1;
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -327,7 +338,7 @@ class CachedBuffer<T> {
         }
     }
 
-    private void onWriteLockReleased() {
+    private void onBeforeWriteLockReleased() {
         if (lock.getWriteHoldCount() == 1) {
             writeStamp++;
         }
