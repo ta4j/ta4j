@@ -48,22 +48,22 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 /**
- * Regression coverage for trendline + swing point indicators on realistic data.
+ * Analysis coverage for trendline + swing point indicators on realistic data.
  */
-class TrendLineAndSwingPointRegressionTest {
+class TrendLineAndSwingPointAnalysisTest {
 
     @Test
-    void regressionHarnessVerifiesHeadroomAndRendersOverlays() {
-        TrendLineAndSwingPointAnalysis regression = new TrendLineAndSwingPointAnalysis();
-        regression.verifyDefaultCapsHeadroomForBundledDatasets();
+    void analysisHarnessVerifiesHeadroomAndRendersOverlays() {
+        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
+        analysis.verifyDefaultCapsHeadroomForBundledDatasets();
 
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
         assertNotNull(series, "Example bar series should not be null");
         assertFalse(series.isEmpty(), "Example bar series should not be empty");
 
         int lookback = Math.min(series.getBarCount(), TrendLineAndSwingPointAnalysis.DEFAULT_TRENDLINE_LOOKBACK);
-        TrendLineAndSwingPointAnalysis.RegressionChartArtifacts artifacts = regression.buildRegressionChartArtifacts(
-                series, lookback, TrendLineAndSwingPointAnalysis.DEFAULT_SURROUNDING_BARS);
+        TrendLineAndSwingPointAnalysis.AnalysisChartArtifacts artifacts = analysis.buildAnalysisChartArtifacts(series,
+                lookback, TrendLineAndSwingPointAnalysis.DEFAULT_SURROUNDING_BARS);
 
         int endIndex = series.getEndIndex();
         TrendLineAndSwingPointAnalysis.TrendLineVariants trendLines = artifacts.trendLines();

@@ -77,7 +77,7 @@ public class TopStrategiesExampleBacktest {
     private static final int MOMENTUM_TIMEFRAME_MIN = 100;
     private static final int MOMENTUM_TIMEFRAME_MAX = 400;
 
-    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 300;
+    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 200;
     private static final int OVERBOUGHT_THRESHOLD_MIN = 0;
     private static final int OVERBOUGHT_THRESHOLD_MAX = 1300;
 

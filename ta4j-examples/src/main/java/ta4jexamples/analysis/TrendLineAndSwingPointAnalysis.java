@@ -95,7 +95,7 @@ public class TrendLineAndSwingPointAnalysis {
     static final int HEADROOM_CANDIDATE_PAIR_LIMIT = AbstractTrendLineIndicator.DEFAULT_MAX_CANDIDATE_PAIRS / 2;
 
     static final String DEFAULT_CHART_OUTPUT_DIRECTORY = "temp/charts";
-    static final String DEFAULT_CHART_FILE_NAME = "trendline-swingpoint-regression";
+    static final String DEFAULT_CHART_FILE_NAME = "trendline-swingpoint-analysis";
 
     private static final Logger LOG = LogManager.getLogger(TrendLineAndSwingPointAnalysis.class);
 
@@ -137,13 +137,13 @@ public class TrendLineAndSwingPointAnalysis {
 
     public static void main(String[] args) {
         Config config = Config.fromArgs(args);
-        TrendLineAndSwingPointAnalysis regression = new TrendLineAndSwingPointAnalysis();
-        regression.verifyDefaultCapsHeadroomForBundledDatasets();
+        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
+        analysis.verifyDefaultCapsHeadroomForBundledDatasets();
 
-        BarSeries chartSeries = regression.loadChartSeries(config.chartDatasetResource());
-        RegressionChartArtifacts artifacts = regression.buildRegressionChartArtifacts(chartSeries,
+        BarSeries chartSeries = analysis.loadChartSeries(config.chartDatasetResource());
+        AnalysisChartArtifacts artifacts = analysis.buildAnalysisChartArtifacts(chartSeries,
                 Math.min(chartSeries.getBarCount(), config.trendLineLookback()), config.surroundingBars());
-        regression.renderRegressionChart(artifacts, config);
+        analysis.renderAnalysisChart(artifacts, config);
     }
 
     void verifyDefaultCapsHeadroomForBundledDatasets() {
@@ -353,18 +353,18 @@ public class TrendLineAndSwingPointAnalysis {
             SwingPointMarkerIndicator zigzagLows, SwingPointMarkerIndicator zigzagHighs) {
     }
 
-    record RegressionChartArtifacts(BarSeries series, TrendLineVariants trendLines, SwingMarkerVariants swings,
+    record AnalysisChartArtifacts(BarSeries series, TrendLineVariants trendLines, SwingMarkerVariants swings,
             ChartPlan plan) {
     }
 
-    RegressionChartArtifacts buildRegressionChartArtifacts(BarSeries series, int lookback, int surroundingBars) {
+    AnalysisChartArtifacts buildAnalysisChartArtifacts(BarSeries series, int lookback, int surroundingBars) {
         Objects.requireNonNull(series, "Series cannot be null");
         requireFalse(series.isEmpty(), "Series cannot be empty");
 
         TrendLineVariants trendLines = buildTrendLines(series, lookback, surroundingBars);
         SwingMarkerVariants swings = buildSwingMarkers(series);
         ChartPlan plan = buildChartPlan(series, trendLines, swings);
-        return new RegressionChartArtifacts(series, trendLines, swings, plan);
+        return new AnalysisChartArtifacts(series, trendLines, swings, plan);
     }
 
     private TrendLineVariants buildTrendLines(BarSeries series, int lookback, int surroundingBars) {
@@ -466,7 +466,7 @@ public class TrendLineAndSwingPointAnalysis {
                 .toPlan();
     }
 
-    private void renderRegressionChart(RegressionChartArtifacts artifacts, Config config) {
+    private void renderAnalysisChart(AnalysisChartArtifacts artifacts, Config config) {
         int endIndex = artifacts.series().getEndIndex();
 
         TrendLineVariants trendLines = artifacts.trendLines();
