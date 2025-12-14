@@ -29,6 +29,10 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
@@ -48,10 +52,10 @@ import org.ta4j.core.num.Num;
  * <li>NONE: no squeeze</li>
  * </ul>
  * The indicator value itself is the squeeze momentum histogram from the
- * original LazyBear implementation: a linear regression of the detrended close
- * price ({@code close - SMA(close)}) over {@code barCount}. Compression state
- * can be queried via {@link #getSqueezeLevel(int)} or the convenience
- * {@link #isInSqueeze(int)}.
+ * original LazyBear implementation: a linear regression of the detrended price
+ * series ({@code close - avg(avg(highest(high), lowest(low)), sma(close))})
+ * over {@code barCount}. Compression state can be queried via
+ * {@link #getSqueezeLevel(int)} or the convenience {@link #isInSqueeze(int)}.
  *
  * <p>
  * To mirror TradingView defaults this implementation uses SMA-based Bollinger
@@ -110,7 +114,13 @@ public class SqueezeProIndicator extends CachedIndicator<Num> {
         this.priceSma = new SMAIndicator(closePrice, barCount);
         this.priceStdDev = new StandardDeviationIndicator(closePrice, barCount);
         this.trueRangeSma = new SMAIndicator(new TRIndicator(series), barCount);
-        this.detrendedPrice = NumericIndicator.of(closePrice).minus(priceSma);
+
+        Indicator<Num> highestHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        Indicator<Num> lowestLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        Indicator<Num> averageHighLow = NumericIndicator.of(highestHigh).plus(lowestLow).dividedBy(2);
+        Indicator<Num> averageHighLowAndSma = NumericIndicator.of(averageHighLow).plus(priceSma).dividedBy(2);
+        this.detrendedPrice = NumericIndicator.of(closePrice).minus(averageHighLowAndSma);
+
         this.momentum = new SimpleLinearRegressionIndicator(detrendedPrice, barCount);
         this.barCount = barCount;
     }
@@ -213,6 +223,6 @@ public class SqueezeProIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(0, barCount - 1);
     }
 }
