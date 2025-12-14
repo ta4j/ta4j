@@ -777,7 +777,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class CountingIndicator extends CachedIndicator<Num> {
+    private final static class CountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
 
@@ -788,7 +788,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         protected Num calculate(int index) {
             calculations.incrementAndGet();
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -805,7 +805,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class ClosePriceCountingIndicator extends CachedIndicator<Num> {
+    private final static class ClosePriceCountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
 
@@ -829,7 +829,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class FailingIndicator extends CachedIndicator<Num> {
+    private final static class FailingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
         private final AtomicBoolean failFirst = new AtomicBoolean(true);
@@ -846,7 +846,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == failIndex && failFirst.compareAndSet(true, false)) {
                 throw new RuntimeException("boom");
             }
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -867,7 +867,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class BlockingLastBarIndicator extends CachedIndicator<Num> {
+    private final static class BlockingLastBarIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
         private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
@@ -891,7 +891,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                     Thread.currentThread().interrupt();
                 }
             }
-            return numFactory.numOf(count);
+            return getBarSeries().numFactory().numOf(count);
         }
 
         @Override
@@ -908,7 +908,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class WriteLockedLastBarIndicator extends CachedIndicator<Num> {
+    private final static class WriteLockedLastBarIndicator extends CachedIndicator<Num> {
 
         private final AtomicBoolean writeLockedDuringLastBarRead = new AtomicBoolean();
         private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
@@ -930,7 +930,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                return getValue(0).plus(numFactory.numOf(index));
+                return getValue(0).plus(getBarSeries().numFactory().numOf(index));
             }
 
             if (index == endIndex - 1) {
@@ -943,10 +943,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 }
                 writeLockedDuringLastBarRead.set(getCache().isWriteLockedByCurrentThread());
                 assertNotNull(getValue(endIndex));
-                return numFactory.numOf(index);
+                return getBarSeries().numFactory().numOf(index);
             }
 
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -955,7 +955,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class CountingInvalidatableIndicator extends CachedIndicator<Num> {
+    private final static class CountingInvalidatableIndicator extends CachedIndicator<Num> {
 
         private int calculationCount = 0;
 
@@ -966,7 +966,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         protected Num calculate(int index) {
             calculationCount++;
-            return numFactory.numOf(calculationCount);
+            return getBarSeries().numFactory().numOf(calculationCount);
         }
 
         @Override
@@ -979,7 +979,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class SelfReferencingIndicator extends CachedIndicator<Num> {
+    private final static class SelfReferencingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculationCount = new AtomicInteger();
 
@@ -991,9 +991,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         protected Num calculate(int index) {
             calculationCount.incrementAndGet();
             if (index == 0) {
-                return numFactory.numOf(1);
+                return getBarSeries().numFactory().one();
             }
-            return getValue(index - 1).plus(numFactory.numOf(1));
+            return getValue(index - 1).plus(getBarSeries().numFactory().one());
         }
 
         @Override
@@ -1006,7 +1006,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class TestIndicator extends CachedIndicator<Num> {
+    private final static class TestIndicator extends CachedIndicator<Num> {
 
         private TestIndicator(BarSeries series) {
             super(series);
@@ -1014,7 +1014,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         @Override
         protected Num calculate(int index) {
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -1027,7 +1027,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private static final class BlockingTradesBar implements Bar {
+    private final static class BlockingTradesBar implements Bar {
 
         private final AtomicBoolean blockingEnabled = new AtomicBoolean();
         private final AtomicBoolean blocked = new AtomicBoolean();
