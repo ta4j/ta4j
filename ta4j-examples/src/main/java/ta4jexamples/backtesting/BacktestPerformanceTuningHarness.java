@@ -575,7 +575,7 @@ public class BacktestPerformanceTuningHarness {
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
 
         List<TradingStatement> topStrategies = result.getTopStrategies(topK, netProfitCriterion, expectancyCriterion);
-        LOG.info("=== Top {} Strategies ===", topStrategies.size());
+        LOG.debug("=== Top {} Strategies ===", topStrategies.size());
 
         for (int i = 0; i < topStrategies.size(); i++) {
             TradingStatement statement = topStrategies.get(i);
@@ -586,10 +586,10 @@ public class BacktestPerformanceTuningHarness {
             Num expectancy = statement.getCriterionScore(expectancyCriterion)
                     .orElseGet(() -> expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord()));
 
-            LOG.info("{}. {}", (i + 1), strategy.getName());
-            LOG.info("    Net Profit: {}", netProfit);
-            LOG.info("    Expectancy: {}", expectancy);
-            LOG.info("    Positions:  {}", statement.getTradingRecord().getPositionCount());
+            LOG.debug("{}. {}", (i + 1), strategy.getName());
+            LOG.debug("    Net Profit: {}", netProfit);
+            LOG.debug("    Expectancy: {}", expectancy);
+            LOG.debug("    Positions:  {}", statement.getTradingRecord().getPositionCount());
         }
     }
 
