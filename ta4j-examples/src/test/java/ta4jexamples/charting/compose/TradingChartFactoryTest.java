@@ -79,6 +79,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.AnalysisCriterionIndicator;
 import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -308,6 +311,47 @@ class TradingChartFactoryTest {
         XYPlot plot = (XYPlot) chart.getPlot();
         Collection<?> domainMarkers = plot.getDomainMarkers(Layer.BACKGROUND);
         assertFalse(domainMarkers.isEmpty(), "Should have marker for open position");
+    }
+
+    @Test
+    void testBarSeriesLabelOverlayAddsAnnotations() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+
+        List<BarLabel> labels = List.of(new BarLabel(3, series.getBar(3).getClosePrice(), "", LabelPlacement.CENTER),
+                new BarLabel(5, series.getBar(5).getClosePrice(), "1", LabelPlacement.ABOVE),
+                new BarLabel(8, series.getBar(8).getClosePrice(), "2", LabelPlacement.BELOW));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        List<String> annotationTexts = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(annotation -> ((XYTextAnnotation) annotation).getText())
+                .toList();
+
+        assertTrue(annotationTexts.containsAll(List.of("1", "2")), "Wave labels should be attached as annotations");
+        assertFalse(annotationTexts.contains(""), "Blank labels should not be rendered as annotations");
+
+        int labelDatasetIndex = -1;
+        for (int i = 0; i < basePlot.getDatasetCount(); i++) {
+            if (basePlot.getDataset(i) instanceof TimeSeriesCollection collection && collection.getSeriesCount() > 0
+                    && "Labels".equals(collection.getSeriesKey(0).toString())) {
+                labelDatasetIndex = i;
+                break;
+            }
+        }
+        assertTrue(labelDatasetIndex >= 0, "Label dataset should be present on the plot");
+        assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(labelDatasetIndex),
+                "Label dataset should render with the line/shape renderer");
     }
 
     @Test

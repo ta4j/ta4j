@@ -53,6 +53,8 @@ import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.SwingPointMarkerIndicator;
 import org.ta4j.core.num.Num;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.builder.ChartBuilder;
 import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
 
@@ -64,7 +66,6 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.awt.geom.Ellipse2D;
-import java.util.ArrayList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -93,6 +94,7 @@ public final class TradingChartFactory {
             new Color(76, 175, 80) };
     private static final Font TRADE_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
     private static final Font POSITION_LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+    private static final Font OVERLAY_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
     private static final int LABEL_EDGE_BARS = 5;
     private static final ThreadLocal<DecimalFormat> PRICE_FORMAT = ThreadLocal.withInitial(() -> {
         DecimalFormat decimalFormat = new DecimalFormat("#,##0.00###");
@@ -508,7 +510,9 @@ public final class TradingChartFactory {
         boolean connectGaps = overlay.style().connectGaps();
         String label = overlay.label() != null ? overlay.label() : indicator.toString();
         TimeSeriesCollection dataset;
-        if (indicator instanceof SwingPointMarkerIndicator swingMarker) {
+        if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
+            dataset = createBarSeriesLabelDataset(series, labelIndicator, label);
+        } else if (indicator instanceof SwingPointMarkerIndicator swingMarker) {
             dataset = createSwingMarkerDataset(series, swingMarker, label);
         } else {
             dataset = createTimeSeriesDataset(series, indicator, label, connectGaps);
@@ -516,9 +520,14 @@ public final class TradingChartFactory {
         int datasetIndex = plot.getDatasetCount();
         plot.setDataset(datasetIndex, dataset);
 
-        plot.setRenderer(datasetIndex,
-                indicator instanceof SwingPointMarkerIndicator ? createSwingMarkerRenderer(dataset, overlay)
-                        : createStandardOverlayRenderer(dataset, overlay));
+        if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
+            plot.setRenderer(datasetIndex, createBarSeriesLabelRenderer(dataset, overlay));
+            attachBarSeriesLabelAnnotations(plot, series, labelIndicator, overlay);
+        } else if (indicator instanceof SwingPointMarkerIndicator) {
+            plot.setRenderer(datasetIndex, createSwingMarkerRenderer(dataset, overlay));
+        } else {
+            plot.setRenderer(datasetIndex, createStandardOverlayRenderer(dataset, overlay));
+        }
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
         if (axisIndex == 1) {
@@ -560,6 +569,33 @@ public final class TradingChartFactory {
             renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
             renderer.setSeriesLinesVisible(i, connectLines);
         }
+        renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
+        renderer.setDefaultShapesFilled(true);
+        renderer.setUseFillPaint(true);
+        renderer.setUseOutlinePaint(false);
+        return renderer;
+    }
+
+    private XYLineAndShapeRenderer createBarSeriesLabelRenderer(TimeSeriesCollection dataset,
+            ChartBuilder.OverlayDefinition overlay) {
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, true);
+        Color baseColor = overlay.style().color();
+        float opacity = overlay.style().opacity();
+        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                Math.round(opacity * 255));
+        double diameter = Math.max(4.0, overlay.style().lineWidth() * 2.4);
+        Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
+
+        for (int i = 0; i < dataset.getSeriesCount(); i++) {
+            renderer.setSeriesPaint(i, colorWithOpacity);
+            renderer.setSeriesFillPaint(i, colorWithOpacity);
+            renderer.setSeriesShape(i, shape);
+            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+            renderer.setSeriesShapesVisible(i, true);
+            renderer.setSeriesShapesFilled(i, true);
+            renderer.setSeriesLinesVisible(i, true);
+        }
+
         renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         renderer.setDefaultShapesFilled(true);
         renderer.setUseFillPaint(true);
@@ -976,6 +1012,112 @@ public final class TradingChartFactory {
             collection.addSeries(swingSeries);
         }
         return collection;
+    }
+
+    private TimeSeriesCollection createBarSeriesLabelDataset(BarSeries series, BarSeriesLabelIndicator labelIndicator,
+            String seriesName) {
+        TimeSeriesCollection collection = new TimeSeriesCollection();
+        if (series == null || series.isEmpty()) {
+            return collection;
+        }
+
+        List<BarLabel> labels = labelIndicator.labels();
+        if (labels.isEmpty()) {
+            return collection;
+        }
+
+        TimeSeries labelSeries = new TimeSeries(seriesName);
+        for (BarLabel barLabel : labels) {
+            int index = barLabel.barIndex();
+            if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                continue;
+            }
+            Num value = barLabel.yValue();
+            if (value == null || value.isNaN()) {
+                continue;
+            }
+            Date barDate = Date.from(series.getBar(index).getEndTime());
+            labelSeries.add(new Minute(barDate), value.doubleValue());
+        }
+
+        if (labelSeries.getItemCount() > 0) {
+            collection.addSeries(labelSeries);
+        }
+
+        return collection;
+    }
+
+    private void attachBarSeriesLabelAnnotations(XYPlot plot, BarSeries series, BarSeriesLabelIndicator labelIndicator,
+            ChartBuilder.OverlayDefinition overlay) {
+        if (plot == null || series == null || labelIndicator == null) {
+            return;
+        }
+
+        Color baseColor = overlay.style().color();
+        float opacity = overlay.style().opacity();
+        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                Math.round(opacity * 255));
+
+        for (BarLabel label : labelIndicator.labels()) {
+            if (label == null || label.text().isBlank()) {
+                continue;
+            }
+            int index = label.barIndex();
+            if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                continue;
+            }
+            Num yValue = label.yValue();
+            if (yValue == null || yValue.isNaN()) {
+                continue;
+            }
+            double x = series.getBar(index).getEndTime().toEpochMilli();
+            double y = yValue.doubleValue();
+
+            XYTextAnnotation annotation = new XYTextAnnotation(label.text(), x, y);
+            annotation.setFont(OVERLAY_LABEL_FONT);
+            annotation.setPaint(colorWithOpacity);
+            annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
+            annotation.setTextAnchor(resolveBarLabelAnchor(label, series));
+            plot.addAnnotation(annotation);
+        }
+    }
+
+    private TextAnchor resolveBarLabelAnchor(BarLabel label, BarSeries series) {
+        int index = label.barIndex();
+        int begin = series.getBeginIndex();
+        int end = series.getEndIndex();
+        boolean nearStart = index - begin <= LABEL_EDGE_BARS;
+        boolean nearEnd = end - index <= LABEL_EDGE_BARS;
+
+        return switch (label.placement()) {
+        case ABOVE -> {
+            if (nearEnd && !nearStart) {
+                yield TextAnchor.BOTTOM_RIGHT;
+            }
+            if (nearStart && !nearEnd) {
+                yield TextAnchor.BOTTOM_LEFT;
+            }
+            yield TextAnchor.BOTTOM_CENTER;
+        }
+        case BELOW -> {
+            if (nearEnd && !nearStart) {
+                yield TextAnchor.TOP_RIGHT;
+            }
+            if (nearStart && !nearEnd) {
+                yield TextAnchor.TOP_LEFT;
+            }
+            yield TextAnchor.TOP_CENTER;
+        }
+        case CENTER -> {
+            if (nearEnd && !nearStart) {
+                yield TextAnchor.CENTER_RIGHT;
+            }
+            if (nearStart && !nearEnd) {
+                yield TextAnchor.CENTER_LEFT;
+            }
+            yield TextAnchor.CENTER;
+        }
+        };
     }
 
     private void configureDualAxisPlot(XYPlot plot, Duration duration) {
