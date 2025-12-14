@@ -77,7 +77,7 @@ public class TopStrategiesExampleBacktest {
     private static final int MOMENTUM_TIMEFRAME_MIN = 100;
     private static final int MOMENTUM_TIMEFRAME_MAX = 400;
 
-    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 200;
+    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 150;
     private static final int OVERBOUGHT_THRESHOLD_MIN = 0;
     private static final int OVERBOUGHT_THRESHOLD_MAX = 1300;
 
@@ -108,7 +108,7 @@ public class TopStrategiesExampleBacktest {
         // Create multiple strategies to test
         List<Strategy> strategies = createStrategies(series);
 
-        LOG.debug("Testing {} strategies...", strategies.size());
+        LOG.debug("Testing {} strategies on series with {} bars...", strategies.size(), series.getBarCount());
 
         // Run backtest on all strategies with progress logging to this class's logger
         BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
