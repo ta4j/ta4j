@@ -7,21 +7,12 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="ta4jexamples.charting" level="off" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="ta4jexamples.datasources" level="off" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="ta4jexamples.analysis" level="off" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="ta4jexamples.rules" level="off" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="ta4jexamples.indicators" level="off" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
+        <Logger name="ta4jexamples.charting" level="off" additivity="false"/>
+        <Logger name="ta4jexamples.datasources" level="off" additivity="false"/>
+        <Logger name="ta4jexamples.analysis" level="off" additivity="false"/>
+        <Logger name="ta4jexamples.rules" level="off" additivity="false"/>
+        <Logger name="ta4jexamples.indicators" level="off" additivity="false"/>
+        <Logger name="ta4jexamples.backtesting" level="off" additivity="false"/>
         <Root level="warn">
             <AppenderRef ref="Console"/>
         </Root>
