@@ -8,16 +8,11 @@
     - **Last-bar mutation caching**: Repeated calls to `getValue(endIndex)` on an unchanged in-progress bar now reuse the cached result. The cache automatically invalidates when the bar is mutated (via `addTrade()` or `addPrice()`) or replaced (via `addBar(..., true)`).
     - **Deadlock avoidance**: Fixed lock-order deadlock risk between last-bar caching and the main cache by ensuring last-bar computations and invalidation never run while holding locks needed by cache writes.
     - **Iterative prefill under single lock**: `RecursiveCachedIndicator` now uses `CachedBuffer.prefillUntil()` to compute gap values iteratively under one write lock, avoiding repeated lock re-entry and series lookups.
-- **ta4j-examples runners and regression coverage**: Added main-source runners (`CachedIndicatorBenchmark`, `RuleNameBenchmark`, `TrendLineAndSwingPointRegression`) and a robust regression test (`TrendLineAndSwingPointRegressionTest`) so full builds stay quiet while still validating trendlines/swing points and enabling chart generation via `main`.
+- **ta4j-examples runners and regression coverage**: Added main-source runners (`CachedIndicatorBenchmark`, `RuleNameBenchmark`, `TrendLineAndSwingPointAnalysis`) and a robust regression test (`TrendLineAndSwingPointAnalysisTest`) so full builds stay quiet while still validating trendlines/swing points and enabling chart generation via `main`.
+- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 
 ### Removed
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
-
-### Changed
-- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
-
-### Fixed
-- Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
 
 ### Added
 - **Trendline and swing point analysis suite**: Added a comprehensive set of indicators for automated trendline drawing and swing point detection. These indicators solve the common problem of manually identifying support/resistance levels and drawing trendlines by automating the process while maintaining the same logic traders use when drawing lines manually. Useful for breakout strategies, trend-following systems, and Elliott Wave analysis.
@@ -40,6 +35,7 @@
 - **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.
 - **Explicit rule serialization APIs**: Added `Rule#toJson(BarSeries)`/`Rule#fromJson(BarSeries, String)` so serialization happens only when explicitly requested. Custom names are preserved via `__customName` metadata, independent of `getName()`.
 - **Rule name visibility**: Made rule names volatile and added regression coverage so custom names set on one thread are always visible on others, preventing fallback to expensive default-name serialization under concurrency.
+- Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
 
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
