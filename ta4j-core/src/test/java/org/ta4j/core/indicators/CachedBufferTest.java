@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
@@ -59,6 +60,27 @@ public class CachedBufferTest {
 
         assertEquals(Integer.valueOf(10), result);
         assertEquals(1, computations.get());
+    }
+
+    @Test
+    public void testWriteStampFlipsDuringWriteLockAndReturnsEvenAfterwards() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        long initialStamp = buffer.getWriteStamp();
+        assertEquals("writeStamp should start even", 0L, initialStamp & 1L);
+
+        AtomicLong stampDuringWrite = new AtomicLong(Long.MIN_VALUE);
+        buffer.prefillUntil(0, 1, i -> {
+            stampDuringWrite.set(buffer.getWriteStamp());
+            return i;
+        });
+
+        long capturedStamp = stampDuringWrite.get();
+        assertEquals("writeStamp should be odd while write lock held", 1L, capturedStamp & 1L);
+
+        long finalStamp = buffer.getWriteStamp();
+        assertEquals("writeStamp should be even after write completes", 0L, finalStamp & 1L);
+        assertEquals("Outer write lock should flip stamp twice", initialStamp + 2L, finalStamp);
     }
 
     @Test

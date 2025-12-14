@@ -292,6 +292,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void lastBarComputationDoesNotDeadlockWhenCacheWriteLockHeldAndAnotherLastBarComputationIsInFlight()
+            throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        WriteLockedLastBarIndicator indicator = new WriteLockedLastBarIndicator(barSeries, endIndex);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Num> writeLockedFuture = executor.submit(() -> indicator.getValue(endIndex - 1));
+            assertTrue("Write-locked calculation did not start in time",
+                    indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            Future<Num> lastBarFuture = executor.submit(() -> indicator.getValue(endIndex));
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            assertNumEquals(endIndex - 1, writeLockedFuture.get(30, TimeUnit.SECONDS));
+            assertNumEquals(endIndex, lastBarFuture.get(30, TimeUnit.SECONDS));
+            assertTrue("Expected last-bar read to occur while holding cache write lock",
+                    indicator.writeLockedDuringLastBarRead.get());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
     public void lastBarCacheInvalidatesWhenLastBarIsReplacedDuringRead() throws Exception {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
@@ -877,6 +905,53 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private int getHighestResultIndex() {
             return highestResultIndex;
+        }
+    }
+
+    private final class WriteLockedLastBarIndicator extends CachedIndicator<Num> {
+
+        private final AtomicBoolean writeLockedDuringLastBarRead = new AtomicBoolean();
+        private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
+        private final CountDownLatch writeLockedCalculationStarted = new CountDownLatch(1);
+        private final int endIndex;
+
+        private WriteLockedLastBarIndicator(BarSeries series, int endIndex) {
+            super(series);
+            this.endIndex = endIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == endIndex) {
+                lastBarCalculationStarted.countDown();
+                try {
+                    assertTrue("Write-locked calculation did not start in time",
+                            writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return getValue(0).plus(numFactory.numOf(index));
+            }
+
+            if (index == endIndex - 1) {
+                writeLockedCalculationStarted.countDown();
+                try {
+                    assertTrue("Last-bar calculation did not start in time",
+                            lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                writeLockedDuringLastBarRead.set(getCache().isWriteLockedByCurrentThread());
+                assertNotNull(getValue(endIndex));
+                return numFactory.numOf(index);
+            }
+
+            return numFactory.numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 

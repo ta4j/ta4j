@@ -332,6 +332,10 @@ class CachedBuffer<T> {
         return lock.isWriteLockedByCurrentThread();
     }
 
+    long getWriteStamp() {
+        return writeStamp;
+    }
+
     private void onWriteLockAcquired() {
         if (lock.getWriteHoldCount() == 1) {
             writeStamp++;
