@@ -100,8 +100,8 @@ class TrendLineAndSwingPointRegressionTest {
         assertTrue(segment.firstIndex < segment.secondIndex, "Trendline anchors should be ordered in time");
         assertTrue(segment.windowStart <= segment.firstIndex && segment.firstIndex <= segment.windowEnd,
                 "First anchor should be inside the evaluation window");
-        assertTrue(segment.windowStart <= segment.secondIndex && segment.secondIndex <= segment.windowEnd,
-                "Second anchor should be inside the evaluation window");
+        assertTrue(segment.secondIndex <= segment.windowEnd,
+                "Second anchor should be before or at the end of the evaluation window");
         assertEquals(endIndex, segment.windowEnd, "Trendline window should be anchored at endIndex");
 
         List<Integer> swingIndexes = trendLine.getSwingPointIndexes();
