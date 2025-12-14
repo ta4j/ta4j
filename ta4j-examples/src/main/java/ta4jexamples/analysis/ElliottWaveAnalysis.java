@@ -69,13 +69,13 @@ public class ElliottWaveAnalysis {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysis.class);
 
-    private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+    private static final String DAILY_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
 
     private static final ElliottDegree DEGREE = ElliottDegree.PRIMARY;
     private static final double FIB_TOLERANCE = 0.25;
 
     public static void main(String[] args) {
-        BarSeries series = loadOssifiedSeries();
+        BarSeries series = loadSeries();
         Objects.requireNonNull(series, "Bar series was null");
         if (series.isEmpty()) {
             LOG.error("Series is empty, nothing to analyse.");
@@ -128,7 +128,7 @@ public class ElliottWaveAnalysis {
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         ChartPlan plan = chartWorkflow.builder()
-                .withTitle("Elliott Wave (" + DEGREE + ") - BTC-USD (Coinbase, ossified)")
+                .withTitle("Elliott Wave (" + DEGREE + ") - BTC-USD (Coinbase, Daily)")
                 .withSeries(series)
                 .withIndicatorOverlay(channelUpper)
                 .withLineColor(new Color(0xF05454))
@@ -171,11 +171,11 @@ public class ElliottWaveAnalysis {
         chartWorkflow.save(plan, "temp/charts", "elliott-wave-btc-usd-primary");
     }
 
-    private static BarSeries loadOssifiedSeries() {
+    private static BarSeries loadSeries() {
         try (InputStream stream = ElliottWaveAnalysis.class.getClassLoader()
-                .getResourceAsStream(OSSIFIED_OHLCV_RESOURCE)) {
+                .getResourceAsStream(DAILY_OHLCV_RESOURCE)) {
             if (stream == null) {
-                LOG.error("Missing resource: {}", OSSIFIED_OHLCV_RESOURCE);
+                LOG.error("Missing resource: {}", DAILY_OHLCV_RESOURCE);
                 return null;
             }
             BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
@@ -183,7 +183,7 @@ public class ElliottWaveAnalysis {
                 return null;
             }
 
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
+            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (daily)").build();
             for (int i = 0; i < loaded.getBarCount(); i++) {
                 series.addBar(loaded.getBar(i));
             }
