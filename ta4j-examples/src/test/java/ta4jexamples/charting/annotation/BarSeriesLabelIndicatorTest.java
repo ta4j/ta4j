@@ -372,6 +372,82 @@ class BarSeriesLabelIndicatorTest {
     }
 
     @Test
+    void testLabelsProtectsInternalRepresentation() {
+        // Create indicator with multiple labels
+        List<BarLabel> originalLabels = new ArrayList<>();
+        originalLabels.add(new BarLabel(2, numFactory.numOf(102.0), "Label 2", LabelPlacement.CENTER));
+        originalLabels.add(new BarLabel(5, numFactory.numOf(105.0), "Label 5", LabelPlacement.ABOVE));
+        originalLabels.add(new BarLabel(8, numFactory.numOf(108.0), "Label 8", LabelPlacement.BELOW));
+
+        BarSeriesLabelIndicator indicator = new BarSeriesLabelIndicator(series, originalLabels);
+
+        // Get the list and verify initial state
+        List<BarLabel> returnedList1 = indicator.labels();
+        assertEquals(3, returnedList1.size());
+        assertEquals(2, returnedList1.get(0).barIndex());
+        assertEquals(5, returnedList1.get(1).barIndex());
+        assertEquals(8, returnedList1.get(2).barIndex());
+
+        // Verify getValue() works correctly
+        assertEquals(102.0, indicator.getValue(2).doubleValue(), 0.001);
+        assertEquals(105.0, indicator.getValue(5).doubleValue(), 0.001);
+        assertEquals(108.0, indicator.getValue(8).doubleValue(), 0.001);
+
+        // Attempt to modify the returned list - all should fail
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.add(new BarLabel(10, numFactory.numOf(110.0), "New Label", LabelPlacement.CENTER));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.add(0, new BarLabel(1, numFactory.numOf(101.0), "Inserted", LabelPlacement.CENTER));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.remove(0);
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.remove(returnedList1.get(0));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.set(0, new BarLabel(99, numFactory.numOf(999.0), "Replaced", LabelPlacement.CENTER));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.clear();
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.addAll(List.of(new BarLabel(10, numFactory.numOf(110.0), "New", LabelPlacement.CENTER)));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.removeAll(List.of(returnedList1.get(0)));
+        });
+
+        assertThrows(UnsupportedOperationException.class, () -> {
+            returnedList1.retainAll(Collections.emptyList());
+        });
+
+        // Verify internal state is unchanged - get the list again
+        List<BarLabel> returnedList2 = indicator.labels();
+        assertEquals(3, returnedList2.size(), "Internal list size should remain unchanged");
+        assertEquals(2, returnedList2.get(0).barIndex(), "First label should be unchanged");
+        assertEquals(5, returnedList2.get(1).barIndex(), "Second label should be unchanged");
+        assertEquals(8, returnedList2.get(2).barIndex(), "Third label should be unchanged");
+
+        // Verify getValue() still works correctly - internal state is protected
+        assertEquals(102.0, indicator.getValue(2).doubleValue(), 0.001, "getValue(2) should still work");
+        assertEquals(105.0, indicator.getValue(5).doubleValue(), 0.001, "getValue(5) should still work");
+        assertEquals(108.0, indicator.getValue(8).doubleValue(), 0.001, "getValue(8) should still work");
+
+        // Verify unlabeled indices still return NaN
+        assertTrue(indicator.getValue(0).isNaN(), "Unlabeled index should return NaN");
+        assertTrue(indicator.getValue(9).isNaN(), "Unlabeled index should return NaN");
+    }
+
+    @Test
     void testLabelsReturnsNewListInstance() {
         List<BarLabel> labels = List.of(new BarLabel(3, numFactory.numOf(150.0), "Label 3", LabelPlacement.CENTER));
 
@@ -380,8 +456,10 @@ class BarSeriesLabelIndicatorTest {
         List<BarLabel> result1 = indicator.labels();
         List<BarLabel> result2 = indicator.labels();
 
-        // Should return the same list instance (cached)
-        assertSame(result1, result2);
+        // Should return the same list instance (cached unmodifiable list)
+        assertSame(result1, result2, "Each call should return the same cached instance");
+        assertEquals(result1, result2, "Both should contain the same content");
+        assertEquals(result1.size(), result2.size(), "Both should have the same size");
     }
 
     @Test

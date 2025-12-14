@@ -72,7 +72,7 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
         this.labels = labels.stream()
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(BarLabel::barIndex))
-                .toList();
+                .collect(Collectors.toUnmodifiableList());
         this.labelsByIndex = this.labels.stream()
                 .collect(Collectors.toUnmodifiableMap(BarLabel::barIndex, label -> label, (left, right) -> right));
     }
@@ -92,6 +92,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
      * @return ordered, immutable label list
      */
     public List<BarLabel> labels() {
-        return Collections.unmodifiableList(this.labels);
+        return this.labels;
     }
 }

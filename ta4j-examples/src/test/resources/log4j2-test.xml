@@ -13,7 +13,13 @@
         <Logger name="ta4jexamples.datasources" level="off" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Logger name="ta4jexamples.analysis" level="info" additivity="true">
+        <Logger name="ta4jexamples.analysis" level="error" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="ta4jexamples.rules" level="error" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="ta4jexamples.indicators" level="error" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
         <Root level="info">
