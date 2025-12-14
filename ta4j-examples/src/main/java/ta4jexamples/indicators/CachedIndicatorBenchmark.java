@@ -100,6 +100,21 @@ public class CachedIndicatorBenchmark {
                 maximumBarCountHint, lastBarSmaPeriod);
     }
 
+    ScenarioResult runBoundedEvictionScenario(int barCount, int maximumBarCountHint) {
+        BarSeries series = buildSeries(barCount);
+        return benchmarkBoundedEviction(series, maximumBarCountHint);
+    }
+
+    ScenarioResult runConcurrentCacheHitsScenario(int barCount, int threads, int readsPerThread) {
+        BarSeries series = buildSeries(barCount);
+        return benchmarkConcurrentCacheHits(series, threads, readsPerThread);
+    }
+
+    ScenarioResult runLastBarHotReadsScenario(int barCount, int smaPeriod, int reads) {
+        BarSeries series = buildSeries(barCount);
+        return benchmarkLastBarHotReads(series, smaPeriod, reads);
+    }
+
     private void run(int threads, int batches, int evictionBars, int cacheHitsPerThread, int lastBarReads,
             int maximumBarCountHint, int lastBarSmaPeriod) throws Exception {
         LOG.info(
@@ -249,7 +264,7 @@ public class CachedIndicatorBenchmark {
         return new ScenarioResult(reads, durationNanos, checksum);
     }
 
-    private static BarSeries buildSeries(int barCount) {
+    static BarSeries buildSeries(int barCount) {
         var numFactory = DoubleNumFactory.getInstance();
         BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
 
@@ -307,18 +322,34 @@ public class CachedIndicatorBenchmark {
         return format.format(value);
     }
 
-    private static final class ScenarioResult {
+    static final class ScenarioResult {
 
         private final long operations;
         private final long durationNanos;
         private final long checksum;
         private final double throughputOpsPerSecond;
 
-        private ScenarioResult(long operations, long durationNanos, long checksum) {
+        ScenarioResult(long operations, long durationNanos, long checksum) {
             this.operations = operations;
             this.durationNanos = durationNanos;
             this.checksum = checksum;
             this.throughputOpsPerSecond = operations / (durationNanos / 1_000_000_000d);
+        }
+
+        long getOperations() {
+            return operations;
+        }
+
+        long getDurationNanos() {
+            return durationNanos;
+        }
+
+        long getChecksum() {
+            return checksum;
+        }
+
+        double getThroughputOpsPerSecond() {
+            return throughputOpsPerSecond;
         }
     }
 
@@ -343,7 +374,7 @@ public class CachedIndicatorBenchmark {
         }
     }
 
-    private static final class IndexIndicator extends CachedIndicator<Integer> {
+    static final class IndexIndicator extends CachedIndicator<Integer> {
 
         private IndexIndicator(BarSeries series) {
             super(series);
@@ -360,7 +391,7 @@ public class CachedIndicatorBenchmark {
         }
     }
 
-    private static final class MaxBarCountHintSeries implements BarSeries {
+    static final class MaxBarCountHintSeries implements BarSeries {
 
         private static final long serialVersionUID = 3793483697719901088L;
 

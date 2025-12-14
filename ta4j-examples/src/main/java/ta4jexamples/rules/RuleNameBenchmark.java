@@ -163,13 +163,13 @@ public class RuleNameBenchmark {
         return new AndRule(left, right);
     }
 
-    private Rule buildLazyRule() {
+    Rule buildLazyRule() {
         Rule left = new FixedRule(1);
         Rule right = new FixedRule(2);
         return new LazyAndRule(left, right);
     }
 
-    private Rule buildEagerRuleNoChildNames() {
+    Rule buildEagerRuleNoChildNames() {
         Rule left = new FixedRule(1);
         Rule right = new FixedRule(2);
         return new NoNameLeakAndRule(left, right);
@@ -178,7 +178,7 @@ public class RuleNameBenchmark {
     /**
      * Lazy variant of AndRule that defers name construction to getName().
      */
-    private static final class LazyAndRule extends AbstractRule {
+    static final class LazyAndRule extends AbstractRule {
 
         private final Rule rule1;
         private final Rule rule2;
@@ -215,7 +215,7 @@ public class RuleNameBenchmark {
      * (StringBuilder operations) may still be optimized if the result is never
      * read.
      */
-    private static final class NoNameLeakAndRule extends AbstractRule {
+    static final class NoNameLeakAndRule extends AbstractRule {
 
         private final Rule rule1;
         private final Rule rule2;
