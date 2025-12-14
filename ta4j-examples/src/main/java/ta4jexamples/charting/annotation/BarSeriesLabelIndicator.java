@@ -65,7 +65,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
 
     private final Map<Integer, BarLabel> labelsByIndex;
     private final List<BarLabel> labels;
-    private final List<BarLabel> unmodifiableLabels;
 
     public BarSeriesLabelIndicator(final BarSeries series, final List<BarLabel> labels) {
         super(Objects.requireNonNull(series, "series"));
@@ -74,7 +73,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(BarLabel::barIndex))
                 .toList();
-        this.unmodifiableLabels = Collections.unmodifiableList(this.labels);
         this.labelsByIndex = this.labels.stream()
                 .collect(Collectors.toUnmodifiableMap(BarLabel::barIndex, label -> label, (left, right) -> right));
     }
@@ -94,6 +92,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
      * @return ordered, immutable label list
      */
     public List<BarLabel> labels() {
-        return unmodifiableLabels;
+        return Collections.unmodifiableList(this.labels);
     }
 }
