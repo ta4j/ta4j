@@ -92,6 +92,6 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
      * @return ordered, immutable label list
      */
     public List<BarLabel> labels() {
-        return this.labels;
+        return List.copyOf(this.labels);
     }
 }
