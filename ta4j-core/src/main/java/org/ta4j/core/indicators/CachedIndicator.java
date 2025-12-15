@@ -338,7 +338,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // dies or encounters an unexpected issue. After timeout, we compute
                     // independently rather than blocking forever.
                     lastBarLock.wait(LAST_BAR_WAIT_TIMEOUT_MS);
-                    timedOut = true; // Mark that we've waited; next iteration will break out
+                    // Only mark as timed out if the computation is still in progress.
+                    // If notifyAll() woke us because computation finished, we should
+                    // loop back and re-check for a cache hit (or become the new owner).
+                    if (lastBarComputationInProgress) {
+                        timedOut = true;
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     snapshotBar = currentBar;
