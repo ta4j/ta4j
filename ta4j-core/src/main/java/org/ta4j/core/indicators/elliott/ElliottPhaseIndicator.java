@@ -186,7 +186,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
             }
             final int correctionEnd = Math.min(correctionStart + CORRECTION_LENGTH, metadata.size());
             final List<ElliottSwing> correction = metadata.subList(correctionStart, correctionEnd);
-            final ElliottPhase correctivePhase = evaluateCorrective(metadata, correction, impulse.rising());
+            final ElliottPhase correctivePhase = evaluateCorrective(correction, impulse.rising());
 
             if (correctivePhase == ElliottPhase.CORRECTIVE_C && metadata.size() > correctionEnd) {
                 startIndex = correctionEnd;
@@ -264,8 +264,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         return ElliottPhase.WAVE5;
     }
 
-    ElliottPhase evaluateCorrective(final ElliottSwingMetadata metadata, final List<ElliottSwing> correction,
-            final boolean impulseRising) {
+    ElliottPhase evaluateCorrective(final List<ElliottSwing> correction, final boolean impulseRising) {
         if (correction.isEmpty()) {
             return ElliottPhase.NONE;
         }

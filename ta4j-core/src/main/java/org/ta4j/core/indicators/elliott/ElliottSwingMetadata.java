@@ -192,6 +192,6 @@ public final class ElliottSwingMetadata {
      * @since 0.22.0
      */
     public List<ElliottSwing> swings() {
-        return swings;
+        return List.copyOf(swings);
     }
 }
