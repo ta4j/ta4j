@@ -44,6 +44,29 @@ import java.util.function.IntFunction;
  * indicators to safely call getValue() from within calculate() without
  * deadlocking.
  *
+ * <h2>Memory Usage</h2>
+ * <p>
+ * Each {@code CachedBuffer} allocates an {@code Object[]} array:
+ * <ul>
+ * <li><strong>Bounded series</strong> (maximumBarCount set): Array size equals
+ * {@code maximumBarCount}.</li>
+ * <li><strong>Unbounded series</strong>: Initial capacity is 512, growing up to
+ * 1,000,000 as needed.</li>
+ * </ul>
+ *
+ * <p>
+ * For applications with many indicators on large unbounded series, memory usage
+ * can be significant. Consider setting {@code maximumBarCount} on the series to
+ * bound memory consumption, especially for live trading scenarios where only
+ * recent bars are relevant.
+ *
+ * <h2>Null Value Handling</h2>
+ * <p>
+ * This cache correctly distinguishes between "not computed" and "computed as
+ * null" using internal sentinel objects. However, the {@link #get(int)} method
+ * returns {@code null} for both cases. Use {@link #isCached(int)} to explicitly
+ * check if an index has a cached value (including cached null).
+ *
  * @param <T> the type of cached values
  *
  * @since 0.22.0
@@ -194,8 +217,15 @@ class CachedBuffer<T> {
     /**
      * Gets a cached value without computing if missing.
      *
+     * <p>
+     * <strong>Important:</strong> This method returns {@code null} for both "not
+     * cached" and "cached null" cases. To distinguish between them, use
+     * {@link #isCached(int)} before calling this method.
+     *
      * @param index the series index
-     * @return the cached value, or null if not cached
+     * @return the cached value, or null if not cached or if the cached value is
+     *         null
+     * @see #isCached(int)
      */
     T get(int index) {
         lock.readLock().lock();
@@ -214,6 +244,29 @@ class CachedBuffer<T> {
         @SuppressWarnings("unchecked")
         T result = (T) cached;
         return result;
+    }
+
+    /**
+     * Checks if a value has been cached for the specified index.
+     *
+     * <p>
+     * This method returns {@code true} if the index has a computed value in the
+     * cache, including if that value is {@code null}. Use this to distinguish
+     * between "not computed" and "computed as null".
+     *
+     * @param index the series index
+     * @return {@code true} if the index has a cached value (including cached null),
+     *         {@code false} if not computed or out of range
+     * @see #get(int)
+     */
+    boolean isCached(int index) {
+        lock.readLock().lock();
+        try {
+            Object cached = readAtUnlocked(index);
+            return cached != NOT_COMPUTED;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**
