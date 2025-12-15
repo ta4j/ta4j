@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.indicators.elliott;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -84,14 +82,14 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
         final CycleAssessment cycle = assessCycle(metadata);
         final ImpulseAssessment impulse = cycle.impulse;
-        if (!impulse.phase.isImpulse()) {
+        if (!impulse.phase().isImpulse()) {
             return ElliottPhase.NONE;
         }
 
         if (cycle.correctivePhase.isCorrective()) {
             return cycle.correctivePhase;
         }
-        return impulse.phase;
+        return impulse.phase();
     }
 
     @Override
@@ -109,7 +107,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return List.of();
         }
-        return List.copyOf(assessCycle(metadata).impulse.segment);
+        return List.copyOf(assessCycle(metadata).impulse.segment());
     }
 
     /**
@@ -123,7 +121,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
             return List.of();
         }
         final CycleAssessment cycle = assessCycle(metadata);
-        if (cycle.impulse.phase != ElliottPhase.WAVE5 || !cycle.correctivePhase.isCorrective()) {
+        if (cycle.impulse.phase() != ElliottPhase.WAVE5 || !cycle.correctivePhase.isCorrective()) {
             return List.of();
         }
         final int length = cycle.correctivePhase.correctiveIndex();
@@ -140,7 +138,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         if (!metadata.isValid()) {
             return false;
         }
-        return assessCycle(metadata).impulse.phase == ElliottPhase.WAVE5;
+        return assessCycle(metadata).impulse.phase() == ElliottPhase.WAVE5;
     }
 
     /**
@@ -178,17 +176,17 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         int startIndex = 0;
         while (true) {
             final ImpulseAssessment impulse = assessImpulseAt(metadata, startIndex);
-            if (impulse.phase != ElliottPhase.WAVE5) {
+            if (impulse.phase() != ElliottPhase.WAVE5) {
                 return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
             }
 
-            final int correctionStart = startIndex + impulse.segment.size();
+            final int correctionStart = startIndex + impulse.segment().size();
             if (metadata.size() <= correctionStart) {
                 return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
             }
             final int correctionEnd = Math.min(correctionStart + CORRECTION_LENGTH, metadata.size());
             final List<ElliottSwing> correction = metadata.subList(correctionStart, correctionEnd);
-            final ElliottPhase correctivePhase = evaluateCorrective(metadata, correction, impulse.rising);
+            final ElliottPhase correctivePhase = evaluateCorrective(metadata, correction, impulse.rising());
 
             if (correctivePhase == ElliottPhase.CORRECTIVE_C && metadata.size() > correctionEnd) {
                 startIndex = correctionEnd;
@@ -219,7 +217,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
             return ElliottPhase.NONE;
         }
         final ElliottSwing wave1 = swings.get(0);
-        if (!isFinite(wave1)) {
+        if (!isFiniteSwing(wave1)) {
             return ElliottPhase.NONE;
         }
         final boolean rising = wave1.isRising();
@@ -273,7 +271,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
 
         final ElliottSwing waveA = correction.get(0);
-        if (!isFinite(waveA)) {
+        if (!isFiniteSwing(waveA)) {
             return ElliottPhase.NONE;
         }
         if (waveA.isRising() == impulseRising) {
@@ -303,7 +301,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveTwoValid(final ElliottSwing wave1, final ElliottSwing wave2, final boolean impulseRising) {
-        if (!isFinite(wave2)) {
+        if (!isFiniteSwing(wave2)) {
             return false;
         }
         if (wave1.isRising() == wave2.isRising()) {
@@ -322,7 +320,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     boolean isWaveThreeValid(final ElliottSwing wave1, final ElliottSwing wave2, final ElliottSwing wave3,
             final boolean impulseRising) {
-        if (!isFinite(wave3)) {
+        if (!isFiniteSwing(wave3)) {
             return false;
         }
         if (wave3.isRising() != impulseRising) {
@@ -341,7 +339,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     boolean isWaveFourValid(final ElliottSwing wave1, final ElliottSwing wave3, final ElliottSwing wave4,
             final boolean impulseRising) {
-        if (!isFinite(wave4)) {
+        if (!isFiniteSwing(wave4)) {
             return false;
         }
         if (wave4.isRising() == impulseRising) {
@@ -360,7 +358,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     boolean isWaveFiveValid(final ElliottSwing wave1, final ElliottSwing wave3, final ElliottSwing wave5,
             final boolean impulseRising) {
-        if (!isFinite(wave5)) {
+        if (!isFiniteSwing(wave5)) {
             return false;
         }
         if (wave5.isRising() != impulseRising) {
@@ -378,7 +376,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveBValid(final ElliottSwing waveA, final ElliottSwing waveB, final boolean impulseRising) {
-        if (!isFinite(waveB)) {
+        if (!isFiniteSwing(waveB)) {
             return false;
         }
         if (waveB.isRising() != impulseRising) {
@@ -396,7 +394,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveCValid(final ElliottSwing waveA, final ElliottSwing waveC, final boolean impulseRising) {
-        if (!isFinite(waveC)) {
+        if (!isFiniteSwing(waveC)) {
             return false;
         }
         if (waveC.isRising() == impulseRising) {
@@ -413,31 +411,17 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         return impulseRising ? candidate.isLessThan(boundary) : candidate.isGreaterThan(boundary);
     }
 
-    private boolean isFinite(final ElliottSwing swing) {
+    private boolean isFiniteSwing(final ElliottSwing swing) {
         if (swing == null) {
             return false;
         }
-        final Num from = swing.fromPrice();
-        final Num to = swing.toPrice();
-        return from != null && to != null && !from.isNaN() && !to.isNaN() && !from.equals(NaN) && !to.equals(NaN);
+        return Num.isFinite(swing.fromPrice()) && Num.isFinite(swing.toPrice());
     }
 
     private record CycleAssessment(ImpulseAssessment impulse, List<ElliottSwing> correction,
             ElliottPhase correctivePhase) {
     }
 
-    static final class ImpulseAssessment {
-        final ElliottPhase phase;
-        final List<ElliottSwing> segment;
-        final int startIndex;
-        final boolean rising;
-
-        ImpulseAssessment(final ElliottPhase phase, final List<ElliottSwing> segment, final int startIndex,
-                final boolean rising) {
-            this.phase = phase;
-            this.segment = segment;
-            this.startIndex = startIndex;
-            this.rising = rising;
-        }
+    record ImpulseAssessment(ElliottPhase phase, List<ElliottSwing> segment, int startIndex, boolean rising) {
     }
 }

@@ -25,13 +25,13 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
-public class ElliottWaveCountIndicatorTest {
+class ElliottWaveCountIndicatorTest {
 
     @Test
-    public void countsRawSwings() {
+    void countsRawSwings() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -46,7 +46,7 @@ public class ElliottWaveCountIndicatorTest {
     }
 
     @Test
-    public void countsCompressedSwings() {
+    void countsCompressedSwings() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {

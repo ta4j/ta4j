@@ -27,15 +27,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
-public class ElliottConfluenceIndicatorTest {
+class ElliottConfluenceIndicatorTest {
 
     @Test
-    public void aggregatesRatioAndChannelMatches() {
+    void aggregatesRatioAndChannelMatches() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -67,7 +67,7 @@ public class ElliottConfluenceIndicatorTest {
     }
 
     @Test
-    public void defaultConfigurationProducesScore() {
+    void defaultConfigurationProducesScore() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {

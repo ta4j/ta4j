@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -166,23 +165,5 @@ class ElliottPhaseIndicatorTest {
         merged.addAll(left);
         merged.addAll(right);
         return merged;
-    }
-
-    private static final class StubSwingIndicator extends ElliottSwingIndicator {
-
-        private final List<List<ElliottSwing>> swingsByIndex;
-
-        private StubSwingIndicator(final BarSeries series, final List<List<ElliottSwing>> swingsByIndex) {
-            super(series, 1, ElliottDegree.MINOR);
-            this.swingsByIndex = swingsByIndex;
-        }
-
-        @Override
-        protected List<ElliottSwing> calculate(final int index) {
-            if (index < swingsByIndex.size()) {
-                return swingsByIndex.get(index);
-            }
-            return swingsByIndex.get(swingsByIndex.size() - 1);
-        }
     }
 }

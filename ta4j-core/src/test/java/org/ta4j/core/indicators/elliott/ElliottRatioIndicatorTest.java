@@ -28,15 +28,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
-public class ElliottRatioIndicatorTest {
+class ElliottRatioIndicatorTest {
 
     @Test
-    public void returnsNanWhenSwingsInsufficient() {
+    void returnsNanWhenSwingsInsufficient() {
         var series = new MockBarSeriesBuilder().build();
         series.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).volume(0).add();
         series.barBuilder().openPrice(11).highPrice(11).lowPrice(11).closePrice(11).volume(0).add();
@@ -50,7 +49,7 @@ public class ElliottRatioIndicatorTest {
     }
 
     @Test
-    public void computesRetracementRatioFromSeries() {
+    void computesRetracementRatioFromSeries() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 11, 13, 12, 14, 13 };
         for (double close : closes) {
@@ -68,7 +67,7 @@ public class ElliottRatioIndicatorTest {
     }
 
     @Test
-    public void computesExtensionRatioFromSeries() {
+    void computesExtensionRatioFromSeries() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 11, 13, 12, 14, 13 };
         for (double close : closes) {
@@ -86,7 +85,7 @@ public class ElliottRatioIndicatorTest {
     }
 
     @Test
-    public void computesExtensionRatios() {
+    void computesExtensionRatios() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 14, 16, 18 };
         for (double close : closes) {
@@ -114,23 +113,5 @@ public class ElliottRatioIndicatorTest {
         assertThat(ratio.type()).isEqualTo(RatioType.EXTENSION);
         var expected = factory.numOf(2).dividedBy(factory.numOf(2));
         assertThat(ratio.value()).isEqualByComparingTo(expected);
-    }
-
-    private static final class StubSwingIndicator extends ElliottSwingIndicator {
-
-        private final List<List<ElliottSwing>> swingsByIndex;
-
-        private StubSwingIndicator(final BarSeries series, final List<List<ElliottSwing>> swingsByIndex) {
-            super(series, 1, ElliottDegree.MINOR);
-            this.swingsByIndex = swingsByIndex;
-        }
-
-        @Override
-        protected List<ElliottSwing> calculate(final int index) {
-            if (index < swingsByIndex.size()) {
-                return swingsByIndex.get(index);
-            }
-            return swingsByIndex.get(swingsByIndex.size() - 1);
-        }
     }
 }

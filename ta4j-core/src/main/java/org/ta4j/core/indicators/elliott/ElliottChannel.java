@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -42,6 +43,19 @@ public record ElliottChannel(Num upper, Num lower, Num median) {
      */
     public boolean isValid() {
         return upper != null && lower != null && !upper.isNaN() && !lower.isNaN();
+    }
+
+    /**
+     * Returns the channel width (distance between upper and lower boundaries).
+     *
+     * @return {@code upper - lower}, or NaN if the channel is invalid
+     * @since 0.22.0
+     */
+    public Num width() {
+        if (!isValid()) {
+            return NaN.NaN;
+        }
+        return upper.minus(lower);
     }
 
     /**

@@ -60,23 +60,23 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
         }
 
         final ElliottPhaseIndicator.ImpulseAssessment impulse = phaseIndicator.assessImpulse(metadata);
-        final List<ElliottSwing> swings = impulse.segment;
+        final List<ElliottSwing> swings = impulse.segment();
         if (swings.isEmpty()) {
             return Boolean.FALSE;
         }
 
         boolean invalid = false;
         if (swings.size() >= 2) {
-            invalid = !phaseIndicator.isWaveTwoValid(swings.get(0), swings.get(1), impulse.rising);
+            invalid = !phaseIndicator.isWaveTwoValid(swings.get(0), swings.get(1), impulse.rising());
         }
         if (!invalid && swings.size() >= 3) {
-            invalid = !phaseIndicator.isWaveThreeValid(swings.get(0), swings.get(1), swings.get(2), impulse.rising);
+            invalid = !phaseIndicator.isWaveThreeValid(swings.get(0), swings.get(1), swings.get(2), impulse.rising());
         }
         if (!invalid && swings.size() >= 4) {
-            invalid = !phaseIndicator.isWaveFourValid(swings.get(0), swings.get(2), swings.get(3), impulse.rising);
+            invalid = !phaseIndicator.isWaveFourValid(swings.get(0), swings.get(2), swings.get(3), impulse.rising());
         }
         if (!invalid && swings.size() >= 5) {
-            invalid = !phaseIndicator.isWaveFiveValid(swings.get(0), swings.get(2), swings.get(4), impulse.rising);
+            invalid = !phaseIndicator.isWaveFiveValid(swings.get(0), swings.get(2), swings.get(4), impulse.rising());
         }
         return Boolean.valueOf(invalid);
     }

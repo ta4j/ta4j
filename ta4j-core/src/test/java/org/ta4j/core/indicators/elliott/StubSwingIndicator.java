@@ -23,46 +23,39 @@
  */
 package org.ta4j.core.indicators.elliott;
 
-import org.ta4j.core.num.Num;
+import java.util.List;
+
+import org.ta4j.core.BarSeries;
 
 /**
- * Captures the ratio between two consecutive Elliott swings.
+ * Test utility that provides pre-configured swing sequences for Elliott wave
+ * tests.
  *
- * @param value measured ratio (absolute amplitude of the latest swing divided
- *              by the previous swing amplitude)
- * @param type  classification of the ratio (retracement or extension)
- * @since 0.22.0
+ * <p>
+ * This stub allows tests to supply specific swing sequences indexed by bar
+ * position, avoiding the need to build complex price series that naturally
+ * produce the desired swing patterns.
  */
-public record ElliottRatio(Num value, RatioType type) {
+public class StubSwingIndicator extends ElliottSwingIndicator {
+
+    private final List<List<ElliottSwing>> swingsByIndex;
 
     /**
-     * @return {@code true} when the ratio has an actionable type and a valid
-     *         numeric value.
-     * @since 0.22.0
+     * Creates a stub swing indicator with the specified swing sequences.
+     *
+     * @param series        backing bar series
+     * @param swingsByIndex list of swing lists, one per bar index
      */
-    public boolean isValid() {
-        return type != null && type != RatioType.NONE && value != null && !value.isNaN();
+    public StubSwingIndicator(final BarSeries series, final List<List<ElliottSwing>> swingsByIndex) {
+        super(series, 1, ElliottDegree.MINOR);
+        this.swingsByIndex = swingsByIndex;
     }
 
-    /**
-     * Type of ratio relationship between consecutive swings.
-     *
-     * @since 0.22.0
-     */
-    public enum RatioType {
-        /**
-         * Indicates that price reversed direction relative to the prior swing
-         * (retracing a portion of the previous move).
-         */
-        RETRACEMENT,
-        /**
-         * Indicates that price continued in the same direction (projecting an extension
-         * beyond the prior swing).
-         */
-        EXTENSION,
-        /**
-         * Returned when an actionable ratio could not be computed.
-         */
-        NONE
+    @Override
+    protected List<ElliottSwing> calculate(final int index) {
+        if (index < swingsByIndex.size()) {
+            return swingsByIndex.get(index);
+        }
+        return swingsByIndex.isEmpty() ? List.of() : swingsByIndex.get(swingsByIndex.size() - 1);
     }
 }

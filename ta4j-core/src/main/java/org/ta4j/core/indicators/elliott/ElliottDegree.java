@@ -55,5 +55,53 @@ public enum ElliottDegree {
     MINUETTE,
 
     /** Sub-minuette wave degree. */
-    SUB_MINUETTE
+    SUB_MINUETTE;
+
+    private static final ElliottDegree[] VALUES = values();
+
+    /**
+     * Returns the next higher (larger timeframe) wave degree.
+     *
+     * @return the higher degree, or {@code this} if already at the highest
+     * @since 0.22.0
+     */
+    public ElliottDegree higherDegree() {
+        int currentOrdinal = ordinal();
+        return currentOrdinal == 0 ? this : VALUES[currentOrdinal - 1];
+    }
+
+    /**
+     * Returns the next lower (smaller timeframe) wave degree.
+     *
+     * @return the lower degree, or {@code this} if already at the lowest
+     * @since 0.22.0
+     */
+    public ElliottDegree lowerDegree() {
+        int currentOrdinal = ordinal();
+        return currentOrdinal == VALUES.length - 1 ? this : VALUES[currentOrdinal + 1];
+    }
+
+    /**
+     * Returns whether this degree is higher than or equal to the specified degree.
+     *
+     * @param other the degree to compare against
+     * @return {@code true} if this degree is larger (longer timeframe) than or
+     *         equal to {@code other}
+     * @since 0.22.0
+     */
+    public boolean isHigherOrEqual(final ElliottDegree other) {
+        return ordinal() <= other.ordinal();
+    }
+
+    /**
+     * Returns whether this degree is lower than or equal to the specified degree.
+     *
+     * @param other the degree to compare against
+     * @return {@code true} if this degree is smaller (shorter timeframe) than or
+     *         equal to {@code other}
+     * @since 0.22.0
+     */
+    public boolean isLowerOrEqual(final ElliottDegree other) {
+        return ordinal() >= other.ordinal();
+    }
 }

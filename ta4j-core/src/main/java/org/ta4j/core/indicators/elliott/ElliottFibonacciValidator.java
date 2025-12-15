@@ -150,7 +150,7 @@ public class ElliottFibonacciValidator {
     }
 
     private boolean ratioBetween(final Num numerator, final Num denominator, final Num lower, final Num upper) {
-        if (!isFinite(numerator) || !isFinite(denominator)) {
+        if (!Num.isFinite(numerator) || !Num.isFinite(denominator)) {
             return false;
         }
         if (denominator.isZero()) {
@@ -160,9 +160,5 @@ public class ElliottFibonacciValidator {
         final Num lowerBound = lower.minus(tolerance);
         final Num upperBound = upper.plus(tolerance);
         return !ratio.isLessThan(lowerBound) && !ratio.isGreaterThan(upperBound);
-    }
-
-    private boolean isFinite(final Num value) {
-        return value != null && !value.isNaN();
     }
 }

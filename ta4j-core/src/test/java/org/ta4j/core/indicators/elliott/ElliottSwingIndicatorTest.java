@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -38,10 +38,10 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
-public class ElliottSwingIndicatorTest {
+class ElliottSwingIndicatorTest {
 
     @Test
-    public void detectsSwingsWithoutLookahead() {
+    void detectsSwingsWithoutLookahead() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -70,7 +70,7 @@ public class ElliottSwingIndicatorTest {
     }
 
     @Test
-    public void skipsNanBars() {
+    void skipsNanBars() {
         var series = new MockBarSeriesBuilder().build();
         series.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).volume(0).add();
         series.barBuilder().openPrice(NaN.NaN).highPrice(NaN.NaN).lowPrice(NaN.NaN).closePrice(NaN.NaN).volume(0).add();
@@ -90,7 +90,7 @@ public class ElliottSwingIndicatorTest {
     }
 
     @Test
-    public void respectsSuppliedIndicatorValues() {
+    void respectsSuppliedIndicatorValues() {
         var series = new MockBarSeriesBuilder().build();
         for (int i = 0; i < 6; i++) {
             series.barBuilder().openPrice(0).highPrice(0).lowPrice(0).closePrice(0).volume(0).add();
@@ -111,7 +111,7 @@ public class ElliottSwingIndicatorTest {
     }
 
     @Test
-    public void handlesPlateausSymmetrically() {
+    void handlesPlateausSymmetrically() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 12, 9, 9, 13, 13, 8, 8, 14 };
         for (double close : closes) {
@@ -130,7 +130,7 @@ public class ElliottSwingIndicatorTest {
     }
 
     @Test
-    public void supportsZigZagSwingSources() {
+    void supportsZigZagSwingSources() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
         for (double close : closes) {
@@ -146,7 +146,7 @@ public class ElliottSwingIndicatorTest {
     }
 
     @Test
-    public void selectsPivotWhenHighAndLowIndexesCoincideInitially() {
+    void selectsPivotWhenHighAndLowIndexesCoincideInitially() {
         var series = new MockBarSeriesBuilder().build();
         for (int i = 0; i < 5; i++) {
             series.barBuilder().openPrice(0).highPrice(0).lowPrice(0).closePrice(0).volume(0).add();
