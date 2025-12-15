@@ -292,6 +292,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void lastBarComputationDoesNotDeadlockWhenCacheWriteLockHeldAndAnotherLastBarComputationIsInFlight()
+            throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        WriteLockedLastBarIndicator indicator = new WriteLockedLastBarIndicator(barSeries, endIndex);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Num> writeLockedFuture = executor.submit(() -> indicator.getValue(endIndex - 1));
+            assertTrue("Write-locked calculation did not start in time",
+                    indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            Future<Num> lastBarFuture = executor.submit(() -> indicator.getValue(endIndex));
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            assertNumEquals(endIndex - 1, writeLockedFuture.get(30, TimeUnit.SECONDS));
+            assertNumEquals(endIndex, lastBarFuture.get(30, TimeUnit.SECONDS));
+            assertTrue("Expected last-bar read to occur while holding cache write lock",
+                    indicator.writeLockedDuringLastBarRead.get());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
     public void lastBarCacheInvalidatesWhenLastBarIsReplacedDuringRead() throws Exception {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
@@ -749,7 +777,202 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class CountingIndicator extends CachedIndicator<Num> {
+    @Test
+    public void highestResultIndexNotAdvancedWhenLastBarAccessedRecursivelyWhileHoldingWriteLock() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        // Indicator that reads endIndex (last bar) from within calculate(endIndex-1)
+        // while holding the cache write lock
+        RecursiveLastBarAccessIndicator indicator = new RecursiveLastBarAccessIndicator(barSeries, endIndex);
+
+        // Access a non-last bar to trigger the recursive last-bar access
+        Num value = indicator.getValue(endIndex - 1);
+        assertNumEquals(endIndex - 1, value);
+
+        // The recursive last-bar access should NOT advance highestResultIndex because
+        // snapshotInvalidationCount is -1 when the write lock is already held.
+        // Only the outer calculation (endIndex - 1) should advance it.
+        assertEquals("highestResultIndex should only reflect the outer calculation, not the recursive last-bar access",
+                endIndex - 1, indicator.getHighestResultIndex());
+
+        // Accessing the last bar normally should now update highestResultIndex
+        indicator.getValue(endIndex);
+        assertEquals("highestResultIndex should be updated after normal last-bar access", endIndex,
+                indicator.getHighestResultIndex());
+    }
+
+    @Test
+    public void lastBarWaitTimeoutDoesNotCauseIndefiniteBlock() throws Exception {
+        // Test that a stuck last-bar computation doesn't block other threads
+        // indefinitely. After the timeout, other threads should compute independently.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        int endIndex = barSeries.getEndIndex();
+
+        // Create an indicator that blocks forever in its first last-bar calculation
+        CountDownLatch firstComputationStarted = new CountDownLatch(1);
+        CountDownLatch blockForever = new CountDownLatch(1); // Never counted down
+
+        NeverFinishingIndicator indicator = new NeverFinishingIndicator(barSeries, endIndex, firstComputationStarted,
+                blockForever);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            // Start first thread that will block forever
+            executor.submit(() -> {
+                try {
+                    indicator.getValue(endIndex);
+                } catch (Exception e) {
+                    // Expected to eventually be interrupted
+                }
+            });
+
+            // Wait for first computation to start
+            assertTrue("First computation should start", firstComputationStarted.await(30, TimeUnit.SECONDS));
+
+            // Give some time for the computation to be "in progress"
+            Thread.sleep(100);
+
+            // Start second thread that should timeout waiting and compute independently
+            Future<Num> secondFuture = executor.submit(() -> indicator.getValue(endIndex));
+
+            // The second thread should complete within a reasonable time (timeout +
+            // computation)
+            // even though the first thread is blocked forever
+            try {
+                Num result = secondFuture.get(15, TimeUnit.SECONDS);
+                // Either gets a computed value or times out waiting - both are acceptable
+                // The key is that it doesn't block forever
+                assertNotNull("Second thread should get a result after timeout", result);
+            } catch (TimeoutException e) {
+                fail("Second thread should not block forever waiting for first computation");
+            }
+
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    public void stressTestConcurrentLastBarAccess() throws InterruptedException {
+        // Stress test: multiple threads concurrently accessing the last bar.
+        // Moderate concurrency is sufficient to expose race conditions.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        CountingIndicator indicator = new CountingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        int threads = 8;
+        int iterationsPerThread = 100;
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        for (int t = 0; t < threads; t++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        Num value = indicator.getValue(endIndex);
+                        if (value != null) {
+                            successCount.incrementAndGet();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Stress test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        // All reads should succeed
+        assertEquals("All reads should succeed", threads * iterationsPerThread, successCount.get());
+
+        // Last bar should only be computed once (subsequent reads use cache)
+        assertEquals("Last bar should be computed exactly once", 1, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void stressTestConcurrentLastBarWithMutations() throws InterruptedException {
+        // Stress test: concurrent reads with periodic mutations.
+        // Moderate iteration count catches race conditions without excessive runtime.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        int readers = 8;
+        int iterations = 50;
+        AtomicInteger totalReads = new AtomicInteger(0);
+        AtomicBoolean mutationsDone = new AtomicBoolean(false);
+
+        ExecutorService executor = Executors.newFixedThreadPool(readers + 1);
+        CountDownLatch ready = new CountDownLatch(readers + 1);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(readers + 1);
+
+        // Reader threads
+        for (int r = 0; r < readers; r++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    while (!mutationsDone.get()) {
+                        indicator.getValue(endIndex);
+                        totalReads.incrementAndGet();
+                        Thread.yield();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        // Mutator thread
+        executor.submit(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                for (int i = 0; i < iterations; i++) {
+                    barSeries.getLastBar().addTrade(numOf(1), numOf(i + 10));
+                    Thread.sleep(1);
+                }
+                mutationsDone.set(true);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                done.countDown();
+            }
+        });
+
+        ready.await();
+        start.countDown();
+        assertTrue("Stress test with mutations did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        // Should have performed many reads
+        assertTrue("Should have performed many concurrent reads", totalReads.get() > 100);
+
+        // Each mutation should trigger a recomputation
+        assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
+    }
+
+    private final static class CountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
 
@@ -760,7 +983,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         protected Num calculate(int index) {
             calculations.incrementAndGet();
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -777,7 +1000,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class ClosePriceCountingIndicator extends CachedIndicator<Num> {
+    private final static class ClosePriceCountingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
 
@@ -801,7 +1024,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class FailingIndicator extends CachedIndicator<Num> {
+    private final static class FailingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
         private final AtomicBoolean failFirst = new AtomicBoolean(true);
@@ -818,7 +1041,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == failIndex && failFirst.compareAndSet(true, false)) {
                 throw new RuntimeException("boom");
             }
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -839,7 +1062,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class BlockingLastBarIndicator extends CachedIndicator<Num> {
+    private final static class BlockingLastBarIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
         private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
@@ -863,7 +1086,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                     Thread.currentThread().interrupt();
                 }
             }
-            return numFactory.numOf(count);
+            return getBarSeries().numFactory().numOf(count);
         }
 
         @Override
@@ -880,7 +1103,54 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private static final class CountingInvalidatableIndicator extends CachedIndicator<Num> {
+    private final static class WriteLockedLastBarIndicator extends CachedIndicator<Num> {
+
+        private final AtomicBoolean writeLockedDuringLastBarRead = new AtomicBoolean();
+        private final CountDownLatch lastBarCalculationStarted = new CountDownLatch(1);
+        private final CountDownLatch writeLockedCalculationStarted = new CountDownLatch(1);
+        private final int endIndex;
+
+        private WriteLockedLastBarIndicator(BarSeries series, int endIndex) {
+            super(series);
+            this.endIndex = endIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == endIndex) {
+                lastBarCalculationStarted.countDown();
+                try {
+                    assertTrue("Write-locked calculation did not start in time",
+                            writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return getValue(0).plus(getBarSeries().numFactory().numOf(index));
+            }
+
+            if (index == endIndex - 1) {
+                writeLockedCalculationStarted.countDown();
+                try {
+                    assertTrue("Last-bar calculation did not start in time",
+                            lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                writeLockedDuringLastBarRead.set(getCache().isWriteLockedByCurrentThread());
+                assertNotNull(getValue(endIndex));
+                return getBarSeries().numFactory().numOf(index);
+            }
+
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private final static class CountingInvalidatableIndicator extends CachedIndicator<Num> {
 
         private int calculationCount = 0;
 
@@ -904,7 +1174,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class SelfReferencingIndicator extends CachedIndicator<Num> {
+    private final static class SelfReferencingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculationCount = new AtomicInteger();
 
@@ -916,9 +1186,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         protected Num calculate(int index) {
             calculationCount.incrementAndGet();
             if (index == 0) {
-                return numFactory.numOf(1);
+                return getBarSeries().numFactory().one();
             }
-            return getValue(index - 1).plus(numFactory.numOf(1));
+            return getValue(index - 1).plus(getBarSeries().numFactory().one());
         }
 
         @Override
@@ -931,7 +1201,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private final class TestIndicator extends CachedIndicator<Num> {
+    private final static class TestIndicator extends CachedIndicator<Num> {
 
         private TestIndicator(BarSeries series) {
             super(series);
@@ -939,7 +1209,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         @Override
         protected Num calculate(int index) {
-            return numFactory.numOf(index);
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
@@ -952,7 +1222,37 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    private static final class BlockingTradesBar implements Bar {
+    private final static class RecursiveLastBarAccessIndicator extends CachedIndicator<Num> {
+
+        private final int endIndex;
+
+        private RecursiveLastBarAccessIndicator(BarSeries series, int endIndex) {
+            super(series);
+            this.endIndex = endIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == endIndex - 1) {
+                // While holding the cache write lock for (endIndex - 1), access the last bar.
+                // This triggers the code path where isWriteLockedByCurrentThread() returns
+                // true, causing snapshotInvalidationCount = -1.
+                getValue(endIndex);
+            }
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        int getHighestResultIndex() {
+            return highestResultIndex;
+        }
+    }
+
+    private final static class BlockingTradesBar implements Bar {
 
         private final AtomicBoolean blockingEnabled = new AtomicBoolean();
         private final AtomicBoolean blocked = new AtomicBoolean();
@@ -1037,6 +1337,41 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         public void addPrice(Num price) {
             delegate.addPrice(price);
+        }
+    }
+
+    private static final class NeverFinishingIndicator extends CachedIndicator<Num> {
+
+        private final CountDownLatch computationStarted;
+        private final CountDownLatch blockLatch;
+        private final int targetIndex;
+        private final AtomicBoolean firstCall = new AtomicBoolean(true);
+
+        private NeverFinishingIndicator(BarSeries series, int targetIndex, CountDownLatch computationStarted,
+                CountDownLatch blockLatch) {
+            super(series);
+            this.targetIndex = targetIndex;
+            this.computationStarted = computationStarted;
+            this.blockLatch = blockLatch;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == targetIndex && firstCall.compareAndSet(true, false)) {
+                computationStarted.countDown();
+                try {
+                    // Block forever (or until interrupted)
+                    blockLatch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 

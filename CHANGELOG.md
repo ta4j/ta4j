@@ -1,7 +1,9 @@
 ## Unreleased
 
+### Removed
+- Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
+
 ### Changed
-- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 - **CachedIndicator and RecursiveCachedIndicator performance improvements**: Major refactoring to improve indicator caching performance:
     - **O(1) eviction**: Replaced ArrayList-based storage with a fixed-size ring buffer (`CachedBuffer`). When `maximumBarCount` is set, evicting old values now takes constant time instead of O(n) per-bar copies.
     - **Read-optimized locking**: Migrated from `synchronized` blocks to a non-fair `ReentrantReadWriteLock` with an optimistic (lock-free) fast path for cache hits. Cache misses and invalidation remain write-locked, while read-heavy workloads scale without serializing threads.
@@ -9,9 +11,11 @@
     - **Last-bar mutation caching**: Repeated calls to `getValue(endIndex)` on an unchanged in-progress bar now reuse the cached result. The cache automatically invalidates when the bar is mutated (via `addTrade()` or `addPrice()`) or replaced (via `addBar(..., true)`).
     - **Deadlock avoidance**: Fixed lock-order deadlock risk between last-bar caching and the main cache by ensuring last-bar computations and invalidation never run while holding locks needed by cache writes.
     - **Iterative prefill under single lock**: `RecursiveCachedIndicator` now uses `CachedBuffer.prefillUntil()` to compute gap values iteratively under one write lock, avoiding repeated lock re-entry and series lookups.
-
-### Removed
-- Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
+    - **Last-bar computation timeout**: Added 5-second timeout for waiting threads to prevent indefinite hangs if the thread owning a last-bar computation dies unexpectedly.
+    - **⚠️ Breaking: Removed synchronized methods**: `CachedIndicator` and `RecursiveCachedIndicator` no longer use `synchronized` methods. Thread safety is now achieved through internal locking. **Action required**: Code that relied on external synchronization using indicator instances (e.g., `synchronized(indicator) { ... }`) must be updated to use explicit external locks.
+- **ta4j-examples runners and regression coverage**: Added main-source runners (`CachedIndicatorBenchmark`, `RuleNameBenchmark`, `TrendLineAndSwingPointAnalysis`) and a robust regression test (`TrendLineAndSwingPointAnalysisTest`) so full builds stay quiet while still validating trendlines/swing points and enabling chart generation via `main`.
+- **BacktestPerformanceTuningHarness**: Expanded the example into a configurable tuning harness that sweeps strategy counts, bar counts, and `maximumBarCount` hints, capturing runtime + GC overhead and identifying the last linear ("sweet spot") configuration. Includes an optional heap sweep that forks a child JVM per `-Xmx` value.
+- **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 
 ### Fixed
 - **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.
@@ -51,6 +55,11 @@
 - Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave state and surface invalidations for swing-based strategies
 - Added `ElliottSwingIndicator`, `ElliottSwingCompressor`, and `ElliottWaveCountIndicator` to generate, filter, and count Elliott swings from `RecentSwingIndicator` swing points (fractal or ZigZag)
 
+### Fixed
+- **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.
+- **Explicit rule serialization APIs**: Added `Rule#toJson(BarSeries)`/`Rule#fromJson(BarSeries, String)` so serialization happens only when explicitly requested. Custom names are preserved via `__customName` metadata, independent of `getName()`.
+- **Rule name visibility**: Made rule names volatile and added regression coverage so custom names set on one thread are always visible on others, preventing fallback to expensive default-name serialization under concurrency.
+- Corrected **SqueezeProIndicator** to mirror TradingView/LazyBear squeeze momentum output: SMA-based Bollinger vs. Keltner compression tiers (high/mid/low), SMA true range width (not Wilder ATR), and momentum histogram values instead of a boolean flag. **Breaking change:** Return type changed from `Boolean` to `Num`; use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state.
 
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow

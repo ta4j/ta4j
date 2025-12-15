@@ -44,6 +44,29 @@ import java.util.function.IntFunction;
  * indicators to safely call getValue() from within calculate() without
  * deadlocking.
  *
+ * <h2>Memory Usage</h2>
+ * <p>
+ * Each {@code CachedBuffer} allocates an {@code Object[]} array:
+ * <ul>
+ * <li><strong>Bounded series</strong> (maximumBarCount set): Array size equals
+ * {@code maximumBarCount}.</li>
+ * <li><strong>Unbounded series</strong>: Initial capacity is 512, growing up to
+ * 1,000,000 as needed.</li>
+ * </ul>
+ *
+ * <p>
+ * For applications with many indicators on large unbounded series, memory usage
+ * can be significant. Consider setting {@code maximumBarCount} on the series to
+ * bound memory consumption, especially for live trading scenarios where only
+ * recent bars are relevant.
+ *
+ * <h2>Null Value Handling</h2>
+ * <p>
+ * This cache correctly distinguishes between "not computed" and "computed as
+ * null" using internal sentinel objects. However, the {@link #get(int)} method
+ * returns {@code null} for both cases. Use {@link #isCached(int)} to explicitly
+ * check if an index has a cached value (including cached null).
+ *
  * @param <T> the type of cached values
  *
  * @since 0.22.0
@@ -75,10 +98,21 @@ class CachedBuffer<T> {
      * Stamp used for optimistic reads.
      *
      * <p>
-     * Writers (write-lock holders) flip this value from even-&gt;odd when they
-     * enter the outermost write-locked section, and from odd-&gt;even when leaving.
-     * Readers can speculatively read the cache without locking and validate the
-     * read by checking the stamp did not change.
+     * This is a <em>sequence counter</em> (seqlock-style) used to validate
+     * lock-free cache hits. Writers flip it from even-&gt;odd when entering the
+     * <em>outermost</em> write-locked section and from odd-&gt;even when the
+     * protected state is stable again.
+     *
+     * <p>
+     * Important: the odd-&gt;even transition is performed <em>while still
+     * holding</em> the outermost write lock, immediately before {@code unlock()}.
+     * This ensures that every other writer that successfully acquires the write
+     * lock observes an even stamp on entry (preventing consecutive writers from
+     * ever running with an even stamp).
+     *
+     * <p>
+     * Readers speculatively read the cache without locking and validate the read by
+     * checking the stamp did not change.
      */
     private volatile long writeStamp;
 
@@ -175,7 +209,7 @@ class CachedBuffer<T> {
             T result = (T) cached;
             return result;
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -183,8 +217,15 @@ class CachedBuffer<T> {
     /**
      * Gets a cached value without computing if missing.
      *
+     * <p>
+     * <strong>Important:</strong> This method returns {@code null} for both "not
+     * cached" and "cached null" cases. To distinguish between them, use
+     * {@link #isCached(int)} before calling this method.
+     *
      * @param index the series index
-     * @return the cached value, or null if not cached
+     * @return the cached value, or null if not cached or if the cached value is
+     *         null
+     * @see #isCached(int)
      */
     T get(int index) {
         lock.readLock().lock();
@@ -206,6 +247,29 @@ class CachedBuffer<T> {
     }
 
     /**
+     * Checks if a value has been cached for the specified index.
+     *
+     * <p>
+     * This method returns {@code true} if the index has a computed value in the
+     * cache, including if that value is {@code null}. Use this to distinguish
+     * between "not computed" and "computed as null".
+     *
+     * @param index the series index
+     * @return {@code true} if the index has a cached value (including cached null),
+     *         {@code false} if not computed or out of range
+     * @see #get(int)
+     */
+    boolean isCached(int index) {
+        lock.readLock().lock();
+        try {
+            Object cached = readAtUnlocked(index);
+            return cached != NOT_COMPUTED;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
      * Stores a value in the cache.
      *
      * @param index the series index
@@ -217,7 +281,7 @@ class CachedBuffer<T> {
         try {
             store(index, value);
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -245,7 +309,7 @@ class CachedBuffer<T> {
                 store(i, value);
             }
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -259,7 +323,7 @@ class CachedBuffer<T> {
         try {
             clearInternal();
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -288,7 +352,7 @@ class CachedBuffer<T> {
             }
             highestResultIndex = index - 1;
         } finally {
-            onWriteLockReleased();
+            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -321,13 +385,17 @@ class CachedBuffer<T> {
         return lock.isWriteLockedByCurrentThread();
     }
 
+    long getWriteStamp() {
+        return writeStamp;
+    }
+
     private void onWriteLockAcquired() {
         if (lock.getWriteHoldCount() == 1) {
             writeStamp++;
         }
     }
 
-    private void onWriteLockReleased() {
+    private void onBeforeWriteLockReleased() {
         if (lock.getWriteHoldCount() == 1) {
             writeStamp++;
         }
@@ -353,6 +421,13 @@ class CachedBuffer<T> {
             return NOT_COMPUTED;
         }
 
+        // IMPORTANT: Use localBuffer.length (not capacity) for slot calculation.
+        // This ensures we use the correct slot mapping for whichever buffer we're
+        // reading from. If we read an old buffer, we need old buffer's slot mapping.
+        // If we read new buffer, we need new buffer's slot mapping (which matches
+        // how growBuffer() copies values). Using capacity could cause
+        // ArrayIndexOutOfBoundsException if capacity was already updated but we're
+        // reading from the old (smaller) buffer.
         Object[] localBuffer = buffer;
         int slot = index % localBuffer.length;
         Object value = localBuffer[slot];
@@ -444,12 +519,24 @@ class CachedBuffer<T> {
             if (bounded && newSize > maximumCapacity) {
                 // Need to evict oldest entries
                 int evictCount = newSize - maximumCapacity;
-                // Clear evicted slots and advance firstCachedIndex
-                for (int i = 0; i < evictCount && firstCachedIndex + i <= highestResultIndex; i++) {
-                    int slot = indexToSlot(firstCachedIndex + i);
-                    buffer[slot] = NOT_COMPUTED;
+                int existingCount = highestResultIndex - firstCachedIndex + 1;
+
+                if (evictCount >= existingCount) {
+                    // Evicting all existing entries due to large gap - clear and start fresh
+                    for (int i = firstCachedIndex; i <= highestResultIndex; i++) {
+                        int slot = indexToSlot(i);
+                        buffer[slot] = NOT_COMPUTED;
+                    }
+                    // Set firstCachedIndex to the new index since all old entries are evicted
+                    firstCachedIndex = index;
+                } else {
+                    // Partial eviction - clear evicted slots and advance firstCachedIndex
+                    for (int i = 0; i < evictCount; i++) {
+                        int slot = indexToSlot(firstCachedIndex + i);
+                        buffer[slot] = NOT_COMPUTED;
+                    }
+                    firstCachedIndex += evictCount;
                 }
-                firstCachedIndex += evictCount;
             } else if (!bounded && newSize > capacity) {
                 // Grow the buffer for unbounded series
                 growBuffer(newSize);

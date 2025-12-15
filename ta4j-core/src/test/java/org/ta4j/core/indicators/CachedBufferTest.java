@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
@@ -59,6 +60,27 @@ public class CachedBufferTest {
 
         assertEquals(Integer.valueOf(10), result);
         assertEquals(1, computations.get());
+    }
+
+    @Test
+    public void testWriteStampFlipsDuringWriteLockAndReturnsEvenAfterwards() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        long initialStamp = buffer.getWriteStamp();
+        assertEquals("writeStamp should start even", 0L, initialStamp & 1L);
+
+        AtomicLong stampDuringWrite = new AtomicLong(Long.MIN_VALUE);
+        buffer.prefillUntil(0, 1, i -> {
+            stampDuringWrite.set(buffer.getWriteStamp());
+            return i;
+        });
+
+        long capturedStamp = stampDuringWrite.get();
+        assertEquals("writeStamp should be odd while write lock held", 1L, capturedStamp & 1L);
+
+        long finalStamp = buffer.getWriteStamp();
+        assertEquals("writeStamp should be even after write completes", 0L, finalStamp & 1L);
+        assertEquals("Outer write lock should flip stamp twice", initialStamp + 2L, finalStamp);
     }
 
     @Test
@@ -433,5 +455,390 @@ public class CachedBufferTest {
         // Verify get() also returns cached null
         String result3 = buffer.get(5);
         assertNull("get() should return cached null", result3);
+    }
+
+    @Test
+    public void testIsCachedDistinguishesNotComputedFromCachedNull() {
+        CachedBuffer<String> buffer = new CachedBuffer<>(10);
+
+        // Index 5 has not been computed yet
+        assertFalse("Index 5 should not be cached initially", buffer.isCached(5));
+        assertNull("get() should return null for not-computed index", buffer.get(5));
+
+        // Cache a null value at index 5
+        buffer.getOrCompute(5, i -> null);
+
+        // Now index 5 is cached (with null value)
+        assertTrue("Index 5 should be cached after computation", buffer.isCached(5));
+        assertNull("get() should still return null for cached null value", buffer.get(5));
+
+        // Index 6 is still not cached
+        assertFalse("Index 6 should not be cached", buffer.isCached(6));
+    }
+
+    @Test
+    public void testIsCachedWithNonNullValues() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        assertFalse("Index should not be cached initially", buffer.isCached(3));
+
+        buffer.put(3, 300);
+
+        assertTrue("Index should be cached after put", buffer.isCached(3));
+        assertEquals(Integer.valueOf(300), buffer.get(3));
+
+        // Out-of-range index
+        assertFalse("Out-of-range index should not be cached", buffer.isCached(100));
+    }
+
+    @Test
+    public void testConcurrentBufferGrowthStress() throws InterruptedException {
+        // Stress test: multiple threads concurrently writing to an unbounded buffer
+        // that must grow. Modest thread count is sufficient to expose race conditions.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(Integer.MAX_VALUE);
+        int threads = 8;
+        int operationsPerThread = 200;
+        AtomicInteger computations = new AtomicInteger(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        for (int t = 0; t < threads; t++) {
+            final int threadId = t;
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    // Each thread writes to its own range of indices
+                    int baseIndex = threadId * operationsPerThread;
+                    for (int i = 0; i < operationsPerThread; i++) {
+                        int index = baseIndex + i;
+                        buffer.getOrCompute(index, x -> {
+                            computations.incrementAndGet();
+                            return x * 2;
+                        });
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Stress test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        // All indices should have been computed exactly once
+        assertEquals("Each index should be computed exactly once", threads * operationsPerThread, computations.get());
+
+        // Verify all values are correct
+        for (int t = 0; t < threads; t++) {
+            int baseIndex = t * operationsPerThread;
+            for (int i = 0; i < operationsPerThread; i++) {
+                int index = baseIndex + i;
+                Integer value = buffer.get(index);
+                assertEquals("Value at index " + index + " should be correct", Integer.valueOf(index * 2), value);
+            }
+        }
+    }
+
+    @Test
+    public void testConcurrentReadWriteStress() throws InterruptedException {
+        // Stress test: mix of readers and writers operating concurrently.
+        // Moderate iteration count catches race conditions without excessive runtime.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(100);
+        int threads = 8;
+        int iterationsPerThread = 500;
+        AtomicInteger computations = new AtomicInteger(0);
+        AtomicLong readChecksum = new AtomicLong(0);
+
+        // Pre-populate some values
+        for (int i = 0; i < 50; i++) {
+            buffer.put(i, i * 10);
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        for (int t = 0; t < threads; t++) {
+            final int threadId = t;
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    long localChecksum = 0;
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        if (threadId % 2 == 0) {
+                            // Reader thread: read random indices
+                            int index = (threadId * 7 + i) % 100;
+                            Integer value = buffer.get(index);
+                            if (value != null) {
+                                localChecksum += value;
+                            }
+                        } else {
+                            // Writer thread: compute or update values
+                            int index = 50 + (threadId * 3 + i) % 50;
+                            buffer.getOrCompute(index, x -> {
+                                computations.incrementAndGet();
+                                return x * 10;
+                            });
+                        }
+                    }
+                    readChecksum.addAndGet(localChecksum);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Mixed read/write stress test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        // Verify buffer integrity: all cached values should be consistent
+        for (int i = 0; i < 100; i++) {
+            Integer value = buffer.get(i);
+            if (value != null) {
+                assertEquals("Cached value at index " + i + " should be index * 10", Integer.valueOf(i * 10), value);
+            }
+        }
+    }
+
+    @Test
+    public void testLargeGapForwardEvictionDoesNotCorruptRange() {
+        // Test case for bug: when a large gap requires evicting more items than
+        // actually cached, firstCachedIndex was advanced by the calculated evictCount
+        // instead of the actual number of evicted items, corrupting the range.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(5);
+
+        // Cache values at indices 0, 1, 2 (3 entries, capacity is 5)
+        buffer.put(0, 1000);
+        buffer.put(1, 1001);
+        buffer.put(2, 1002);
+
+        assertEquals(0, buffer.getFirstCachedIndex());
+        assertEquals(2, buffer.getHighestResultIndex());
+
+        // Verify initial values
+        assertEquals(Integer.valueOf(1000), buffer.get(0));
+        assertEquals(Integer.valueOf(1001), buffer.get(1));
+        assertEquals(Integer.valueOf(1002), buffer.get(2));
+
+        // Now store at index 100 - a large jump.
+        // newSize = (highestResultIndex - firstCachedIndex + 1) + gap
+        // = (2 - 0 + 1) + (100 - 2) = 3 + 98 = 101
+        // evictCount = 101 - 5 = 96
+        // But we only have 3 cached entries (0, 1, 2)!
+        // The loop should only clear 3 entries, not advance firstCachedIndex by 96.
+        buffer.put(100, 2000);
+
+        // After storing, the range should be valid:
+        // - highestResultIndex should be 100
+        assertEquals(100, buffer.getHighestResultIndex());
+
+        // Critical assertion: when we evict all existing entries due to a large gap,
+        // firstCachedIndex should be set to the new index (100), not an incorrect
+        // value derived from adding evictCount to the old firstCachedIndex.
+        // BUG: firstCachedIndex would be 96 (0 + 96) instead of 100
+        assertEquals("When all entries are evicted by large gap, firstCachedIndex should equal new index", 100,
+                buffer.getFirstCachedIndex());
+
+        // The stored value should be correct
+        assertEquals(Integer.valueOf(2000), buffer.get(100));
+
+        // Indices in the "phantom" range (if bug existed) should not return values
+        Integer val96 = buffer.get(96);
+        Integer val97 = buffer.get(97);
+        Integer val98 = buffer.get(98);
+        Integer val99 = buffer.get(99);
+
+        // All these should be null - they were never stored
+        assertNull("Index 96 was never stored, must be null", val96);
+        assertNull("Index 97 was never stored, must be null", val97);
+        assertNull("Index 98 was never stored, must be null", val98);
+        assertNull("Index 99 was never stored, must be null", val99);
+
+        // Also verify that old indices are properly evicted
+        assertNull("Index 0 should be evicted", buffer.get(0));
+        assertNull("Index 1 should be evicted", buffer.get(1));
+        assertNull("Index 2 should be evicted", buffer.get(2));
+    }
+
+    @Test
+    public void testLargeGapForwardEvictionPreservesInvariant() {
+        // Additional test: verify the invariant
+        // highestResultIndex - firstCachedIndex + 1 <= capacity
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        // Cache 5 values
+        for (int i = 0; i < 5; i++) {
+            buffer.put(i, i * 100);
+        }
+
+        assertEquals(0, buffer.getFirstCachedIndex());
+        assertEquals(4, buffer.getHighestResultIndex());
+
+        // Jump to index 1000
+        buffer.put(1000, 9999);
+
+        int first = buffer.getFirstCachedIndex();
+        int highest = buffer.getHighestResultIndex();
+        int rangeSize = highest - first + 1;
+
+        // The invariant must hold: rangeSize <= capacity (10)
+        assertTrue("Range size (" + rangeSize + ") must be <= capacity (10)", rangeSize <= 10);
+
+        // The new value should be retrievable
+        assertEquals(Integer.valueOf(9999), buffer.get(1000));
+    }
+
+    @Test
+    public void testOptimisticReadWithBufferGrowth() throws InterruptedException {
+        // Test that optimistic reads work correctly when the buffer grows.
+        // This verifies that using localBuffer.length (not capacity) for slot
+        // calculation
+        // is correct, since it matches the buffer we're actually reading from.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(Integer.MAX_VALUE); // Unbounded
+        int readers = 4;
+        int writers = 2;
+        int iterations = 2000;
+        AtomicInteger incorrectReads = new AtomicInteger(0);
+        AtomicInteger maxIndex = new AtomicInteger(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(readers + writers);
+        CountDownLatch ready = new CountDownLatch(readers + writers);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(readers + writers);
+
+        // Writer threads that grow the buffer by writing at increasing indices
+        for (int w = 0; w < writers; w++) {
+            final int writerId = w;
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations; i++) {
+                        // Write at progressively larger indices to trigger buffer growth
+                        int index = writerId * iterations + i;
+                        buffer.put(index, index); // Store index as value for verification
+                        maxIndex.updateAndGet(current -> Math.max(current, index));
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        // Reader threads verify values are correct (value == index when present)
+        for (int r = 0; r < readers; r++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations * 2; i++) {
+                        int index = i % (maxIndex.get() + 1);
+                        Integer value = buffer.get(index);
+                        // Value should be either null (not yet written or evicted) or equal to index
+                        if (value != null && !value.equals(index)) {
+                            incorrectReads.incrementAndGet();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Buffer growth read test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        assertEquals("No incorrect reads should occur during buffer growth", 0, incorrectReads.get());
+    }
+
+    @Test
+    public void testOptimisticReadCorrectnessUnderContention() throws InterruptedException {
+        // Test that optimistic reads never return wrong values under write contention.
+        // Lower iteration count is sufficient to validate correctness without long
+        // runtime.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(1000);
+        int readers = 4;
+        int writers = 2;
+        int iterations = 1000;
+        AtomicInteger incorrectReads = new AtomicInteger(0);
+
+        // Pre-populate with known values
+        for (int i = 0; i < 1000; i++) {
+            buffer.put(i, i);
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(readers + writers);
+        CountDownLatch ready = new CountDownLatch(readers + writers);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(readers + writers);
+
+        // Reader threads verify values are correct
+        for (int r = 0; r < readers; r++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations; i++) {
+                        int index = i % 1000;
+                        Integer value = buffer.get(index);
+                        // Value should be either null (evicted) or equal to index
+                        if (value != null && !value.equals(index)) {
+                            incorrectReads.incrementAndGet();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        // Writer threads invalidate and recompute
+        for (int w = 0; w < writers; w++) {
+            final int writerId = w;
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations / 10; i++) {
+                        int index = (writerId * 100 + i) % 1000;
+                        buffer.invalidateFrom(index);
+                        buffer.put(index, index);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Optimistic read test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        assertEquals("No incorrect reads should occur under contention", 0, incorrectReads.get());
     }
 }

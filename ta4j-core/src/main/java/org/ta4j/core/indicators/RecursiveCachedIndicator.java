@@ -41,6 +41,14 @@ import java.util.Map;
  * the last cached value is too old/far, the computation of all the values
  * between the last cached and the asked one is executed iteratively using the
  * {@link CachedBuffer#prefillUntil} method.
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * This class is thread-safe. Unlike previous versions, the
+ * {@link #getValue(int)} method is no longer {@code synchronized}. Thread
+ * safety is achieved through the underlying {@link CachedBuffer}'s locking
+ * mechanism. Code that relied on external synchronization using indicator
+ * instances must be updated.
  */
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
@@ -112,10 +120,15 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator = PREFILL_DEPTH.get();
         Integer depth = depthByIndicator.get(this);
         if (depth != null && depth > 0) {
+            // Already in a prefill for this indicator on this thread; skip to avoid
+            // infinite recursion
             return;
         }
 
-        depthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
+        // Increment depth first, then wrap ALL subsequent operations in try-finally
+        // to guarantee cleanup even if prefillUntil throws an exception
+        int newDepth = (depth == null ? 0 : depth) + 1;
+        depthByIndicator.put(this, newDepth);
         try {
             // Use the cache's prefillUntil to compute values iteratively
             // under a single write lock
@@ -125,15 +138,28 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
             // another thread advanced it further (e.g., last-bar caching).
             updateHighestResultIndex(getCache().getHighestResultIndex());
         } finally {
-            int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
-            if (updatedDepth <= 0) {
-                depthByIndicator.remove(this);
-            } else {
-                depthByIndicator.put(this, updatedDepth);
-            }
-            if (depthByIndicator.isEmpty()) {
-                PREFILL_DEPTH.remove();
-            }
+            // Cleanup: decrement depth and remove if zero
+            cleanupPrefillDepth(depthByIndicator);
+        }
+    }
+
+    /**
+     * Cleans up the prefill depth tracking for this indicator on the current
+     * thread. Removes the ThreadLocal value entirely when no indicators have active
+     * prefills.
+     */
+    private void cleanupPrefillDepth(Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator) {
+        Integer currentDepth = depthByIndicator.get(this);
+        if (currentDepth == null || currentDepth <= 1) {
+            depthByIndicator.remove(this);
+        } else {
+            depthByIndicator.put(this, currentDepth - 1);
+        }
+
+        // Clean up ThreadLocal entirely when no indicators have active prefills
+        // to prevent memory leaks in long-lived threads
+        if (depthByIndicator.isEmpty()) {
+            PREFILL_DEPTH.remove();
         }
     }
 }

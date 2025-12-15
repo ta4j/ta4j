@@ -47,8 +47,29 @@ import org.ta4j.core.num.Num;
  * This implementation uses a ring buffer for O(1) eviction when
  * {@code maximumBarCount} is set, and read-optimized locking for better
  * concurrency on cache hits.
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * This class is thread-safe. Concurrent reads of cached values are optimized
+ * via a lock-free fast path with seqlock-style validation. Cache misses and
+ * mutations acquire appropriate locks. The implementation is reentrant,
+ * allowing recursive indicators to call {@link #getValue(int)} from within
+ * {@link #calculate(int)} without deadlocking.
+ *
+ * <p>
+ * <strong>Note:</strong> Unlike previous versions, this class no longer uses
+ * {@code synchronized} methods for external locking purposes. Code that relied
+ * on synchronizing on indicator instances for atomicity guarantees must be
+ * updated to use explicit external synchronization.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
+
+    /**
+     * Maximum time (in milliseconds) to wait for a concurrent last-bar computation
+     * to complete before computing independently. This prevents indefinite hangs if
+     * the owning thread dies or encounters an unexpected issue.
+     */
+    private static final long LAST_BAR_WAIT_TIMEOUT_MS = 5000;
 
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
@@ -188,6 +209,28 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * the series. The series maps such accesses to the first remaining bar. Caching
      * this value must be aware of {@code removedBarsCount} changes; otherwise a
      * cached value for index 0 may become stale when the series window advances.
+     *
+     * <h3>Concurrency Note (TOCTOU)</h3>
+     * <p>
+     * This method computes the value outside the lock to avoid deadlocks with the
+     * main cache lock. If the series window advances during computation (i.e.,
+     * {@code removedBarsCount} changes), the computed value is returned to the
+     * caller but <em>not</em> cached. This means the caller may receive a value
+     * computed against bar data that is no longer the "first available" bar.
+     *
+     * <p>
+     * In practice, this is acceptable because:
+     * <ul>
+     * <li>The returned value is still valid for the bar that existed at the start
+     * of the request.</li>
+     * <li>Subsequent calls will compute against the new first bar.</li>
+     * <li>Caching stale data would be worse than returning a slightly outdated but
+     * correct value.</li>
+     * </ul>
+     *
+     * @param series           the bar series
+     * @param removedBarsCount the removed bars count at the time of the request
+     * @return the indicator value for the first available bar
      */
     private T getFirstBarValue(BarSeries series, int removedBarsCount) {
         if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
@@ -236,6 +279,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         long snapshotInvalidationCount;
 
         boolean ownsComputation = false;
+        boolean timedOut = false;
         while (true) {
             synchronized (lastBarLock) {
                 Bar bar1 = series.getLastBar();
@@ -256,6 +300,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     return lastBarCachedResult;
                 }
 
+                // Check write lock BEFORE lastBarComputationInProgress to handle recursive
+                // calls from calculate() while holding the cache write lock. In this case,
+                // we must bypass caching to avoid advancing highestResultIndex while the
+                // main cache doesn't have the value stored.
+                if (cache.isWriteLockedByCurrentThread()) {
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+
                 if (!lastBarComputationInProgress) {
                     lastBarComputationInProgress = true;
                     lastBarComputationIndex = index;
@@ -267,7 +323,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     break;
                 }
 
-                if (cache.isWriteLockedByCurrentThread()) {
+                // If we already timed out waiting for another computation, compute
+                // independently to prevent indefinite blocking
+                if (timedOut) {
                     snapshotBar = currentBar;
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
@@ -276,7 +334,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 }
 
                 try {
-                    lastBarLock.wait();
+                    // Wait with timeout to prevent indefinite hangs if the owning thread
+                    // dies or encounters an unexpected issue. After timeout, we compute
+                    // independently rather than blocking forever.
+                    lastBarLock.wait(LAST_BAR_WAIT_TIMEOUT_MS);
+                    // Only mark as timed out if the computation is still in progress.
+                    // If notifyAll() woke us because computation finished, we should
+                    // loop back and re-check for a cache hit (or become the new owner).
+                    if (lastBarComputationInProgress) {
+                        timedOut = true;
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     snapshotBar = currentBar;
@@ -303,7 +370,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         if (!ownsComputation) {
-            updateHighestResultIndex(index);
+            // snapshotInvalidationCount == -1 signals that caching should be skipped
+            // (e.g., recursive call while holding cache write lock, or thread
+            // interrupted). In these cases, do not update highestResultIndex to avoid
+            // creating a stale state where the index tracker is ahead of actual cached
+            // values.
+            if (snapshotInvalidationCount != -1) {
+                updateHighestResultIndex(index);
+            }
             return computed;
         }
 
