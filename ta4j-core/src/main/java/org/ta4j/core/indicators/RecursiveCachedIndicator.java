@@ -36,19 +36,27 @@ import java.util.Map;
  * Recursive indicators should extend this class.
  *
  * <p>
- * This class is only here to avoid (OK, to postpone) the StackOverflowError
- * that may be thrown on the first getValue(int) call of a recursive indicator.
- * Concretely when an index value is asked if the last cached value is too
- * old/far, the computation of all the values between the last cached and the
- * asked one is executed iteratively.
+ * This class prevents StackOverflowError that may be thrown on the first
+ * getValue(int) call of a recursive indicator. When an index value is asked and
+ * the last cached value is too old/far, the computation of all the values
+ * between the last cached and the asked one is executed iteratively using the
+ * {@link CachedBuffer#prefillUntil} method.
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * This class is thread-safe. Unlike previous versions, the
+ * {@link #getValue(int)} method is no longer {@code synchronized}. Thread
+ * safety is achieved through the underlying {@link CachedBuffer}'s locking
+ * mechanism. Code that relied on external synchronization using indicator
+ * instances must be updated.
  */
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed.
      * <p>
-     * TODO: Should be variable (depending on the sub-indicators used in this
-     * indicator, e.g. Indicator#getUnstableBars()).
+     * This threshold determines when to switch from recursive to iterative
+     * prefilling to avoid stack overflow.
      */
     private static final int RECURSION_THRESHOLD = 100;
 
@@ -77,7 +85,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     @Override
-    public synchronized T getValue(int index) {
+    public T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
             final int seriesEndIndex = series.getEndIndex();
@@ -97,28 +105,61 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         return super.getValue(index);
     }
 
+    /**
+     * Iteratively prefills missing values to avoid stack overflow.
+     *
+     * <p>
+     * Uses the {@link CachedBuffer#prefillUntil} method to compute values
+     * iteratively under a single write lock, avoiding the overhead of re-entering
+     * locks and series lookups for each index.
+     *
+     * @param startIndex  the index to start filling from
+     * @param targetIndex the target index (exclusive)
+     */
     private void prefillMissingValues(int startIndex, int targetIndex) {
         Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator = PREFILL_DEPTH.get();
         Integer depth = depthByIndicator.get(this);
         if (depth != null && depth > 0) {
+            // Already in a prefill for this indicator on this thread; skip to avoid
+            // infinite recursion
             return;
         }
 
-        depthByIndicator.put(this, (depth == null ? 0 : depth) + 1);
+        // Increment depth first, then wrap ALL subsequent operations in try-finally
+        // to guarantee cleanup even if prefillUntil throws an exception
+        int newDepth = (depth == null ? 0 : depth) + 1;
+        depthByIndicator.put(this, newDepth);
         try {
-            for (int prevIdx = startIndex; prevIdx < targetIndex; prevIdx++) {
-                super.getValue(prevIdx);
-            }
+            // Use the cache's prefillUntil to compute values iteratively
+            // under a single write lock
+            getCache().prefillUntil(startIndex, targetIndex, this::calculate);
+
+            // Ensure highestResultIndex reflects the cache without regressing if
+            // another thread advanced it further (e.g., last-bar caching).
+            updateHighestResultIndex(getCache().getHighestResultIndex());
         } finally {
-            int updatedDepth = depthByIndicator.getOrDefault(this, 1) - 1;
-            if (updatedDepth <= 0) {
-                depthByIndicator.remove(this);
-            } else {
-                depthByIndicator.put(this, updatedDepth);
-            }
-            if (depthByIndicator.isEmpty()) {
-                PREFILL_DEPTH.remove();
-            }
+            // Cleanup: decrement depth and remove if zero
+            cleanupPrefillDepth(depthByIndicator);
+        }
+    }
+
+    /**
+     * Cleans up the prefill depth tracking for this indicator on the current
+     * thread. Removes the ThreadLocal value entirely when no indicators have active
+     * prefills.
+     */
+    private void cleanupPrefillDepth(Map<RecursiveCachedIndicator<?>, Integer> depthByIndicator) {
+        Integer currentDepth = depthByIndicator.get(this);
+        if (currentDepth == null || currentDepth <= 1) {
+            depthByIndicator.remove(this);
+        } else {
+            depthByIndicator.put(this, currentDepth - 1);
+        }
+
+        // Clean up ThreadLocal entirely when no indicators have active prefills
+        // to prevent memory leaks in long-lived threads
+        if (depthByIndicator.isEmpty()) {
+            PREFILL_DEPTH.remove();
         }
     }
 }
