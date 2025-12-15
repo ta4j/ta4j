@@ -512,12 +512,24 @@ class CachedBuffer<T> {
             if (bounded && newSize > maximumCapacity) {
                 // Need to evict oldest entries
                 int evictCount = newSize - maximumCapacity;
-                // Clear evicted slots and advance firstCachedIndex
-                for (int i = 0; i < evictCount && firstCachedIndex + i <= highestResultIndex; i++) {
-                    int slot = indexToSlot(firstCachedIndex + i);
-                    buffer[slot] = NOT_COMPUTED;
+                int existingCount = highestResultIndex - firstCachedIndex + 1;
+
+                if (evictCount >= existingCount) {
+                    // Evicting all existing entries due to large gap - clear and start fresh
+                    for (int i = firstCachedIndex; i <= highestResultIndex; i++) {
+                        int slot = indexToSlot(i);
+                        buffer[slot] = NOT_COMPUTED;
+                    }
+                    // Set firstCachedIndex to the new index since all old entries are evicted
+                    firstCachedIndex = index;
+                } else {
+                    // Partial eviction - clear evicted slots and advance firstCachedIndex
+                    for (int i = 0; i < evictCount; i++) {
+                        int slot = indexToSlot(firstCachedIndex + i);
+                        buffer[slot] = NOT_COMPUTED;
+                    }
+                    firstCachedIndex += evictCount;
                 }
-                firstCachedIndex += evictCount;
             } else if (!bounded && newSize > capacity) {
                 // Grow the buffer for unbounded series
                 growBuffer(newSize);

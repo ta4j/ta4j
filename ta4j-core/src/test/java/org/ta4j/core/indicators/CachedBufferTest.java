@@ -615,6 +615,94 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testLargeGapForwardEvictionDoesNotCorruptRange() {
+        // Test case for bug: when a large gap requires evicting more items than
+        // actually cached, firstCachedIndex was advanced by the calculated evictCount
+        // instead of the actual number of evicted items, corrupting the range.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(5);
+
+        // Cache values at indices 0, 1, 2 (3 entries, capacity is 5)
+        buffer.put(0, 1000);
+        buffer.put(1, 1001);
+        buffer.put(2, 1002);
+
+        assertEquals(0, buffer.getFirstCachedIndex());
+        assertEquals(2, buffer.getHighestResultIndex());
+
+        // Verify initial values
+        assertEquals(Integer.valueOf(1000), buffer.get(0));
+        assertEquals(Integer.valueOf(1001), buffer.get(1));
+        assertEquals(Integer.valueOf(1002), buffer.get(2));
+
+        // Now store at index 100 - a large jump.
+        // newSize = (highestResultIndex - firstCachedIndex + 1) + gap
+        // = (2 - 0 + 1) + (100 - 2) = 3 + 98 = 101
+        // evictCount = 101 - 5 = 96
+        // But we only have 3 cached entries (0, 1, 2)!
+        // The loop should only clear 3 entries, not advance firstCachedIndex by 96.
+        buffer.put(100, 2000);
+
+        // After storing, the range should be valid:
+        // - highestResultIndex should be 100
+        assertEquals(100, buffer.getHighestResultIndex());
+
+        // Critical assertion: when we evict all existing entries due to a large gap,
+        // firstCachedIndex should be set to the new index (100), not an incorrect
+        // value derived from adding evictCount to the old firstCachedIndex.
+        // BUG: firstCachedIndex would be 96 (0 + 96) instead of 100
+        assertEquals("When all entries are evicted by large gap, firstCachedIndex should equal new index", 100,
+                buffer.getFirstCachedIndex());
+
+        // The stored value should be correct
+        assertEquals(Integer.valueOf(2000), buffer.get(100));
+
+        // Indices in the "phantom" range (if bug existed) should not return values
+        Integer val96 = buffer.get(96);
+        Integer val97 = buffer.get(97);
+        Integer val98 = buffer.get(98);
+        Integer val99 = buffer.get(99);
+
+        // All these should be null - they were never stored
+        assertNull("Index 96 was never stored, must be null", val96);
+        assertNull("Index 97 was never stored, must be null", val97);
+        assertNull("Index 98 was never stored, must be null", val98);
+        assertNull("Index 99 was never stored, must be null", val99);
+
+        // Also verify that old indices are properly evicted
+        assertNull("Index 0 should be evicted", buffer.get(0));
+        assertNull("Index 1 should be evicted", buffer.get(1));
+        assertNull("Index 2 should be evicted", buffer.get(2));
+    }
+
+    @Test
+    public void testLargeGapForwardEvictionPreservesInvariant() {
+        // Additional test: verify the invariant
+        // highestResultIndex - firstCachedIndex + 1 <= capacity
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        // Cache 5 values
+        for (int i = 0; i < 5; i++) {
+            buffer.put(i, i * 100);
+        }
+
+        assertEquals(0, buffer.getFirstCachedIndex());
+        assertEquals(4, buffer.getHighestResultIndex());
+
+        // Jump to index 1000
+        buffer.put(1000, 9999);
+
+        int first = buffer.getFirstCachedIndex();
+        int highest = buffer.getHighestResultIndex();
+        int rangeSize = highest - first + 1;
+
+        // The invariant must hold: rangeSize <= capacity (10)
+        assertTrue("Range size (" + rangeSize + ") must be <= capacity (10)", rangeSize <= 10);
+
+        // The new value should be retrievable
+        assertEquals(Integer.valueOf(9999), buffer.get(1000));
+    }
+
+    @Test
     public void testOptimisticReadCorrectnessUnderContention() throws InterruptedException {
         // Test that optimistic reads never return wrong values under write contention.
         // Lower iteration count is sufficient to validate correctness without long

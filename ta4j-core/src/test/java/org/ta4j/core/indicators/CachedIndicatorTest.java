@@ -819,7 +819,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             // Start first thread that will block forever
-            Future<?> blockedFuture = executor.submit(() -> {
+            executor.submit(() -> {
                 try {
                     indicator.getValue(endIndex);
                 } catch (Exception e) {
