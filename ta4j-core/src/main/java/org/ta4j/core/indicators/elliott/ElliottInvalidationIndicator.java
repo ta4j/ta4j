@@ -70,7 +70,7 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
             invalid = !phaseIndicator.isWaveTwoValid(swings.get(0), swings.get(1), impulse.rising());
         }
         if (!invalid && swings.size() >= 3) {
-            invalid = !phaseIndicator.isWaveThreeValid(swings.get(0), swings.get(1), swings.get(2), impulse.rising());
+            invalid = !phaseIndicator.isWaveThreeValid(swings.get(0), swings.get(2), impulse.rising());
         }
         if (!invalid && swings.size() >= 4) {
             invalid = !phaseIndicator.isWaveFourValid(swings.get(0), swings.get(2), swings.get(3), impulse.rising());

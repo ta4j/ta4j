@@ -238,7 +238,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
 
         final ElliottSwing wave3 = swings.get(2);
-        if (!isWaveThreeValid(wave1, wave2, wave3, rising)) {
+        if (!isWaveThreeValid(wave1, wave3, rising)) {
             return phase;
         }
         phase = ElliottPhase.WAVE3;
@@ -317,8 +317,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         return impulseRising ? !candidate.isLessThan(boundary) : !candidate.isGreaterThan(boundary);
     }
 
-    boolean isWaveThreeValid(final ElliottSwing wave1, final ElliottSwing wave2, final ElliottSwing wave3,
-            final boolean impulseRising) {
+    boolean isWaveThreeValid(final ElliottSwing wave1, final ElliottSwing wave3, final boolean impulseRising) {
         if (!isFiniteSwing(wave3)) {
             return false;
         }
