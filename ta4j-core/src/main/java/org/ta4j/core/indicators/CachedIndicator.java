@@ -323,6 +323,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     break;
                 }
 
+                // If we already timed out waiting for another computation, compute
+                // independently to prevent indefinite blocking
+                if (timedOut) {
+                    snapshotBar = currentBar;
+                    snapshotTradeCount = currentTradeCount;
+                    snapshotClosePrice = currentClosePrice;
+                    snapshotInvalidationCount = -1;
+                    break;
+                }
+
                 try {
                     // Wait with timeout to prevent indefinite hangs if the owning thread
                     // dies or encounters an unexpected issue. After timeout, we compute
