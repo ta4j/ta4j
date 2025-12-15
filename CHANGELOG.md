@@ -55,6 +55,21 @@
 - Added `ElliottPhaseIndicator` and `ElliottInvalidationIndicator` to track wave state and surface invalidations for swing-based strategies
 - Added `ElliottSwingIndicator`, `ElliottSwingCompressor`, and `ElliottWaveCountIndicator` to generate, filter, and count Elliott swings from `RecentSwingIndicator` swing points (fractal or ZigZag)
 
+- **Elliott Wave confidence scoring and alternative scenario support**: Added support for handling the inherent ambiguity in Elliott Wave analysis by generating multiple plausible wave interpretations with confidence percentages:
+  - `ElliottConfidence`: Record capturing confidence metrics for a wave interpretation, with weighted factor scores (Fibonacci proximity 35%, time proportions 20%, alternation quality 15%, channel adherence 15%, structure completeness 15%)
+  - `ElliottScenario`: Record representing a single wave interpretation with confidence, invalidation level, and Fibonacci-based price targets
+  - `ElliottScenarioSet`: Immutable container holding ranked alternative scenarios with convenience methods (`primary()`, `alternatives()`, `consensus()`, `hasStrongConsensus()`, `confidenceSpread()`)
+  - `ScenarioType`: Enum classifying pattern types (IMPULSE, CORRECTIVE_ZIGZAG, CORRECTIVE_FLAT, CORRECTIVE_TRIANGLE, CORRECTIVE_COMPLEX, UNKNOWN)
+  - `ElliottConfidenceScorer`: Stateless utility that calculates confidence from swing data with configurable weights
+  - `ElliottScenarioGenerator`: Generates alternative interpretations by exploring different starting points, pattern types, and degree variations, with automatic pruning of low-confidence scenarios
+  - `ElliottScenarioIndicator`: CachedIndicator returning `ElliottScenarioSet` for each bar, integrating scenario generation with the indicator framework
+  - `ElliottProjectionIndicator`: Returns Fibonacci-based price targets from the primary scenario
+  - `ElliottInvalidationLevelIndicator`: Returns the specific price level that would invalidate the current count, with PRIMARY/CONSERVATIVE/AGGRESSIVE modes
+  - `ElliottScenarioComparator`: Utility for comparing scenarios with methods like `divergenceScore()`, `sharedInvalidation()`, `consensusPhase()`, and `commonTargetRange()`
+  - Enhanced `ElliottFibonacciValidator` with continuous proximity scoring methods (`waveTwoProximityScore()`, `waveThreeProximityScore()`, etc.) returning 0.0-1.0 instead of boolean pass/fail
+  - Enhanced `ElliottWaveFacade` with scenario-based methods: `scenarios()`, `primaryScenario(int)`, `alternativeScenarios(int)`, `confidenceForPhase(int, ElliottPhase)`, `hasScenarioConsensus(int)`, `scenarioConsensus(int)`, `scenarioSummary(int)`
+  - Updated `ElliottWaveAnalysis` example to demonstrate confidence percentages and alternative scenario display
+
 ### Fixed
 - **Rule naming now lightweight**: `Rule#getName()` is now a simple label (defaults to the class name) and no longer triggers JSON serialization. Composite rules build readable names from child labels without serialization side effects.
 - **Explicit rule serialization APIs**: Added `Rule#toJson(BarSeries)`/`Rule#fromJson(BarSeries, String)` so serialization happens only when explicitly requested. Custom names are preserved via `__customName` metadata, independent of `getName()`.

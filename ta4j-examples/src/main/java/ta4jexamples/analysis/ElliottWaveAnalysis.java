@@ -26,7 +26,6 @@ package ta4jexamples.analysis;
 import java.awt.Color;
 import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -39,6 +38,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.elliott.ElliottChannel;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottFibonacciValidator;
@@ -46,6 +46,9 @@ import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
 import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatio;
 import org.ta4j.core.indicators.elliott.ElliottRatioIndicator;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottScenarioIndicator;
+import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
@@ -100,6 +103,9 @@ public class ElliottWaveAnalysis {
                 closePrice.getValue(series.getEndIndex()).multipliedBy(series.numFactory().numOf(0.01)), 2);
         ElliottWaveCountIndicator filteredSwingCount = new ElliottWaveCountIndicator(swingIndicator, compressor);
 
+        // Scenario-based analysis with confidence scoring
+        ElliottScenarioIndicator scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channelIndicator);
+
         int endIndex = series.getEndIndex();
         ElliottSwingMetadata snapshot = ElliottSwingMetadata.of(swingIndicator.getValue(endIndex), series.numFactory());
         LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.isValid(), snapshot.size(),
@@ -115,6 +121,43 @@ public class ElliottWaveAnalysis {
         LOG.info("Latest confluence score={} confluent={}", confluenceIndicator.getValue(endIndex),
                 confluenceIndicator.isConfluent(endIndex));
         LOG.info("Latest invalidation={}", invalidationIndicator.getValue(endIndex));
+
+        // Log scenario-based analysis with confidence percentages
+        ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
+        LOG.info("=== Elliott Wave Scenario Analysis ===");
+        LOG.info("Scenario summary: {}", scenarioSet.summary());
+        LOG.info("Strong consensus: {} | Consensus phase: {}", scenarioSet.hasStrongConsensus(),
+                scenarioSet.consensus());
+
+        if (scenarioSet.primary().isPresent()) {
+            ElliottScenario primary = scenarioSet.primary().get();
+            ElliottConfidence confidence = primary.confidence();
+            LOG.info("PRIMARY SCENARIO: {} ({})", primary.currentPhase(), primary.type());
+            LOG.info("  Overall confidence: {:.1f}% ({})", confidence.asPercentage(),
+                    confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
+            LOG.info(
+                    "  Factor scores: Fibonacci={:.1f}% | Time={:.1f}% | Alternation={:.1f}% | Channel={:.1f}% | Completeness={:.1f}%",
+                    confidence.fibonacciScore().doubleValue() * 100,
+                    confidence.timeProportionScore().doubleValue() * 100,
+                    confidence.alternationScore().doubleValue() * 100, confidence.channelScore().doubleValue() * 100,
+                    confidence.completenessScore().doubleValue() * 100);
+            LOG.info("  Primary reason: {}", confidence.primaryReason());
+            LOG.info("  Weakest factor: {}", confidence.weakestFactor());
+            LOG.info("  Direction: {} | Invalidation: {} | Target: {}", primary.isBullish() ? "BULLISH" : "BEARISH",
+                    primary.invalidationPrice(), primary.primaryTarget());
+        }
+
+        // Log alternative scenarios
+        List<ElliottScenario> alternatives = scenarioSet.alternatives();
+        if (!alternatives.isEmpty()) {
+            LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
+            for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
+                ElliottScenario alt = alternatives.get(i);
+                LOG.info("  {}. {} ({}) - {:.1f}% confidence", i + 1, alt.currentPhase(), alt.type(),
+                        alt.confidence().asPercentage());
+            }
+        }
+        LOG.info("======================================");
 
         BarSeriesLabelIndicator waveLabels = buildWaveLabels(series, phaseIndicator);
 

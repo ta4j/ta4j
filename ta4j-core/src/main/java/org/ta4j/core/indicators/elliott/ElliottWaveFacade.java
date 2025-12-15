@@ -23,7 +23,9 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -64,6 +66,9 @@ public final class ElliottWaveFacade {
     private ElliottWaveCountIndicator waveCountIndicator;
     private ElliottConfluenceIndicator confluenceIndicator;
     private ElliottInvalidationIndicator invalidationIndicator;
+    private ElliottScenarioIndicator scenarioIndicator;
+    private ElliottProjectionIndicator projectionIndicator;
+    private ElliottInvalidationLevelIndicator invalidationLevelIndicator;
 
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator) {
@@ -221,5 +226,110 @@ public final class ElliottWaveFacade {
             invalidationIndicator = new ElliottInvalidationIndicator(phase());
         }
         return invalidationIndicator;
+    }
+
+    /**
+     * @return the scenario indicator providing alternative wave interpretations
+     *         (lazily created)
+     * @since 0.22.0
+     */
+    public ElliottScenarioIndicator scenarios() {
+        if (scenarioIndicator == null) {
+            scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+        }
+        return scenarioIndicator;
+    }
+
+    /**
+     * @return the projection indicator for Fibonacci targets (lazily created)
+     * @since 0.22.0
+     */
+    public ElliottProjectionIndicator projection() {
+        if (projectionIndicator == null) {
+            projectionIndicator = new ElliottProjectionIndicator(scenarios());
+        }
+        return projectionIndicator;
+    }
+
+    /**
+     * @return the invalidation level indicator (lazily created)
+     * @since 0.22.0
+     */
+    public ElliottInvalidationLevelIndicator invalidationLevel() {
+        if (invalidationLevelIndicator == null) {
+            invalidationLevelIndicator = new ElliottInvalidationLevelIndicator(scenarios());
+        }
+        return invalidationLevelIndicator;
+    }
+
+    /**
+     * Gets the primary (highest confidence) scenario at the specified index.
+     *
+     * @param index bar index
+     * @return primary scenario, or empty if no scenarios exist
+     * @since 0.22.0
+     */
+    public Optional<ElliottScenario> primaryScenario(final int index) {
+        return scenarios().primaryScenario(index);
+    }
+
+    /**
+     * Gets alternative scenarios (excluding primary) at the specified index.
+     *
+     * @param index bar index
+     * @return list of alternative scenarios sorted by confidence
+     * @since 0.22.0
+     */
+    public List<ElliottScenario> alternativeScenarios(final int index) {
+        return scenarios().alternatives(index);
+    }
+
+    /**
+     * Gets the confidence score for a specific phase at the specified index.
+     *
+     * @param index bar index
+     * @param phase the phase to check confidence for
+     * @return confidence score (0.0 - 1.0), or 0.0 if no matching scenario
+     * @since 0.22.0
+     */
+    public Num confidenceForPhase(final int index, final ElliottPhase phase) {
+        final ElliottScenarioSet scenarioSet = scenarios().getValue(index);
+        return scenarioSet.byPhase(phase)
+                .primary()
+                .map(ElliottScenario::confidenceScore)
+                .orElse(series.numFactory().zero());
+    }
+
+    /**
+     * Checks whether all high-confidence scenarios agree on the current phase.
+     *
+     * @param index bar index
+     * @return {@code true} if scenarios show strong consensus
+     * @since 0.22.0
+     */
+    public boolean hasScenarioConsensus(final int index) {
+        return scenarios().hasStrongConsensus(index);
+    }
+
+    /**
+     * Gets the consensus phase across high-confidence scenarios.
+     *
+     * @param index bar index
+     * @return consensus phase, or NONE if no agreement
+     * @since 0.22.0
+     */
+    public ElliottPhase scenarioConsensus(final int index) {
+        return scenarios().consensus(index);
+    }
+
+    /**
+     * Gets a summary description of scenarios at the specified index.
+     *
+     * @param index bar index
+     * @return human-readable scenario summary
+     * @since 0.22.0
+     */
+    public String scenarioSummary(final int index) {
+        return scenarios().getValue(index).summary();
     }
 }
