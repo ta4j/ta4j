@@ -703,6 +703,75 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testOptimisticReadWithBufferGrowth() throws InterruptedException {
+        // Test that optimistic reads work correctly when the buffer grows.
+        // This verifies that using localBuffer.length (not capacity) for slot
+        // calculation
+        // is correct, since it matches the buffer we're actually reading from.
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(Integer.MAX_VALUE); // Unbounded
+        int readers = 4;
+        int writers = 2;
+        int iterations = 2000;
+        AtomicInteger incorrectReads = new AtomicInteger(0);
+        AtomicInteger maxIndex = new AtomicInteger(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(readers + writers);
+        CountDownLatch ready = new CountDownLatch(readers + writers);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(readers + writers);
+
+        // Writer threads that grow the buffer by writing at increasing indices
+        for (int w = 0; w < writers; w++) {
+            final int writerId = w;
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations; i++) {
+                        // Write at progressively larger indices to trigger buffer growth
+                        int index = writerId * iterations + i;
+                        buffer.put(index, index); // Store index as value for verification
+                        maxIndex.updateAndGet(current -> Math.max(current, index));
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        // Reader threads verify values are correct (value == index when present)
+        for (int r = 0; r < readers; r++) {
+            executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                    for (int i = 0; i < iterations * 2; i++) {
+                        int index = i % (maxIndex.get() + 1);
+                        Integer value = buffer.get(index);
+                        // Value should be either null (not yet written or evicted) or equal to index
+                        if (value != null && !value.equals(index)) {
+                            incorrectReads.incrementAndGet();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+
+        ready.await();
+        start.countDown();
+        assertTrue("Buffer growth read test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        executor.shutdownNow();
+
+        assertEquals("No incorrect reads should occur during buffer growth", 0, incorrectReads.get());
+    }
+
+    @Test
     public void testOptimisticReadCorrectnessUnderContention() throws InterruptedException {
         // Test that optimistic reads never return wrong values under write contention.
         // Lower iteration count is sufficient to validate correctness without long

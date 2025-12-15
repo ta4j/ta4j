@@ -421,6 +421,13 @@ class CachedBuffer<T> {
             return NOT_COMPUTED;
         }
 
+        // IMPORTANT: Use localBuffer.length (not capacity) for slot calculation.
+        // This ensures we use the correct slot mapping for whichever buffer we're
+        // reading from. If we read an old buffer, we need old buffer's slot mapping.
+        // If we read new buffer, we need new buffer's slot mapping (which matches
+        // how growBuffer() copies values). Using capacity could cause
+        // ArrayIndexOutOfBoundsException if capacity was already updated but we're
+        // reading from the old (smaller) buffer.
         Object[] localBuffer = buffer;
         int slot = index % localBuffer.length;
         Object value = localBuffer[slot];
