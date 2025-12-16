@@ -23,6 +23,8 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import java.util.Collection;
 import java.util.Objects;
 
@@ -81,8 +83,14 @@ public final class ElliottScenarioComparator {
         }
 
         // Direction divergence (0.0 - 0.3)
-        if (scenario1.isBullish() != scenario2.isBullish()) {
-            score += 0.3;
+        // Only compare direction if both scenarios have a known direction
+        if (scenario1.hasKnownDirection() && scenario2.hasKnownDirection()) {
+            if (scenario1.isBullish() != scenario2.isBullish()) {
+                score += 0.3;
+            }
+        } else {
+            // Unknown direction counts as partial divergence
+            score += 0.15;
         }
 
         // Type divergence (0.0 - 0.3)
@@ -97,22 +105,27 @@ public final class ElliottScenarioComparator {
     }
 
     /**
-     * Finds the most conservative (lowest) invalidation price across scenarios.
+     * Finds the shared invalidation price across scenarios with consistent
+     * direction.
      *
      * <p>
-     * This is useful for setting stop-losses that would be valid regardless of
-     * which scenario is correct.
+     * For bullish scenarios, returns the lowest (most conservative) invalidation.
+     * For bearish scenarios, returns the highest (most conservative) invalidation.
+     * If scenarios have mixed directions (bullish and bearish), returns NaN since
+     * their invalidation levels are not comparable.
      *
      * @param scenarios collection of scenarios to analyze
-     * @return lowest invalidation price, or NaN if no valid invalidations
+     * @return shared invalidation price, or NaN if no valid invalidations or mixed
+     *         directions
      * @since 0.22.0
      */
     public Num sharedInvalidation(final Collection<ElliottScenario> scenarios) {
         if (scenarios == null || scenarios.isEmpty()) {
-            return numFactory.numOf(Double.NaN);
+            return NaN;
         }
 
         Num sharedInvalidation = null;
+        Boolean sharedDirection = null; // true = bullish, false = bearish
 
         for (final ElliottScenario scenario : scenarios) {
             final Num invalidation = scenario.invalidationPrice();
@@ -120,12 +133,25 @@ public final class ElliottScenarioComparator {
                 continue;
             }
 
-            if (sharedInvalidation == null) {
+            // Skip scenarios without a known direction
+            if (!scenario.hasKnownDirection()) {
+                continue;
+            }
+
+            final boolean bullish = scenario.isBullish();
+
+            if (sharedDirection == null) {
+                // First valid scenario establishes the direction
+                sharedDirection = bullish;
                 sharedInvalidation = invalidation;
+            } else if (sharedDirection != bullish) {
+                // Mixed directions - invalidation prices are not comparable
+                return NaN;
             } else {
-                // For bullish scenarios, take the lower invalidation
-                // For bearish, take the higher
-                if (scenario.isBullish()) {
+                // Same direction - compute shared invalidation
+                // For bullish: take the lower (more conservative stop-loss)
+                // For bearish: take the higher (more conservative stop-loss)
+                if (bullish) {
                     sharedInvalidation = sharedInvalidation.min(invalidation);
                 } else {
                     sharedInvalidation = sharedInvalidation.max(invalidation);
@@ -133,7 +159,7 @@ public final class ElliottScenarioComparator {
             }
         }
 
-        return sharedInvalidation != null ? sharedInvalidation : numFactory.numOf(Double.NaN);
+        return sharedInvalidation != null ? sharedInvalidation : NaN;
     }
 
     /**
@@ -210,6 +236,11 @@ public final class ElliottScenarioComparator {
                 continue;
             }
 
+            // Skip scenarios without a known direction
+            if (!scenario.hasKnownDirection()) {
+                continue;
+            }
+
             final boolean bullish = scenario.isBullish();
 
             if (consensus == null) {
@@ -223,10 +254,15 @@ public final class ElliottScenarioComparator {
     }
 
     /**
-     * Finds the common (overlapping) target range across scenarios.
+     * Computes the bounds (min, max) of all primary targets across scenarios.
+     *
+     * <p>
+     * This returns the span of primary target prices, useful for understanding the
+     * range of potential targets. Note: this is the global min/max, not the
+     * intersection of per-scenario target ranges.
      *
      * @param scenarios collection of scenarios
-     * @return array of [min, max] for overlapping target range, or empty if none
+     * @return array of [min, max] for target bounds, or empty if no valid targets
      * @since 0.22.0
      */
     public Num[] commonTargetRange(final Collection<ElliottScenario> scenarios) {
@@ -300,10 +336,14 @@ public final class ElliottScenarioComparator {
             sb.append("  Phase: DIFFER\n");
         }
 
-        if (scenario1.isBullish() == scenario2.isBullish()) {
-            sb.append("  Direction: AGREE (").append(scenario1.isBullish() ? "bullish" : "bearish").append(")\n");
+        if (scenario1.hasKnownDirection() && scenario2.hasKnownDirection()) {
+            if (scenario1.isBullish() == scenario2.isBullish()) {
+                sb.append("  Direction: AGREE (").append(scenario1.isBullish() ? "bullish" : "bearish").append(")\n");
+            } else {
+                sb.append("  Direction: DIFFER\n");
+            }
         } else {
-            sb.append("  Direction: DIFFER\n");
+            sb.append("  Direction: UNKNOWN (one or both scenarios lack direction info)\n");
         }
 
         return sb.toString();

@@ -74,7 +74,10 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
                 .sorted(Comparator.comparingInt(BarLabel::barIndex))
                 .collect(Collectors.toUnmodifiableList());
         this.labelsByIndex = this.labels.stream()
-                .collect(Collectors.toUnmodifiableMap(BarLabel::barIndex, label -> label, (left, right) -> right));
+                .collect(Collectors.toUnmodifiableMap(BarLabel::barIndex, label -> label, (left, right) -> {
+                    // Keep the last (right) value for duplicate indices
+                    return right;
+                }));
     }
 
     @Override

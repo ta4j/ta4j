@@ -62,8 +62,26 @@ class ElliottProjectionIndicatorTest {
 
         List<Num> targets = projectionIndicator.allTargets(series.getEndIndex());
 
-        // May be empty or contain targets depending on scenario
+        // List should never be null (returns empty list if no scenario)
         assertThat(targets).isNotNull();
+
+        // Check if primary scenario exists - if it does, targets may be present
+        var primaryScenario = scenarioIndicator.primaryScenario(series.getEndIndex());
+        if (primaryScenario.isPresent()) {
+            // If scenario exists, targets list should match scenario's fibonacciTargets
+            // exactly
+            List<Num> scenarioTargets = primaryScenario.get().fibonacciTargets();
+            assertThat(targets).hasSize(scenarioTargets.size());
+            assertThat(targets).containsExactlyElementsOf(scenarioTargets);
+
+            // If targets are present, they should be valid values
+            if (!targets.isEmpty()) {
+                assertThat(targets).allMatch(t -> Num.isValid(t), "All targets should be valid");
+            }
+        } else {
+            // If no primary scenario, targets should be empty
+            assertThat(targets).isEmpty();
+        }
     }
 
     @Test
@@ -92,13 +110,16 @@ class ElliottProjectionIndicatorTest {
 
     @Test
     void calculateCorrectiveTargets() {
-        // For a bearish corrective (after a bullish impulse):
-        // Wave A rising: 100 -> 130 (amplitude = 30, bullish correction)
-        // Wave B falling: 130 -> 115 (ends at 115)
-        // Wave C should continue in direction of A (up), so C target = B end + A amp
+        // A-B-C corrective pattern: Wave A rises 100 -> 130 (amplitude = 30),
+        // Wave B retraces to 115, Wave C moves opposite to A (downward).
+        // According to Elliott Wave theory, Wave C typically equals Wave A amplitude.
+        // From Wave B end (115), Wave C target = 115 - 30 = 85
         List<ElliottSwing> swings = List.of(
-                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(130), ElliottDegree.MINOR),
-                new ElliottSwing(5, 10, numFactory.numOf(130), numFactory.numOf(115), ElliottDegree.MINOR));
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(130), ElliottDegree.MINOR), // Wave A:
+                                                                                                           // +30
+                new ElliottSwing(5, 10, numFactory.numOf(130), numFactory.numOf(115), ElliottDegree.MINOR)); // Wave B
+                                                                                                             // end at
+                                                                                                             // 115
 
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
@@ -107,16 +128,13 @@ class ElliottProjectionIndicatorTest {
 
         List<Num> targets = projectionIndicator.calculateTargets(swings, ElliottPhase.CORRECTIVE_B);
 
-        // Should have wave C targets
+        // Should have wave C targets: 1.0 equality, 1.618 extension, 0.618 truncated
         assertThat(targets).isNotEmpty();
 
-        // Wave A rising (isRising=true), so cDown=true, !cDown=false means subtractive
-        // Actually let me trace through: waveA.isRising() = true for 100->130
-        // cDown = waveA.isRising() = true
-        // !cDown = false, so additive=false, meaning we subtract
-        // Target = 115 - 30 = 85
-        boolean hasTarget = targets.stream().anyMatch(t -> Math.abs(t.doubleValue() - 85) < 1.0);
-        assertThat(hasTarget).isTrue();
+        // Primary target: Wave C equals Wave A amplitude (A = C equality)
+        // Wave B ends at 115, Wave A amplitude is 30, Wave C moves down: 115 - 30 = 85
+        boolean hasEqualityTarget = targets.stream().anyMatch(t -> Math.abs(t.doubleValue() - 85.0) < 1.0);
+        assertThat(hasEqualityTarget).isTrue();
     }
 
     @Test

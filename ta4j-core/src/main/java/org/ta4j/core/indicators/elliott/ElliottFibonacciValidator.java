@@ -48,6 +48,7 @@ public class ElliottFibonacciValidator {
     private final Num waveFiveMaxProjection;
     private final Num waveBMinRetracement;
     private final Num waveBMaxRetracement;
+    private final Num waveBFlatMinRetracement;
     private final Num waveCMinExtension;
     private final Num waveCMaxExtension;
 
@@ -81,6 +82,7 @@ public class ElliottFibonacciValidator {
         this.waveFiveMaxProjection = numFactory.numOf(1.618);
         this.waveBMinRetracement = numFactory.numOf(0.382);
         this.waveBMaxRetracement = numFactory.numOf(0.886);
+        this.waveBFlatMinRetracement = numFactory.numOf(0.786);
         this.waveCMinExtension = numFactory.numOf(1.0);
         this.waveCMaxExtension = numFactory.numOf(1.618);
     }
@@ -136,6 +138,23 @@ public class ElliottFibonacciValidator {
      */
     public boolean isWaveBRetracementValid(final ElliottSwing waveA, final ElliottSwing waveB) {
         return ratioBetween(waveB.amplitude(), waveA.amplitude(), waveBMinRetracement, waveBMaxRetracement);
+    }
+
+    /**
+     * Validates wave B retracement for flat corrective patterns.
+     *
+     * <p>
+     * Flat patterns require wave B to retrace at least 78.6% of wave A, which is
+     * stricter than the general wave B retracement requirement.
+     *
+     * @param waveA first corrective swing
+     * @param waveB second corrective swing
+     * @return {@code true} when wave B retraces at least 78.6% of wave A and stays
+     *         within the maximum retracement bound
+     * @since 0.22.0
+     */
+    public boolean isWaveBFlatRetracementValid(final ElliottSwing waveA, final ElliottSwing waveB) {
+        return ratioBetween(waveB.amplitude(), waveA.amplitude(), waveBFlatMinRetracement, waveBMaxRetracement);
     }
 
     /**
@@ -251,7 +270,7 @@ public class ElliottFibonacciValidator {
             final Num ideal) {
         final NumFactory factory = lower.getNumFactory();
 
-        if (!Num.isFinite(numerator) || !Num.isFinite(denominator)) {
+        if (!Num.isValid(numerator) || !Num.isValid(denominator)) {
             return factory.zero();
         }
         if (denominator.isZero()) {
@@ -275,10 +294,9 @@ public class ElliottFibonacciValidator {
             return factory.one();
         }
 
-        // Score = 1.0 - (distance from ideal / range half), clamped to [0.5, 1.0]
+        // Score = 1.0 - (distance from ideal / range half) * 0.5, clamped to [0.0, 1.0]
         final Num normalizedDistance = distanceFromIdeal.dividedBy(rangeHalf);
         final Num baseScore = factory.one().minus(normalizedDistance.multipliedBy(factory.numOf(0.5)));
-
         // Clamp to [0.0, 1.0]
         if (baseScore.isLessThan(factory.zero())) {
             return factory.zero();
@@ -291,7 +309,7 @@ public class ElliottFibonacciValidator {
     }
 
     private boolean ratioBetween(final Num numerator, final Num denominator, final Num lower, final Num upper) {
-        if (!Num.isFinite(numerator) || !Num.isFinite(denominator)) {
+        if (!Num.isValid(numerator) || !Num.isValid(denominator)) {
             return false;
         }
         if (denominator.isZero()) {

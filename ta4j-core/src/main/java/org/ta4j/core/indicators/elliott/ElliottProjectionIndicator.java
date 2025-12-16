@@ -104,7 +104,7 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
      * @since 0.22.0
      */
     public List<Num> calculateTargets(final List<ElliottSwing> swings, final ElliottPhase phase) {
-        if (swings == null || swings.isEmpty()) {
+        if (swings == null || swings.isEmpty() || phase == null) {
             return List.of();
         }
 

@@ -34,7 +34,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 class ElliottWaveFacadeTest {
 
     @Test
-    void fractalFactory_shouldCreateAllIndicators() {
+    void fractalFactoryShouldCreateAllIndicators() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5, 17, 4 };
         for (double close : closes) {
@@ -54,7 +54,7 @@ class ElliottWaveFacadeTest {
     }
 
     @Test
-    void indicatorsAreLazilyCreatedAndReused() {
+    void indicatorsAreReused() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8 };
         for (double close : closes) {
@@ -63,9 +63,8 @@ class ElliottWaveFacadeTest {
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
 
-        // First call creates the indicator
+        // Subsequent calls return the same instance
         var phase1 = suite.phase();
-        // Second call returns the same instance
         var phase2 = suite.phase();
         assertThat(phase1).isSameAs(phase2);
 
@@ -75,7 +74,7 @@ class ElliottWaveFacadeTest {
     }
 
     @Test
-    void zigZagFactory_shouldCreateIndicators() {
+    void zigZagFactoryShouldCreateIndicators() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5, 17, 4, 18, 3 };
         for (double close : closes) {
@@ -97,8 +96,13 @@ class ElliottWaveFacadeTest {
         }
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
+        var swing = suite.swing();
 
         // All indicators should use the same swing source
-        assertThat(suite.phase().getSwingIndicator()).isSameAs(suite.swing());
+        assertThat(suite.phase().getSwingIndicator()).isSameAs(swing);
+        assertThat(suite.ratio().getSwingIndicator()).isSameAs(swing);
+        assertThat(suite.channel().getSwingIndicator()).isSameAs(swing);
+        assertThat(suite.waveCount().getSwingIndicator()).isSameAs(swing);
+        assertThat(suite.scenarios().getSwingIndicator()).isSameAs(swing);
     }
 }

@@ -38,6 +38,9 @@ public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPric
         if (fromIndex < 0 || toIndex < 0) {
             throw new IllegalArgumentException("Swing indices must be non-negative");
         }
+        if (fromIndex == toIndex) {
+            throw new IllegalArgumentException("Swing indices must be different");
+        }
         Objects.requireNonNull(fromPrice, "fromPrice");
         Objects.requireNonNull(toPrice, "toPrice");
         Objects.requireNonNull(degree, "degree");

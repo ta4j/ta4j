@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
@@ -153,6 +154,195 @@ class ElliottScenarioTest {
                 .build();
 
         assertThat(scenario.waveCount()).isEqualTo(3);
+    }
+
+    @Test
+    void hasKnownDirectionWithSwings() {
+        List<ElliottSwing> swings = List
+                .of(new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR));
+
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("test")
+                .currentPhase(ElliottPhase.WAVE1)
+                .swings(swings)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        assertThat(scenario.hasKnownDirection()).isTrue();
+        assertThat(scenario.bullishDirection()).isTrue();
+    }
+
+    @Test
+    void hasKnownDirectionWithExplicitDirection() {
+        ElliottScenario bullishScenario = ElliottScenario.builder()
+                .id("bullish-explicit")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true)
+                .build();
+
+        assertThat(bullishScenario.hasKnownDirection()).isTrue();
+        assertThat(bullishScenario.isBullish()).isTrue();
+        assertThat(bullishScenario.isBearish()).isFalse();
+
+        ElliottScenario bearishScenario = ElliottScenario.builder()
+                .id("bearish-explicit")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(false)
+                .build();
+
+        assertThat(bearishScenario.hasKnownDirection()).isTrue();
+        assertThat(bearishScenario.isBullish()).isFalse();
+        assertThat(bearishScenario.isBearish()).isTrue();
+    }
+
+    @Test
+    void emptySwingsWithoutExplicitDirectionHasUnknownDirection() {
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("no-direction")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        assertThat(scenario.hasKnownDirection()).isFalse();
+        assertThat(scenario.swings()).isEmpty();
+        assertThat(scenario.bullishDirection()).isNull();
+    }
+
+    @Test
+    void isBullishThrowsForUnknownDirection() {
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("no-direction")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, scenario::isBullish);
+        assertThat(exception.getMessage()).contains("no-direction");
+        assertThat(exception.getMessage()).contains("no swings and no explicit direction");
+    }
+
+    @Test
+    void isBearishThrowsForUnknownDirection() {
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("no-direction")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, scenario::isBearish);
+        assertThat(exception.getMessage()).contains("no-direction");
+        assertThat(exception.getMessage()).contains("no swings and no explicit direction");
+    }
+
+    @Test
+    void isInvalidatedByThrowsForUnknownDirection() {
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("no-direction")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .invalidationPrice(numFactory.numOf(100))
+                .build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> scenario.isInvalidatedBy(numFactory.numOf(95)));
+        assertThat(exception.getMessage()).contains("no-direction");
+        assertThat(exception.getMessage()).contains("no swings and no explicit direction");
+    }
+
+    @Test
+    void isInvalidatedByWithExplicitDirectionWorks() {
+        ElliottScenario bullishScenario = ElliottScenario.builder()
+                .id("bullish-explicit")
+                .currentPhase(ElliottPhase.WAVE2)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .invalidationPrice(numFactory.numOf(100))
+                .bullishDirection(true)
+                .build();
+
+        // For bullish, price below invalidation = invalid
+        assertThat(bullishScenario.isInvalidatedBy(numFactory.numOf(95))).isTrue();
+        assertThat(bullishScenario.isInvalidatedBy(numFactory.numOf(105))).isFalse();
+
+        ElliottScenario bearishScenario = ElliottScenario.builder()
+                .id("bearish-explicit")
+                .currentPhase(ElliottPhase.WAVE2)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .invalidationPrice(numFactory.numOf(100))
+                .bullishDirection(false)
+                .build();
+
+        // For bearish, price above invalidation = invalid
+        assertThat(bearishScenario.isInvalidatedBy(numFactory.numOf(105))).isTrue();
+        assertThat(bearishScenario.isInvalidatedBy(numFactory.numOf(95))).isFalse();
+    }
+
+    @Test
+    void isInvalidatedByReturnsFalseForNullInputs() {
+        List<ElliottSwing> swings = List
+                .of(new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR));
+
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("test")
+                .currentPhase(ElliottPhase.WAVE2)
+                .swings(swings)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .invalidationPrice(numFactory.numOf(100))
+                .build();
+
+        // Null price should return false
+        assertThat(scenario.isInvalidatedBy(null)).isFalse();
+    }
+
+    @Test
+    void isInvalidatedByReturnsFalseForNullInvalidationPrice() {
+        List<ElliottSwing> swings = List
+                .of(new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR));
+
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("test")
+                .currentPhase(ElliottPhase.WAVE2)
+                .swings(swings)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                // No invalidation price set (null)
+                .build();
+
+        // When invalidation price is null, cannot be invalidated
+        assertThat(scenario.isInvalidatedBy(numFactory.numOf(95))).isFalse();
+    }
+
+    @Test
+    void directionDerivedFromSwingsOverridesExplicitWhenSwingsProvided() {
+        // When swings are provided, direction should be derived from them,
+        // even if an explicit direction was set
+        List<ElliottSwing> bearishSwings = List
+                .of(new ElliottSwing(0, 5, numFactory.numOf(120), numFactory.numOf(100), ElliottDegree.MINOR));
+
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("test")
+                .currentPhase(ElliottPhase.WAVE1)
+                .swings(bearishSwings)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true) // Explicitly set bullish, but swings are bearish
+                .build();
+
+        // Direction should be derived from swings (bearish) because swings are present
+        // The compact constructor derives direction from swings when provided
+        assertThat(scenario.hasKnownDirection()).isTrue();
+        assertThat(scenario.isBearish()).isTrue();
     }
 
     private ElliottConfidence createConfidence(double overall) {

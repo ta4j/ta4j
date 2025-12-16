@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
+import org.ta4j.core.indicators.elliott.StubSwingIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 class ElliottRatioIndicatorTest {

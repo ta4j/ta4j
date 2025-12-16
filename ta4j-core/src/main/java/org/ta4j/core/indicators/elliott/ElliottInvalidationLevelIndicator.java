@@ -125,6 +125,11 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
                 continue;
             }
 
+            // Skip scenarios without a known direction
+            if (!scenario.hasKnownDirection()) {
+                continue;
+            }
+
             if (conservative == null) {
                 conservative = invalidation;
                 bullish = scenario.isBullish();
@@ -159,6 +164,11 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
                 continue;
             }
 
+            // Skip scenarios without a known direction
+            if (!scenario.hasKnownDirection()) {
+                continue;
+            }
+
             if (aggressive == null) {
                 aggressive = invalidation;
                 bullish = scenario.isBullish();
@@ -181,12 +191,16 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      *
      * @param index bar index
      * @param price price to test
-     * @return {@code true} if the price invalidates the primary scenario
+     * @return {@code true} if the price invalidates the primary scenario; returns
+     *         {@code false} if no primary scenario exists or if its direction is
+     *         unknown
      * @since 0.22.0
      */
     public boolean isInvalidated(final int index, final Num price) {
         final Optional<ElliottScenario> primary = scenarioIndicator.primaryScenario(index);
-        return primary.map(scenario -> scenario.isInvalidatedBy(price)).orElse(false);
+        return primary.filter(ElliottScenario::hasKnownDirection)
+                .map(scenario -> scenario.isInvalidatedBy(price))
+                .orElse(false);
     }
 
     /**
@@ -194,7 +208,8 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      *
      * @param index        bar index
      * @param currentPrice current price
-     * @return distance to invalidation (positive = still valid)
+     * @return distance to invalidation (positive = still valid); returns NaN if no
+     *         primary scenario exists or if its direction is unknown
      * @since 0.22.0
      */
     public Num distanceToInvalidation(final int index, final Num currentPrice) {
@@ -204,7 +219,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
         }
 
         final Optional<ElliottScenario> primary = scenarioIndicator.primaryScenario(index);
-        if (primary.isEmpty()) {
+        if (primary.isEmpty() || !primary.get().hasKnownDirection()) {
             return NaN;
         }
 

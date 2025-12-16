@@ -53,11 +53,13 @@ import org.ta4j.core.num.Num;
  * @param fibonacciTargets  list of all Fibonacci-based price targets
  * @param type              pattern type classification
  * @param startIndex        bar index where this wave structure begins
+ * @param bullishDirection  explicit direction flag: {@code true} for bullish,
+ *                          {@code false} for bearish, {@code null} if unknown
  * @since 0.22.0
  */
 public record ElliottScenario(String id, ElliottPhase currentPhase, List<ElliottSwing> swings,
         ElliottConfidence confidence, ElliottDegree degree, Num invalidationPrice, Num primaryTarget,
-        List<Num> fibonacciTargets, ScenarioType type, int startIndex) {
+        List<Num> fibonacciTargets, ScenarioType type, int startIndex, Boolean bullishDirection) {
 
     public ElliottScenario {
         Objects.requireNonNull(id, "id");
@@ -67,6 +69,11 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
         Objects.requireNonNull(type, "type");
         swings = swings == null ? List.of() : List.copyOf(swings);
         fibonacciTargets = fibonacciTargets == null ? List.of() : List.copyOf(fibonacciTargets);
+        // Derive bullishDirection from swings when present (swings are the source of
+        // truth); only use the explicit direction when swings are empty
+        if (!swings.isEmpty()) {
+            bullishDirection = swings.get(0).isRising();
+        }
     }
 
     /**
@@ -94,27 +101,47 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
     }
 
     /**
-     * @return {@code true} if this scenario represents a bullish structure (rising
-     *         impulse or corrective move in a bull market)
+     * Checks if this scenario represents a bullish structure (rising impulse or
+     * corrective move in a bull market).
+     *
+     * @return {@code true} if this scenario is bullish
+     * @throws IllegalStateException if direction cannot be determined (no swings
+     *                               and no explicit direction set)
      * @since 0.22.0
      */
     public boolean isBullish() {
-        if (swings.isEmpty()) {
-            return false;
+        if (bullishDirection == null) {
+            throw new IllegalStateException(
+                    "Cannot determine direction: scenario '" + id + "' has no swings and no explicit direction set");
         }
-        // A bullish structure has its first impulse wave rising
-        return swings.get(0).isRising();
+        return bullishDirection;
     }
 
     /**
-     * @return {@code true} if this scenario represents a bearish structure
+     * Checks if this scenario represents a bearish structure.
+     *
+     * @return {@code true} if this scenario is bearish
+     * @throws IllegalStateException if direction cannot be determined (no swings
+     *                               and no explicit direction set)
      * @since 0.22.0
      */
     public boolean isBearish() {
-        if (swings.isEmpty()) {
-            return false;
+        if (bullishDirection == null) {
+            throw new IllegalStateException(
+                    "Cannot determine direction: scenario '" + id + "' has no swings and no explicit direction set");
         }
-        return !swings.get(0).isRising();
+        return !bullishDirection;
+    }
+
+    /**
+     * Checks if this scenario has a known direction (bullish or bearish).
+     *
+     * @return {@code true} if direction is known (either from swings or explicitly
+     *         set)
+     * @since 0.22.0
+     */
+    public boolean hasKnownDirection() {
+        return bullishDirection != null;
     }
 
     /**
@@ -130,15 +157,22 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
      *
      * @param price current price to test
      * @return {@code true} if the price breaches the invalidation level
+     * @throws IllegalStateException if direction cannot be determined (no swings
+     *                               and no explicit direction set)
      * @since 0.22.0
      */
     public boolean isInvalidatedBy(final Num price) {
         if (invalidationPrice == null || invalidationPrice.isNaN() || price == null || price.isNaN()) {
             return false;
         }
+        if (bullishDirection == null) {
+            throw new IllegalStateException(
+                    "Cannot evaluate invalidation: scenario '" + id + "' has no swings and no explicit direction set. "
+                            + "Set bullishDirection explicitly or provide swings to determine direction.");
+        }
         // For bullish scenarios, invalidation is below the level
         // For bearish scenarios, invalidation is above the level
-        if (isBullish()) {
+        if (bullishDirection) {
             return price.isLessThan(invalidationPrice);
         } else {
             return price.isGreaterThan(invalidationPrice);
@@ -181,6 +215,7 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
         private List<Num> fibonacciTargets = List.of();
         private ScenarioType type = ScenarioType.UNKNOWN;
         private int startIndex;
+        private Boolean bullishDirection;
 
         private Builder() {
         }
@@ -235,9 +270,29 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
             return this;
         }
 
+        /**
+         * Sets the explicit direction for this scenario.
+         *
+         * <p>
+         * Use this when the direction is known but swings have not yet been
+         * established. <strong>Important:</strong> If swings are provided, the
+         * direction will always be derived from them (first swing determines direction)
+         * and this explicit setting will be ignored. This explicit setting is only used
+         * when the swings list is empty.
+         *
+         * @param bullish {@code true} for bullish, {@code false} for bearish,
+         *                {@code null} if direction is unknown
+         * @return this builder
+         * @since 0.22.0
+         */
+        public Builder bullishDirection(final Boolean bullish) {
+            this.bullishDirection = bullish;
+            return this;
+        }
+
         public ElliottScenario build() {
             return new ElliottScenario(id, currentPhase, swings, confidence, degree, invalidationPrice, primaryTarget,
-                    fibonacciTargets, type, startIndex);
+                    fibonacciTargets, type, startIndex, bullishDirection);
         }
     }
 }

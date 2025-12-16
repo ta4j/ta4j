@@ -65,11 +65,10 @@ public final class ElliottSwingMetadata {
         if (swings == null || swings.isEmpty()) {
             return new ElliottSwingMetadata(List.of(), true, numFactory.zero(), numFactory.zero());
         }
-        final List<ElliottSwing> copy = List.copyOf(swings);
         boolean valid = true;
         Num highest = null;
         Num lowest = null;
-        for (final ElliottSwing swing : copy) {
+        for (final ElliottSwing swing : swings) {
             if (swing == null) {
                 valid = false;
                 break;
@@ -85,6 +84,7 @@ public final class ElliottSwingMetadata {
             highest = highest == null ? swingHigh : highest.max(swingHigh);
             lowest = lowest == null ? swingLow : lowest.min(swingLow);
         }
+        final List<ElliottSwing> copy = valid ? List.copyOf(swings) : List.of();
         if (!valid) {
             highest = numFactory.zero();
             lowest = numFactory.zero();
@@ -93,7 +93,8 @@ public final class ElliottSwingMetadata {
     }
 
     /**
-     * @return whether the snapshot contains finite prices for each swing
+     * @return whether the snapshot contains valid prices (not null and not NaN) for
+     *         each swing
      * @since 0.22.0
      */
     public boolean isValid() {

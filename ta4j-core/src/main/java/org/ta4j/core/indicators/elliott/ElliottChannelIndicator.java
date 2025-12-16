@@ -132,6 +132,14 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
         return swingIndicator.getCountOfUnstableBars();
     }
 
+    /**
+     * @return underlying swing indicator used for channel projection
+     * @since 0.22.0
+     */
+    public ElliottSwingIndicator getSwingIndicator() {
+        return swingIndicator;
+    }
+
     private record PivotLine(Num value) {
 
         private static PivotLine invalid() {

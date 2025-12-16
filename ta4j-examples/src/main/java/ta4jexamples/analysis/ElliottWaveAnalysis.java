@@ -133,14 +133,14 @@ public class ElliottWaveAnalysis {
             ElliottScenario primary = scenarioSet.primary().get();
             ElliottConfidence confidence = primary.confidence();
             LOG.info("PRIMARY SCENARIO: {} ({})", primary.currentPhase(), primary.type());
-            LOG.info("  Overall confidence: {:.1f}% ({})", confidence.asPercentage(),
+            LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", confidence.asPercentage()),
                     confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
-            LOG.info(
-                    "  Factor scores: Fibonacci={:.1f}% | Time={:.1f}% | Alternation={:.1f}% | Channel={:.1f}% | Completeness={:.1f}%",
-                    confidence.fibonacciScore().doubleValue() * 100,
-                    confidence.timeProportionScore().doubleValue() * 100,
-                    confidence.alternationScore().doubleValue() * 100, confidence.channelScore().doubleValue() * 100,
-                    confidence.completenessScore().doubleValue() * 100);
+            LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
+                    String.format("%.1f", confidence.fibonacciScore().doubleValue() * 100),
+                    String.format("%.1f", confidence.timeProportionScore().doubleValue() * 100),
+                    String.format("%.1f", confidence.alternationScore().doubleValue() * 100),
+                    String.format("%.1f", confidence.channelScore().doubleValue() * 100),
+                    String.format("%.1f", confidence.completenessScore().doubleValue() * 100));
             LOG.info("  Primary reason: {}", confidence.primaryReason());
             LOG.info("  Weakest factor: {}", confidence.weakestFactor());
             LOG.info("  Direction: {} | Invalidation: {} | Target: {}", primary.isBullish() ? "BULLISH" : "BEARISH",
@@ -153,8 +153,8 @@ public class ElliottWaveAnalysis {
             LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
             for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
                 ElliottScenario alt = alternatives.get(i);
-                LOG.info("  {}. {} ({}) - {:.1f}% confidence", i + 1, alt.currentPhase(), alt.type(),
-                        alt.confidence().asPercentage());
+                LOG.info("  {}. {} ({}) - {}% confidence", i + 1, alt.currentPhase(), alt.type(),
+                        String.format("%.1f", alt.confidence().asPercentage()));
             }
         }
         LOG.info("======================================");

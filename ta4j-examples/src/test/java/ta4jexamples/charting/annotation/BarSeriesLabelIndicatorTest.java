@@ -448,7 +448,7 @@ class BarSeriesLabelIndicatorTest {
     }
 
     @Test
-    void testLabelsReturnsNewListInstance() {
+    void testLabelsReturnsCachedInstance() {
         List<BarLabel> labels = List.of(new BarLabel(3, numFactory.numOf(150.0), "Label 3", LabelPlacement.CENTER));
 
         BarSeriesLabelIndicator indicator = new BarSeriesLabelIndicator(series, labels);

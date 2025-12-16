@@ -92,7 +92,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
 
         if (sameDirectionIndex >= 0) {
             final ElliottSwing reference = swings.get(sameDirectionIndex);
-            if (isExtensionExtreme(latest, reference) || oppositeDirectionIndex < 0) {
+            if (isExtensionExtreme(latest, reference)) {
                 final ElliottRatio extension = ratio(latestAmplitude, reference, RatioType.EXTENSION);
                 if (extension.type() != RatioType.NONE) {
                     return extension;
@@ -147,6 +147,14 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
             return false;
         }
         return latest.isRising() ? latestPrice.isGreaterThan(referencePrice) : latestPrice.isLessThan(referencePrice);
+    }
+
+    /**
+     * @return underlying swing indicator used for ratio calculation
+     * @since 0.22.0
+     */
+    public ElliottSwingIndicator getSwingIndicator() {
+        return swingIndicator;
     }
 
     /**

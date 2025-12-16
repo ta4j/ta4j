@@ -137,7 +137,7 @@ class ElliottScenarioComparatorTest {
     }
 
     @Test
-    void sharedInvalidationReturnsConservative() {
+    void sharedInvalidationReturnsConservativeForBullish() {
         ElliottScenario s1 = createScenarioWithInvalidation("s1", 0.8, true, numFactory.numOf(100));
         ElliottScenario s2 = createScenarioWithInvalidation("s2", 0.7, true, numFactory.numOf(95));
 
@@ -145,6 +145,28 @@ class ElliottScenarioComparatorTest {
 
         // For bullish, should return the lower (more conservative) invalidation
         assertThat(shared.doubleValue()).isCloseTo(95, within(0.01));
+    }
+
+    @Test
+    void sharedInvalidationReturnsConservativeForBearish() {
+        ElliottScenario s1 = createScenarioWithInvalidation("s1", 0.8, false, numFactory.numOf(100));
+        ElliottScenario s2 = createScenarioWithInvalidation("s2", 0.7, false, numFactory.numOf(105));
+
+        Num shared = comparator.sharedInvalidation(List.of(s1, s2));
+
+        // For bearish, should return the higher (more conservative) invalidation
+        assertThat(shared.doubleValue()).isCloseTo(105, within(0.01));
+    }
+
+    @Test
+    void sharedInvalidationReturnsNaNForMixedDirections() {
+        ElliottScenario bullish = createScenarioWithInvalidation("bull", 0.8, true, numFactory.numOf(95));
+        ElliottScenario bearish = createScenarioWithInvalidation("bear", 0.7, false, numFactory.numOf(105));
+
+        Num shared = comparator.sharedInvalidation(List.of(bullish, bearish));
+
+        // Mixed directions produce incompatible invalidation levels
+        assertThat(shared.isNaN()).isTrue();
     }
 
     @Test

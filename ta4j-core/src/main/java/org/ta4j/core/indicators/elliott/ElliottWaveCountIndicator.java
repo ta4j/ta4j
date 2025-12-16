@@ -69,6 +69,14 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
     }
 
     /**
+     * @return underlying swing indicator used for wave counting
+     * @since 0.22.0
+     */
+    public ElliottSwingIndicator getSwingIndicator() {
+        return swingIndicator;
+    }
+
+    /**
      * @param index bar index
      * @return immutable swing view used for counting
      * @since 0.22.0

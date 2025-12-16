@@ -267,13 +267,10 @@ public final class ElliottScenarioGenerator {
         final ElliottSwing waveA = swings.get(0);
         final ElliottSwing waveB = swings.get(1);
 
-        if (!fibValidator.isWaveBRetracementValid(waveA, waveB)) {
+        // Flat patterns require wave B to retrace at least 78.6% of wave A.
+        // The validator handles zero-amplitude checks internally.
+        if (!fibValidator.isWaveBFlatRetracementValid(waveA, waveB)) {
             return;
-        }
-
-        final double bRatio = waveB.amplitude().doubleValue() / waveA.amplitude().doubleValue();
-        if (bRatio < 0.786) {
-            return; // Not a flat - B should retrace most of A
         }
 
         for (int waveCount = 2; waveCount <= Math.min(3, swings.size()); waveCount++) {
@@ -397,11 +394,8 @@ public final class ElliottScenarioGenerator {
             return numFactory.zero();
         }
 
-        final ElliottSwing wave1 = swings.get(0);
-        final boolean bullish = wave1.isRising();
-
         // Invalidation is the start of wave 1 for waves 2-5
-        return wave1.fromPrice();
+        return swings.get(0).fromPrice();
     }
 
     private Num calculateCorrectiveInvalidation(final List<ElliottSwing> swings, final ElliottPhase phase) {

@@ -256,6 +256,10 @@ public final class ElliottScenarioSet {
     /**
      * Returns scenarios that would be invalidated by the given price.
      *
+     * <p>
+     * Scenarios without a known direction are excluded (they cannot be evaluated
+     * for invalidation).
+     *
      * @param price price level to test
      * @return list of scenarios invalidated by this price
      * @since 0.22.0
@@ -264,11 +268,18 @@ public final class ElliottScenarioSet {
         if (price == null || price.isNaN()) {
             return List.of();
         }
-        return scenarios.stream().filter(s -> s.isInvalidatedBy(price)).toList();
+        return scenarios.stream()
+                .filter(ElliottScenario::hasKnownDirection)
+                .filter(s -> s.isInvalidatedBy(price))
+                .toList();
     }
 
     /**
      * Returns scenarios that remain valid at the given price.
+     *
+     * <p>
+     * Scenarios without a known direction are retained (they cannot be evaluated
+     * for invalidation so they are conservatively kept).
      *
      * @param price price level to test
      * @return new scenario set with only valid scenarios
@@ -278,7 +289,9 @@ public final class ElliottScenarioSet {
         if (price == null || price.isNaN()) {
             return this;
         }
-        final List<ElliottScenario> valid = scenarios.stream().filter(s -> !s.isInvalidatedBy(price)).toList();
+        final List<ElliottScenario> valid = scenarios.stream()
+                .filter(s -> !s.hasKnownDirection() || !s.isInvalidatedBy(price))
+                .toList();
         return new ElliottScenarioSet(valid, barIndex);
     }
 

@@ -174,7 +174,13 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     private CycleAssessment assessCycle(final ElliottSwingMetadata metadata) {
         int startIndex = 0;
+        int maxIterations = metadata.size(); // Prevent infinite loops
+        int iterations = 0;
         while (true) {
+            if (iterations++ >= maxIterations) {
+                return new CycleAssessment(new ImpulseAssessment(ElliottPhase.NONE, List.of(), startIndex, true),
+                        List.of(), ElliottPhase.NONE);
+            }
             final ImpulseAssessment impulse = assessImpulseAt(metadata, startIndex);
             if (impulse.phase() != ElliottPhase.WAVE5) {
                 return new CycleAssessment(impulse, List.of(), ElliottPhase.NONE);
@@ -217,7 +223,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
             return ElliottPhase.NONE;
         }
         final ElliottSwing wave1 = swings.get(0);
-        if (!isFiniteSwing(wave1)) {
+        if (!isValidSwing(wave1)) {
             return ElliottPhase.NONE;
         }
         final boolean rising = wave1.isRising();
@@ -270,7 +276,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
 
         final ElliottSwing waveA = correction.get(0);
-        if (!isFiniteSwing(waveA)) {
+        if (!isValidSwing(waveA)) {
             return ElliottPhase.NONE;
         }
         if (waveA.isRising() == impulseRising) {
@@ -300,7 +306,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveTwoValid(final ElliottSwing wave1, final ElliottSwing wave2, final boolean impulseRising) {
-        if (!isFiniteSwing(wave2)) {
+        if (!isValidSwing(wave2)) {
             return false;
         }
         if (wave1.isRising() == wave2.isRising()) {
@@ -318,7 +324,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveThreeValid(final ElliottSwing wave1, final ElliottSwing wave3, final boolean impulseRising) {
-        if (!isFiniteSwing(wave3)) {
+        if (!isValidSwing(wave3)) {
             return false;
         }
         if (wave3.isRising() != impulseRising) {
@@ -337,7 +343,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     boolean isWaveFourValid(final ElliottSwing wave1, final ElliottSwing wave3, final ElliottSwing wave4,
             final boolean impulseRising) {
-        if (!isFiniteSwing(wave4)) {
+        if (!isValidSwing(wave4)) {
             return false;
         }
         if (wave4.isRising() == impulseRising) {
@@ -356,7 +362,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     boolean isWaveFiveValid(final ElliottSwing wave1, final ElliottSwing wave3, final ElliottSwing wave5,
             final boolean impulseRising) {
-        if (!isFiniteSwing(wave5)) {
+        if (!isValidSwing(wave5)) {
             return false;
         }
         if (wave5.isRising() != impulseRising) {
@@ -374,7 +380,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveBValid(final ElliottSwing waveA, final ElliottSwing waveB, final boolean impulseRising) {
-        if (!isFiniteSwing(waveB)) {
+        if (!isValidSwing(waveB)) {
             return false;
         }
         if (waveB.isRising() != impulseRising) {
@@ -392,7 +398,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     boolean isWaveCValid(final ElliottSwing waveA, final ElliottSwing waveC, final boolean impulseRising) {
-        if (!isFiniteSwing(waveC)) {
+        if (!isValidSwing(waveC)) {
             return false;
         }
         if (waveC.isRising() == impulseRising) {
@@ -409,11 +415,11 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         return impulseRising ? candidate.isLessThan(boundary) : candidate.isGreaterThan(boundary);
     }
 
-    private boolean isFiniteSwing(final ElliottSwing swing) {
+    private boolean isValidSwing(final ElliottSwing swing) {
         if (swing == null) {
             return false;
         }
-        return Num.isFinite(swing.fromPrice()) && Num.isFinite(swing.toPrice());
+        return Num.isValid(swing.fromPrice()) && Num.isValid(swing.toPrice());
     }
 
     private record CycleAssessment(ImpulseAssessment impulse, List<ElliottSwing> correction,

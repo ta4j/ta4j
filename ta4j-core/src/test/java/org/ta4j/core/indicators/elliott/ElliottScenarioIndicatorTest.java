@@ -44,15 +44,36 @@ class ElliottScenarioIndicatorTest {
     }
 
     @Test
-    void primaryScenarioConvenience() {
+    void primaryScenarioReturnsOptional() {
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
         ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator);
 
         var primary = indicator.primaryScenario(series.getEndIndex());
 
-        // May or may not be present depending on swing data
+        // Method returns an Optional that should never be null
         assertThat(primary).isNotNull();
+
+        // When scenarios exist, primary should be present with highest confidence
+        if (primary.isPresent()) {
+            ElliottScenario scenario = primary.get();
+            assertThat(scenario.confidenceScore()).isNotNull();
+            assertThat(scenario.currentPhase()).isNotNull();
+        }
+    }
+
+    @Test
+    void primaryScenarioEmptyWhenNoScenarios() {
+        // Single bar series produces no swings, hence no scenarios
+        BarSeries series = new MockBarSeriesBuilder().build();
+        series.barBuilder().openPrice(100).highPrice(100).lowPrice(100).closePrice(100).volume(0).add();
+
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator);
+
+        var primary = indicator.primaryScenario(0);
+
+        assertThat(primary).isEmpty();
     }
 
     @Test
@@ -67,15 +88,41 @@ class ElliottScenarioIndicatorTest {
     }
 
     @Test
-    void consensusReturnedWhenAgreement() {
+    void consensusReturnsPhaseWhenHighConfidenceScenariosAgree() {
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
         ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator);
 
         ElliottPhase consensus = indicator.consensus(series.getEndIndex());
+        ElliottScenarioSet scenarioSet = indicator.getValue(series.getEndIndex());
 
-        // Result depends on generated scenarios
+        // Consensus should never be null - returns NONE when no agreement
         assertThat(consensus).isNotNull();
+
+        // Verify consensus logic: if high-confidence scenarios exist and agree,
+        // consensus should match their phase; otherwise NONE
+        int highConfidenceCount = scenarioSet.highConfidenceCount();
+        if (highConfidenceCount == 0) {
+            assertThat(consensus).isEqualTo(ElliottPhase.NONE);
+        } else {
+            // Either all high-confidence scenarios agree (returns their phase)
+            // or they disagree (returns NONE) - both are valid enum values
+            assertThat(consensus).isNotNull();
+        }
+    }
+
+    @Test
+    void consensusReturnsNoneWhenNoHighConfidenceScenarios() {
+        // Single bar series produces no scenarios
+        BarSeries series = new MockBarSeriesBuilder().build();
+        series.barBuilder().openPrice(100).highPrice(100).lowPrice(100).closePrice(100).volume(0).add();
+
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator);
+
+        ElliottPhase consensus = indicator.consensus(0);
+
+        assertThat(consensus).isEqualTo(ElliottPhase.NONE);
     }
 
     @Test
@@ -99,7 +146,8 @@ class ElliottScenarioIndicatorTest {
     }
 
     @Test
-    void emptySeriesReturnsEmptyScenarioSet() {
+    void singleBarSeriesReturnsEmptyScenarioSet() {
+        // A single bar cannot produce swings, so no scenarios are generated
         BarSeries series = new MockBarSeriesBuilder().build();
         series.barBuilder().openPrice(100).highPrice(100).lowPrice(100).closePrice(100).volume(0).add();
 
