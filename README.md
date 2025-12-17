@@ -30,7 +30,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 **Build, test, and deploy trading bots in Java** without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
 
-> **⚡ Performance Advantage**: Multi-core backtesting is natural on the JVM. Ta4j lets you run strategy sweeps in parallel with threads/executors, without leaning on process pools and the complexity  overhead that often comes with GIL-limited Python code paths.
+**⚡ Performance Advantage**: Multi-core backtesting is natural on the JVM. Ta4j lets you run strategy sweeps in parallel with threads/executors, without leaning on process pools and the complexity  overhead that often comes with GIL-limited Python code paths.
 
 ### What can you build?
 
