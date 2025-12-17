@@ -139,6 +139,11 @@ public final class ElliottConfidenceScorer {
     /**
      * Scores Fibonacci ratio conformance (0.0 - 1.0).
      *
+     * <p>
+     * The current implementation evaluates Fibonacci ratios for impulse waves
+     * (5-wave patterns). For corrective waves (3-wave patterns), different
+     * Fibonacci ratio rules may apply.
+     *
      * @param swings the swing sequence
      * @param phase  current phase
      * @return Fibonacci proximity score
@@ -147,6 +152,11 @@ public final class ElliottConfidenceScorer {
     public Num scoreFibonacci(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings == null || swings.size() < 2) {
             return numFactory.zero();
+        }
+
+        // Current Fibonacci ratio rules are specific to impulse waves
+        if (phase != null && !phase.isImpulse()) {
+            return numFactory.zero(); // Return zero for non-impulse patterns
         }
 
         double totalScore = 0.0;
@@ -190,6 +200,11 @@ public final class ElliottConfidenceScorer {
      * Wave 3 should typically be the longest in time, and wave 1 and 5 often have
      * similar durations.
      *
+     * <p>
+     * The current implementation evaluates time proportions for impulse waves
+     * (5-wave patterns). For corrective waves (3-wave patterns), different time
+     * proportion rules may apply.
+     *
      * @param swings the swing sequence
      * @param phase  current phase
      * @return time proportion score
@@ -198,6 +213,11 @@ public final class ElliottConfidenceScorer {
     public Num scoreTimeProportions(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings == null || swings.size() < 3) {
             return numFactory.numOf(0.5); // Neutral score for insufficient data
+        }
+
+        // Current time proportion rules are specific to impulse waves
+        if (phase != null && !phase.isImpulse()) {
+            return numFactory.numOf(0.5); // Neutral for non-impulse patterns
         }
 
         double score = 0.5; // Start at neutral
@@ -231,6 +251,10 @@ public final class ElliottConfidenceScorer {
      * should be sideways, and vice versa. This is evaluated by comparing their
      * retracement depths and time durations.
      *
+     * <p>
+     * Alternation only applies to impulse waves (5-wave patterns), not corrective
+     * waves (3-wave patterns).
+     *
      * @param swings the swing sequence
      * @param phase  current phase
      * @return alternation score
@@ -239,6 +263,11 @@ public final class ElliottConfidenceScorer {
     public Num scoreAlternation(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings == null || swings.size() < 4) {
             return numFactory.numOf(0.5); // Neutral for insufficient data
+        }
+
+        // Alternation only applies to impulse waves, not corrective patterns
+        if (phase != null && !phase.isImpulse()) {
+            return numFactory.numOf(0.5); // Neutral for non-impulse patterns
         }
 
         final ElliottSwing wave2 = swings.get(1);

@@ -345,6 +345,11 @@ public final class ElliottScenarioGenerator {
             return false;
         }
 
+        // Validate that phase is an impulse phase
+        if (phase == null || !phase.isImpulse()) {
+            return false;
+        }
+
         // Basic direction alternation check
         for (int i = 1; i < swings.size(); i++) {
             if (swings.get(i).isRising() == swings.get(i - 1).isRising()) {
@@ -394,12 +399,22 @@ public final class ElliottScenarioGenerator {
             return numFactory.zero();
         }
 
+        // Validate that phase is an impulse phase
+        if (phase == null || !phase.isImpulse()) {
+            return numFactory.zero();
+        }
+
         // Invalidation is the start of wave 1 for waves 2-5
         return swings.get(0).fromPrice();
     }
 
     private Num calculateCorrectiveInvalidation(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings.isEmpty()) {
+            return numFactory.zero();
+        }
+
+        // Validate that phase is a corrective phase
+        if (phase == null || !phase.isCorrective()) {
             return numFactory.zero();
         }
 
@@ -412,6 +427,11 @@ public final class ElliottScenarioGenerator {
         final List<Num> targets = new ArrayList<>();
 
         if (swings.isEmpty()) {
+            return targets;
+        }
+
+        // Validate that phase is an impulse phase
+        if (phase == null || !phase.isImpulse()) {
             return targets;
         }
 
@@ -447,6 +467,11 @@ public final class ElliottScenarioGenerator {
         final List<Num> targets = new ArrayList<>();
 
         if (swings.isEmpty()) {
+            return targets;
+        }
+
+        // Validate that phase is a corrective phase
+        if (phase == null || !phase.isCorrective()) {
             return targets;
         }
 
