@@ -4,7 +4,7 @@
 
 ![Ta4j main chart](https://raw.githubusercontent.com/ta4j/ta4j-wiki/master/img/ta4j_main_chart.png)
 
-Build, test, and deploy trading bots in Java. With more than 190 (and counting) indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
+Build, test, and deploy trading bots in Java. With 200+ (and counting) technical indicators, intuitive APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
 
 ---
 
@@ -29,6 +29,8 @@ Build, test, and deploy trading bots in Java. With more than 190 (and counting) 
 ## Why Ta4j?
 
 **Build, test, and deploy trading bots in Java** without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
+
+> **⚡ Performance Advantage**: Multi-core backtesting is natural on the JVM. Ta4j lets you run strategy sweeps in parallel with threads/executors, without leaning on process pools and the complexity  overhead that often comes with GIL-limited Python code paths.
 
 ### What can you build?
 
