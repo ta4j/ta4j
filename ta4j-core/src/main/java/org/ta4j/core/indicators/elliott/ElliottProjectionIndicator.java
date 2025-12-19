@@ -75,7 +75,7 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
     protected Num calculate(final int index) {
         return scenarioIndicator.primaryScenario(index)
                 .map(ElliottScenario::primaryTarget)
-                .filter(target -> target != null && !target.isNaN())
+                .filter(Num::isValid)
                 .orElse(NaN);
     }
 

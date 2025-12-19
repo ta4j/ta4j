@@ -816,7 +816,7 @@ public final class TradingChartFactory {
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Num value = indicator.getValue(i);
-            boolean isValid = value != null && !value.isNaN();
+            boolean isValid = Num.isValid(value);
 
             if (isValid) {
                 // Start a new segment if we don't have one
@@ -954,7 +954,7 @@ public final class TradingChartFactory {
             Bar bar = series.getBar(i);
             Date barDate = Date.from(bar.getEndTime());
             Num value = indicator.getValue(i);
-            boolean isValid = value != null && !value.isNaN();
+            boolean isValid = Num.isValid(value);
 
             if (isValid) {
                 // Start a new segment if we don't have one
@@ -1000,10 +1000,10 @@ public final class TradingChartFactory {
         TimeSeries swingSeries = new TimeSeries(seriesName);
         for (Integer index : swingIndexes) {
             Num value = marker.getPriceIndicator().getValue(index);
-            if (value == null || value.isNaN()) {
+            if (Num.isNaNOrNull(value)) {
                 value = series.getBar(index).getClosePrice();
             }
-            if (value != null && !value.isNaN()) {
+            if (Num.isValid(value)) {
                 Date barDate = Date.from(series.getBar(index).getEndTime());
                 swingSeries.add(new Minute(barDate), value.doubleValue());
             }
@@ -1033,7 +1033,7 @@ public final class TradingChartFactory {
                 continue;
             }
             Num value = barLabel.yValue();
-            if (value == null || value.isNaN()) {
+            if (Num.isNaNOrNull(value)) {
                 continue;
             }
             Date barDate = Date.from(series.getBar(index).getEndTime());
@@ -1067,7 +1067,7 @@ public final class TradingChartFactory {
                 continue;
             }
             Num yValue = label.yValue();
-            if (yValue == null || yValue.isNaN()) {
+            if (Num.isNaNOrNull(yValue)) {
                 continue;
             }
             double x = series.getBar(index).getEndTime().toEpochMilli();

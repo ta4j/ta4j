@@ -75,7 +75,7 @@ public final class ElliottSwingMetadata {
             }
             final Num from = swing.fromPrice();
             final Num to = swing.toPrice();
-            if (from == null || to == null || from.isNaN() || to.isNaN()) {
+            if (!Num.isValid(from) || !Num.isValid(to)) {
                 valid = false;
                 break;
             }

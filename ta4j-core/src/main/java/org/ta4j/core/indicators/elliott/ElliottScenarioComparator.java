@@ -129,7 +129,7 @@ public final class ElliottScenarioComparator {
 
         for (final ElliottScenario scenario : scenarios) {
             final Num invalidation = scenario.invalidationPrice();
-            if (invalidation == null || invalidation.isNaN()) {
+            if (Num.isNaNOrNull(invalidation)) {
                 continue;
             }
 
@@ -208,7 +208,7 @@ public final class ElliottScenarioComparator {
 
         for (final ElliottScenario scenario : scenarios) {
             final Num confidence = scenario.confidenceScore();
-            if (confidence != null && !confidence.isNaN()) {
+            if (Num.isValid(confidence)) {
                 total += confidence.doubleValue();
                 count++;
             }
@@ -275,7 +275,7 @@ public final class ElliottScenarioComparator {
 
         for (final ElliottScenario scenario : scenarios) {
             final Num target = scenario.primaryTarget();
-            if (target == null || target.isNaN()) {
+            if (Num.isNaNOrNull(target)) {
                 continue;
             }
 

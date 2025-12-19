@@ -47,7 +47,19 @@ public class StubSwingIndicator extends ElliottSwingIndicator {
      * @param swingsByIndex list of swing lists, one per bar index
      */
     public StubSwingIndicator(final BarSeries series, final List<List<ElliottSwing>> swingsByIndex) {
-        super(series, 1, ElliottDegree.MINOR);
+        this(series, swingsByIndex, ElliottDegree.MINOR);
+    }
+
+    /**
+     * Creates a stub swing indicator with the specified swing sequences and degree.
+     *
+     * @param series        backing bar series
+     * @param swingsByIndex list of swing lists, one per bar index
+     * @param degree        degree metadata applied to swings
+     */
+    public StubSwingIndicator(final BarSeries series, final List<List<ElliottSwing>> swingsByIndex,
+            final ElliottDegree degree) {
+        super(series, 1, degree);
         this.swingsByIndex = swingsByIndex;
     }
 

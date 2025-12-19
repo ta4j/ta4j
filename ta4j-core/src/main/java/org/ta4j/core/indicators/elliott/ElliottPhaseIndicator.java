@@ -317,7 +317,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num boundary = wave1.fromPrice();
         final Num candidate = wave2.toPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? !candidate.isLessThan(boundary) : !candidate.isGreaterThan(boundary);
@@ -335,7 +335,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num candidate = wave3.toPrice();
         final Num boundary = wave1.toPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? candidate.isGreaterThan(boundary) : candidate.isLessThan(boundary);
@@ -354,7 +354,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num candidate = wave4.toPrice();
         final Num boundary = wave1.toPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? !candidate.isLessThan(boundary) : !candidate.isGreaterThan(boundary);
@@ -373,7 +373,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num candidate = wave5.toPrice();
         final Num boundary = wave3.toPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? candidate.isGreaterThan(boundary) : candidate.isLessThan(boundary);
@@ -391,7 +391,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num candidate = waveB.toPrice();
         final Num boundary = waveA.fromPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? !candidate.isGreaterThan(boundary) : !candidate.isLessThan(boundary);
@@ -409,7 +409,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
         }
         final Num candidate = waveC.toPrice();
         final Num boundary = waveA.toPrice();
-        if (candidate == null || boundary == null || candidate.isNaN() || boundary.isNaN()) {
+        if (!Num.isValid(candidate) || !Num.isValid(boundary)) {
             return false;
         }
         return impulseRising ? candidate.isLessThan(boundary) : candidate.isGreaterThan(boundary);

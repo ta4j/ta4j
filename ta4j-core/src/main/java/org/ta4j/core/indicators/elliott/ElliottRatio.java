@@ -41,7 +41,7 @@ public record ElliottRatio(Num value, RatioType type) {
      * @since 0.22.0
      */
     public boolean isValid() {
-        return type != null && type != RatioType.NONE && value != null && !value.isNaN();
+        return type != null && type != RatioType.NONE && Num.isValid(value);
     }
 
     /**

@@ -91,10 +91,10 @@ public final class ElliottScenarioSet {
         return (a, b) -> {
             final Num aScore = a.confidenceScore();
             final Num bScore = b.confidenceScore();
-            if (aScore == null || aScore.isNaN()) {
+            if (Num.isNaNOrNull(aScore)) {
                 return 1;
             }
-            if (bScore == null || bScore.isNaN()) {
+            if (Num.isNaNOrNull(bScore)) {
                 return -1;
             }
             return bScore.compareTo(aScore);
@@ -228,7 +228,7 @@ public final class ElliottScenarioSet {
         }
         final Num primary = scenarios.get(0).confidenceScore();
         final Num secondary = scenarios.get(1).confidenceScore();
-        if (primary == null || primary.isNaN() || secondary == null || secondary.isNaN()) {
+        if (Num.isNaNOrNull(primary) || Num.isNaNOrNull(secondary)) {
             return 0.0;
         }
         return primary.minus(secondary).abs().doubleValue();
@@ -265,7 +265,7 @@ public final class ElliottScenarioSet {
      * @since 0.22.0
      */
     public List<ElliottScenario> invalidatedBy(final Num price) {
-        if (price == null || price.isNaN()) {
+        if (Num.isNaNOrNull(price)) {
             return List.of();
         }
         return scenarios.stream()
@@ -286,7 +286,7 @@ public final class ElliottScenarioSet {
      * @since 0.22.0
      */
     public ElliottScenarioSet validAt(final Num price) {
-        if (price == null || price.isNaN()) {
+        if (Num.isNaNOrNull(price)) {
             return this;
         }
         final List<ElliottScenario> valid = scenarios.stream()

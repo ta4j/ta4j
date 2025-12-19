@@ -28,15 +28,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.BarSeries;
 
 class ElliottSwingIndicatorTest {
 
@@ -74,6 +75,32 @@ class ElliottSwingIndicatorTest {
         var series = new MockBarSeriesBuilder().build();
         series.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).volume(0).add();
         series.barBuilder().openPrice(NaN.NaN).highPrice(NaN.NaN).lowPrice(NaN.NaN).closePrice(NaN.NaN).volume(0).add();
+        series.barBuilder().openPrice(12).highPrice(12).lowPrice(12).closePrice(12).volume(0).add();
+        series.barBuilder().openPrice(8).highPrice(8).lowPrice(8).closePrice(8).volume(0).add();
+        series.barBuilder().openPrice(14).highPrice(14).lowPrice(14).closePrice(14).volume(0).add();
+        series.barBuilder().openPrice(7).highPrice(7).lowPrice(7).closePrice(7).volume(0).add();
+
+        var indicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var swings = indicator.getValue(series.getEndIndex());
+
+        assertThat(swings).hasSize(1);
+        var swing = swings.get(0);
+        assertThat(swing.fromIndex()).isEqualTo(3);
+        assertThat(swing.toIndex()).isEqualTo(4);
+        assertThat(swing.amplitude()).isEqualByComparingTo(series.numFactory().numOf(6));
+    }
+
+    @Test
+    void skipsDoubleNaNBarsFromDoubleFactory() {
+        var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        series.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).volume(0).add();
+        series.barBuilder()
+                .openPrice(Double.NaN)
+                .highPrice(Double.NaN)
+                .lowPrice(Double.NaN)
+                .closePrice(Double.NaN)
+                .volume(0)
+                .add();
         series.barBuilder().openPrice(12).highPrice(12).lowPrice(12).closePrice(12).volume(0).add();
         series.barBuilder().openPrice(8).highPrice(8).lowPrice(8).closePrice(8).volume(0).add();
         series.barBuilder().openPrice(14).highPrice(14).lowPrice(14).closePrice(14).volume(0).add();

@@ -42,7 +42,7 @@ public record ElliottChannel(Num upper, Num lower, Num median) {
      * @since 0.22.0
      */
     public boolean isValid() {
-        return upper != null && lower != null && !upper.isNaN() && !lower.isNaN();
+        return Num.isValid(upper) && Num.isValid(lower);
     }
 
     /**
@@ -69,12 +69,12 @@ public record ElliottChannel(Num upper, Num lower, Num median) {
      * @since 0.22.0
      */
     public boolean contains(final Num price, final Num tolerance) {
-        if (!isValid() || price == null || price.isNaN()) {
+        if (!isValid() || Num.isNaNOrNull(price)) {
             return false;
         }
         final NumFactory factory = lower.getNumFactory();
         final Num effectiveTolerance = tolerance == null ? factory.zero() : tolerance;
-        if (effectiveTolerance.isNaN()) {
+        if (Num.isNaNOrNull(effectiveTolerance)) {
             return false;
         }
         final Num min = lower.minus(effectiveTolerance);

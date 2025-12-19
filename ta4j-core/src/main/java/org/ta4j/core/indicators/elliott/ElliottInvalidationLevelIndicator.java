@@ -121,7 +121,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
             }
 
             final Num invalidation = scenario.invalidationPrice();
-            if (invalidation == null || invalidation.isNaN()) {
+            if (Num.isNaNOrNull(invalidation)) {
                 continue;
             }
 
@@ -160,7 +160,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
 
         for (final ElliottScenario scenario : scenarios) {
             final Num invalidation = scenario.invalidationPrice();
-            if (invalidation == null || invalidation.isNaN()) {
+            if (Num.isNaNOrNull(invalidation)) {
                 continue;
             }
 
@@ -214,7 +214,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      */
     public Num distanceToInvalidation(final int index, final Num currentPrice) {
         final Num invalidation = getValue(index);
-        if (invalidation == null || invalidation.isNaN() || currentPrice == null || currentPrice.isNaN()) {
+        if (Num.isNaNOrNull(invalidation) || Num.isNaNOrNull(currentPrice)) {
             return NaN;
         }
 

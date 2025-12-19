@@ -162,7 +162,7 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
      * @since 0.22.0
      */
     public boolean isInvalidatedBy(final Num price) {
-        if (invalidationPrice == null || invalidationPrice.isNaN() || price == null || price.isNaN()) {
+        if (Num.isNaNOrNull(invalidationPrice) || Num.isNaNOrNull(price)) {
             return false;
         }
         if (bullishDirection == null) {

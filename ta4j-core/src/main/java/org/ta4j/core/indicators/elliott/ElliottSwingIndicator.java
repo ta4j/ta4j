@@ -61,6 +61,11 @@ import org.ta4j.core.num.Num;
  * the {@link #zigZag(BarSeries, ElliottDegree)} helpers to avoid mismatched
  * swing state.
  *
+ * <p>
+ * Swing points are confirmed using lookforward bars, so results are delayed by
+ * the chosen lookforward window. Account for this inherent confirmation delay
+ * when using the swings in live or latency-sensitive workflows.
+ *
  * @since 0.22.0
  */
 public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
@@ -288,6 +293,14 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         return swingLowIndicator;
     }
 
+    /**
+     * @return degree metadata applied to generated swings
+     * @since 0.22.0
+     */
+    public ElliottDegree getDegree() {
+        return degree;
+    }
+
     private List<Pivot> pivots(final int index) {
         final List<Integer> highs = swingHighIndicator.getSwingPointIndexesUpTo(index);
         final List<Integer> lows = swingLowIndicator.getSwingPointIndexesUpTo(index);
@@ -309,9 +322,9 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
 
                 final PivotType chosen;
                 if (pivots.isEmpty()) {
-                    if (highPrice == null || highPrice.isNaN()) {
+                    if (Num.isNaNOrNull(highPrice)) {
                         chosen = PivotType.LOW;
-                    } else if (lowPrice == null || lowPrice.isNaN()) {
+                    } else if (Num.isNaNOrNull(lowPrice)) {
                         chosen = PivotType.HIGH;
                     } else {
                         chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
@@ -348,7 +361,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     private void absorbPivot(final List<Pivot> pivots, final Pivot pivot) {
-        if (pivot == null || pivot.price == null || pivot.price.isNaN()) {
+        if (pivot == null || Num.isNaNOrNull(pivot.price)) {
             return;
         }
         if (pivots.isEmpty()) {

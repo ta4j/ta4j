@@ -1248,7 +1248,7 @@ public final class ChartBuilder {
             double max = Double.NEGATIVE_INFINITY;
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
                 Num value = indicator.getValue(i);
-                if (value == null || value.isNaN()) {
+                if (Num.isNaNOrNull(value)) {
                     continue;
                 }
                 double v = value.doubleValue();
@@ -1262,7 +1262,7 @@ public final class ChartBuilder {
             double min = Double.POSITIVE_INFINITY;
             double max = Double.NEGATIVE_INFINITY;
             for (Trade trade : tradingRecord.getTrades()) {
-                if (trade.getPricePerAsset() == null || trade.getPricePerAsset().isNaN()) {
+                if (Num.isNaNOrNull(trade.getPricePerAsset())) {
                     continue;
                 }
                 double price = trade.getPricePerAsset().doubleValue();

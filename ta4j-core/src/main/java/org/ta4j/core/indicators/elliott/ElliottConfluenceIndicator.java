@@ -155,12 +155,12 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
             return false;
         }
         final Num value = ratio.value();
-        if (value == null || value.isNaN()) {
+        if (Num.isNaNOrNull(value)) {
             return false;
         }
         final List<Num> levels = ratio.type() == RatioType.RETRACEMENT ? retracementLevels : extensionLevels;
         for (Num level : levels) {
-            if (level == null || level.isNaN()) {
+            if (Num.isNaNOrNull(level)) {
                 continue;
             }
             final Num distance = value.minus(level).abs();
@@ -179,7 +179,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
      */
     public boolean isConfluent(final int index) {
         final Num score = getValue(index);
-        if (score == null || score.isNaN()) {
+        if (Num.isNaNOrNull(score)) {
             return false;
         }
         return score.isGreaterThanOrEqual(minimumScore);

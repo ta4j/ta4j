@@ -556,6 +556,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
+- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 

@@ -113,7 +113,7 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
      * @since 0.22.0
      */
     public boolean isAboveThreshold(final double threshold) {
-        if (overall == null || overall.isNaN()) {
+        if (Num.isNaNOrNull(overall)) {
             return false;
         }
         return overall.doubleValue() >= threshold;
@@ -124,7 +124,7 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
      * @since 0.22.0
      */
     public boolean isValid() {
-        return overall != null && !overall.isNaN();
+        return Num.isValid(overall);
     }
 
     /**
@@ -175,10 +175,10 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
     }
 
     private int safeCompare(final Num a, final Num b) {
-        if (a == null || a.isNaN()) {
+        if (Num.isNaNOrNull(a)) {
             return -1;
         }
-        if (b == null || b.isNaN()) {
+        if (Num.isNaNOrNull(b)) {
             return 1;
         }
         return a.compareTo(b);

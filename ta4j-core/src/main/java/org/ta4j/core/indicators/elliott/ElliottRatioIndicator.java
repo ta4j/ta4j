@@ -82,7 +82,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
 
         final ElliottSwing latest = swings.get(swings.size() - 1);
         final Num latestAmplitude = latest.amplitude();
-        if (latestAmplitude == null || latestAmplitude.isNaN()) {
+        if (!Num.isValid(latestAmplitude)) {
             return new ElliottRatio(NaN, RatioType.NONE);
         }
 
@@ -117,8 +117,11 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
         if (denominatorSwing == null) {
             return new ElliottRatio(NaN, RatioType.NONE);
         }
+        if (!Num.isValid(numerator)) {
+            return new ElliottRatio(NaN, RatioType.NONE);
+        }
         final Num denominator = denominatorSwing.amplitude();
-        if (denominator == null || denominator.isNaN() || denominator.isZero()) {
+        if (!Num.isValid(denominator) || denominator.isZero()) {
             return new ElliottRatio(NaN, RatioType.NONE);
         }
         return new ElliottRatio(numerator.dividedBy(denominator), type);
@@ -143,7 +146,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
         }
         final Num latestPrice = latest.toPrice();
         final Num referencePrice = reference.toPrice();
-        if (latestPrice == null || referencePrice == null || latestPrice.isNaN() || referencePrice.isNaN()) {
+        if (!Num.isValid(latestPrice) || !Num.isValid(referencePrice)) {
             return false;
         }
         return latest.isRising() ? latestPrice.isGreaterThan(referencePrice) : latestPrice.isLessThan(referencePrice);
@@ -176,7 +179,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
             return false;
         }
         final Num value = ratio.value();
-        if (value == null || value.isNaN()) {
+        if (!Num.isValid(value)) {
             return false;
         }
         final Num delta = value.minus(target).abs();

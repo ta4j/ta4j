@@ -25,9 +25,11 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
 
 class ElliottScenarioIndicatorTest {
 
@@ -143,6 +145,23 @@ class ElliottScenarioIndicatorTest {
 
         assertThat(indicator.getSwingIndicator()).isEqualTo(swingIndicator);
         assertThat(indicator.getChannelIndicator()).isEqualTo(channelIndicator);
+    }
+
+    @Test
+    void scenariosInheritSwingDegree() {
+        BarSeries series = createSeriesWithSwings();
+        var factory = series.numFactory();
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 1, factory.numOf(100), factory.numOf(110), ElliottDegree.PRIMARY),
+                new ElliottSwing(1, 2, factory.numOf(110), factory.numOf(105), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 3, factory.numOf(105), factory.numOf(120), ElliottDegree.PRIMARY));
+        ElliottSwingIndicator swingIndicator = new StubSwingIndicator(series, List.of(swings), ElliottDegree.PRIMARY);
+        ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator);
+
+        ElliottScenarioSet set = indicator.getValue(series.getEndIndex());
+
+        assertThat(set.isEmpty()).isFalse();
+        assertThat(set.all()).allMatch(scenario -> scenario.degree() == ElliottDegree.PRIMARY);
     }
 
     @Test

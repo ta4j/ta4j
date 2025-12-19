@@ -121,7 +121,7 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
         final Num slope = newer.toPrice().minus(older.toPrice()).dividedBy(spanNum);
         final int distance = index - newer.toIndex();
         final Num projected = newer.toPrice().plus(slope.multipliedBy(getBarSeries().numFactory().numOf(distance)));
-        if (projected.isNaN()) {
+        if (Num.isNaNOrNull(projected)) {
             return PivotLine.invalid();
         }
         return new PivotLine(projected);
@@ -147,7 +147,7 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
         }
 
         private boolean isValid() {
-            return value != null && !value.isNaN();
+            return Num.isValid(value);
         }
     }
 }

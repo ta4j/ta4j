@@ -85,7 +85,7 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
         this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
         this.channelIndicator = Objects.requireNonNull(channelIndicator, "channelIndicator");
         this.generator = Objects.requireNonNull(generator, "generator");
-        this.degree = ElliottDegree.MINOR; // Could be parameterized
+        this.degree = swingIndicator.getDegree();
     }
 
     private static BarSeries requireSeries(final ElliottSwingIndicator swingIndicator) {
