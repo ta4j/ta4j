@@ -28,9 +28,16 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 ## Why Ta4j?
 
-**Build, test, and deploy trading bots in Java** without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
+**Build, test, and deploy trading strategies in Java** without leaving your preferred language, toolchain, or mental model. Ta4j provides the building blocks needed to explore markets, validate ideas, and move from curiosity to production-grade systems.
 
-**⚡ Performance Advantage**: Multi-core backtesting is natural on the JVM. Ta4j lets you run strategy sweeps in parallel with threads/executors, without leaning on process pools and the complexity  overhead that often comes with GIL-limited Python code paths.
+Ta4j treats technical analysis for what it is: a structured way to reason about uncertainty using historical price data. As often stated, past performance is no guarantee of future results. History doesn't repeat, but it often rhymes. Technical indicators are about probabilities rather than predictions. They can help us understand the art of the possible - and if used well - the art of the probable. 
+
+> **⚡ Performance Advantage**: Native multi-threading gives ta4j a significant comparative advantage over Python-based libraries. Backtest hundreds of strategies in parallel, process years of market data in seconds, and saturate all CPU cores. No GIL bottleneck, no multiprocessing workarounds, just straightforward parallel execution.
+
+Because Ta4j runs on the JVM, strategies scale naturally from a single backtest on a laptop to large parameter sweeps, portfolio simulations, and research pipelines. Strong typing and explicit models make strategies easier to reason about, harder to misuse, and less likely to quietly do the wrong thing.
+
+Ta4j does not promise profitable strategies. It promises reproducible experiments. If a strategy looks good, Ta4j helps you verify it. If it stops working, Ta4j helps you understand why. And if a backtest looks too good to be true, Ta4j assumes it probably is.
+
 
 ### What can you build?
 
