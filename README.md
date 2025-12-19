@@ -43,11 +43,10 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 ### Why Java developers choose Ta4j
 
 - **Pure Java, zero friction**: Works anywhere Java 21+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
-- **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
+- **Type-safe, Production-ready**: Ta4j favors explicit models, strong typing, and predictable performance over exploratory scripting. Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
-- **Production-ready**: Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
 
 ## Install in seconds
@@ -313,6 +312,8 @@ topStrategies.forEach(statement -> {
         statement.getCriterionScore(returnOverMaxDradownCriterion).orElse(series.numOf(0)));
 });
 ```
+
+It’s not uncommon for a first backtest to look promising. Very promising. Resist the urge to extrapolate annualized returns, quit your job, or price out yachts.
 
 
 ## Visualize and share strategies
@@ -624,11 +625,7 @@ Ta4j uses automated workflows for publishing both snapshot and stable releases.
 
 ### Snapshots
 
-Every push to `master` triggers a snapshot deployment:
-
-```
-mvn deploy
-```
+Every push to `master` triggers a snapshot deployment via the `snapshot.yml` Github workflow:
 
 Snapshots are available at:
 
@@ -638,7 +635,26 @@ https://central.sonatype.com/repository/maven-snapshots/
 
 ### Stable releases
 
-For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+Releases are also automated via Github workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+
+
+## Warranty
+
+> **🛡️ Ta4j and its developers guarantee your experience to meet or exceed reasonable expectations for correctness and profitability for a minimum period of one (1) year, beginning the moment you run your first ta4j-based backtest\***.
+
+Just kidding.
+
+Ta4j is open-source software released under the MIT License. There is no warranty, express, implied, imaginary, or otherwise. Ta4j is provided as-is. Use it, fork it, break it, improve it, or walk away entirely.
+
+Ta4j is built and maintained by developers contributing on their own time, at their own expense, and for reasons as varied as the markets themselves. For some, it’s a hobby. For others, a labor of love. Some run Ta4j inside proprietary trading stacks and choose to give back. Others contribute to open-source to offset certain download habits that, in practice, look a lot like downloading north of a thousand terabytes of movies, TV shows, software installers, cracked plug-ins, ROM sets, **The.Sims.3.Complete.Collection-RELOADED**, and e-books, while maintaining a lifetime upload ratio of 0. Who can say?
+
+What *is* certain is this: whoever they are, and whatever motivates them, they don’t owe you anything. If Ta4j helps you learn, experiment, or even make money, great. If it doesn’t, that’s the risk you accepted.
+
+\*Applies only to the Premium Subscription Package, which includes 24/7 technical support, guaranteed alpha, and on-demand feature requests.  
+(Also just kidding. There is no Premium Subscription Package.)
+
+
+
 
 ## Powered by
 
