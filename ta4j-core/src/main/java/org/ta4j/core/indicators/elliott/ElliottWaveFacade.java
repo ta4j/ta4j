@@ -44,13 +44,35 @@ import org.ta4j.core.num.NumFactory;
  * detector, ensuring they analyze the same wave structure.
  *
  * <p>
- * Example usage:
+ * Basic usage:
  *
  * <pre>
  * ElliottWaveFacade facade = ElliottWaveFacade.fractal(series, 5, ElliottDegree.INTERMEDIATE);
  * ElliottPhase phase = facade.phase().getValue(index);
  * ElliottRatio ratio = facade.ratio().getValue(index);
  * boolean confluent = facade.confluence().isConfluent(index);
+ * </pre>
+ *
+ * <p>
+ * Advanced usage with custom configuration:
+ *
+ * <pre>
+ * // Custom Fibonacci tolerance and swing compressor
+ * Num customTolerance = series.numFactory().numOf(0.25);
+ * ElliottSwingCompressor compressor = new ElliottSwingCompressor(
+ *         closePrice.getValue(endIndex).multipliedBy(series.numFactory().numOf(0.01)), 2);
+ *
+ * ElliottWaveFacade facade = ElliottWaveFacade.zigZag(series, degree, Optional.of(customTolerance),
+ *         Optional.of(compressor));
+ *
+ * // Phase indicator uses custom validator with custom tolerance
+ * ElliottPhase phase = facade.phase().getValue(index);
+ *
+ * // Filtered wave count uses compressor
+ * int filteredCount = facade.filteredWaveCount().getValue(index);
+ *
+ * // Basic wave count (no compression)
+ * int basicCount = facade.waveCount().getValue(index);
  * </pre>
  *
  * @since 0.22.0
@@ -104,8 +126,15 @@ public final class ElliottWaveFacade {
      * @param series       source bar series
      * @param window       number of bars to inspect before and after a pivot
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance (default: 0.05)
-     * @param compressor   optional swing compressor for filtered wave counting
+     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
+     *                     (default: 0.05). When provided, the phase indicator will
+     *                     use a custom {@link ElliottFibonacciValidator} with this
+     *                     tolerance instead of the default validator.
+     * @param compressor   optional swing compressor for filtered wave counting.
+     *                     When provided, {@link #filteredWaveCount()} will use this
+     *                     compressor to filter swings before counting. If empty,
+     *                     {@link #filteredWaveCount()} returns the same as
+     *                     {@link #waveCount()}.
      * @return configured Elliott Wave facade
      * @since 0.22.0
      */
@@ -142,8 +171,17 @@ public final class ElliottWaveFacade {
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
      * @param degree            swing degree metadata
-     * @param fibTolerance      optional custom Fibonacci tolerance (default: 0.05)
-     * @param compressor        optional swing compressor for filtered wave counting
+     * @param fibTolerance      optional custom Fibonacci tolerance for phase
+     *                          validation (default: 0.05). When provided, the phase
+     *                          indicator will use a custom
+     *                          {@link ElliottFibonacciValidator} with this
+     *                          tolerance instead of the default validator.
+     * @param compressor        optional swing compressor for filtered wave
+     *                          counting. When provided,
+     *                          {@link #filteredWaveCount()} will use this
+     *                          compressor to filter swings before counting. If
+     *                          empty, {@link #filteredWaveCount()} returns the same
+     *                          as {@link #waveCount()}.
      * @return configured Elliott Wave facade
      * @since 0.22.0
      */
@@ -176,8 +214,15 @@ public final class ElliottWaveFacade {
      *
      * @param series       source bar series
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance (default: 0.05)
-     * @param compressor   optional swing compressor for filtered wave counting
+     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
+     *                     (default: 0.05). When provided, the phase indicator will
+     *                     use a custom {@link ElliottFibonacciValidator} with this
+     *                     tolerance instead of the default validator.
+     * @param compressor   optional swing compressor for filtered wave counting.
+     *                     When provided, {@link #filteredWaveCount()} will use this
+     *                     compressor to filter swings before counting. If empty,
+     *                     {@link #filteredWaveCount()} returns the same as
+     *                     {@link #waveCount()}.
      * @return configured Elliott Wave facade
      * @since 0.22.0
      */
@@ -209,8 +254,16 @@ public final class ElliottWaveFacade {
      *
      * @param swingIndicator custom swing indicator
      * @param priceIndicator price reference for confluence analysis
-     * @param fibTolerance   optional custom Fibonacci tolerance (default: 0.05)
-     * @param compressor     optional swing compressor for filtered wave counting
+     * @param fibTolerance   optional custom Fibonacci tolerance for phase
+     *                       validation (default: 0.05). When provided, the phase
+     *                       indicator will use a custom
+     *                       {@link ElliottFibonacciValidator} with this tolerance
+     *                       instead of the default validator.
+     * @param compressor     optional swing compressor for filtered wave counting.
+     *                       When provided, {@link #filteredWaveCount()} will use
+     *                       this compressor to filter swings before counting. If
+     *                       empty, {@link #filteredWaveCount()} returns the same as
+     *                       {@link #waveCount()}.
      * @return configured Elliott Wave facade
      * @since 0.22.0
      */
@@ -240,6 +293,12 @@ public final class ElliottWaveFacade {
     }
 
     /**
+     * Returns the phase indicator, lazily created on first access.
+     * <p>
+     * If a custom Fibonacci tolerance was provided during facade construction, the
+     * phase indicator will use a custom {@link ElliottFibonacciValidator} with that
+     * tolerance. Otherwise, it uses the default validator with a tolerance of 0.05.
+     *
      * @return the phase indicator (lazily created)
      * @since 0.22.0
      */
@@ -291,8 +350,19 @@ public final class ElliottWaveFacade {
     }
 
     /**
+     * Returns the filtered wave count indicator, lazily created on first access.
+     * <p>
+     * If a swing compressor was provided during facade construction, this method
+     * returns a wave count indicator that filters swings using the compressor
+     * before counting. The compressor removes swings that don't meet minimum
+     * amplitude and/or length thresholds.
+     * <p>
+     * If no compressor was provided, this method returns the same indicator as
+     * {@link #waveCount()}, which counts all swings without filtering.
+     *
      * @return the filtered wave count indicator (lazily created, with compression
      *         if compressor is configured)
+     * @see ElliottSwingCompressor
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator filteredWaveCount() {

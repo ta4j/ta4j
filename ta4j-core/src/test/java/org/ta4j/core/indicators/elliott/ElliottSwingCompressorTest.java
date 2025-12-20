@@ -67,4 +67,23 @@ class ElliottSwingCompressorTest {
         assertThat(swings).isNotEmpty();
         assertThat(compressed).isEmpty();
     }
+
+    @Test
+    void zeroParamConstructorRetainsAllSwings() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var indicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var swings = indicator.getValue(series.getEndIndex());
+
+        var compressor = new ElliottSwingCompressor();
+        var compressed = compressor.compress(swings);
+
+        // Zero-parameter constructor should retain all swings (no filtering)
+        assertThat(compressed).hasSameSizeAs(swings);
+        assertThat(compressed).containsExactlyElementsOf(swings);
+    }
 }

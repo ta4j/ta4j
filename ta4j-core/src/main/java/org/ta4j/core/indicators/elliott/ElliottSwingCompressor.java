@@ -41,6 +41,15 @@ public class ElliottSwingCompressor {
     private final int minimumLength;
 
     /**
+     * Creates a compressor with no filtering (all swings are retained).
+     *
+     * @since 0.22.0
+     */
+    public ElliottSwingCompressor() {
+        this(null, 0);
+    }
+
+    /**
      * @param minimumAmplitude swings must reach this absolute price delta to be
      *                         retained
      * @param minimumLength    swings must cover at least this many bars to be
@@ -63,7 +72,7 @@ public class ElliottSwingCompressor {
      * @since 0.22.0
      */
     public List<ElliottSwing> compress(final List<ElliottSwing> swings) {
-        Objects.requireNonNull(swings, "swings");
+        Objects.requireNonNull(swings, "swings cannot be null");
         if (swings.isEmpty()) {
             return List.of();
         }
